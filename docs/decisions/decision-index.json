@@ -13,6 +13,17 @@
       "supersededBy": [],
       "amends": [],
       "amendedBy": []
+    },
+    {
+      "id": "D-002",
+      "title": "Keep a small core separate from EF persistence",
+      "status": "implemented",
+      "date": "2026-09-19",
+      "path": "docs/decisions/D-002-package-boundaries.md",
+      "supersedes": [],
+      "supersededBy": [],
+      "amends": [],
+      "amendedBy": []
     }
   ]
 }

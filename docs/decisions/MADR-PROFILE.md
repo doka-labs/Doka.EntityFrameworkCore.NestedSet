@@ -10,7 +10,7 @@ extensions, not requirements attributed to MADR itself.
 
 MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY express normative requirements here.
 The [template](adr-template.md) provides the complete starting structure. The
-decision index (`docs/decisions/README.md`; introduced with its owning feature) is generated from the records.
+[decision index](README.md) is generated from the records.
 
 Records preserve their actual recording dates and initial proposal history.
 The maintainer accepted the current decisions on 2026-09-28. Implemented records

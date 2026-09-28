@@ -349,16 +349,36 @@ contract.
 
 ## Build and install from source
 
-Source build and package instructions are introduced with their owning
-projects. This repository does not yet publish a package.
+Use the SDK pinned in [global.json](global.json) to build the independent core:
+
+```bash
+dotnet restore src/Doka.NestedSet/Doka.NestedSet.csproj --locked-mode
+dotnet build src/Doka.NestedSet/Doka.NestedSet.csproj -c Release --no-restore
+dotnet pack src/Doka.NestedSet/Doka.NestedSet.csproj -c Release --no-build --no-restore -o artifacts/packages
+```
+
+The EF integration and its installation instructions arrive with its implementation.
 
 ## Tests
 
-Executable test instructions are introduced alongside their test projects.
+The core suite runs without Docker:
+
+```bash
+dotnet restore tests/Doka.NestedSet.Tests/Doka.NestedSet.Tests.csproj --locked-mode
+dotnet test tests/Doka.NestedSet.Tests/Doka.NestedSet.Tests.csproj -c Release --no-restore
+```
+
+| Test project under `tests/` | Coverage |
+| --- | --- |
+| `Doka.NestedSet.Tests` | EF-independent bounds and node predicates |
+
+Provider execution instructions are introduced alongside the concrete
+provider projects.
 
 ## Documentation
 
 - [Documentation index](docs/README.md)
+- [Architecture decisions](docs/decisions/README.md)
 - [Package usage guide](src/README.md)
 
 ## License

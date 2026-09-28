@@ -13,6 +13,7 @@ identify when the record was created; decision history carries later status chan
 | ID | Status | Recording date | Title | Relationships |
 | --- | --- | --- | --- | --- |
 | [D-001](D-001-madr-profile-and-decision-governance.md) | implemented | 2026-09-19 | Record material decisions with the full Doka MADR profile | None |
+| [D-002](D-002-package-boundaries.md) | implemented | 2026-09-19 | Keep a small core separate from EF persistence | None |
 
 ## Relationships
 

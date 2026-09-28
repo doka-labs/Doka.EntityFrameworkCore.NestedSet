@@ -15,8 +15,26 @@ require a developer-managed database.
 
 ## Build and test
 
-The pinned SDK can be checked with `dotnet --version`. Runnable project
-build and test commands arrive with their implementation commits.
+```sh
+dotnet restore Doka.EntityFrameworkCore.NestedSet.slnx --locked-mode
+dotnet build Doka.EntityFrameworkCore.NestedSet.slnx -c Release --no-restore
+dotnet test Doka.EntityFrameworkCore.NestedSet.slnx \
+  -c Release --no-build --no-restore
+```
+
+| Test project | Responsibility |
+| --- | --- |
+| `Doka.NestedSet.Tests` | EF-independent value and relationship contracts |
+
+The ordinary migration project must have no SafeMigrations reference.
+SafeMigrations tests extend the contract; they do not define runtime support.
+
+All introduced test projects appear directly under the solution's `tests`
+folder. The current revision contains the independent core suite; EF and
+provider test ownership is introduced with those projects.
+
+A filtered run is focused feedback and does not qualify all providers.
+Never replace a failing provider test with a skip.
 
 ## Formatting and language
 
@@ -215,10 +233,16 @@ the method and limitations in Performance (`docs/performance.md`; introduced wit
 ## Dependency updates
 
 A dependency change requires project-owner approval and review of every
-affected project lockfile, including transitive changes. Restore affected
-projects with `--force-evaluate -p:RestoreLockedMode=false`, review the
-locks, and verify a second restore with `--locked-mode`. Requalify the
-affected provider and migration contracts.
+affected lockfile, including transitive changes. After approval, update and
+review the solution lockfiles:
+
+```sh
+dotnet restore Doka.EntityFrameworkCore.NestedSet.slnx \
+  --force-evaluate -p:RestoreLockedMode=false
+dotnet restore Doka.EntityFrameworkCore.NestedSet.slnx --locked-mode
+```
+
+Requalify the affected provider and migration contracts.
 
 ## Public API changes
 

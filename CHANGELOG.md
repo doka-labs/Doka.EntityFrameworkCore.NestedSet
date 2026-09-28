@@ -16,3 +16,8 @@ Initial development line. This version is not published.
 ### Build
 
 - Pin the .NET 10 SDK and centralize dependency and build defaults.
+
+### Core
+
+- Add typed tree identities, optional scoped node contracts, validated bounds,
+  pure predicates, and core regression tests; document D-002.

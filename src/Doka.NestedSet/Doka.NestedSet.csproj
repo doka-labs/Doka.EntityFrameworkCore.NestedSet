@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <Description>ORM-independent nested-set bounds and node predicates.</Description>
+    <PackageTags>nested-set;tree;hierarchy</PackageTags>
+  </PropertyGroup>
+</Project>
