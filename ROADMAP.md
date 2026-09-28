@@ -1,0 +1,67 @@
+# Project roadmap
+
+This roadmap describes direction from September 2026 through September 2027.
+It is not a delivery-date promise. Released packages, release notes, and the
+support matrix (`docs/support-and-qualification.md`; introduced with its owning feature) define supported behavior.
+
+## Direction
+
+### Complete the first release
+
+- Review and stabilize the two-package public API.
+- Keep the EF-independent core limited to contracts useful without persistence.
+- Qualify ordinary migrations on every supported provider and optional
+  SafeMigrations integration independently.
+- Keep product documentation aligned with file systems, KPIs, and
+  organization/user groups; applications own roles and privileges.
+
+### Preserve correctness at scale
+
+- Treat scope isolation, atomic mutations, concurrent writers, rollback,
+  commit ambiguity, ordering, validation, and rebuild as the primary contract.
+- Optimize query shape, write amplification, allocations, and memory only from
+  measured application or controlled local evidence.
+- Keep timing benchmarks outside CI and release authority; runner CPU and load
+  are not deterministic.
+- Extend stable structural command/row and provider-plan tests when a regression
+  demonstrates the need.
+
+### Maintain supported platforms
+
+- Keep .NET 10, EF Core 10, Doka MySQL/MariaDB, Npgsql PostgreSQL, Microsoft
+  SQLite, and Microsoft SQL Server under dependency and vulnerability review.
+- Requalify exact engine/provider updates through runtime, concurrency,
+  migration, catalog, and package evidence.
+- Keep SafeMigrations optional and update its adapter matrix only after this
+  repository verifies the released packages.
+- Treat a future .NET/EF major as an explicit compatibility decision, not a
+  routine package update.
+
+## Explicit non-goals
+
+Through September 2027 the project does not intend to:
+
+- support Pomelo;
+- require SafeMigrations for ordinary runtime or migration support;
+- add another ORM adapter without a concrete maintained consumer and full
+  support decision;
+- implement authentication, group membership, role assignment, privilege
+  conflict rules, or application authorization;
+- represent graphs with multiple parents or cycles;
+- promise a universal maximum tree size, latency, or throughput;
+- make GitHub benchmark timing a release gate;
+- claim NativeAOT or trimming support without package/runtime evidence; or
+- add configuration switches for hypothetical future use.
+
+## Review triggers
+
+The lead maintainer reviews this roadmap at least quarterly and when:
+
+- the first public release completes;
+- a supported platform publishes a new major or LTS line;
+- a vulnerability or data-integrity issue changes priorities;
+- production evidence requires a new scalability contract; or
+- an accepted MADR changes package, provider, or release direction.
+
+Completed behavior belongs in [CHANGELOG.md](CHANGELOG.md). A roadmap change
+links the consumer evidence, issue, or decision that caused it.

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "madrVersion": "4.0.0",
+  "dokaProfileVersion": "1.0",
+  "decisions": [
+    {
+      "id": "D-001",
+      "title": "Record material decisions with the full Doka MADR profile",
+      "status": "implemented",
+      "date": "2026-09-19",
+      "path": "docs/decisions/D-001-madr-profile-and-decision-governance.md",
+      "supersedes": [],
+      "supersededBy": [],
+      "amends": [],
+      "amendedBy": []
+    }
+  ]
+}
