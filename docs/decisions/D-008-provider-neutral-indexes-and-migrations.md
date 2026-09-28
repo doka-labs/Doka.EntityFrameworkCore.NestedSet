@@ -104,7 +104,7 @@ optional SQL Server SafeMigrations adapter.
 - Ordinary migration tests (`tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests`; introduced with its owning feature)
 - Optional adapter tests (`tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests`; introduced with its owning feature)
 - [Migration contract](../../docs/migrations.md)
-- Pinned support matrix (`docs/support-and-qualification.md`; introduced with its owning feature)
+- [Pinned support matrix](../../docs/support-and-qualification.md)
 - [Central package versions](../../Directory.Packages.props)
 
 ### Sources

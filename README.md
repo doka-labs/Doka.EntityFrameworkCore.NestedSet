@@ -403,6 +403,7 @@ dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Doka.EntityFrame
 | `Doka.EntityFrameworkCore.NestedSet.MySql.Tests` | Doka MySQL and MariaDB, with independent engine fixtures |
 | `Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests` | PostgreSQL |
 | `Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests` | SQL Server |
+| `Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests` | SQLite |
 
 Provider projects inherit shared contracts from
 `Doka.EntityFrameworkCore.NestedSet.Specification.Tests`; the specification

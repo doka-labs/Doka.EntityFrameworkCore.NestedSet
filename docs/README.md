@@ -23,6 +23,8 @@ runbooks own operational procedures.
 
 ## Integrate and operate NestedSet
 
+- [Supported Databases and Qualification](support-and-qualification.md)
+  defines package ranges, engine targets, test ownership, and evidence limits.
 - [Migrations and Indexes](migrations.md) covers ordinary EF migrations,
   provider SQL, optional SafeMigrations adapters, and upgrade checks.
 - [Transactions and Locking](transactions-and-locking.md) defines transaction

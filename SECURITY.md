@@ -257,7 +257,7 @@ NestedSet-specific differences are supported by repository evidence:
 
 - [Security design](docs/security/security-design.md);
 - [Security assurance case](docs/security/assurance-case.md);
-- Support and qualification (`docs/support-and-qualification.md`; introduced with its owning feature);
+- [Support and qualification](docs/support-and-qualification.md);
 - [Transactions and locking](docs/transactions-and-locking.md);
 - [Diagnostics and observability](docs/diagnostics.md).
 

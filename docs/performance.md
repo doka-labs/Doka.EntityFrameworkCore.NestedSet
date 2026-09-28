@@ -264,6 +264,23 @@ EF guard work and provider collection transport, including serialization;
 it measures allocated bytes, not retained heap, CPU speed, or database latency.
 The baseline difference is normalized by the 20,000 captured candidates.
 
+Local targeted qualification on 2026-09-27 at 13:18-13:19 CEST produced the following
+additional bytes per candidate, rounded down as reported by the test:
+
+| Engine | `int` NodeKey | `Guid` NodeKey |
+| --- | ---: | ---: |
+| MySQL | 1,614 | 2,178 |
+| MariaDB | 1,587 | 2,125 |
+| PostgreSQL | 1,534 | 1,806 |
+| SQL Server | 1,595 | 2,191 |
+| SQLite | 1,587 | 2,237 |
+
+Each of these ten cases used one native membership probe. The 2,600-byte
+ceiling leaves about 16% headroom above the highest observed value, 2,237.
+These values qualify the fixed budget; they do not show a net reduction in
+total guard allocation relative to the preceding targeted qualification.
+These are dated local measurements of the targeted cases; they do not establish
+a full-suite release qualification or a minimum allocation for every workload.
 The [scale regression](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Concurrency/NativeTrackedIdentityGuardTests.Scale.cs)
 owns the assertion and warm-baseline setup. Existing unrelated-tracker and
 forest-insertion allocation ceilings remain separate contracts.
@@ -297,6 +314,14 @@ step. That check reads only EF's pending write set and snapshots only ordinary
 callback writes; queries and saves outside a managed insertion add no
 interception work beyond one weak-table lookup per save.
 
+`SingleInsertScaleTests` separately measures an explicit single-node insertion
+with 20,000 clean, unrelated tracked rows. The historical local baseline from
+two isolated .NET 10.0.12 SQLite runs on 2026-09-24 was 419 additional allocated
+bytes per tracked row, before the typed boundary refinement. The 500-byte
+regression ceiling leaves headroom for runtime noise while detecting
+substantial tracker-wide allocation growth. Requalification must run the test
+against the current source; that dated baseline is not its new result.
+
 ## Qualification targets
 
 | Area | Target |
@@ -322,14 +347,24 @@ hardware throughput.
 
 ## Deterministic regression measurements
 
-Shared measurement specifications live in the non-runnable
-specification library. Concrete provider projects supply their engine
-fixtures when added; provider-local measurements stay with those owners.
-Executing the shared library alone does not run these specifications.
+Shared integration measurements live in the non-runnable specification library
+and execute through concrete suites in the owning provider projects. Exclusive
+measurements, such as `SingleInsertScaleTests`, remain in their provider project.
+Each provider assembly registers its own `Allocation measurements` collection
+with parallelization disabled. Containers remain shared per engine within that
+assembly, while databases keep their existing class or collection ownership.
+See [test project ownership](implementation-design.md#test-project-ownership).
+The source layout does not change measurement methods, budgets, or dated results.
 
-Assert final structure, SQL command and update counts, affected rows,
-query shape, iterative planning, and bounded allocation form. Hardware
-timing and process-wide observations are separate workload evidence.
+Deterministic tests do not gate on elapsed time, throughput, process working
+set, or CPU model. Hardware and load can change. They instead verify:
+
+- final structure and payload state;
+- SQL command and hierarchy-update counts;
+- affected-row formulas and absence of N+1 work;
+- query shapes and index paths where provider plans are stable;
+- iterative wide and deep planning; and
+- bounded allocation form.
 
 ## Regression diagnosis
 

@@ -26,7 +26,7 @@ does not create a separate public or private general-support mailbox.
 ## Before Opening an Issue
 
 Check the [README](README.md), [documentation index](docs/README.md),
-support and qualification contract (`docs/support-and-qualification.md`; introduced with its owning feature),
+[support and qualification contract](docs/support-and-qualification.md),
 [deployment and recovery runbook](docs/runbooks/deployment-and-recovery.md),
 and [existing issues][issues]. Reduce the behavior to the smallest synthetic
 case that preserves the failure.
@@ -100,7 +100,7 @@ Route any suspected vulnerability through the private security process.
 
 The authoritative package, runtime, provider, engine, migration, and tooling
 matrix is maintained in
-Support and qualification (`docs/support-and-qualification.md`; introduced with its owning feature). This policy
+[Support and qualification](docs/support-and-qualification.md). This policy
 does not extend that matrix, infer compatibility from a shared SQL dialect, or
 promise a release date. Use published packages when available, or identify the
 exact revision and package hash for an unpublished build.
@@ -205,7 +205,7 @@ This policy follows the Doka Labs support-policy structure established by:
 
 NestedSet-specific differences are supported by repository evidence:
 
-- Support and qualification (`docs/support-and-qualification.md`; introduced with its owning feature);
+- [Support and qualification](docs/support-and-qualification.md);
 - [Transactions and locking](docs/transactions-and-locking.md);
 - [Diagnostics and observability](docs/diagnostics.md);
 - [Migrations and indexes](docs/migrations.md);

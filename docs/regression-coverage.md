@@ -239,10 +239,10 @@ Negative:
 - `SuppliedModelWithoutCollationCaptureHasAnActionableDiagnostic` rejects a
   supplied model without the native comparison metadata it needs.
 
-Sources: shadow tests (`tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests/ModelCompatibility/ShadowProperties/ShadowPropertyTests.cs`; introduced with its owning feature),
+Sources: [shadow tests](../tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests/ModelCompatibility/ShadowProperties/ShadowPropertyTests.cs),
 [shared types](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/ModelCompatibility/SharedTypes/SharedTypeTests.cs),
 [named shared managed saves](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/ModelCompatibility/SharedTypes/SharedTypeManagedSaveTests.cs),
-converted keys (`tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests/ModelCompatibility/ValueConverters/StrongIdTests.cs`; introduced with its owning feature),
+[converted keys](../tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests/ModelCompatibility/ValueConverters/StrongIdTests.cs),
 [required nullable CLR keys](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/ModelCompatibility/ValueConverters/RequiredNullableKeyModelTests.cs),
 [scoped inheritance keys](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/ModelCompatibility/Inheritance/TpcSharedCollationTests.cs),
 [field access](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Contracts/ContractTests.FieldAccess.cs),
@@ -564,7 +564,7 @@ Negative and adversarial:
   payload snapshots after a later structural failure.
 
 Sources: [callback tests](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/SaveChanges/ManagedSaveCallbackTests.cs),
-SQLite save-override callbacks (`tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests/SaveChanges/ManagedNestedSetDbContextCallbackTests.cs`; introduced with its owning feature),
+[SQLite save-override callbacks](../tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests/SaveChanges/ManagedNestedSetDbContextCallbackTests.cs),
 [bulk saved-geometry callbacks](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/BulkImport/BulkStageGuardTests.Geometry.cs),
 [ordering rollback](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Ordering/Tracking/OrderingTrackerTests.SnapshotCallbacks.cs),
 and [snapshot tests](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Execution/TrackerSnapshotAllocationTests.cs).
@@ -654,7 +654,7 @@ Sources: [metadata](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/
 [binding isolation](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Mutations/Facade/MutationBindingIsolationTests.cs),
 [anchor queries](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Facade/NestedSetFacadeTests.Queries.cs),
 [query filters](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Facade/NestedSetFacadeTests.FiltersAndTracking.cs),
-single insertion (`tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests/Insert/SingleInsertScaleTests.cs`; introduced with its owning feature),
+[single insertion](../tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests/Insert/SingleInsertScaleTests.cs),
 [tracker allocation](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Execution/TrackerSnapshotAllocationTests.cs),
 [native comparer allocation](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Execution/TypedProviderComparerTests.cs),
 [bulk allocation](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/BulkPlanAllocationTests.cs),
@@ -663,12 +663,110 @@ and [move budgets](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tes
 
 ## Execution and evidence limits
 
-This matrix describes runtime, unit, and shared regression
-specifications. A source definition is not evidence that a test ran.
-Provider-local cases join their owning executables with the provider
-change; references to absent evidence are explicitly qualified.
-Common abstract suites require concrete provider fixtures to execute.
+Four provider projects reference the non-runnable specification library and
+own concrete subclasses of every abstract common suite for every engine. The
+MySql project has separate same-named MySQL and MariaDB suites with distinct
+closed provider fixtures; their test bodies remain shared. Common methods obtain
+immutable `Engine` from their injected fixture. Ordinary fact and theory data
+contains only scenario arguments and runs on every concrete engine by default.
+Reasoned method and variant exclusions retain specific unsupported cases.
+Even an engine with all methods explicitly excluded retains the suite's concrete
+structural owner. Each common method and scenario variant must retain more than
+one executable provider owner after combining method and row exclusions;
+MySQL and MariaDB count as one owner. Exclusive bodies and helpers live in the
+owning project. Local neutral cases obtain their engine from the exact leaf
+fixture. Family cases compile once in a MySql-local abstract suite with two
+leaves, while MySQL-only NO PAD cases have only a MySQL declaration. All local
+suites use the same fixture-owned contract; no `Provider*` annotation or legacy
+row-filtering path remains.
+The seven MySQL-family bases each have their own file, with explicit existing
+named collections on concrete leaves. `ScopeAliasRowset` keeps class fixtures
+without adding a named collection. All providers place wide registry-rowset
+cases under `Concurrency/TreeRegistry`; SQL Server separates rowset locking
+from Scope validation. Provider-local model/support namespaces and renamed
+row-version and writer-timeout suites require fresh model and behavioral runs.
+Entity short names and physical mappings remain qualification invariants.
+Unit tests exercise metadata and planning contracts separately while referencing
+the same reusable infrastructure. Migration projects qualify ordinary EF
+migrations and optional SafeMigrations integration.
+See [supported databases and qualification](support-and-qualification.md).
 
-A filtered run establishes only its selected source and environment.
-The complete provider matrix needs fresh execution evidence before
-qualification is claimed. No finite matrix covers every future defect.
+Source links below the matrix point to common assertions or their exclusive
+provider owners. They do not imply that the specification library runs tests
+or that every linked method applies to every provider. Assembly containers and
+class or collection databases retain their existing lifetimes; see
+[test project ownership](implementation-design.md#test-project-ownership).
+
+The five executable-wide `ProviderAnnotationTests` metadata audits run once in
+each provider project. Reasoned MariaDB exclusions remove exactly five duplicate
+metadata cases; both MySQL-family wrappers and all owned engines remain audited.
+The scenario comparison permits only those named duplicates to disappear and
+preserves each moved behavioral method and variant under its new local class.
+
+The infrastructure regressions cover ownership and fixture boundaries. Shared
+checks combine method and row exclusions and reject single-executable variants.
+Local checks inspect inherited abstract-family methods as well as leaf methods,
+accept fixture-owned neutral payloads, preserve explicit `MemberType`, resolve
+unset member sources through the leaf, and reject invalid inherited annotations
+or empty sources. Engine-ownership checks reject unknown engines, foreign
+assemblies, and missing current-assembly context. The immutable name, marker,
+and executable catalog supplies owned-engine and expected-registration
+inventories, including both MySQL-family engines in one executable. A valid
+suite engine with a foreign caller-supplied audit assembly must still fail;
+that independent check remains after removing the redundant unknown-engine
+branch. Constructor checks inspect
+the concrete leaf through
+public xUnit metadata, including exact class, collection, and assembly fixtures,
+built-ins, test-argument fallbacks, and parent-only fixture dependencies. They
+reject assignable-only substitutions, unsupported required parameters, malformed
+constructors, and incorrect nested collection inheritance without constructing
+database resources. Common engine discovery must reject unjustified exclusions
+and unexpected empty data, retain immediate and delayed enumeration, and avoid
+an extra factory enumeration solely for filtering.
+
+The complete model-collection registration guard accepts the actual expected
+engine-bound sets and rejects missing fixtures, foreign engines, wrong
+resources, restored unbound `ModelCompatibilityDatabase`, and unexpected
+resources. It examines every `ICollectionFixture<>` registration without
+initializing it, so an unrelated registration cannot disappear through a
+recognized-fixture filter. Catalog and registration controls complement
+the existing constructor, named-collection, and fixture-lifetime regressions.
+Shared query-plan evidence is written by the independent `QueryPlanTestSupport`
+helper from all six existing call paths; preserve output-directory selection,
+file naming, double-newline formatting, and asynchronous cancellation behavior.
+
+The complete local migration accounts for 17 former legacy suites, 35 methods,
+and 57 engine/scenario variants. Every database behavior variant remains a
+qualification requirement. The 64 retired unit cases tested the removed
+annotation, selector-row, or discoverer mechanisms; they are accounted for
+separately from database scenarios. Meaningful engine ownership, current-assembly
+isolation, fixture lifetime, and collection contracts remain covered, alongside
+the positive and negative neutral-case guards. Immediate and delayed discovery
+must preserve the same behavior variants after removing selector arguments.
+
+Sources: [local and shared ownership guards](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Providers/ProviderTestContract.cs),
+[ownership regressions](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/ProviderTestContractTests.cs),
+[engine fixture contract](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Providers/ProviderFixture.cs),
+[engine discovery and data](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Providers/EngineTestAttributes.cs),
+[engine ownership catalog](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Providers/ProviderEngineOwnership.cs),
+[engine ownership regressions](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/ProviderEngineOwnershipTests.cs),
+[complete collection registration guard](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Providers/ProviderCollectionFixtureContract.cs),
+[collection registration regressions](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/ProviderCollectionFixtureContractTests.cs),
+[shared query-plan evidence](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/QueryPlanTestSupport.cs),
+[constructor guard](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Providers/ProviderFixtureContract.cs),
+and [constructor regressions](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/ProviderFixtureContractTests.cs).
+
+Run a fresh Release solution build before any `--no-build` test invocation.
+Record the source revision or source hashes, dependencies, provider/image
+configuration, build output, and per-project TRX results for that same source.
+A test source, an old TRX file, or a command listed here is not evidence of a
+new successful run. Test enumeration must also show that the expected provider
+cases were discovered.
+
+No finite matrix detects every future regression. These tests protect named
+contracts and reproduced risks; a changed provider mapping, translation,
+framework patch, transaction setting, or new operation still requires fresh
+review and relevant positive/negative qualification. Statement and allocation
+budgets do not certify arbitrary hardware throughput. The large-scale goals
+in [performance](performance.md) remain qualification targets until measured
+with matching source and a documented environment.

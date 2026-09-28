@@ -97,3 +97,9 @@ Initial development line. This version is not published.
 - Add provider-owned integration coverage for Doka MySQL and MariaDB.
 - Add provider-owned integration coverage for Npgsql PostgreSQL.
 - Add provider-owned integration coverage for Microsoft SQL Server.
+- Add provider-owned integration coverage for Microsoft SQLite.
+
+### Qualification documentation
+
+- Map deterministic regression, structural-performance, and memory evidence
+  to the complete provider matrix.

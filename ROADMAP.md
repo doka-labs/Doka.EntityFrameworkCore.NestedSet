@@ -2,7 +2,7 @@
 
 This roadmap describes direction from September 2026 through September 2027.
 It is not a delivery-date promise. Released packages, release notes, and the
-support matrix (`docs/support-and-qualification.md`; introduced with its owning feature) define supported behavior.
+[support matrix](docs/support-and-qualification.md) define supported behavior.
 
 ## Direction
 

@@ -445,7 +445,7 @@ set-update details, self-referential delete behavior, and store-specific order.
 All value parameters come from finalized relational type mappings. Physical
 identifiers come only from trusted model metadata and the provider SQL helper.
 
-The runtime contract targets Doka MySQL/MariaDB, Npgsql PostgreSQL,
+The common contract is qualified for Doka MySQL/MariaDB, Npgsql PostgreSQL,
 Microsoft SQLite, and Microsoft SQL Server. Pomelo is outside the contract.
 Ordinary EF migrations are the required baseline; SafeMigrations is optional.
 
@@ -494,10 +494,8 @@ common integration assertions, models, and reusable infrastructure once. It is
 a non-runnable, non-packable library. Its common test suites are public abstract
 classes, including nested suites; they are not independently discovered tests.
 
-The ownership contract requires four provider projects to reference that
-library and own thin concrete subclasses for every common suite and engine.
-Those executable owners are introduced with their provider-test changes;
-the shared specification library alone does not qualify database behavior. xUnit discovers inherited methods
+The four provider projects reference that library and own thin concrete
+subclasses for every common suite and engine. xUnit discovers inherited methods
 on those concrete classes. The MySql project contains separate same-named MySQL
 and MariaDB suites; MariaDB wrappers live under its `MariaDb` folder and namespace.
 PostgreSql, SqlServer, and Sqlite own their respective engines. A suite remains
