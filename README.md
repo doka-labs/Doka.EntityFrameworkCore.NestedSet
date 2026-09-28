@@ -359,6 +359,7 @@ Executable test instructions are introduced alongside their test projects.
 ## Documentation
 
 - [Documentation index](docs/README.md)
+- [Package usage guide](src/README.md)
 
 ## License
 

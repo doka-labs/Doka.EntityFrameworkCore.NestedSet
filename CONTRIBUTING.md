@@ -15,8 +15,8 @@ require a developer-managed database.
 
 ## Build and test
 
-The build configuration and runnable projects are introduced with their
-owning commits. Add executable verification instructions alongside them.
+The pinned SDK can be checked with `dotnet --version`. Runnable project
+build and test commands arrive with their implementation commits.
 
 ## Formatting and language
 

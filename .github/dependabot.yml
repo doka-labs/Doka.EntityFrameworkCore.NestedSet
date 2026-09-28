@@ -1,0 +1,28 @@
+version: 2
+updates:
+  - package-ecosystem: dotnet-sdk
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /tests/Shared
+    schedule:
+      interval: weekly
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      entity-framework:
+        patterns:
+          - Microsoft.EntityFrameworkCore.*
+      xunit:
+        patterns:
+          - xunit.*
+      testcontainers:
+        patterns:
+          - Testcontainers.*
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

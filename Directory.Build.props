@@ -1,0 +1,44 @@
+<Project>
+  <PropertyGroup Label="Target framework and build outputs">
+    <TargetFramework>net10.0</TargetFramework>
+    <UseArtifactsOutput>true</UseArtifactsOutput>
+    <IncludeProjectNameInArtifactsPaths>true</IncludeProjectNameInArtifactsPaths>
+    <UseArtifactsIntermediateOutput>true</UseArtifactsIntermediateOutput>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Default artifacts path" Condition="'$(ArtifactsPath)' == ''">
+    <!-- WHY: Release formatting supplies its isolated output path through an environment property. -->
+    <ArtifactsPath>$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Compiler and analysis">
+    <LangVersion>latestMajor</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <AnalysisLevel>latest-Recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Dependency restore and audit">
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+
+  <PropertyGroup Label="CI and release isolation">
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+    <RestoreLockedMode Condition="'$(ContinuousIntegrationBuild)' == 'true'">true</RestoreLockedMode>
+    <!-- WHY: Candidate versions change internal project references, while reviewed external dependencies stay locked.
+         Release qualification owns these copies and leaves the working tree's development lockfiles unchanged. -->
+    <NuGetLockFilePath Condition="'$(NestedSetReleaseLockRoot)' != ''">$(NestedSetReleaseLockRoot)/$(MSBuildProjectName)/packages.lock.json</NuGetLockFilePath>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Project defaults">
+    <IsPackable>false</IsPackable>
+    <!-- WHY: Only publishable src projects need XML API docs; src/Directory.Build.props enables them. -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+</Project>

@@ -12,3 +12,7 @@ Initial development line. This version is not published.
 
 - Add the MIT product license, Doka editor and ignore rules, participation
   policies, and the documented decision-record contract.
+
+### Build
+
+- Pin the .NET 10 SDK and centralize dependency and build defaults.
