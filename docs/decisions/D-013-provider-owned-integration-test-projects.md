@@ -497,7 +497,7 @@ optional SafeMigrations adapter retain their own existing test projects.
 - [Common abstract suites](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration)
 - [EF unit project](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests.csproj)
 - [MySQL and MariaDB project](../../tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj)
-- PostgreSQL project (`tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests.csproj`; introduced with its owning feature)
+- [PostgreSQL project](../../tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests.csproj)
 - SQL Server project (`tests/Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests/Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests.csproj`; introduced with its owning feature)
 - SQLite project (`tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests.csproj`; introduced with its owning feature)
 - [Concrete provider suite](../../tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Concurrency/NativeTrackedIdentityGuardTests.cs)

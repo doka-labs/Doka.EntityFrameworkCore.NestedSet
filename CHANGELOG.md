@@ -95,3 +95,4 @@ Initial development line. This version is not published.
 ### Provider integration coverage
 
 - Add provider-owned integration coverage for Doka MySQL and MariaDB.
+- Add provider-owned integration coverage for Npgsql PostgreSQL.

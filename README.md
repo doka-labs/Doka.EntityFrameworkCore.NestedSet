@@ -401,6 +401,7 @@ dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Doka.EntityFrame
 | `Doka.NestedSet.Tests` | EF-independent bounds and node predicates |
 | `Doka.EntityFrameworkCore.NestedSet.Unit.Tests` | Mapping, dispatch, planning, and regression guards |
 | `Doka.EntityFrameworkCore.NestedSet.MySql.Tests` | Doka MySQL and MariaDB, with independent engine fixtures |
+| `Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests` | PostgreSQL |
 
 Provider projects inherit shared contracts from
 `Doka.EntityFrameworkCore.NestedSet.Specification.Tests`; the specification
