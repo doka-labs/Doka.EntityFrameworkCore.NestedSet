@@ -29,6 +29,7 @@ dotnet test Doka.EntityFrameworkCore.NestedSet.slnx \
 | `Doka.EntityFrameworkCore.NestedSet.Specification.Tests` | Non-runnable shared integration contracts and reusable test infrastructure |
 | `Doka.EntityFrameworkCore.NestedSet.MySql.Tests` | Doka MySQL and MariaDB behavior |
 | `Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests` | PostgreSQL behavior |
+| `Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests` | SQL Server behavior |
 
 The ordinary migration project must have no SafeMigrations reference.
 SafeMigrations tests extend the contract; they do not define runtime support.
