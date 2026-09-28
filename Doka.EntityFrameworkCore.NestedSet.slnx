@@ -21,7 +21,12 @@
   <Folder Name="/src/Core/">
     <Project Path="src/Doka.NestedSet/Doka.NestedSet.csproj" />
   </Folder>
+  <Folder Name="/src/EntityFrameworkCore/">
+    <Project Path="src/Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj" />
+  </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests.csproj" />
     <Project Path="tests/Doka.NestedSet.Tests/Doka.NestedSet.Tests.csproj" />
+    <Project Path="tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests.csproj" />
   </Folder>
 </Solution>

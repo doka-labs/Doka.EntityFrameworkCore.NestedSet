@@ -47,7 +47,7 @@ and the EF package owns the persistence-dependent algorithms. The separation doe
 ### Confirmation
 
 - Run `dotnet test tests/Doka.NestedSet.Tests/Doka.NestedSet.Tests.csproj -c Release` and expect bounds and relationship tests to pass, including invalid default bounds.
-- Inspect the core project and restore graph; expect no EF, concrete provider, or SafeMigrations dependency. With the following EF integration change, verify both graphs and the one-way dependency on the core.
+- Inspect both shipping project and restore graphs; expect no concrete provider or SafeMigrations runtime dependency. Verify that the EF package references the core transitively while the core has no EF dependency.
 
 ## Pros and Cons of the Options
 
@@ -85,14 +85,14 @@ decision.
 - 2026-09-28: Status changed from proposed to accepted.
 - 2026-09-28: The maintainer accepted the current decision and designated the core-maintainers audience.
 - 2026-09-28: Status changed from accepted to implemented.
-- 2026-09-28: Confirmed the EF-independent core project and core regression specifications against the linked repository evidence. The EF consumer and its one-way dependency require confirmation with the following integration change.
+- 2026-09-28: Confirmed the separate core and EF projects, one-way project dependency, and core regression specifications against the linked repository evidence.
 
 ### Implementation References
 
 - [Pure core project](../../src/Doka.NestedSet/Doka.NestedSet.csproj)
-- EF integration project (`src/Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj`; introduced with its owning feature)
+- [EF integration project](../../src/Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj)
 - [Core tests](../../tests/Doka.NestedSet.Tests)
-- Implementation design (`docs/implementation-design.md`; introduced with its owning feature)
+- [Implementation design](../../docs/implementation-design.md)
 
 ### Sources
 

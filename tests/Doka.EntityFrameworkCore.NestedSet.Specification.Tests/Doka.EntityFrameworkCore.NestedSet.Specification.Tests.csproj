@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- WHY: Shared contracts are inherited by executable provider suites; this library has no test runner. -->
+    <IsTestProject>false</IsTestProject>
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- WHY: Provider fixtures own their image data directly so qualification does not depend on optional tools. -->
+    <Compile Include="../Shared/DatabaseTestTargets.cs" Link="Infrastructure/DatabaseTestTargets.cs"/>
+    <EmbeddedResource Include="../Shared/test-images.Dockerfile" LogicalName="NestedSet.TestImages"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj"/>
+    <!-- WHY: These existing xUnit components support a library without the executable runner targets. -->
+    <PackageReference Include="xunit.v3.extensibility.core"/>
+    <PackageReference Include="xunit.v3.assert"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all"
+                      IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive; compile"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer"/>
+    <PackageReference Include="Doka.EntityFrameworkCore.MySql"/>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL"/>
+    <PackageReference Include="Testcontainers.MySql"/>
+    <PackageReference Include="Testcontainers.MsSql"/>
+    <PackageReference Include="Testcontainers.PostgreSql"/>
+  </ItemGroup>
+</Project>

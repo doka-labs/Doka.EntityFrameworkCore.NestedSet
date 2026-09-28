@@ -14,7 +14,21 @@ identify when the record was created; decision history carries later status chan
 | --- | --- | --- | --- | --- |
 | [D-001](D-001-madr-profile-and-decision-governance.md) | implemented | 2026-09-19 | Record material decisions with the full Doka MADR profile | None |
 | [D-002](D-002-package-boundaries.md) | implemented | 2026-09-19 | Keep a small core separate from EF persistence | None |
+| [D-003](D-003-scoped-forests-and-adjacency.md) | implemented | 2026-09-19 | Identify each tree with a stable TreeId and optional Scope | None |
+| [D-004](D-004-atomic-mutations-and-locks.md) | implemented | 2026-09-19 | Serialize writers through typed per-tree registry locks | None |
+| [D-005](D-005-database-ordering-and-savechanges.md) | implemented | 2026-09-19 | Integrate configured ordering with asynchronous saves | amended-by D-012 |
+| [D-006](D-006-validation-and-adjacency-repair.md) | implemented | 2026-09-19 | Validate iteratively and repair derived structure from adjacency | None |
+| [D-007](D-007-atomic-bulk-import.md) | implemented | 2026-09-19 | Import a complete branch through EF with bounded structural batches | None |
+| [D-008](D-008-provider-neutral-indexes-and-migrations.md) | implemented | 2026-09-19 | Keep supporting indexes independent of optional migration adapters | None |
+| [D-009](D-009-bounded-diagnostics-and-application-ownership.md) | implemented | 2026-09-19 | Expose bounded diagnostics while applications own access and context lifetime | None |
+| [D-010](D-010-delete-mapped-table-fragments.md) | implemented | 2026-09-24 | Delete every mapped table fragment in bounded batches | None |
+| [D-011](D-011-feature-oriented-source-layout.md) | implemented | 2026-09-25 | Group hierarchy behavior by feature | amended-by D-012 |
+| [D-012](D-012-typed-tree-runtime.md) | implemented | 2026-09-26 | Carry typed tree identities through feature execution | amends D-005; amends D-011 |
 
 ## Relationships
 
-No amendment or supersession relationships have been recorded.
+```mermaid
+flowchart LR
+    D_012["D-012"] -->|amends| D_005["D-005"]
+    D_012["D-012"] -->|amends| D_011["D-011"]
+```

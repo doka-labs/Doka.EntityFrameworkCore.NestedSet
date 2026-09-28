@@ -344,33 +344,62 @@ if (!report.IsValid)
 The final model convention derives indexes for tree bounds, reverse ancestor
 scans, parent/position lookups, and configured sibling ordering. Generate and
 review an ordinary EF migration after enabling the hierarchy. See
-migrations and indexes (`docs/migrations.md`; introduced with its owning feature) for the exact index and typed registry
+[migrations and indexes][migrations] for the exact index and typed registry
 contract.
 
 ## Build and install from source
 
-Use the SDK pinned in [global.json](global.json) to build the independent core:
+Use the exact SDK declared in [global.json](global.json). Restore and build
+the shipping EF project, which also builds its core project dependency:
 
 ```bash
-dotnet restore src/Doka.NestedSet/Doka.NestedSet.csproj --locked-mode
-dotnet build src/Doka.NestedSet/Doka.NestedSet.csproj -c Release --no-restore
-dotnet pack src/Doka.NestedSet/Doka.NestedSet.csproj -c Release --no-build --no-restore -o artifacts/packages
+dotnet restore src/Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj --locked-mode
+dotnet build src/Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj -c Release --no-restore
 ```
 
-The EF integration and its installation instructions arrive with its implementation.
+Create both development packages in a local feed:
+
+```bash
+dotnet pack src/Doka.NestedSet/Doka.NestedSet.csproj -c Release --no-build --no-restore -o artifacts/packages
+dotnet pack src/Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj -c Release --no-build --no-restore -o artifacts/packages
+```
+
+Add the output directory as a package source in the consuming application's
+`NuGet.Config`, retaining the existing sources for EF Core and its provider:
+
+```xml
+<configuration>
+  <packageSources>
+    <add key="nestedset-local" value="/absolute/path/to/artifacts/packages" />
+  </packageSources>
+</configuration>
+```
+
+Then install the EF package in that application:
+
+```bash
+dotnet package add Doka.EntityFrameworkCore.NestedSet --version 10.0.0-dev
+```
+
+The core package is resolved transitively from the same feed. The application
+also references its chosen EF provider; the NestedSet runtime does not select
+or install a database provider.
 
 ## Tests
 
-The core suite runs without Docker:
+The core and unit suites run without Docker:
 
 ```bash
 dotnet restore tests/Doka.NestedSet.Tests/Doka.NestedSet.Tests.csproj --locked-mode
 dotnet test tests/Doka.NestedSet.Tests/Doka.NestedSet.Tests.csproj -c Release --no-restore
+dotnet restore tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests.csproj --locked-mode
+dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests.csproj -c Release --no-restore
 ```
 
 | Test project under `tests/` | Coverage |
 | --- | --- |
 | `Doka.NestedSet.Tests` | EF-independent bounds and node predicates |
+| `Doka.EntityFrameworkCore.NestedSet.Unit.Tests` | Mapping, dispatch, planning, and regression guards |
 
 Provider execution instructions are introduced alongside the concrete
 provider projects.
@@ -380,6 +409,8 @@ provider projects.
 - [Documentation index](docs/README.md)
 - [Architecture decisions](docs/decisions/README.md)
 - [Package usage guide](src/README.md)
+- [Bulk import][bulk-import]
+- [Migrations and indexes][migrations]
 
 ## License
 
@@ -387,3 +418,6 @@ The product is MIT-licensed. See [LICENSE](LICENSE). The adapted
 [Code of Conduct](CODE_OF_CONDUCT.md#policy-basis-and-attribution) is
 separately licensed under
 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+
+[bulk-import]: docs/bulk-import.md
+[migrations]: docs/migrations.md

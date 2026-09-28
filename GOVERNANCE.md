@@ -77,5 +77,5 @@ credentials.
 Review this document at least annually and whenever a role, organization
 setting, signing identity, trusted publisher, support line, or decision process
 changes. Reconcile it with [ROADMAP.md](ROADMAP.md),
-[SECURITY.md](SECURITY.md), the security design (`docs/security/security-design.md`; introduced with its owning feature),
+[SECURITY.md](SECURITY.md), the [security design](docs/security/security-design.md),
 and the current maintainer-role registry.

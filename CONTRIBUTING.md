@@ -25,13 +25,17 @@ dotnet test Doka.EntityFrameworkCore.NestedSet.slnx \
 | Test project | Responsibility |
 | --- | --- |
 | `Doka.NestedSet.Tests` | EF-independent value and relationship contracts |
+| `Doka.EntityFrameworkCore.NestedSet.Unit.Tests` | EF model, planning, and guard behavior without a database |
+| `Doka.EntityFrameworkCore.NestedSet.Specification.Tests` | Non-runnable shared integration contracts and reusable test infrastructure |
 
 The ordinary migration project must have no SafeMigrations reference.
 SafeMigrations tests extend the contract; they do not define runtime support.
 
 All introduced test projects appear directly under the solution's `tests`
-folder. The current revision contains the independent core suite; EF and
-provider test ownership is introduced with those projects.
+folder. Core and Unit are executable suites. Specification compiles shared
+integration contracts and is a non-packable, non-runnable library.
+Concrete provider suites and their execution instructions arrive with
+their provider projects.
 
 A filtered run is focused feedback and does not qualify all providers.
 Never replace a failing provider test with a skip.
@@ -179,7 +183,7 @@ their distinct MySQL and MariaDB executions.
 
 Provider assemblies share expensive server containers while preserving the
 existing class or collection database ownership. See the
-test ownership and lifetime contract (`docs/implementation-design.md`; introduced with its owning feature)
+[test ownership and lifetime contract](docs/implementation-design.md#test-project-ownership)
 before changing fixtures; container reuse does not imply one database per test.
 The model-compatibility registration guard compares the complete
 `ICollectionFixture<>` set with the catalog's exact expected engine-bound
@@ -228,7 +232,7 @@ affected-row formulas, memory ownership, and stable query-plan properties.
 Do not add wall-clock, CPU, working-set, or process-wide allocation thresholds
 to CI or release qualification. GitHub-hosted runner hardware and contention
 are not controlled. Run paired measurements on the same controlled environment and preserve
-the method and limitations in Performance (`docs/performance.md`; introduced with its owning feature).
+the method and limitations in [Performance](docs/performance.md).
 
 ## Dependency updates
 

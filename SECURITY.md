@@ -25,9 +25,9 @@ application selects and authorizes the scope, configures the EF model and
 provider, owns database credentials and transport security, and controls every
 non-NestedSet writer.
 
-The maintained security design (`docs/security/security-design.md`; introduced with its owning feature) records the
+The maintained [security design](docs/security/security-design.md) records the
 assets, trust boundaries, threats, controls, assumptions, and review triggers.
-The security assurance case (`docs/security/assurance-case.md`; introduced with its owning feature) maps those
+The [security assurance case](docs/security/assurance-case.md) maps those
 requirements to implementation and test evidence. Passing tests are evidence
 for the exact tested revision and environment; they are not a guarantee that
 all vulnerabilities are absent.
@@ -255,11 +255,11 @@ This policy follows the Doka Labs security-policy structure established by:
 
 NestedSet-specific differences are supported by repository evidence:
 
-- Security design (`docs/security/security-design.md`; introduced with its owning feature);
-- Security assurance case (`docs/security/assurance-case.md`; introduced with its owning feature);
+- [Security design](docs/security/security-design.md);
+- [Security assurance case](docs/security/assurance-case.md);
 - Support and qualification (`docs/support-and-qualification.md`; introduced with its owning feature);
-- Transactions and locking (`docs/transactions-and-locking.md`; introduced with its owning feature);
-- Diagnostics and observability (`docs/diagnostics.md`; introduced with its owning feature).
+- [Transactions and locking](docs/transactions-and-locking.md);
+- [Diagnostics and observability](docs/diagnostics.md).
 
 External policy and technical statements use these primary sources:
 

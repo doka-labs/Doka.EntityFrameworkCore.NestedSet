@@ -24,6 +24,123 @@
       "supersededBy": [],
       "amends": [],
       "amendedBy": []
+    },
+    {
+      "id": "D-003",
+      "title": "Identify each tree with a stable TreeId and optional Scope",
+      "status": "implemented",
+      "date": "2026-09-19",
+      "path": "docs/decisions/D-003-scoped-forests-and-adjacency.md",
+      "supersedes": [],
+      "supersededBy": [],
+      "amends": [],
+      "amendedBy": []
+    },
+    {
+      "id": "D-004",
+      "title": "Serialize writers through typed per-tree registry locks",
+      "status": "implemented",
+      "date": "2026-09-19",
+      "path": "docs/decisions/D-004-atomic-mutations-and-locks.md",
+      "supersedes": [],
+      "supersededBy": [],
+      "amends": [],
+      "amendedBy": []
+    },
+    {
+      "id": "D-005",
+      "title": "Integrate configured ordering with asynchronous saves",
+      "status": "implemented",
+      "date": "2026-09-19",
+      "path": "docs/decisions/D-005-database-ordering-and-savechanges.md",
+      "supersedes": [],
+      "supersededBy": [],
+      "amends": [],
+      "amendedBy": [
+        "D-012"
+      ]
+    },
+    {
+      "id": "D-006",
+      "title": "Validate iteratively and repair derived structure from adjacency",
+      "status": "implemented",
+      "date": "2026-09-19",
+      "path": "docs/decisions/D-006-validation-and-adjacency-repair.md",
+      "supersedes": [],
+      "supersededBy": [],
+      "amends": [],
+      "amendedBy": []
+    },
+    {
+      "id": "D-007",
+      "title": "Import a complete branch through EF with bounded structural batches",
+      "status": "implemented",
+      "date": "2026-09-19",
+      "path": "docs/decisions/D-007-atomic-bulk-import.md",
+      "supersedes": [],
+      "supersededBy": [],
+      "amends": [],
+      "amendedBy": []
+    },
+    {
+      "id": "D-008",
+      "title": "Keep supporting indexes independent of optional migration adapters",
+      "status": "implemented",
+      "date": "2026-09-19",
+      "path": "docs/decisions/D-008-provider-neutral-indexes-and-migrations.md",
+      "supersedes": [],
+      "supersededBy": [],
+      "amends": [],
+      "amendedBy": []
+    },
+    {
+      "id": "D-009",
+      "title": "Expose bounded diagnostics while applications own access and context lifetime",
+      "status": "implemented",
+      "date": "2026-09-19",
+      "path": "docs/decisions/D-009-bounded-diagnostics-and-application-ownership.md",
+      "supersedes": [],
+      "supersededBy": [],
+      "amends": [],
+      "amendedBy": []
+    },
+    {
+      "id": "D-010",
+      "title": "Delete every mapped table fragment in bounded batches",
+      "status": "implemented",
+      "date": "2026-09-24",
+      "path": "docs/decisions/D-010-delete-mapped-table-fragments.md",
+      "supersedes": [],
+      "supersededBy": [],
+      "amends": [],
+      "amendedBy": []
+    },
+    {
+      "id": "D-011",
+      "title": "Group hierarchy behavior by feature",
+      "status": "implemented",
+      "date": "2026-09-25",
+      "path": "docs/decisions/D-011-feature-oriented-source-layout.md",
+      "supersedes": [],
+      "supersededBy": [],
+      "amends": [],
+      "amendedBy": [
+        "D-012"
+      ]
+    },
+    {
+      "id": "D-012",
+      "title": "Carry typed tree identities through feature execution",
+      "status": "implemented",
+      "date": "2026-09-26",
+      "path": "docs/decisions/D-012-typed-tree-runtime.md",
+      "supersedes": [],
+      "supersededBy": [],
+      "amends": [
+        "D-005",
+        "D-011"
+      ],
+      "amendedBy": []
     }
   ]
 }

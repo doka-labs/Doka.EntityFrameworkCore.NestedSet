@@ -27,7 +27,7 @@ does not create a separate public or private general-support mailbox.
 
 Check the [README](README.md), [documentation index](docs/README.md),
 support and qualification contract (`docs/support-and-qualification.md`; introduced with its owning feature),
-deployment and recovery runbook (`docs/runbooks/deployment-and-recovery.md`; introduced with its owning feature),
+[deployment and recovery runbook](docs/runbooks/deployment-and-recovery.md),
 and [existing issues][issues]. Reduce the behavior to the smallest synthetic
 case that preserves the failure.
 
@@ -206,11 +206,11 @@ This policy follows the Doka Labs support-policy structure established by:
 NestedSet-specific differences are supported by repository evidence:
 
 - Support and qualification (`docs/support-and-qualification.md`; introduced with its owning feature);
-- Transactions and locking (`docs/transactions-and-locking.md`; introduced with its owning feature);
-- Diagnostics and observability (`docs/diagnostics.md`; introduced with its owning feature);
-- Migrations and indexes (`docs/migrations.md`; introduced with its owning feature);
-- Performance and capacity (`docs/performance.md`; introduced with its owning feature);
-- Deployment and recovery (`docs/runbooks/deployment-and-recovery.md`; introduced with its owning feature); and
+- [Transactions and locking](docs/transactions-and-locking.md);
+- [Diagnostics and observability](docs/diagnostics.md);
+- [Migrations and indexes](docs/migrations.md);
+- [Performance and capacity](docs/performance.md);
+- [Deployment and recovery](docs/runbooks/deployment-and-recovery.md); and
 - [Roadmap](ROADMAP.md).
 
 External lifecycle and reporting statements use these primary sources:
