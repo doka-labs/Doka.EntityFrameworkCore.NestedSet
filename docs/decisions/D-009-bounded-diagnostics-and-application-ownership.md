@@ -55,8 +55,8 @@ execution remains visible through EF Core diagnostics.
 
 ### Confirmation
 
-Live-provider cases become executable with each owning provider project. A
-source/unit-only run does not qualify database behavior.
+Run live-provider cases on each provider project present in this revision; a
+filtered run does not establish coverage for a provider introduced later.
 
 - Run `dotnet test Doka.EntityFrameworkCore.NestedSet.slnx --filter "FullyQualifiedName~DiagnosticsTests|FullyQualifiedName~ErrorContractTests|FullyQualifiedName~HistogramAdviceTests"` and expect exact bounded instrument names and tags, provider and row measurements, rebuild nodes and batches, and cancellation behavior to pass.
 - Run `dotnet test Doka.EntityFrameworkCore.NestedSet.slnx --filter "FullyQualifiedName~TrackerSnapshotAllocationTests"` and expect the disabled instrumentation path to stay within its allocation budget.

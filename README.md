@@ -400,9 +400,13 @@ dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Doka.EntityFrame
 | --- | --- |
 | `Doka.NestedSet.Tests` | EF-independent bounds and node predicates |
 | `Doka.EntityFrameworkCore.NestedSet.Unit.Tests` | Mapping, dispatch, planning, and regression guards |
+| `Doka.EntityFrameworkCore.NestedSet.MySql.Tests` | Doka MySQL and MariaDB, with independent engine fixtures |
 
-Provider execution instructions are introduced alongside the concrete
-provider projects.
+Provider projects inherit shared contracts from
+`Doka.EntityFrameworkCore.NestedSet.Specification.Tests`; the specification
+library is not an executable test project. Run an individual provider project
+with the same `dotnet restore` and `dotnet test` commands. MySQL, MariaDB,
+PostgreSQL, and SQL Server cases need Docker. SQLite cases use local databases.
 
 ## Documentation
 

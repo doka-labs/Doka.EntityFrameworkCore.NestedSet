@@ -63,8 +63,8 @@ names and the provider-specific parameter mapping.
 
 ### Confirmation
 
-Live-provider cases become executable with each owning provider project. A
-source/unit-only run does not qualify database behavior.
+Run live-provider cases on each provider project present in this revision; a
+filtered run does not establish coverage for a provider introduced later.
 
 - Run `dotnet test Doka.EntityFrameworkCore.NestedSet.slnx --filter FullyQualifiedName~MappingDeletionTests` and expect all provider cases to pass for node, subtree, and tree deletion. The cases verify physical row counts, surviving trees, and full structure validation.
 - The same test class must cover a tree larger than one key batch and a mixed

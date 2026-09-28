@@ -56,8 +56,8 @@ source for Depth and bounds.
 
 ### Confirmation
 
-Live-provider cases become executable with each owning provider project. A
-source/unit-only run does not qualify database behavior.
+Run live-provider cases on each provider project present in this revision; a
+filtered run does not establish coverage for a provider introduced later.
 
 - Run `dotnet test Doka.EntityFrameworkCore.NestedSet.slnx --filter "FullyQualifiedName~NestedSetFacadeTests|FullyQualifiedName~NestedSetMutationFacadeTests|FullyQualifiedName~NestedSetMutationDeleteTreeTests"` and expect one-command anchor queries, query-filter composition, explicit TreeIds, cross-tree isolation, rejected cross-Scope moves, and tombstone coverage to pass.
 

@@ -256,6 +256,91 @@ public forest import with a Guid TreeId. Setup needs no scalar-key generic
 argument or reflection. These tests qualify the model and runtime bridge;
 public scalar-key APIs retain their `notnull` annotation.
 
+## Effective physical collation and registry parity
+
+The registry and native rowset tests below run on MySQL and MariaDB. They
+distinguish known physical-table metadata from an unknown database default;
+neither broad CLR equality nor a property-only capture establishes native
+identity.
+
+Positive:
+
+- `InheritedBinaryScopesCanReserveTheSameTreeIdIndependently` exercises public
+  insertion with case-distinct binary Scopes and one TreeId. Each Scope keeps
+  its own root with local bounds and the first root remains unchanged.
+- `InheritedBinaryScopesAcquireBothLocksInCanonicalOrder` observes actual
+  registry lock Scope bindings for both request orders. Both distinct
+  identities must be locked in the same database order without changing rows.
+- `ExplicitScopeCollationDeduplicatesExistingAliasLocks` verifies that an
+  explicit case-insensitive column collation overrides the binary table
+  default and acquires one lock for equivalent existing identities.
+- `SharedPropertiesRetainConcreteTableCollations` proves that the same
+  inherited NodeKey, Scope, and Parent property objects retain different
+  effective facets for their binary and case-insensitive TPC tables.
+- `BinaryConcreteTableCanReserveIndependentScopes` preserves the public
+  same-TreeId reservation contract on the binary concrete TPC table.
+- `LeafTableCollationPreservesIndependentAncestorScopes` checks a TPT
+  hierarchy whose structural base table and leaf payload table differ.
+  The leaf's known canonical binary declaration must reach the mapped
+  ancestor store, registry, and captures; public insertion preserves both
+  case-distinct Scopes sharing one TreeId, including base and leaf payload.
+- `ConcreteLeafFacadeUsesConfiguredAncestorCaptures` checks parent queries
+  through the concrete TPT leaf facade against its configured ancestor's
+  physical comparison facts.
+- `ConcreteLeafParentSaveUsesConfiguredAncestorCaptures` applies a normal
+  concrete-leaf Parent, Name, and payload save. The configured ancestor
+  capture must serve the coordinated move while geometry and leaf payload
+  remain correct.
+- `CaseInsensitiveConcreteParentAcceptsKeyAlias` checks that parent lookup and
+  child structure use the concrete case-insensitive principal key semantics.
+- `SecondaryFragmentReservesIndependentCaseDistinctScopes` uses string
+  identities on a secondary entity-splitting structure fragment. Its known
+  binary table default overrides the case-insensitive model default without
+  explicit property collations. Case-distinct Scopes sharing one TreeId retain
+  independent roots, complete payload, and matching registry comparison.
+- `CompiledStringIdentityCapturesMatchDesignModel` compares generated and
+  ordinary owner-level string captures on all five engines, including Doka's
+  known table collation and a distinct explicit Parent collation.
+
+Negative:
+
+- `ExplicitScopeCollationRejectsDuplicateTreeReservation` rejects a second
+  public root for a native Scope alias with TreeIdUnavailable and preserves
+  detached input and the existing tree.
+- `ExplicitScopeCollationRejectsDuplicateImportedTreeIdentities` rejects
+  equivalent new identities in the native rowset check before reservation;
+  no registry lock, node, or registry row may be created.
+- `CaseInsensitiveConcreteTableRejectsScopeAliasReservation` rejects duplicate
+  native Scope reservation on the case-insensitive TPC table while preserving
+  the first root and detached input.
+- `BinaryConcreteParentRejectsKeyAlias` rejects a case-distinct parent key
+  with NodeNotFound. The other concrete table's case-insensitive facets must
+  not leak into its lookup; input and root remain unchanged.
+- `ConflictingAncestorOwnerCollationsRejectModelCapture` rejects contradictory
+  applicable TPT owner declarations for the same physical column with a
+  diagnostic naming the table and both values. This is NestedSet's deliberate
+  ambiguity constraint; it does not assert that Doka rejects the declarations.
+- `ConcreteLeafFacadeRejectsBinaryParentKeyAlias` checks leaf insertion with
+  a case-distinct parent key. Binary ancestor comparison rejects the alias
+  and preserves the detached child and persisted structure.
+- `SecondaryFragmentRejectsBinaryParentAliasWithoutWrites` rejects a
+  case-distinct parent with NodeNotFound using the secondary table's binary
+  comparison rather than the model default.
+- `SecondaryFragmentRejectsDuplicateReservationWithoutWrites` rejects an
+  exact duplicate Scope/TreeId with TreeIdUnavailable. Both secondary-fragment
+  negatives preserve detached input, complete payload and structure, registry,
+  tracker, and transaction state.
+- `SuppliedPropertyOnlyCaptureRequiresRegeneration` runs on all five engines
+  and rejects a stale supplied model that has only the earlier property-level
+  capture. Its diagnostic requires regeneration and the supplied model is
+  retained rather than rebuilt or silently assigned another comparison.
+
+Sources: [registry comparison tests](../tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Concurrency/InheritedRegistryCollationTestBase.cs),
+[concrete TPC facets](../tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/ModelCompatibility/Inheritance/TpcCollationTestBase.cs),
+[TPT ancestor ownership](../tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/ModelCompatibility/Inheritance/TptInheritedCollationTestBase.cs),
+[secondary entity-splitting structure](../tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/ModelCompatibility/TableMappings/EntitySplitCollationTestBase.cs),
+and [generated and supplied models](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/CompiledModels/CompiledModelTests.cs).
+
 ## Independent tree geometry and lifecycle
 
 Positive:
@@ -436,8 +521,8 @@ Negative and adversarial:
 Sources: [tracking tests](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Mutations/Facade/NestedSetMutationFacadeTests.Tracking.cs),
 [guard tests](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Concurrency/NativeTrackedIdentityGuardTests.cs),
 [Scope groups](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Concurrency/NativeTrackedIdentityGuardTests.Scopes.cs),
-inherited collation and padding (`tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Concurrency/NativeCollationTestBase.cs`; introduced with its owning feature),
-MySQL-only NO PAD guard (`tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Concurrency/NativeCollationTests.cs`; introduced with its owning feature),
+[inherited collation and padding](../tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Concurrency/NativeCollationTestBase.cs),
+[MySQL-only NO PAD guard](../tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Concurrency/NativeCollationTests.cs),
 [required tracked identity](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Concurrency/NativeTrackedIdentityGuardTests.RequiredValues.cs),
 [complete request pairs](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Concurrency/NativeTrackedIdentityGuardTests.RequestPairs.cs),
 [packed scalar membership](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Concurrency/NativeTrackedIdentityGuardTests.ScalarCollections.cs),

@@ -24,6 +24,7 @@ identify when the record was created; decision history carries later status chan
 | [D-010](D-010-delete-mapped-table-fragments.md) | implemented | 2026-09-24 | Delete every mapped table fragment in bounded batches | None |
 | [D-011](D-011-feature-oriented-source-layout.md) | implemented | 2026-09-25 | Group hierarchy behavior by feature | amended-by D-012 |
 | [D-012](D-012-typed-tree-runtime.md) | implemented | 2026-09-26 | Carry typed tree identities through feature execution | amends D-005; amends D-011 |
+| [D-013](D-013-provider-owned-integration-test-projects.md) | implemented | 2026-09-25 | Give each database provider its own integration test project | None |
 
 ## Relationships
 

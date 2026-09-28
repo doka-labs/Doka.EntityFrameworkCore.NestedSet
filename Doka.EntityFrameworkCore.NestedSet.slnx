@@ -28,5 +28,6 @@
     <Project Path="tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests.csproj" />
     <Project Path="tests/Doka.NestedSet.Tests/Doka.NestedSet.Tests.csproj" />
     <Project Path="tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests.csproj" />
+    <Project Path="tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj" />
   </Folder>
 </Solution>

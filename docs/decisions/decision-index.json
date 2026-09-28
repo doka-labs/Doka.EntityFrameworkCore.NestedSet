@@ -141,6 +141,17 @@
         "D-011"
       ],
       "amendedBy": []
+    },
+    {
+      "id": "D-013",
+      "title": "Give each database provider its own integration test project",
+      "status": "implemented",
+      "date": "2026-09-25",
+      "path": "docs/decisions/D-013-provider-owned-integration-test-projects.md",
+      "supersedes": [],
+      "supersededBy": [],
+      "amends": [],
+      "amendedBy": []
     }
   ]
 }

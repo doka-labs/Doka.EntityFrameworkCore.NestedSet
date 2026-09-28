@@ -47,8 +47,8 @@ and storage foundations while preserving EF payload semantics across the support
 
 ### Confirmation
 
-Live-provider cases become executable with each owning provider project. A
-source/unit-only run does not qualify database behavior.
+Run live-provider cases on each provider project present in this revision; a
+filtered run does not establish coverage for a provider introduced later.
 
 - Run `dotnet test Doka.EntityFrameworkCore.NestedSet.slnx -c Release --filter "FullyQualifiedName~Bulk"` and expect all bulk regression cases to pass.
 - Require generated keys, assigned keys, foreign parent/scope rejection, repeated input references, callback stage corruption, cancellation, and interval-refresh failure coverage. Expect atomic rollback and the configured write-budget assertions to hold.

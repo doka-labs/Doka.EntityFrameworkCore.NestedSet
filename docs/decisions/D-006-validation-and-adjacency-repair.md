@@ -49,8 +49,8 @@ growth.
 
 ### Confirmation
 
-Live-provider cases become executable with each owning provider project. A
-source/unit-only run does not qualify database behavior.
+Run live-provider cases on each provider project present in this revision; a
+filtered run does not establish coverage for a provider introduced later.
 
 - Run `dotnet test Doka.EntityFrameworkCore.NestedSet.slnx -c Release --filter "FullyQualifiedName~InspectionTests|FullyQualifiedName~RelationalTests|FullyQualifiedName~EnterpriseTests"` and expect inspection and rebuild tests to pass.
 - Expect cycles, missing parents, and ambiguous manual positions to reject before updates. Test cancellation during inspection and repair batches; expect rollback to preserve the prior database state. A no-change rebuild must not rewrite every row.

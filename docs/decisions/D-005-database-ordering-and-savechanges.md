@@ -48,8 +48,8 @@ manual placement available when requested.
 
 ### Confirmation
 
-Live-provider cases become executable with each owning provider project. A
-source/unit-only run does not qualify database behavior.
+Run live-provider cases on each provider project present in this revision; a
+filtered run does not establish coverage for a provider introduced later.
 
 - Run `dotnet test Doka.EntityFrameworkCore.NestedSet.slnx -c Release --filter "FullyQualifiedName~Ordering|FullyQualifiedName~SaveChanges|FullyQualifiedName~PostCommitOutcomeTests"` and expect all selected tests to pass.
 - Require equal sort keys, database collation, manual flexible placement, rename reorder, callback-introduced changes, rollback restoration, and `SaveChangesAsync(false, cancellationToken)` coverage. Expect unsupported synchronous ordered saves to reject before partial structural work.

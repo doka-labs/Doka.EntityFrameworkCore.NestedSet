@@ -27,15 +27,16 @@ dotnet test Doka.EntityFrameworkCore.NestedSet.slnx \
 | `Doka.NestedSet.Tests` | EF-independent value and relationship contracts |
 | `Doka.EntityFrameworkCore.NestedSet.Unit.Tests` | EF model, planning, and guard behavior without a database |
 | `Doka.EntityFrameworkCore.NestedSet.Specification.Tests` | Non-runnable shared integration contracts and reusable test infrastructure |
+| `Doka.EntityFrameworkCore.NestedSet.MySql.Tests` | Doka MySQL and MariaDB behavior |
 
 The ordinary migration project must have no SafeMigrations reference.
 SafeMigrations tests extend the contract; they do not define runtime support.
 
-All introduced test projects appear directly under the solution's `tests`
-folder. Core and Unit are executable suites. Specification compiles shared
-integration contracts and is a non-packable, non-runnable library.
-Concrete provider suites and their execution instructions arrive with
-their provider projects.
+All test projects appear directly under the solution's `tests` folder. The
+specification project is a non-packable library, not a test runner. Unit and
+provider projects reference it through `ProjectReference`; they do not compile
+linked copies of its sources. Run the provider project to execute its inherited
+contracts. Running the specification project does not run integration tests.
 
 A filtered run is focused feedback and does not qualify all providers.
 Never replace a failing provider test with a skip.

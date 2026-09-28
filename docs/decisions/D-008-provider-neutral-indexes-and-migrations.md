@@ -50,8 +50,8 @@ belong in the shipping NestedSet packages.
 
 - Inspect the [index convention](../../src/Doka.EntityFrameworkCore.NestedSet/Configuration/NestedSetIndexConvention.cs) and [registry metadata](../../src/Doka.EntityFrameworkCore.NestedSet/Infrastructure/NestedSetTreeRegistryMetadata.cs); expect typed tree identity and configured structural indexes without a SafeMigrations runtime dependency.
 
-Live-provider cases become executable with each owning provider project. A
-source/unit-only run does not qualify database behavior.
+Run live-provider cases on each provider project present in this revision; a
+filtered run does not establish coverage for a provider introduced later.
 
 
 - Migration SQL and optional adapter confirmation are added with their owning migration test projects; runtime results alone do not qualify those contracts.

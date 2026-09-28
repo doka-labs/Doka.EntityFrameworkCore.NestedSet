@@ -1,0 +1,17 @@
+global using System.Collections.Generic;
+global using System.Data;
+global using System.Diagnostics;
+global using System.Linq;
+global using System.Threading.Tasks;
+global using System.Threading;
+global using System;
+global using Doka.EntityFrameworkCore.NestedSet.Execution;
+global using Doka.EntityFrameworkCore.NestedSet.Mapping;
+global using Doka.NestedSet;
+global using Microsoft.EntityFrameworkCore.Diagnostics;
+global using Microsoft.EntityFrameworkCore.Infrastructure;
+global using Microsoft.EntityFrameworkCore.Metadata;
+global using Microsoft.EntityFrameworkCore;
+global using Microsoft.Extensions.DependencyInjection;
+global using Xunit;
+global using Specifications = Doka.EntityFrameworkCore.NestedSet.Tests;

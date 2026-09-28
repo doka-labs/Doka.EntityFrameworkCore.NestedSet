@@ -91,3 +91,7 @@ Initial development line. This version is not published.
   through their base hierarchy mapping.
 - Use a single JSON rowset parameter for wide multi-tree lock ordering, and
   retain bounded full validation samples with complete typed issue counts.
+
+### Provider integration coverage
+
+- Add provider-owned integration coverage for Doka MySQL and MariaDB.

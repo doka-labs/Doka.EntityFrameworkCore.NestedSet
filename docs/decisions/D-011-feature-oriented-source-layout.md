@@ -81,8 +81,8 @@ This does not change any public facade namespace.
 
 ### Confirmation
 
-Live-provider cases become executable with each owning provider project. A
-source/unit-only run does not qualify database behavior.
+Run live-provider cases on each provider project present in this revision; a
+filtered run does not establish coverage for a provider introduced later.
 
 - Build `Doka.EntityFrameworkCore.NestedSet.slnx` in Release with warnings as
   errors and expect no compiler or analyzer diagnostics.

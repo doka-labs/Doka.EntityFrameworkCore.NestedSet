@@ -63,8 +63,8 @@ transaction uncommittable, so a savepoint could not preserve earlier work.
 
 ### Confirmation
 
-Live-provider cases become executable with each owning provider project. A
-source/unit-only run does not qualify database behavior.
+Run live-provider cases on each provider project present in this revision; a
+filtered run does not establish coverage for a provider introduced later.
 
 - Run `dotnet test Doka.EntityFrameworkCore.NestedSet.slnx --filter "FullyQualifiedName~RetryBoundaryTests|FullyQualifiedName~TreeRegistry|FullyQualifiedName~Concurrent|FullyQualifiedName~Transaction"` and expect first-writer races, same-tree serialization, distinct-tree overlap, counter-direction cross-tree moves, caller rollback, cancellation, and unknown commit cases to pass on every qualified provider.
 - The retry-boundary cases must reject a transaction created outside the configured execution-strategy delegate and pass when the caller creates its transaction inside the active complete-unit delegate.

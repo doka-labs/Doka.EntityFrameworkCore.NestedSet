@@ -392,8 +392,8 @@ the runtime already knows the mapped CLR type.
 
 ### Confirmation
 
-Live-provider cases become executable with each owning provider project. A
-source/unit-only run does not qualify database behavior.
+Run live-provider cases on each provider project present in this revision; a
+filtered run does not establish coverage for a provider introduced later.
 
 - Build `Doka.EntityFrameworkCore.NestedSet.slnx` in Release with warnings as
   errors; expect no compiler or analyzer diagnostics after all source changes.
@@ -568,7 +568,7 @@ coverage mechanisms rather than claiming an unexecuted qualification result.
 - [Native tracked-membership guard](../../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetTrackedIdentityGuard.cs)
 - [Typed native Scope marker](../../src/Doka.EntityFrameworkCore.NestedSet/Providers/Queries/NestedSetNativeScopeEquality.cs)
 - [Composable MySQL Scope translator](../../src/Doka.EntityFrameworkCore.NestedSet/Providers/Queries/NestedSetMySqlMethodCallTranslatorPlugin.cs)
-- Physical Scope collation regressions (`tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Concurrency/NativeCollationTests.cs`; introduced with its owning feature)
+- [Physical Scope collation regressions](../../tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Concurrency/NativeCollationTests.cs)
 - [Sparse original bulk rollback values](../../src/Doka.EntityFrameworkCore.NestedSet/Features/BulkImport/NestedSetBulkPlan.Models.cs)
 - [Transaction executor](../../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetMutationExecutor.cs)
 - [Typed forest import](../../src/Doka.EntityFrameworkCore.NestedSet/Features/BulkImport/NestedSetForestInsert.cs)

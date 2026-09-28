@@ -675,6 +675,6 @@ named and type-based collections, nested-class boundaries, missing exact
 registrations, and constructor shape without initializing resources. This
 contract is scoped to the repository's ordinary reflection-based xUnit runner.
 
-D-013 (`docs/decisions/D-013-provider-owned-integration-test-projects.md`; introduced with its owning feature) records the
+[D-013](decisions/D-013-provider-owned-integration-test-projects.md) records the
 referenced specification strategy, the previous linked-source option, and its
 discovery and fixture confirmation procedures.
