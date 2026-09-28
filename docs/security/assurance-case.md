@@ -18,10 +18,8 @@ on globally unique coordinates.
 
 **Evidence.** Runtime query and mutation tests cover repeated bounds, wrong-
 Scope keys, cross-Scope parents, several TreeIds in one Scope, arbitrary
-descendant anchors, and provider-native identity equality. Index conventions
-define Scope-optional, TreeId-leading structural paths and typed registry
-keys; physical migration lifecycle validation belongs to the separate
-migration-test change.
+descendant anchors, and provider-native identity equality. Migration tests
+prove Scope-optional, TreeId-leading structural paths and typed registry keys.
 
 **Limitation.** The application authorizes which Scope and TreeId the caller
 may select.
@@ -56,8 +54,7 @@ direct property expressions rather than identifier strings.
 
 **Evidence.** Query tests inspect parameterization and compare native binary,
 string, numeric, and generated key behavior across providers. Physical-index
-specifications define the expected catalogs; migration lifecycle evidence
-belongs to the separate migration-test change.
+and migration tests inspect final catalogs.
 
 **Limitation.** Application raw SQL and database objects outside the EF model
 need separate review.

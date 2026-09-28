@@ -8,20 +8,6 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Initial development line. This version is not published.
 
-### Repository foundations
-
-- Add the MIT product license, Doka editor and ignore rules, participation
-  policies, and the documented decision-record contract.
-
-### Build
-
-- Pin the .NET 10 SDK and centralize dependency and build defaults.
-
-### Core
-
-- Add typed tree identities, optional scoped node contracts, validated bounds,
-  pure predicates, and core regression tests; document D-002.
-
 ### Breaking changes during development
 
 - Hierarchy insertion and deletion require the `NestedSet<TEntity>` facade;
@@ -63,6 +49,10 @@ Initial development line. This version is not published.
   `ConcurrentTreeIdentity` while keeping truly absent anchors as `NodeNotFound`.
 - Add a typed per-tree registry for independent server-side tree locks and
   lifecycle state while retaining SQLite's database-writer boundary.
+- Add ordinary EF migration and physical-index support for Doka MySQL/MariaDB,
+  PostgreSQL, SQLite, and SQL Server.
+- Add optional SafeMigrations 10.4.3 integration tests for MySQL/MariaDB,
+  PostgreSQL, and SQLite without making SafeMigrations a runtime prerequisite.
 
 ### Performance and reliability
 
@@ -91,15 +81,20 @@ Initial development line. This version is not published.
   through their base hierarchy mapping.
 - Use a single JSON rowset parameter for wide multi-tree lock ordering, and
   retain bounded full validation samples with complete typed issue counts.
+- Validate real provider query plans, structural command/update counts, affected
+  rows, rollback, cancellation, concurrent writers, pooling, and deep-tree
+  behavior across the supported matrix.
 
-### Provider integration coverage
+### Build and dependencies
 
-- Add provider-owned integration coverage for Doka MySQL and MariaDB.
-- Add provider-owned integration coverage for Npgsql PostgreSQL.
-- Add provider-owned integration coverage for Microsoft SQL Server.
-- Add provider-owned integration coverage for Microsoft SQLite.
+- Add the pinned .NET 10 SDK, centralized versions, nullable analysis,
+  warnings-as-errors, public API baselines, XML documentation, and locked
+  project dependency graphs.
 
-### Qualification documentation
+### Documentation and governance
 
-- Map deterministic regression, structural-performance, and memory evidence
-  to the complete provider matrix.
+- Add task-oriented product, configuration, ordering, migration, transaction,
+  diagnostics, performance, deployment, and security documentation.
+- Add the Doka MADR Enterprise Profile 1.0 based on MADR 4.0, architecture
+  records with deterministic navigation, product governance, security
+  design, and an assurance case.

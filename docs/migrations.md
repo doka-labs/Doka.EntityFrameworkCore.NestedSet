@@ -160,10 +160,17 @@ coordinates.
 
 ## Provider matrix
 
-The schema convention supports ordinary EF migrations with Doka
-MySQL/MariaDB, Npgsql PostgreSQL, and the Microsoft SQLite and SQL Server
-providers. SafeMigrations is optional; adapter qualification belongs to
-the separate migration suites. Pomelo is outside the support contract.
+| Database | EF Core provider | SafeMigrations |
+| --- | --- | --- |
+| MySQL/MariaDB | `Doka.EntityFrameworkCore.MySql` | Optional MySQL adapter |
+| PostgreSQL | `Npgsql.EntityFrameworkCore.PostgreSQL` | Optional PostgreSQL adapter |
+| SQLite | `Microsoft.EntityFrameworkCore.Sqlite` | Optional SQLite adapter |
+| SQL Server | `Microsoft.EntityFrameworkCore.SqlServer` | No adapter required by this repository |
+
+Doka, Npgsql, SQLite, and SQL Server work through ordinary EF migrations without
+SafeMigrations. Optional integration tests verify that SafeMigrations 10.4.3
+accepts the same finalized model for MySQL, MariaDB, PostgreSQL, and SQLite.
+Pomelo is outside the supported provider contract.
 
 ## Deployment verification
 
@@ -181,9 +188,9 @@ Before routing writers to a migrated database:
 7. retain the migration, catalog evidence, and test output with the release
    candidate.
 
-Schema and deployment checks must use the actual provider matrix.
-The conventions do not prove compatibility with application-specific
-triggers, permissions, collations, indexes, or external writers.
+Repository integration tests exercise the pinned provider matrix. They cannot
+prove compatibility with an application's extra triggers, permissions,
+collations, indexes, or external writers.
 
 ## Rollback
 

@@ -31,6 +31,8 @@ dotnet test Doka.EntityFrameworkCore.NestedSet.slnx \
 | `Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests` | PostgreSQL behavior |
 | `Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests` | SQL Server behavior |
 | `Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests` | SQLite behavior |
+| `Doka.EntityFrameworkCore.NestedSet.Migrations.Tests` | Ordinary EF migrations and physical catalogs |
+| `Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests` | Optional published SafeMigrations adapters |
 
 The ordinary migration project must have no SafeMigrations reference.
 SafeMigrations tests extend the contract; they do not define runtime support.

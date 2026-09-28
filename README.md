@@ -404,6 +404,8 @@ dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Doka.EntityFrame
 | `Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests` | PostgreSQL |
 | `Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests` | SQL Server |
 | `Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests` | SQLite |
+| `Doka.EntityFrameworkCore.NestedSet.Migrations.Tests` | Ordinary EF migrations across the providers |
+| `Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests` | Optional migration adapter integration |
 
 Provider projects inherit shared contracts from
 `Doka.EntityFrameworkCore.NestedSet.Specification.Tests`; the specification

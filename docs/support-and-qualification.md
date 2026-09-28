@@ -54,8 +54,20 @@ with Doka.
 
 ## Migration matrix
 
-Ordinary migrations are required. Their lifecycle and optional SafeMigrations
-adapters are qualified by separate migration test projects.
+Ordinary EF migrations are required and tested for all five engine profiles.
+They must work without SafeMigrations.
+
+Optional adapter qualification uses:
+
+| Database | SafeMigrations adapter baseline |
+| --- | --- |
+| MySQL/MariaDB | `Doka.EntityFrameworkCore.SafeMigrations.MySql` 10.4.3 |
+| PostgreSQL | `Doka.EntityFrameworkCore.SafeMigrations.PostgreSql` 10.4.3 |
+| SQLite | `Doka.EntityFrameworkCore.SafeMigrations.Sqlite` 10.4.3 |
+
+SafeMigrations tests are additive. A failure there must not be described as a
+runtime requirement for Doka, Npgsql, or SQLite. SQL Server has no optional
+SafeMigrations adapter in this repository.
 
 ## Test ownership
 
@@ -67,6 +79,8 @@ adapters are qualified by separate migration test projects.
 | `Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests` | PostgreSQL equivalents |
 | `Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests` | SQL Server equivalents |
 | `Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests` | SQLite equivalents |
+| `Doka.EntityFrameworkCore.NestedSet.Migrations.Tests` | Ordinary migration lifecycle and physical catalog |
+| `Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests` | Optional adapter generation, execution, rejection, replay, and drift behavior |
 
 Integration tests use Testcontainers for server engines and isolated SQLite
 databases. Each provider assembly starts at most one container per engine;
@@ -128,6 +142,10 @@ dotnet test tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFram
 dotnet test tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests.csproj -c Release
 dotnet test tests/Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests/Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests.csproj -c Release
 dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests.csproj -c Release
+dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests.csproj \
+  -c Release
+dotnet test tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests.csproj \
+  -c Release
 ```
 
 Do not use a filtered run as complete qualification.

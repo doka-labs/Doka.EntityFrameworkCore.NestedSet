@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <Compile Include="../Shared/DatabaseTestTargets.cs" Link="Infrastructure/DatabaseTestTargets.cs"/>
+    <EmbeddedResource Include="../Shared/test-images.Dockerfile" LogicalName="NestedSet.TestImages"/>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj"/>
+    <PackageReference Include="Microsoft.NET.Test.Sdk"/>
+    <PackageReference Include="xunit.v3.mtp-off"/>
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer"/>
+    <PackageReference Include="Doka.EntityFrameworkCore.MySql"/>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL"/>
+    <PackageReference Include="Testcontainers.MySql"/>
+    <PackageReference Include="Testcontainers.MsSql"/>
+    <PackageReference Include="Testcontainers.PostgreSql"/>
+  </ItemGroup>
+</Project>

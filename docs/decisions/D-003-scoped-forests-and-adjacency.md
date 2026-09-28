@@ -60,8 +60,7 @@ Run live-provider cases on each provider project present in this revision; a
 filtered run does not establish coverage for a provider introduced later.
 
 - Run `dotnet test Doka.EntityFrameworkCore.NestedSet.slnx --filter "FullyQualifiedName~NestedSetFacadeTests|FullyQualifiedName~NestedSetMutationFacadeTests|FullyQualifiedName~NestedSetMutationDeleteTreeTests"` and expect one-command anchor queries, query-filter composition, explicit TreeIds, cross-tree isolation, rejected cross-Scope moves, and tombstone coverage to pass.
-
-- Migration SQL and optional adapter confirmation are added with their owning migration test projects; runtime results alone do not qualify those contracts.
+- Run `dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests.csproj` and expect every provider migration to contain the typed registry plus indexes beginning with Scope when configured and TreeId in every hierarchy.
 
 ## Pros and Cons of the Options
 

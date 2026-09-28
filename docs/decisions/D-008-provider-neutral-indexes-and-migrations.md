@@ -43,18 +43,16 @@ belong in the shipping NestedSet packages.
 
 ### Consequences
 
-- Good, because ordinary Doka and PostgreSQL migrations remain the required path, and optional SQLite adapter qualification does not change package prerequisites.
+- Good, because Doka and PostgreSQL work with normal migrations, and optional SQLite adapter behavior is tested without changing package prerequisites.
 - Bad, because a supporting index is not a universal optimal query plan; real payload filters and workload distributions may need application indexes.
 
 ### Confirmation
 
-- Inspect the [index convention](../../src/Doka.EntityFrameworkCore.NestedSet/Configuration/NestedSetIndexConvention.cs) and [registry metadata](../../src/Doka.EntityFrameworkCore.NestedSet/Infrastructure/NestedSetTreeRegistryMetadata.cs); expect typed tree identity and configured structural indexes without a SafeMigrations runtime dependency.
-
 Run live-provider cases on each provider project present in this revision; a
 filtered run does not establish coverage for a provider introduced later.
 
-
-- Migration SQL and optional adapter confirmation are added with their owning migration test projects; runtime results alone do not qualify those contracts.
+- Run `dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests.csproj -c Release` and expect generated migration lifecycle and physical index tests to pass without SafeMigrations references.
+- Run `dotnet test tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests.csproj -c Release` and expect optional adapter tests to pass. Require SQLite script rejection, foreign database qualifier rejection, safe replay, and same-name wrong-definition drift rejection.
 
 ## Pros and Cons of the Options
 
@@ -94,15 +92,15 @@ optional SQL Server SafeMigrations adapter.
 - 2026-09-28: Status changed from proposed to accepted.
 - 2026-09-28: The maintainer accepted the current decision and designated the core-maintainers audience.
 - 2026-09-28: Status changed from accepted to implemented.
-- 2026-09-28: Confirmed the deterministic model-index conventions and ordinary EF metadata path against the linked runtime and unit specifications. Physical migration lifecycle and optional adapter specifications require the following migration-test change.
+- 2026-09-28: Confirmed deterministic model indexes, ordinary EF migration support, and optional SafeMigrations regression specifications against the linked repository evidence.
 
 ### Implementation References
 
 - [Index roles](../../src/Doka.EntityFrameworkCore.NestedSet/Configuration/NestedSetIndexes.cs)
 - [Model index convention](../../src/Doka.EntityFrameworkCore.NestedSet/Configuration/NestedSetIndexConvention.cs)
 - [Provider capabilities](../../src/Doka.EntityFrameworkCore.NestedSet/Providers)
-- Ordinary migration tests (`tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests`; introduced with its owning feature)
-- Optional adapter tests (`tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests`; introduced with its owning feature)
+- [Ordinary migration tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests)
+- [Optional adapter tests](../../tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests)
 - [Migration contract](../../docs/migrations.md)
 - [Pinned support matrix](../../docs/support-and-qualification.md)
 - [Central package versions](../../Directory.Packages.props)
