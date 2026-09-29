@@ -3,5 +3,11 @@
 
   <ItemGroup>
     <ProjectReference Include="../Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests.csproj"/>
+    <ProjectReference Include="../../samples/UserGroups/UserGroups.csproj"/>
+  </ItemGroup>
+
+  <ItemGroup Label="Sample infrastructure regressions">
+    <!-- WHY: Compile the actual shared sample boundary so lifecycle and reset regressions test production sample code. -->
+    <Compile Include="../../samples/Shared/*.cs" Link="Samples/Shared/%(Filename)%(Extension)"/>
   </ItemGroup>
 </Project>

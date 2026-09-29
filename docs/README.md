@@ -20,6 +20,10 @@ runbooks own operational procedures.
 - [Bulk Import](bulk-import.md) covers atomic forest and subtree insertion.
 - [API Reference](api-reference.md) maps the public types and methods to their
   inputs, outputs, ordering, transaction behavior, and failure contracts.
+- [Runnable Samples](../samples/README.md) provides three independent console
+  projects: unscoped file systems, project KPIs, and tenant user groups with
+  role and privilege relationships. Each has Doka and SQLite migrations,
+  selectable scenarios, persistent results, and an explicit owned reset.
 
 ## Integrate and operate NestedSet
 

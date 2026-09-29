@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup Label="Runnable sample">
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Doka.EntityFrameworkCore.NestedSet.Samples.FileSystem</RootNamespace>
+  </PropertyGroup>
+</Project>

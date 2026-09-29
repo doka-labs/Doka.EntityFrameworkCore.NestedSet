@@ -1,7 +1,9 @@
 # Getting started
 
 This guide configures one tenant-scoped folder hierarchy on the Doka
-MySQL/MariaDB provider.
+MySQL/MariaDB provider. The [runnable samples](../samples/README.md) use Doka by
+default and offer SQLite as an optional route without an external server.
+FileSystem demonstrates the same public API without a required scope.
 
 ## Install
 
@@ -227,6 +229,19 @@ dotnet ef database update
 
 Review the structural columns, checks, scoped self-FK, derived indexes, and the
 typed tree-registry table. SafeMigrations is optional.
+
+Run the unscoped FileSystem sample from the repository root after starting and
+provisioning the MariaDB developer service as described in the
+[sample catalog](../samples/README.md):
+
+```bash
+dotnet run --project samples/FileSystem -c Release -- --scenario queries
+dotnet run --project samples/FileSystem -c Release -- --inspect --details
+```
+
+For a server-free route, add `--provider sqlite` to both invocations. Results
+remain stored. Repeat a scenario with `--reset` to explicitly recreate only
+that project's sample database.
 
 Continue with [Hierarchy model](hierarchy-model.md),
 [Queries and mutations](operations.md), and

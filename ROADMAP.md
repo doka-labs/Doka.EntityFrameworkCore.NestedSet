@@ -12,8 +12,8 @@ It is not a delivery-date promise. Released packages, release notes, and the
 - Keep the EF-independent core limited to contracts useful without persistence.
 - Qualify ordinary migrations on every supported provider and optional
   SafeMigrations integration independently.
-- Keep product documentation aligned with file systems, KPIs, and
-  organization/user groups; applications own roles and privileges.
+- Keep examples and operations documentation aligned with file systems, KPIs,
+  organization/user groups, roles, and privileges.
 
 ### Preserve correctness at scale
 

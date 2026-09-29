@@ -566,6 +566,14 @@
       "doka.nestedset": {
         "type": "Project"
       },
+      "usergroups": {
+        "type": "Project",
+        "dependencies": {
+          "Doka.EntityFrameworkCore.MySql": "[10.4.4, )",
+          "Doka.EntityFrameworkCore.NestedSet": "[10.0.0-dev, )",
+          "Microsoft.EntityFrameworkCore.Sqlite": "[10.0.12, )"
+        }
+      },
       "Doka.EntityFrameworkCore.MySql": {
         "type": "CentralTransitive",
         "requested": "[10.4.4, )",

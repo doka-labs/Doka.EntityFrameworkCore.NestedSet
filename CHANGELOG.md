@@ -53,6 +53,8 @@ Initial development line. This version is not published.
   PostgreSQL, SQLite, and SQL Server.
 - Add optional SafeMigrations 10.4.3 integration tests for MySQL/MariaDB,
   PostgreSQL, and SQLite without making SafeMigrations a runtime prerequisite.
+- Add runnable folder, KPI, and tenant user-group examples, including role and
+  privilege relationships owned by the application.
 
 ### Performance and reliability
 

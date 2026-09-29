@@ -25,7 +25,8 @@ does not create a separate public or private general-support mailbox.
 
 ## Before Opening an Issue
 
-Check the [README](README.md), [documentation index](docs/README.md),
+Check the [README](README.md), [documentation index](docs/README.md), runnable
+[samples](samples/README.md),
 [support and qualification contract](docs/support-and-qualification.md),
 [deployment and recovery runbook](docs/runbooks/deployment-and-recovery.md),
 and [existing issues][issues]. Reduce the behavior to the smallest synthetic

@@ -50,6 +50,21 @@ provider projects reference it through `ProjectReference`; they do not compile
 linked copies of its sources. Run the provider project to execute its inherited
 contracts. Running the specification project does not run integration tests.
 
+## Runnable samples
+
+The independent console samples keep their results for inspection. These local
+smoke commands explicitly reset each sample-owned SQLite database and discard
+its previous sample results without requiring a developer server:
+
+```sh
+dotnet run --project samples/FileSystem -c Release -- --provider sqlite --reset
+dotnet run --project samples/Kpis -c Release -- --provider sqlite --reset
+dotnet run --project samples/UserGroups -c Release -- --provider sqlite --reset
+```
+
+See the [sample catalog](samples/README.md) for Doka MySQL/MariaDB setup,
+scenario selection, and the meaning of `--reset`.
+
 A filtered run is focused feedback and does not qualify all providers.
 Never replace a failing provider test with a skip.
 

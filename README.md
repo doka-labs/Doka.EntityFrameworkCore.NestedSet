@@ -12,6 +12,10 @@ groups, and permission groups. Domain data and relationships remain ordinary
 EF Core data. The hierarchy does not implement authorization or domain-specific
 aggregation rules.
 
+The [runnable samples](samples/README.md) demonstrate these uses in independent
+FileSystem, Kpis, and UserGroups console projects. They use Doka and MariaDB by
+default, with optional MySQL and SQLite routes and persistent, inspectable results.
+
 ## Packages and baseline
 
 | Package | Purpose |
@@ -419,6 +423,7 @@ PostgreSQL, and SQL Server cases need Docker. SQLite cases use local databases.
 - [Documentation index](docs/README.md)
 - [Architecture decisions](docs/decisions/README.md)
 - [Package usage guide](src/README.md)
+- [Runnable samples](samples/README.md)
 - [Bulk import][bulk-import]
 - [Migrations and indexes][migrations]
 

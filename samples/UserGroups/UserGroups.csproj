@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup Label="Application">
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Doka.EntityFrameworkCore.NestedSet.Samples.UserGroups</RootNamespace>
+  </PropertyGroup>
+</Project>

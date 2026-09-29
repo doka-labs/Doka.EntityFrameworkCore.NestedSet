@@ -88,7 +88,7 @@ access.
 
 **Controls.** The library makes Scope and TreeId explicit and does not present
 them as authorization mechanisms. Applications must authenticate and authorize
-before facade invocation. Role and privilege evaluation belongs to
+before facade invocation. Examples keep role/privilege evaluation in
 application code.
 
 ### Transaction confusion and duplicate effects

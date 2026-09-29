@@ -1,6 +1,6 @@
 # Local developer databases
 
-These optional databases support manual SQL experiments and Rider database browsing. Automated tests and benchmarks
+These optional databases support manual SQL experiments, the runnable samples, and Rider database browsing. Automated tests and benchmarks
 continue to create and dispose their own containers through Testcontainers; they do not connect to this Compose project.
 SQLite runs in process and needs no Compose service.
 
@@ -75,6 +75,41 @@ console, then change that data source's database to `nestedset`:
 ```sql
 CREATE DATABASE nestedset;
 ```
+
+## Provision the runnable Doka samples
+
+MySQL and MariaDB also provide three fixed databases for the
+[independent console samples](../samples/README.md): `nestedset_sample_filesystem`,
+`nestedset_sample_kpis`, and `nestedset_sample_usergroups`. They use the configured
+application account with database-specific grants. Sample databases use
+`utf8mb4_bin` to keep the small ASCII demonstration datasets' comparison rules
+explicit on both engines.
+
+The read-only-mounted [provisioning script](provision-samples.sh) runs automatically
+when a new volume is initialized. Vendor entrypoints skip initialization scripts
+for existing data directories, so provision an existing developer service explicitly:
+
+```sh
+docker compose -f docker/compose.yml exec -T mariadb bash -s < docker/provision-samples.sh
+docker compose -f docker/compose.yml exec -T mysql bash -s < docker/provision-samples.sh
+```
+
+Run only the command for the service you started. Repeated provisioning creates
+missing databases and refreshes the exact database grants; it preserves existing
+tables and data, including the general `nestedset` database. Underscores in GRANT
+database patterns are escaped so the permission does not match other names.
+The script obtains administrative credentials from the configured container
+environment and does not print them. If an existing account's password was
+changed manually, the matching container environment must already be correct.
+
+A sample's explicit `--reset` recreates only its fixed database. Its normal run
+and `--inspect` do not reset previous results. PostgreSQL and SQL Server remain
+available for manual developer work; these three samples focus on Doka and
+optional SQLite, while the automated provider suites own the wider matrix.
+
+The initialization behavior is defined in the official
+[MySQL entrypoint](https://github.com/docker-library/mysql/blob/master/8.4/docker-entrypoint.sh)
+and [MariaDB 11.8 entrypoint](https://github.com/MariaDB/mariadb-docker/blob/master/11.8/docker-entrypoint.sh).
 
 ## Inspect and stop
 

@@ -82,6 +82,7 @@ SafeMigrations adapter in this repository.
 | `Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests` | SQLite equivalents |
 | `Doka.EntityFrameworkCore.NestedSet.Migrations.Tests` | Ordinary migration lifecycle and physical catalog |
 | `Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests` | Optional adapter generation, execution, rejection, replay, and drift behavior |
+| Sample | File-system, KPI, and user-group domain composition |
 
 Integration tests use Testcontainers for server engines and isolated SQLite
 databases. Each provider assembly starts at most one container per engine;
