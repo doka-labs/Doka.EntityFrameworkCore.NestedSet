@@ -366,6 +366,149 @@ set, or CPU model. Hardware and load can change. They instead verify:
 - iterative wide and deep planning; and
 - bounded allocation form.
 
+## Development benchmarks
+
+The [benchmark project](../benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks/README.md)
+uses BenchmarkDotNet 0.15.8 for explicitly selected measurements in isolated
+.NET 10 Release processes. Developers run it before and after an optimization
+or when investigating behavior. Its results impose no performance threshold,
+required CI/RC run, or automated merge decision. The normal regression projects
+retain their existing deterministic structural and allocation contracts.
+
+List the catalog or select a feature and its datasets:
+
+```sh
+dotnet run --project benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks \
+  -c Release -- --list flat
+
+dotnet run --project benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks \
+  -c Release -- --engine MariaDb --nodes 1000,10000 --shape Wide,Balanced \
+  --trees 4 --tracked 0,1000 --filter '*MoveBenchmarks*' \
+  --artifacts /tmp/nestedset-move-MariaDb
+```
+
+Measurement and diagnostic modes share BenchmarkDotNet's option aliases,
+framework response files, and case-filter semantics, including parameter values.
+Pass provider/dataset options directly to the launcher. Framework-selected
+artifacts contain results and provenance together. Diagnostics execute each
+selected method/dataset once even across multiple measurement jobs.
+Execution requires an explicit native selector, such as `--filter '*'`, a
+method filter, or a category/attribute selector. Executing options without a
+selector show usage and the catalog, then exit with code 2 before resources or
+artifacts. No arguments, help, and listing still show information without a run.
+
+Feature folders cover Core, Queries, Insert, Move, Delete, BulkImport,
+Ordering/SaveChanges, Validation, and Rebuild. Input generation is deterministic
+and iterative for wide roots, deep chains, and balanced binary trees. Sizes such
+as 100, 1,000, 10,000, and 100,000 are selected explicitly. `--nodes` describes
+the total forest size and `--trees` its independent coordinate spaces. Basic
+option validation checks shapes and integer bounds, including a total size of
+at least ten. Before resources are acquired, each selected database case must
+have at least ten nodes per effective tree. Cross-tree moves use at least two
+trees even with `--trees 1`, and validate and report that effective count.
+Unselected combinations do not undergo the per-tree check. An unmatched native
+selection or a Core-only diagnostic selection exits with code 2 before resources
+or artifacts. `--tracked` controls unrelated clean EF entries. Seeded
+nodes carry a 1,024-character payload. The chosen topology determines whether
+a branch operation moves or deletes a small or large part of its tree. Ordering
+rename permutes siblings in wide/balanced trees; a deep chain measures payload
+plus coordinated-save work because it has no sibling group.
+`--filter '*Ordering*'` selects both `OrderingBenchmarks.SortedInsert` and
+`OrderingSaveBenchmarks.RenameAndSave`; insertion has no tracked hierarchy
+preload, while the rename prepares its tracked node before measurement.
+
+MySQL and MariaDB use Doka; PostgreSQL, SQL Server, in-memory SQLite, and file
+SQLite remain distinct profiles. Server databases use owned Testcontainers with
+the existing digest-pinned images, two CPU and 2 GiB limits, and no application
+database credentials. Startup and disposal occur in the launcher, outside the
+measured process. Database pooling is disabled. Embedded SQLite results must be
+identified by memory or file mode. Database tests and other provider runs can
+compete for the same host resources, so collect comparisons sequentially.
+Core-only measurements acquire no database owner even with a server engine
+configured, and their provenance records `database: null`. The engine setting
+does not imply that a database was observed.
+
+Database benchmarks execute one awaited operation per iteration, restoring
+state and tracker before every observation and checking the actual effect
+afterwards. The default .NET 10 throughput job uses three warmup and twelve
+target iterations with invocation count and unroll factor one. Core operations
+use BenchmarkDotNet's normal throughput calibration. Framework job overrides
+remain available within those isolation and state invariants. A `--job dry` run
+checks execution and export; it does not establish comparative performance.
+
+Global setup constructs the fixture synchronously without database I/O. Global
+cleanup and workloads remain asynchronous. The pinned framework's iteration
+hooks bind to `System.Action` without `AwaitHelper`, so Task-returning iteration
+hooks cannot bind; void wrappers fully complete asynchronous preparation and
+verification helpers outside the observation window.
+
+Container startup, schema creation, seeding, tracker preparation, validation,
+and cleanup are outside timing. BenchmarkDotNet 0.15.8 takes managed allocation
+snapshots inside the iteration setup/cleanup boundary, including its extra
+diagnostic workload. On .NET 10, process-wide allocated-byte counts include
+asynchronous continuations and can also include background client allocations.
+Prepared data still affects the heap and GC state. Allocated bytes and GC counts
+are distinct from retained or peak memory and from database-server memory;
+those require their own profiling. The tagged engine is the source for these
+measurement boundaries, as recorded in
+[D-015](decisions/D-015-benchmarkdotnet-development-measurements.md#sources).
+
+Inspect SQL and writes in a separate untimed run. This mode supports Debug and
+Release for functional diagnosis and breakpoints. Actual measurements require
+Release; a Debug launcher rejects them before acquiring resources or artifacts:
+
+```sh
+dotnet run --project benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks \
+  -c Release -- --diagnostics --engine SqliteMemory --nodes 10000 \
+  --shape Balanced --trees 4 --filter '*InsertBenchmarks*' \
+  --artifacts /tmp/nestedset-insert-SqliteMemory-diagnostics
+```
+
+The same operation and effect assertions produce `command-diagnostics.json`.
+Preparation commands and verification reads are excluded. All completed EF SQL
+commands contribute to the command count. `HierarchyUpdates` and `AffectedRows`
+include only completed NonQuery commands whose SQL starts with `UPDATE` and
+names `BenchmarkNodes`. Result-producing payload UPDATE commands observed as
+readers, including `RETURNING`/`OUTPUT`, contribute to the command count but
+are absent from these UPDATE/row observations. The fields do not report all
+hierarchy writes or a complete write-amplification budget.
+
+The diagnostic run has no manual timer, sampler, statistical measurement, or
+acceptance budget. Lock statements count as commands; transaction API calls,
+lock-table updates, and deletes are excluded from the UPDATE/row fields.
+Repeated qualifying updates count repeatedly; affected rows are not physical
+disk or WAL writes.
+
+Markdown, full JSON, and raw CSV preserve BenchmarkDotNet results. A
+credential-free `provenance.json` preserves the initial commit, dirty state and
+working-source fingerprint as `source`, and records the final identity as
+`endSource`. `sourcesChangedDuringRun` reports differences between those
+snapshots; the final state does not replace the initial identity. The sidecar
+also adds SDK/runtime, package versions, CPU/OS, database version/image,
+container resources, dataset settings, and actual jobs and observation counts.
+Invalid scenarios, failed operations, and missing measurements fail visibly;
+slow observations are reported without a threshold verdict.
+
+Compare source revisions on the same controlled host with identical runtime,
+provider, images, resource limits, datasets, and jobs. Preserve the raw outputs
+and source identity, inspect the distribution, and repeat paired runs. If
+`sourcesChangedDuringRun` is true, repeat with a stable source state. A hardware
+or configuration change creates a new comparison series. Historical
+handwritten-runner observations use different measurement boundaries and do
+not establish a BenchmarkDotNet baseline. Dated regression-test allocation
+observations elsewhere in this guide retain their stated scope.
+
+The [benchmark regression project](../tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests.csproj)
+belongs to `tests` and runs in both Rider's normal Debug configuration and Release:
+
+```sh
+dotnet run --project tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests -c Debug
+dotnet run --project tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests -c Release
+```
+
+The Debug suite also checks rejection of actual measurements before database
+ownership or artifact creation.
+
 ## Regression diagnosis
 
 1. Reproduce on the same controlled environment.

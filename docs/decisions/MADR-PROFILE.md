@@ -13,7 +13,8 @@ The [template](adr-template.md) provides the complete starting structure. The
 [decision index](README.md) is generated from the records.
 
 Records preserve their actual recording dates and initial proposal history.
-The maintainer accepted the current decisions on 2026-09-28. Implemented records
+The maintainer accepted the decisions then present on 2026-09-28; later records
+preserve their own acceptance dates. Implemented records
 are confirmed against linked repository evidence. Complete qualification and
 authorized publication require their own evidence.
 Implementation existence and passing checks MUST NOT be treated as historical

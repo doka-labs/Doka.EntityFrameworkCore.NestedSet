@@ -1,0 +1,116 @@
+name: doka-nestedset-dev
+
+services:
+  mysql:
+    profiles: [mysql]
+    build:
+      context: .
+      dockerfile: database-images.Dockerfile
+      target: mysql
+    environment:
+      MYSQL_DATABASE: "${NESTEDSET_DEV_MYSQL_DATABASE:-nestedset}"
+      MYSQL_USER: "${NESTEDSET_DEV_MYSQL_USER:-nestedset}"
+      MYSQL_PASSWORD: "${NESTEDSET_DEV_MYSQL_PASSWORD:-nestedset-local-mysql}"
+      MYSQL_ROOT_PASSWORD: "${NESTEDSET_DEV_MYSQL_ROOT_PASSWORD:-nestedset-local-mysql-root}"
+    ports:
+      - "127.0.0.1:${NESTEDSET_DEV_MYSQL_PORT:-33068}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mysql --protocol=TCP --host=127.0.0.1 --user="$${MYSQL_USER}"
+          --password="$${MYSQL_PASSWORD}" --database="$${MYSQL_DATABASE}"
+          --execute="SELECT 1" --silent
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  mariadb:
+    profiles: [mariadb]
+    build:
+      context: .
+      dockerfile: database-images.Dockerfile
+      target: mariadb
+    environment:
+      MARIADB_DATABASE: "${NESTEDSET_DEV_MARIADB_DATABASE:-nestedset}"
+      MARIADB_USER: "${NESTEDSET_DEV_MARIADB_USER:-nestedset}"
+      MARIADB_PASSWORD: "${NESTEDSET_DEV_MARIADB_PASSWORD:-nestedset-local-mariadb}"
+      MARIADB_ROOT_PASSWORD: "${NESTEDSET_DEV_MARIADB_ROOT_PASSWORD:-nestedset-local-mariadb-root}"
+    ports:
+      - "127.0.0.1:${NESTEDSET_DEV_MARIADB_PORT:-33069}:3306"
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mariadb --protocol=TCP --host=127.0.0.1 --user="$${MARIADB_USER}"
+          --password="$${MARIADB_PASSWORD}" --database="$${MARIADB_DATABASE}"
+          --execute="SELECT 1" --silent
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  postgres:
+    profiles: [postgres]
+    build:
+      context: .
+      dockerfile: database-images.Dockerfile
+      target: postgres
+    environment:
+      POSTGRES_DB: "${NESTEDSET_DEV_POSTGRES_DATABASE:-nestedset}"
+      POSTGRES_USER: "${NESTEDSET_DEV_POSTGRES_USER:-nestedset}"
+      POSTGRES_PASSWORD: "${NESTEDSET_DEV_POSTGRES_PASSWORD:-nestedset-local-postgres}"
+    ports:
+      - "127.0.0.1:${NESTEDSET_DEV_POSTGRES_PORT:-54328}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # WHY: The vendor image trusts loopback; the service address exercises password authentication like Rider.
+      test:
+        - CMD-SHELL
+        - >-
+          PGPASSWORD="$${POSTGRES_PASSWORD}" psql --host=postgres
+          --username="$${POSTGRES_USER}" --dbname="$${POSTGRES_DB}"
+          --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --command="SELECT 1"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  sqlserver:
+    profiles: [sqlserver]
+    # WHY: Microsoft publishes and supports SQL Server Linux containers for x86-64 only.
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: database-images.Dockerfile
+      target: sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: "${NESTEDSET_DEV_SQLSERVER_SA_PASSWORD:-NestedSet_Local_Sa_123!}"
+    ports:
+      - "127.0.0.1:${NESTEDSET_DEV_SQLSERVER_PORT:-14338}:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$${MSSQL_SA_PASSWORD}"
+          -C -d master -Q "SELECT 1" -b
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+
+volumes:
+  mysql-data:
+  mariadb-data:
+  postgres-data:
+  sqlserver-data:

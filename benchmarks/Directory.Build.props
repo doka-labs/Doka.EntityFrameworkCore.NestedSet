@@ -1,0 +1,8 @@
+<Project>
+  <!-- WHY: MSBuild stops at this file, so explicitly retain the shared repository defaults. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))"/>
+
+  <PropertyGroup Label="Benchmark project defaults">
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+</Project>

@@ -398,6 +398,7 @@ dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Doka.EntityFrame
 
 | Test project under `tests/` | Coverage |
 | --- | --- |
+| `Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests` | Benchmark launcher, fixture lifecycle, diagnostics, and provenance |
 | `Doka.NestedSet.Tests` | EF-independent bounds and node predicates |
 | `Doka.EntityFrameworkCore.NestedSet.Unit.Tests` | Mapping, dispatch, planning, and regression guards |
 | `Doka.EntityFrameworkCore.NestedSet.MySql.Tests` | Doka MySQL and MariaDB, with independent engine fixtures |

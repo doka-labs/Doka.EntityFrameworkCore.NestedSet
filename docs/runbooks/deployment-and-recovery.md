@@ -194,8 +194,8 @@ regression. Compare source/package bytes, engine/provider versions, schema,
 indexes, statistics, data shape, command count, affected rows, lock wait, and
 actual plan.
 
-Paired measurements require a controlled environment. Hosted runner timing
-is not an acceptance baseline. See [Performance and capacity](../performance.md).
+Repository benchmarks are local diagnostic tools. GitHub runner timing is not
+an acceptance baseline. See [Performance and capacity](../performance.md).
 
 ## Resume criteria
 

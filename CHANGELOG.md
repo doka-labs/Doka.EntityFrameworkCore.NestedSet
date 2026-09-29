@@ -85,6 +85,9 @@ Initial development line. This version is not published.
   rows, rollback, cancellation, concurrent writers, pooling, and deep-tree
   behavior across the supported matrix.
 
+- Keep local benchmark timing and allocation observations outside CI and release
+  acceptance because hosted runner hardware is not a deterministic baseline.
+
 ### Build and dependencies
 
 - Add the pinned .NET 10 SDK, centralized versions, nullable analysis,

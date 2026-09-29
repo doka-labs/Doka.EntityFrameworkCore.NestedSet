@@ -152,6 +152,28 @@
       "supersededBy": [],
       "amends": [],
       "amendedBy": []
+    },
+    {
+      "id": "D-014",
+      "title": "Share database image pins with optional developer Compose",
+      "status": "implemented",
+      "date": "2026-09-29",
+      "path": "docs/decisions/D-014-shared-database-images-and-developer-compose.md",
+      "supersedes": [],
+      "supersededBy": [],
+      "amends": [],
+      "amendedBy": []
+    },
+    {
+      "id": "D-015",
+      "title": "Use BenchmarkDotNet for optional development measurements",
+      "status": "accepted",
+      "date": "2026-09-28",
+      "path": "docs/decisions/D-015-benchmarkdotnet-development-measurements.md",
+      "supersedes": [],
+      "supersededBy": [],
+      "amends": [],
+      "amendedBy": []
     }
   ]
 }

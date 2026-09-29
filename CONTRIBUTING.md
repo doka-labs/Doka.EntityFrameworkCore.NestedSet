@@ -13,6 +13,12 @@ suspected vulnerabilities through [Security](SECURITY.md).
 The SQLite suites run in process. Tests own their server containers and do not
 require a developer-managed database.
 
+For manual debugging and Rider database access, use the optional
+[developer Compose environment](docker/README.md). Its profiles build from the
+same pinned images as Testcontainers. It owns separate persistent volumes and
+is not a prerequisite for tests or benchmarks. Docker resources appear under
+the solution's `Config/docker` folder.
+
 ## Build and test
 
 ```sh
@@ -24,6 +30,7 @@ dotnet test Doka.EntityFrameworkCore.NestedSet.slnx \
 
 | Test project | Responsibility |
 | --- | --- |
+| `Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests` | Benchmark launcher, scenarios, diagnostics, and provenance |
 | `Doka.NestedSet.Tests` | EF-independent value and relationship contracts |
 | `Doka.EntityFrameworkCore.NestedSet.Unit.Tests` | EF model, planning, and guard behavior without a database |
 | `Doka.EntityFrameworkCore.NestedSet.Specification.Tests` | Non-runnable shared integration contracts and reusable test infrastructure |
@@ -237,8 +244,9 @@ affected-row formulas, memory ownership, and stable query-plan properties.
 
 Do not add wall-clock, CPU, working-set, or process-wide allocation thresholds
 to CI or release qualification. GitHub-hosted runner hardware and contention
-are not controlled. Run paired measurements on the same controlled environment and preserve
-the method and limitations in [Performance](docs/performance.md).
+are not controlled. The benchmark executable is a local diagnostic tool; run
+paired comparisons on the same dedicated environment and preserve the method
+and limitations in [Performance](docs/performance.md).
 
 ## Dependency updates
 

@@ -4,5 +4,4 @@
 [assembly: InternalsVisibleTo("Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests")]
 [assembly: InternalsVisibleTo("Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests")]
 [assembly: InternalsVisibleTo("Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests")]
-[assembly: InternalsVisibleTo("Doka.EntityFrameworkCore.NestedSet.Benchmarks")]
 [assembly: InternalsVisibleTo("Doka.EntityFrameworkCore.NestedSet.Specification.Tests")]

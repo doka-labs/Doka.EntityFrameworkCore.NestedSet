@@ -25,6 +25,8 @@ identify when the record was created; decision history carries later status chan
 | [D-011](D-011-feature-oriented-source-layout.md) | implemented | 2026-09-25 | Group hierarchy behavior by feature | amended-by D-012 |
 | [D-012](D-012-typed-tree-runtime.md) | implemented | 2026-09-26 | Carry typed tree identities through feature execution | amends D-005; amends D-011 |
 | [D-013](D-013-provider-owned-integration-test-projects.md) | implemented | 2026-09-25 | Give each database provider its own integration test project | None |
+| [D-014](D-014-shared-database-images-and-developer-compose.md) | implemented | 2026-09-29 | Share database image pins with optional developer Compose | None |
+| [D-015](D-015-benchmarkdotnet-development-measurements.md) | accepted | 2026-09-28 | Use BenchmarkDotNet for optional development measurements | None |
 
 ## Relationships
 

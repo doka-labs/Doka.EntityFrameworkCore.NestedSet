@@ -38,6 +38,8 @@ runbooks own operational procedures.
 
 ## Understand and maintain the repository
 
+- [Developer Databases](../docker/README.md) explains optional Compose profiles,
+  Rider connections, shared image pins, and developer volume ownership.
 - [Implementation Design](implementation-design.md) describes package
   boundaries, mapping metadata, query and mutation execution, and provider
   integration.

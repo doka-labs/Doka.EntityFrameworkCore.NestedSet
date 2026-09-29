@@ -40,7 +40,7 @@ This statement does not assert the same limitation for the separate
 | SQL Server | `Microsoft.EntityFrameworkCore.SqlServer` 10.0.12 | SQL Server 2025 CU9 |
 
 Container image tags and SHA-256 digests are pinned in
-`tests/Shared/test-images.Dockerfile`. Digest pinning identifies exact test
+[the shared Dockerfile](../docker/database-images.Dockerfile). Digest pinning identifies exact test
 content; it does not replace compatibility or vulnerability review.
 
 SQL Server container images are supported by Microsoft only on Linux x86-64
@@ -73,6 +73,7 @@ SafeMigrations adapter in this repository.
 
 | Project/area | Evidence |
 | --- | --- |
+| `Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests` | Benchmark launcher, fixture lifecycle, scenario effects, diagnostics, and provenance |
 | `Doka.NestedSet.Tests` | Bounds validation and in-memory relationship semantics |
 | `Doka.EntityFrameworkCore.NestedSet.Unit.Tests` | Mapping, guards, provider capabilities, snapshots, pure planning |
 | `Doka.EntityFrameworkCore.NestedSet.MySql.Tests` | MySQL/MariaDB queries, mutations, ordering, locking, rollback, diagnostics, indexes |
@@ -88,6 +89,13 @@ concurrent test fixtures receive separate databases on that server. This
 keeps xUnit's collection parallelism without multiplying server processes.
 The test infrastructure owns its containers and credentials; it does not
 depend on a developer-managed database.
+
+The optional [developer Compose environment](../docker/README.md) builds the
+same vendor bases into separate local service images for manual debugging and
+Rider connections. Testcontainers consumes the pinned vendor references directly;
+its generated ports, credentials, container cleanup, and fixture isolation remain
+independent. Developer volume contents and a successful Compose startup do not
+qualify the runtime or migration matrix.
 
 ## Required behavioral coverage
 
@@ -118,8 +126,8 @@ affected-row formulas, and stable query-plan properties. It does not use wall-
 clock time, runner CPU, working set, or process-wide allocation as a CI or
 release pass/fail threshold.
 
-Measurements from different hardware are not comparable performance
-evidence. See [Performance and capacity](performance.md).
+The benchmark executable is local diagnostic tooling. Measurements from
+different hardware are not comparable performance evidence. See [Performance and capacity](performance.md).
 
 ## Local verification levels
 

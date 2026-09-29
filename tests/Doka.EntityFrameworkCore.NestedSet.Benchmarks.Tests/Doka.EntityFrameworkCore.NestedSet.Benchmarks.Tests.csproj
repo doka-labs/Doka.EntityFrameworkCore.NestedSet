@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="../Shared/TestRunnerReferences.props"/>
+
+  <ItemGroup>
+    <ProjectReference Include="../../benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks.csproj"/>
+  </ItemGroup>
+</Project>

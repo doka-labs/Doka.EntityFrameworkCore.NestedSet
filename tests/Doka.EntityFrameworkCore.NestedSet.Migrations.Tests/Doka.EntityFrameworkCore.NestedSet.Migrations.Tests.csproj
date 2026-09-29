@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <Compile Include="../Shared/DatabaseTestTargets.cs" Link="Infrastructure/DatabaseTestTargets.cs"/>
-    <EmbeddedResource Include="../Shared/test-images.Dockerfile" LogicalName="NestedSet.TestImages"/>
+    <EmbeddedResource Include="../../docker/database-images.Dockerfile" LogicalName="NestedSet.TestImages" Visible="false"/>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj"/>

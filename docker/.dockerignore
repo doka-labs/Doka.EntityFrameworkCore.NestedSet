@@ -1,0 +1,3 @@
+# WHY: FROM-only stages need no source files in the build context.
+**
+!database-images.Dockerfile

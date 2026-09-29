@@ -34,6 +34,7 @@
   </ItemGroup>
 
   <ItemGroup Label="Container-backed tests and benchmarks">
+    <PackageVersion Include="BenchmarkDotNet" Version="0.15.8"/>
     <PackageVersion Include="Testcontainers.MsSql" Version="4.15.0"/>
     <PackageVersion Include="Testcontainers.MySql" Version="4.15.0"/>
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.15.0"/>
