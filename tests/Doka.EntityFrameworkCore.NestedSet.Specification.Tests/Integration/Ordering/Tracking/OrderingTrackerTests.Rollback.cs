@@ -71,7 +71,7 @@ public abstract partial class OrderingTrackerTests
         var probe = new TrackerFailureProbe();
         await using var context = new TrackerContext(await OptionsAsync(database, probe));
         context.ChangeTracker.DeleteOrphansTiming =
-            Microsoft.EntityFrameworkCore.ChangeTracking.CascadeTiming.OnSaveChanges;
+            CascadeTiming.OnSaveChanges;
 
         var owner = await context
             .Set<TrackerOwner>()
@@ -109,7 +109,7 @@ public abstract partial class OrderingTrackerTests
         Assert.IsType<TrackerInjectedException>(failure);
         Assert.Equal(1, completedPayload);
         AssertSnapshot(childBefore, childAfterFailure);
-        Assert.Equal(Microsoft.EntityFrameworkCore.ChangeTracking.CascadeTiming.OnSaveChanges, timingAfterFailure);
+        Assert.Equal(CascadeTiming.OnSaveChanges, timingAfterFailure);
         Assert.Null(navigationAfterFailure);
         Assert.Equal(0, collectionCountAfterFailure);
         Assert.Equal(1, childrenAfterFailure);
@@ -128,7 +128,7 @@ public abstract partial class OrderingTrackerTests
         // Arrange
         var database = await CreateDatabaseAsync(Engine);
         await using var context = new TrackerContext(await OptionsAsync(database));
-        context.ChangeTracker.DeleteOrphansTiming = Microsoft.EntityFrameworkCore.ChangeTracking.CascadeTiming.Never;
+        context.ChangeTracker.DeleteOrphansTiming = CascadeTiming.Never;
         var owner = await context
             .Set<TrackerOwner>()
             .Include(value => value.Children)
@@ -155,7 +155,7 @@ public abstract partial class OrderingTrackerTests
         Assert.IsType<InvalidOperationException>(failure);
         AssertSnapshot(before, after);
         Assert.Equal(
-            Microsoft.EntityFrameworkCore.ChangeTracking.CascadeTiming.Never,
+            CascadeTiming.Never,
             context.ChangeTracker.DeleteOrphansTiming);
         Assert.Equal(1, childCount);
         Assert.Null(child.Owner);

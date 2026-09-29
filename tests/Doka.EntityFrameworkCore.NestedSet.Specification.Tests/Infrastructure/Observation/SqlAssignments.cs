@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Recognizes assignment targets in provider-generated UPDATE statements used by command observers.</summary>
@@ -13,7 +15,7 @@ internal static partial class SqlAssignments
     )
     {
         // WHY: An unquoted substring such as End also matches CASE END; only assignment targets prove a write.
-        foreach (System.Text.RegularExpressions.Match match in AssignmentTargets().Matches(commandText))
+        foreach (Match match in AssignmentTargets().Matches(commandText))
         {
             if (string.Equals(match.Groups["column"].Value, columnName, StringComparison.OrdinalIgnoreCase))
             {
@@ -26,11 +28,11 @@ internal static partial class SqlAssignments
 
     /// <summary>Matches SET and comma-separated targets with optional aliases and all supported SQL quoting.</summary>
     /// <returns>The cached generated matcher; it does not interpret right-hand expression identifiers.</returns>
-    [System.Text.RegularExpressions.GeneratedRegex(
+    [GeneratedRegex(
         "(?:\\bSET\\s+|,\\s*)(?:(?:\"[^\"]+\"|`[^`]+`|\\[[^\\]]+\\]|\\w+)\\s*\\.\\s*)?"
         + "(?:\"(?<column>[^\"]+)\"|`(?<column>[^`]+)`|\\[(?<column>[^\\]]+)\\]|(?<column>\\w+))\\s*=",
-        System.Text.RegularExpressions.RegexOptions.IgnoreCase
-        | System.Text.RegularExpressions.RegexOptions.CultureInvariant,
+        RegexOptions.IgnoreCase
+        | RegexOptions.CultureInvariant,
         1000)]
-    private static partial System.Text.RegularExpressions.Regex AssignmentTargets();
+    private static partial Regex AssignmentTargets();
 }

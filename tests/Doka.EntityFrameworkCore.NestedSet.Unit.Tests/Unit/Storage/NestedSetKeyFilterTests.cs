@@ -1,3 +1,5 @@
+using System.Linq.Expressions;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Protects metadata-aware native collection eligibility and converted scalar equality.</summary>
@@ -7,13 +9,13 @@ public sealed class NestedSetKeyFilterTests
     /// <param name="count">The bounded number of principal keys.</param>
     /// <param name="expected">The expected predicate category.</param>
     [Theory]
-    [InlineData(0, System.Linq.Expressions.ExpressionType.Constant)]
-    [InlineData(1, System.Linq.Expressions.ExpressionType.Equal)]
-    [InlineData(2, System.Linq.Expressions.ExpressionType.Call)]
-    [InlineData(64, System.Linq.Expressions.ExpressionType.Call)]
+    [InlineData(0, ExpressionType.Constant)]
+    [InlineData(1, ExpressionType.Equal)]
+    [InlineData(2, ExpressionType.Call)]
+    [InlineData(64, ExpressionType.Call)]
     public void NativeMappedBatchUsesBoundedPredicate(
         int count,
-        System.Linq.Expressions.ExpressionType expected
+        ExpressionType expected
     )
     {
         // Arrange
@@ -50,7 +52,7 @@ public sealed class NestedSetKeyFilterTests
         // Assert
         Assert.NotNull(property.GetTypeMapping().Converter);
         Assert.False(NestedSetKeyFilter<KeyFilterNode>.SupportsCollection<int>(property));
-        Assert.Equal(System.Linq.Expressions.ExpressionType.OrElse, predicate.Body.NodeType);
+        Assert.Equal(ExpressionType.OrElse, predicate.Body.NodeType);
         Assert.Contains(" OR ", sql, StringComparison.Ordinal);
         Assert.DoesNotContain(" IN (", sql, StringComparison.Ordinal);
     }
@@ -74,7 +76,7 @@ public sealed class NestedSetKeyFilterTests
         // Assert
         Assert.NotNull(property.GetTypeMapping().Converter);
         Assert.False(NestedSetKeyFilter<KeyFilterNode>.SupportsCollection<string>(property));
-        Assert.Equal(System.Linq.Expressions.ExpressionType.OrElse, predicate.Body.NodeType);
+        Assert.Equal(ExpressionType.OrElse, predicate.Body.NodeType);
         Assert.Contains(" OR ", sql, StringComparison.Ordinal);
         Assert.DoesNotContain(" IN (", sql, StringComparison.Ordinal);
     }
@@ -94,7 +96,7 @@ public sealed class NestedSetKeyFilterTests
         // Assert
         Assert.Null(property.GetTypeMapping().Converter);
         Assert.False(NestedSetKeyFilter<KeyFilterNode>.SupportsCollection<int[]>(property));
-        Assert.Equal(System.Linq.Expressions.ExpressionType.OrElse, predicate.Body.NodeType);
+        Assert.Equal(ExpressionType.OrElse, predicate.Body.NodeType);
     }
 
     /// <summary>A generic value mismatch fails before a property expression can be translated or executed.</summary>
@@ -128,7 +130,7 @@ public sealed class NestedSetKeyFilterTests
             .ToQueryString();
 
         // Assert
-        Assert.Equal(System.Linq.Expressions.ExpressionType.Equal, predicate.Body.NodeType);
+        Assert.Equal(ExpressionType.Equal, predicate.Body.NodeType);
         Assert.Contains("WHERE", sql, StringComparison.Ordinal);
         Assert.DoesNotContain(" IN (", sql, StringComparison.Ordinal);
     }

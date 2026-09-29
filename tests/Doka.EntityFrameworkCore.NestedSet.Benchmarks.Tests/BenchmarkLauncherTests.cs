@@ -1,3 +1,6 @@
+using System.Globalization;
+using FileDirectory = System.IO.Directory;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests;
 
 /// <summary>
@@ -607,22 +610,21 @@ public sealed class BenchmarkLauncherTests
         private const string OptionsVariable = "NESTEDSET_BENCHMARK_OPTIONS";
         private readonly TextWriter _output = Console.Out;
         private readonly TextWriter _error = Console.Error;
-        private readonly StringWriter _capturedOutput = new(System.Globalization.CultureInfo.InvariantCulture);
-        private readonly StringWriter _capturedError = new(System.Globalization.CultureInfo.InvariantCulture);
+        private readonly StringWriter _capturedOutput = new(CultureInfo.InvariantCulture);
+        private readonly StringWriter _capturedError = new(CultureInfo.InvariantCulture);
         private readonly string? _options = Environment.GetEnvironmentVariable(OptionsVariable);
         private readonly string? _connection = Environment.GetEnvironmentVariable(ConnectionVariable);
         private readonly string? _docker = Environment.GetEnvironmentVariable("DOCKER_HOST");
-        private readonly System.Globalization.CultureInfo _culture = System.Globalization.CultureInfo.CurrentCulture;
+        private readonly CultureInfo _culture = CultureInfo.CurrentCulture;
 
-        private readonly System.Globalization.CultureInfo
-            _uiCulture = System.Globalization.CultureInfo.CurrentUICulture;
+        private readonly CultureInfo _uiCulture = CultureInfo.CurrentUICulture;
 
         internal LauncherProcessState()
         {
             Directory = Path.Combine(
                 Path.GetTempPath(),
                 "nestedset-launcher-tests-" + Guid.NewGuid().ToString("N"));
-            System.IO.Directory.CreateDirectory(Directory);
+            FileDirectory.CreateDirectory(Directory);
             Console.SetOut(_capturedOutput);
             Console.SetError(_capturedError);
         }
@@ -641,11 +643,11 @@ public sealed class BenchmarkLauncherTests
             Environment.SetEnvironmentVariable(OptionsVariable, _options);
             Environment.SetEnvironmentVariable(ConnectionVariable, _connection);
             Environment.SetEnvironmentVariable("DOCKER_HOST", _docker);
-            System.Globalization.CultureInfo.CurrentCulture = _culture;
-            System.Globalization.CultureInfo.CurrentUICulture = _uiCulture;
+            CultureInfo.CurrentCulture = _culture;
+            CultureInfo.CurrentUICulture = _uiCulture;
             _capturedOutput.Dispose();
             _capturedError.Dispose();
-            System.IO.Directory.Delete(Directory, true);
+            FileDirectory.Delete(Directory, true);
         }
     }
 }

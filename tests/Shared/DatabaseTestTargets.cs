@@ -1,3 +1,6 @@
+// WHY: This linked source compiles in projects with different global imports, so the type alias stays local.
+using MySqlServerVersion = Doka.EntityFrameworkCore.MySql.MySqlServerVersion;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Testing;
 
 /// <summary>Keeps provider capability profiles aligned with the canonical test-image manifest.</summary>

@@ -1,9 +1,9 @@
+using Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure;
+
 namespace Doka.EntityFrameworkCore.NestedSet;
 
 /// <summary>Adds nested-set conventions to each context's provider convention set.</summary>
-internal sealed class
-    NestedSetConventionSetPlugin : Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure.
-    IConventionSetPlugin
+internal sealed class NestedSetConventionSetPlugin : IConventionSetPlugin
 {
     /// <summary>The active provider's SQL identifier service.</summary>
     private readonly ISqlGenerationHelper _sql;

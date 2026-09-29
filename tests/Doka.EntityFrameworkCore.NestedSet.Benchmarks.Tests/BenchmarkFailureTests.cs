@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests;
 
 /// <summary>Verifies that failed observations remain diagnosable without exposing provider secrets.</summary>
@@ -41,7 +43,7 @@ public sealed class BenchmarkFailureTests
     }
 
     /// <summary>Gives a synthetic provider failure a real origin frame for diagnostic verification.</summary>
-    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static Exception CaptureThrown(
         Exception exception
     )

@@ -1,3 +1,6 @@
+using System.Text;
+using System.Text.Json;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Captures real server plans for scoped wide and deep hierarchy queries.</summary>
@@ -122,8 +125,8 @@ public abstract class ServerQueryPlanTests : ProviderTest
 
         var jsonStart = plan.IndexOf('{', StringComparison.Ordinal);
         Assert.True(jsonStart >= 0, plan);
-        var reader = new System.Text.Json.Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(plan[jsonStart..]));
-        using var document = System.Text.Json.JsonDocument.ParseValue(ref reader);
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(plan[jsonStart..]));
+        using var document = JsonDocument.ParseValue(ref reader);
         var tables = Objects(document.RootElement)
             .Where(value => value.TryGetProperty("table_name", out _) && value.TryGetProperty("access_type", out _))
             .ToArray();
@@ -144,11 +147,11 @@ public abstract class ServerQueryPlanTests : ProviderTest
     }
 
     /// <summary>Walks provider plan objects without relying on a particular nested-loop wrapper shape.</summary>
-    private static IEnumerable<System.Text.Json.JsonElement> Objects(
-        System.Text.Json.JsonElement value
+    private static IEnumerable<JsonElement> Objects(
+        JsonElement value
     )
     {
-        if (value.ValueKind == System.Text.Json.JsonValueKind.Object)
+        if (value.ValueKind == JsonValueKind.Object)
         {
             yield return value;
 
@@ -160,7 +163,7 @@ public abstract class ServerQueryPlanTests : ProviderTest
                 }
             }
         }
-        else if (value.ValueKind == System.Text.Json.JsonValueKind.Array)
+        else if (value.ValueKind == JsonValueKind.Array)
         {
             foreach (var item in value.EnumerateArray())
             {
@@ -205,7 +208,7 @@ public abstract class ServerQueryPlanTests : ProviderTest
             command.Parameters.Add(parameter);
         }
 
-        var plan = new System.Text.StringBuilder();
+        var plan = new StringBuilder();
         await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
 
         do

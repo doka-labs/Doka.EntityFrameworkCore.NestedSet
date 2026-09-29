@@ -1,3 +1,5 @@
+using AmbientTransaction = System.Transactions.Transaction;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Execution;
 
 /// <summary>Owns one transaction or caller savepoint shared by structural mutations and coordinated saves.</summary>
@@ -21,7 +23,7 @@ internal static class NestedSetTransaction
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (System.Transactions.Transaction.Current is not null)
+        if (AmbientTransaction.Current is not null)
         {
             throw new NestedSetException(
                 NestedSetErrorCode.InvalidTransaction,

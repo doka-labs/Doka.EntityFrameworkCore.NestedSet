@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure;
+
 namespace Doka.EntityFrameworkCore.NestedSet;
 
 /// <summary>Registers nested-set services in Entity Framework Core's internal service provider.</summary>
@@ -32,7 +34,7 @@ internal sealed class NestedSetOptionsExtension : IDbContextOptionsExtension
         // and other extensions while guarding against duplicate registration in an externally managed provider.
         services.TryAddEnumerable(
             ServiceDescriptor
-                .Scoped<Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure.IConventionSetPlugin,
+                .Scoped<IConventionSetPlugin,
                     NestedSetConventionSetPlugin>());
 
         // WHY: Relational method translators are composable services. The internal native Scope marker is emitted

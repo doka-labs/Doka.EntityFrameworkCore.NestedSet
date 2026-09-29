@@ -1,3 +1,5 @@
+using FilePath = System.IO.Path;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests;
 
 /// <summary>Verifies stored provider provenance and disposal of launcher-owned embedded resources.</summary>
@@ -245,8 +247,8 @@ public sealed class BenchmarkProvenanceTests
     {
         internal TemporaryDirectory()
         {
-            Path = System.IO.Path.Combine(
-                System.IO.Path.GetTempPath(),
+            Path = FilePath.Combine(
+                FilePath.GetTempPath(),
                 "nestedset-benchmark-tests-" + Guid.NewGuid().ToString("N"));
 
             Directory.CreateDirectory(Path);

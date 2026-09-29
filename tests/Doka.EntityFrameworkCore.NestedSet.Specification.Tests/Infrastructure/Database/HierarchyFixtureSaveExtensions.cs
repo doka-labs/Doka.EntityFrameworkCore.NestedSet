@@ -1,3 +1,5 @@
+using System.Linq.Expressions;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Provides an explicit test-only boundary for seeding precomputed hierarchy coordinates.</summary>
@@ -87,44 +89,44 @@ internal static class HierarchyFixtureSaveExtensions
     }
 
     /// <summary>Builds a native typed registry predicate from the snapshotted complete fixture identity.</summary>
-    private static System.Linq.Expressions.Expression<Func<NestedSetTreeRegistry, bool>> RegistryIdentity(
+    private static Expression<Func<NestedSetTreeRegistry, bool>> RegistryIdentity(
         INestedSetTreeLockRequest request
     )
     {
-        var row = System.Linq.Expressions.Expression.Parameter(typeof(NestedSetTreeRegistry), "registry");
+        var row = Expression.Parameter(typeof(NestedSetTreeRegistry), "registry");
         var tree = RegistryPropertyEquals(row, request.Mapping.TreeId, request.TreeIdValue);
         var predicate = request.Mapping.Scope is { } scope
-            ? System.Linq.Expressions.Expression.AndAlso(tree, RegistryPropertyEquals(row, scope, request.ScopeValue!))
+            ? Expression.AndAlso(tree, RegistryPropertyEquals(row, scope, request.ScopeValue!))
             : tree;
 
-        return System.Linq.Expressions.Expression.Lambda<Func<NestedSetTreeRegistry, bool>>(predicate, row);
+        return Expression.Lambda<Func<NestedSetTreeRegistry, bool>>(predicate, row);
     }
 
     /// <summary>
     /// Retains the mapped CLR type so provider converters and native identity equality remain active.
     /// </summary>
-    private static System.Linq.Expressions.BinaryExpression RegistryPropertyEquals(
-        System.Linq.Expressions.ParameterExpression row,
+    private static BinaryExpression RegistryPropertyEquals(
+        ParameterExpression row,
         IProperty property,
         object value
     )
     {
-        var access = System.Linq.Expressions.Expression.Call(
+        var access = Expression.Call(
             typeof(EF),
             nameof(EF.Property),
             [property.ClrType],
             row,
-            System.Linq.Expressions.Expression.Constant(property.Name));
+            Expression.Constant(property.Name));
 
         // WHY: Domain equality can equate values whose converted database identities differ. Parameterizing
         // each typed value prevents a cached constant from selecting the preceding identity's registry row.
-        var parameter = System.Linq.Expressions.Expression.Call(
+        var parameter = Expression.Call(
             typeof(EF),
             nameof(EF.Parameter),
             [property.ClrType],
-            System.Linq.Expressions.Expression.Constant(value, property.ClrType));
+            Expression.Constant(value, property.ClrType));
 
-        return System.Linq.Expressions.Expression.Equal(access, parameter);
+        return Expression.Equal(access, parameter);
     }
 
     /// <summary>Builds distinct snapshotted fixture identities using exact provider identity representations.</summary>
@@ -185,7 +187,7 @@ internal static class HierarchyFixtureSaveExtensions
 
         /// <summary>Reads fixture identity values at the EntityEntry metadata boundary.</summary>
         internal abstract INestedSetTreeLockRequest Create(
-            Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry entry,
+            EntityEntry entry,
             NestedSetTreeLockMode mode
         );
 
@@ -203,7 +205,7 @@ internal static class HierarchyFixtureSaveExtensions
     {
         /// <inheritdoc />
         internal override INestedSetTreeLockRequest Create(
-            Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry entry,
+            EntityEntry entry,
             NestedSetTreeLockMode mode
         )
         {

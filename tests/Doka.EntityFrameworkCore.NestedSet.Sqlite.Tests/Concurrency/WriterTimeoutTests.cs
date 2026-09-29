@@ -1,3 +1,5 @@
+using Microsoft.Data.Sqlite;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Sqlite;
 
 /// <summary>Verifies that a timed-out SQLite writer leaves hierarchy and tree-registry state intact.</summary>
@@ -35,7 +37,7 @@ public sealed class WriterTimeoutTests : ProviderTest, IClassFixture<ProviderFix
 
         // WHY: SQLite obtains its single-writer lock at BEGIN IMMEDIATE. Setting the contender's connection
         // timeout isolates this probe from the fixture's longer default without delaying other SQLite tests.
-        var contenderConnection = (Microsoft.Data.Sqlite.SqliteConnection)contender.Database.GetDbConnection();
+        var contenderConnection = (SqliteConnection)contender.Database.GetDbConnection();
         contenderConnection.DefaultTimeout = 1;
         var blockedTree = contender
             .NestedSet<TreeNode>()
@@ -60,7 +62,7 @@ public sealed class WriterTimeoutTests : ProviderTest, IClassFixture<ProviderFix
         var afterRetry = await SnapshotAsync(database);
 
         // Assert
-        var busy = Assert.IsType<Microsoft.Data.Sqlite.SqliteException>(failure);
+        var busy = Assert.IsType<SqliteException>(failure);
         Assert.Equal(5, busy.SqliteErrorCode);
         Assert.Equal(before.Nodes, afterFailure.Nodes);
         Assert.Equal(before.Registry, afterFailure.Registry);

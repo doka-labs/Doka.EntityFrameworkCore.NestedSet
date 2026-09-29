@@ -168,7 +168,7 @@ public abstract partial class OrderingRefreshScaleTests
         return Enumerable.Range(0, 2200).Select(value => (decimal)value)
             .Where(value => value <= maximum).Concat(edges).Distinct()
             .Select(value => (TKey)Convert.ChangeType(value, typeof(TKey),
-                System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+                CultureInfo.InvariantCulture)).ToArray();
     }
 
     /// <summary>Uses the existing typed ordering entity with one independent native-key test table.</summary>

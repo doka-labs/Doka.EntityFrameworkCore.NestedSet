@@ -1,3 +1,5 @@
+using System.Transactions;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Verifies machine-readable error distinctions against persisted hierarchy operations.</summary>
@@ -209,8 +211,8 @@ public abstract class ErrorContractTests : ProviderTest
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        using var ambient = new System.Transactions.TransactionScope(
-            System.Transactions.TransactionScopeAsyncFlowOption.Enabled);
+        using var ambient = new TransactionScope(
+            TransactionScopeAsyncFlowOption.Enabled);
 
         // Act
         var error = await Assert.ThrowsAsync<NestedSetException>(() =>

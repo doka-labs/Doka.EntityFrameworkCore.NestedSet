@@ -273,6 +273,6 @@ public abstract partial class OrderingKeyTests
     private static string CollectionStringKey(
         int index
     ) => index >= 20
-        ? "Imported-" + index.ToString("D2", System.Globalization.CultureInfo.InvariantCulture)
+        ? "Imported-" + index.ToString("D2", CultureInfo.InvariantCulture)
         : StringKey(index);
 }

@@ -1,3 +1,5 @@
+using AmbientTransaction = System.Transactions.Transaction;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Features.Maintenance;
 
 /// <summary>Coordinates consistent structural inspection and bounded, set-based repairs for one exact tree.</summary>
@@ -303,7 +305,7 @@ internal sealed class NestedSetMaintenance<TEntity, TKey, TTreeId, TScope>
             && ((serverSnapshot && (transaction is null || isolation == IsolationLevel.ReadCommitted))
                 || (kind == NestedSetProviderKind.Sqlite && transaction is null));
 
-        if (System.Transactions.Transaction.Current is null)
+        if (AmbientTransaction.Current is null)
         {
             if (safeCallerSnapshot || singleReadSnapshot)
             {

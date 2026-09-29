@@ -240,7 +240,7 @@ internal static class NestedSetIndexes
         while (entity.FindIndex(name) is not null)
         {
             suffix++;
-            name = stem + "_" + suffix.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            name = stem + "_" + suffix.ToString(CultureInfo.InvariantCulture);
         }
 
         return name;

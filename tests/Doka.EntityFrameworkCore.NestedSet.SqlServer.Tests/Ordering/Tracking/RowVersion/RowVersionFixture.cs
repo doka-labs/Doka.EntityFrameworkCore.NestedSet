@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore.Storage;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.SqlServer;
 
 /// <summary>Owns an isolated SQL Server database with a generated-token hierarchy table.</summary>
@@ -34,7 +36,7 @@ public sealed class RowVersionFixture : IAsyncLifetime
         if (initialize)
         {
             await context
-                .GetService<Microsoft.EntityFrameworkCore.Storage.IRelationalDatabaseCreator>()
+                .GetService<IRelationalDatabaseCreator>()
                 .CreateTablesAsync(CancellationToken.None);
         }
 

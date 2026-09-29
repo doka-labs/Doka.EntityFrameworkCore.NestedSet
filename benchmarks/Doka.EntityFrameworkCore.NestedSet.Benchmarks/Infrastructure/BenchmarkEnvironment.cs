@@ -1,3 +1,6 @@
+using Doka.EntityFrameworkCore.MySql;
+using EfNullLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks;
 
 /// <summary>Owns database resources in the launcher, outside generated benchmark processes and measurement.</summary>
@@ -158,7 +161,7 @@ public sealed class BenchmarkEnvironment : IAsyncDisposable
                     .WithDatabase(DatabaseName)
                     .WithUsername("benchmark")
                     .WithPassword(password)
-                    .WithLogger(Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance)
+                    .WithLogger(EfNullLogger.Instance)
                     // WHY: Testcontainers exposes Docker CPU and memory limits through this vendor seam.
                     .WithCreateParameterModifier(parameters =>
                     {
@@ -185,7 +188,7 @@ public sealed class BenchmarkEnvironment : IAsyncDisposable
                     .WithEnvironment("MARIADB_ROOT_PASSWORD", password)
                     .WithEnvironment("MARIADB_DATABASE", DatabaseName)
                     .WithPortBinding(3306, true)
-                    .WithLogger(Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance)
+                    .WithLogger(EfNullLogger.Instance)
                     // WHY: This MariaDB image ships native client names, while MySqlBuilder waits for mysql.
                     .WithWaitStrategy(
                         Wait
@@ -224,7 +227,7 @@ public sealed class BenchmarkEnvironment : IAsyncDisposable
                     .WithDatabase(DatabaseName)
                     .WithUsername("benchmark")
                     .WithPassword(password)
-                    .WithLogger(Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance)
+                    .WithLogger(EfNullLogger.Instance)
                     .WithCreateParameterModifier(parameters =>
                     {
                         var configuration = parameters.HostConfig
@@ -249,7 +252,7 @@ public sealed class BenchmarkEnvironment : IAsyncDisposable
                 var sqlServer = new MsSqlBuilder(Image)
                     .WithDatabase(DatabaseName)
                     .WithPassword(password)
-                    .WithLogger(Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance)
+                    .WithLogger(EfNullLogger.Instance)
                     .WithCreateParameterModifier(parameters =>
                     {
                         var configuration = parameters.HostConfig

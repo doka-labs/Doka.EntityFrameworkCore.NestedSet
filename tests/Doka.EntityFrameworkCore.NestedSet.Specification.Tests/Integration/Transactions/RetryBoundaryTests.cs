@@ -1,3 +1,6 @@
+using System.Transactions;
+using DatabaseIsolationLevel = System.Data.IsolationLevel;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Guards mutation boundaries against configured and already executing EF retry strategies.</summary>
@@ -147,8 +150,8 @@ public abstract class RetryBoundaryTests : ProviderTest
         Exception? failure;
 
         // Act
-        using (var ambient = new System.Transactions.TransactionScope(
-                   System.Transactions.TransactionScopeAsyncFlowOption.Enabled))
+        using (var ambient = new TransactionScope(
+                   TransactionScopeAsyncFlowOption.Enabled))
         {
             failure = await Record.ExceptionAsync(() => context.SaveChangesAsync(
                 acceptChanges,
@@ -263,7 +266,7 @@ public abstract class RetryBoundaryTests : ProviderTest
                 attempts++;
                 await using var context = Create(setup, services);
                 await using var transaction = await context.Database.BeginTransactionAsync(
-                    Engine == "Sqlite" ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+                    Engine == "Sqlite" ? DatabaseIsolationLevel.Serializable : DatabaseIsolationLevel.ReadCommitted,
                     token);
 
                 var tree = context
@@ -328,7 +331,7 @@ public abstract class RetryBoundaryTests : ProviderTest
         var commands = new EnterpriseProbe();
         await using var context = Create(setup, services, commands);
         await using var transaction = await context.Database.BeginTransactionAsync(
-            Engine == "Sqlite" ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+            Engine == "Sqlite" ? DatabaseIsolationLevel.Serializable : DatabaseIsolationLevel.ReadCommitted,
             CancellationToken.None);
 
         var tree = context

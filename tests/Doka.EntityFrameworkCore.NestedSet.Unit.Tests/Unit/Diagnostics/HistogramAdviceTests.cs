@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Checks the duration metadata that real collectors receive when instruments are published.</summary>
@@ -13,7 +15,7 @@ public sealed class HistogramAdviceTests
     )
     {
         // Arrange
-        var instruments = new System.Collections.Concurrent.ConcurrentDictionary<string, Histogram<double>>(
+        var instruments = new ConcurrentDictionary<string, Histogram<double>>(
             StringComparer.Ordinal);
 
         double[] expected =

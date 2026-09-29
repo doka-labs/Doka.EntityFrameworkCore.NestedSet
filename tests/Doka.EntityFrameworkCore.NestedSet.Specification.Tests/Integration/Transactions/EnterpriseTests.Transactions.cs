@@ -1,3 +1,6 @@
+using System.Transactions;
+using DatabaseIsolationLevel = System.Data.IsolationLevel;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class EnterpriseTests
@@ -230,7 +233,7 @@ public abstract partial class EnterpriseTests
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
         await using var transaction = await context.Database.BeginTransactionAsync(
-            IsolationLevel.RepeatableRead,
+            DatabaseIsolationLevel.RepeatableRead,
             CancellationToken.None);
 
         var tree = context
@@ -262,8 +265,8 @@ public abstract partial class EnterpriseTests
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        using var ambient = new System.Transactions.TransactionScope(
-            System.Transactions.TransactionScopeAsyncFlowOption.Enabled);
+        using var ambient = new TransactionScope(
+            TransactionScopeAsyncFlowOption.Enabled);
 
         // Act
         var exception = await Record.ExceptionAsync(() => tree.InsertRootAsync(

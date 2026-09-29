@@ -1,3 +1,5 @@
+using BenchmarkRunMode = BenchmarkDotNet.Jobs.RunMode;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks;
 
 /// <summary>Provides the shared exporters and allocation diagnostics for observational benchmarks.</summary>

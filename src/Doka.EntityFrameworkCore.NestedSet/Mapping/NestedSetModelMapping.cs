@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Mapping;
 
 /// <summary>Indexes hierarchy metadata once per EF model for repeated save candidate scans.</summary>
@@ -95,7 +97,7 @@ internal sealed class NestedSetModelMapping
     /// <returns>Whether the entity is configured as a nested set.</returns>
     internal bool TryDescriptor(
         IEntityType entity,
-        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out NestedSetModelDescriptor? descriptor
+        [NotNullWhen(true)] out NestedSetModelDescriptor? descriptor
     ) => _descriptors.TryGetValue(entity, out descriptor);
 
     /// <summary>Gets the cached order, including its key tiebreaker, or null for an unordered entity.</summary>

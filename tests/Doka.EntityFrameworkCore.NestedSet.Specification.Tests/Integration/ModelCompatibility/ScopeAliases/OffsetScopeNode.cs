@@ -55,16 +55,16 @@ internal sealed class OffsetScopeContext : DbContext
         var scope = node
             .Property(entity => entity.Scope)
             .HasConversion(
-                value => value.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+                value => value.ToString("O", CultureInfo.InvariantCulture),
                 value => DateTimeOffset.ParseExact(
                     value,
                     "O",
-                    System.Globalization.CultureInfo.InvariantCulture,
-                    System.Globalization.DateTimeStyles.RoundtripKind))
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.RoundtripKind))
             .HasMaxLength(40);
 
         // WHY: EF must distinguish the stored offsets even though DateTimeOffset.Equals compare instants.
-        var exact = new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<DateTimeOffset>(
+        var exact = new ValueComparer<DateTimeOffset>(
             (first, second) => first.Ticks == second.Ticks && first.Offset == second.Offset,
             value => value.Ticks.GetHashCode() ^ value.Offset.GetHashCode(),
             value => value);

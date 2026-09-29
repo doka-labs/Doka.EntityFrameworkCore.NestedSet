@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Verifies that raw metadata preserves fixture ownership and effective shared engine coverage.</summary>
@@ -1027,8 +1029,8 @@ public sealed class ProviderTestContractTests
         /// <param name="sourceFilePath">The compiler-supplied source path.</param>
         /// <param name="sourceLineNumber">The compiler-supplied source line.</param>
         public UnsupportedFactAttribute(
-            [System.Runtime.CompilerServices.CallerFilePath] string? sourceFilePath = null,
-            [System.Runtime.CompilerServices.CallerLineNumber] int sourceLineNumber = -1
+            [CallerFilePath] string? sourceFilePath = null,
+            [CallerLineNumber] int sourceLineNumber = -1
         ) : base(sourceFilePath, sourceLineNumber) { }
     }
 

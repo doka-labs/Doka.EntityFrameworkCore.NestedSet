@@ -1,3 +1,6 @@
+using MySqlConnector;
+using Npgsql;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class EnterpriseTests
@@ -163,7 +166,7 @@ public abstract partial class EnterpriseTests
         if (Engine == "PostgreSql")
         {
             // WHY: Npgsql's nonretrying strategy wraps transient provider errors; the SQLSTATE proves lock contention.
-            Assert.Equal("55P03", Assert.IsType<Npgsql.PostgresException>(exception?.GetBaseException()).SqlState);
+            Assert.Equal("55P03", Assert.IsType<PostgresException>(exception?.GetBaseException()).SqlState);
         }
         else if (Engine == "SqlServer")
         {
@@ -171,7 +174,7 @@ public abstract partial class EnterpriseTests
         }
         else
         {
-            Assert.Equal(1205, Assert.IsType<MySqlConnector.MySqlException>(exception).Number);
+            Assert.Equal(1205, Assert.IsType<MySqlException>(exception).Number);
         }
 
         Assert.Same(transaction, first.Database.CurrentTransaction);

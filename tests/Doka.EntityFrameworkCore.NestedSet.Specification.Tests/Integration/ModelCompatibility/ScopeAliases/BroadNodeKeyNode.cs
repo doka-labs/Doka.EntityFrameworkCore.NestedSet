@@ -131,7 +131,7 @@ internal static class BroadNodeKeyModel
 
         // WHY: EF relationship fixup follows each database collation, while the sorted refresh must still
         // reject changes to the actual stored representation even when the database equates the spellings.
-        var comparer = new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<BroadNodeKey>(
+        var comparer = new ValueComparer<BroadNodeKey>(
             (
                 first,
                 second

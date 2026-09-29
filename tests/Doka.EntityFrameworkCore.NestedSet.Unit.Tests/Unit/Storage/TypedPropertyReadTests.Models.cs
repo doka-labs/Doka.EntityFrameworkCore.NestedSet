@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Provides model-only fixtures for live typed value and optional parent reads.</summary>
@@ -61,11 +63,11 @@ public sealed partial class TypedPropertyReadTests
             node.Property<int?>(ShadowParent);
 
             var valueConverter =
-                new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<ValueKey, long>(
+                new ValueConverter<ValueKey, long>(
                     value => value.Value, value => new ValueKey(value));
 
             var referenceConverter =
-                new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<ReferenceKey?, string?>(
+                new ValueConverter<ReferenceKey?, string?>(
                     value => ToProvider(value), value => FromProvider(value));
 
             node.Property(value => value.StructParent).HasConversion(valueConverter);

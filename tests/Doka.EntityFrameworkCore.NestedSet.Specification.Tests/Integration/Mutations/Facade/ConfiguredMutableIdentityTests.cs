@@ -438,7 +438,7 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
                 property.HasMaxLength(40);
                 property.HasConversion(value => value.Value, value => new MutableIdentity(value));
                 property.Metadata.SetValueComparer(
-                    new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<MutableIdentity>(
+                    new ValueComparer<MutableIdentity>(
                         (left, right) => left != null && right != null && left.Value == right.Value,
                         value => StringComparer.Ordinal.GetHashCode(value.Value),
                         value => new MutableIdentity(value.Value)));

@@ -212,11 +212,11 @@ public abstract partial class BulkIntervalRefreshTests
     )
     {
         var entity = context.Model.FindEntityType(typeof(TreeNode))!;
-        var table = Microsoft.EntityFrameworkCore.Metadata.StoreObjectIdentifier.Table(
+        var table = StoreObjectIdentifier.Table(
             entity.GetTableName()!,
             entity.GetSchema());
 
-        var sql = context.GetService<Microsoft.EntityFrameworkCore.Storage.ISqlGenerationHelper>();
+        var sql = context.GetService<ISqlGenerationHelper>();
         var name = sql.DelimitIdentifier(table.Name, table.Schema);
 
         return failure switch

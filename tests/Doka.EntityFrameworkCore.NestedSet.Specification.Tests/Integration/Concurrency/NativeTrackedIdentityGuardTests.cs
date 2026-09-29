@@ -549,14 +549,14 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
             // intentionally reverses that relationship. Neither comparer can stand in for database identity.
             tree.Metadata.SetValueComparer(
                 BroadComparer
-                    ? new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<BroadTreeId>(
+                    ? new ValueComparer<BroadTreeId>(
                         (
                             first,
                             second
                         ) => StringComparer.OrdinalIgnoreCase.Equals(first!.Value, second!.Value),
                         value => StringComparer.OrdinalIgnoreCase.GetHashCode(value.Value),
                         value => new BroadTreeId(value.Value))
-                    : new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<BroadTreeId>(
+                    : new ValueComparer<BroadTreeId>(
                         (
                             first,
                             second

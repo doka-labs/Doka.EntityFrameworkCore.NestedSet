@@ -1,3 +1,6 @@
+using System.Transactions;
+using TransactionIsolationLevel = System.Transactions.IsolationLevel;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.PostgreSql;
 
 /// <summary>Verifies PostgreSQL ambient save ownership using an isolated fixture.</summary>
@@ -28,13 +31,13 @@ public sealed class AmbientTransactionTests : ProviderTest,
         var saved = 0;
 
         // Act
-        using (var transaction = new System.Transactions.TransactionScope(
-            System.Transactions.TransactionScopeOption.Required,
-            new System.Transactions.TransactionOptions
+        using (var transaction = new TransactionScope(
+            TransactionScopeOption.Required,
+            new TransactionOptions
             {
-                IsolationLevel = System.Transactions.IsolationLevel.ReadCommitted,
+                IsolationLevel = TransactionIsolationLevel.ReadCommitted,
             },
-            System.Transactions.TransactionScopeAsyncFlowOption.Enabled))
+            TransactionScopeAsyncFlowOption.Enabled))
         {
             await using var context = new SaveBoundaryContext(options);
             await context.AddAsync(new OrderingMarker { Id = 1, Value = "ambient" }, CancellationToken.None);

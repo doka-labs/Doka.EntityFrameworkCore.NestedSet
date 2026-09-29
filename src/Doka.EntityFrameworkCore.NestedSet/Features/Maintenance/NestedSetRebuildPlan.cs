@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+
 namespace Doka.EntityFrameworkCore.NestedSet;
 
 /// <summary>Describes the deterministic writes a rebuild would perform without changing the database.</summary>
@@ -33,7 +35,7 @@ public sealed class NestedSetRebuildPlan
         BatchCount = batchCount;
         AffectedRoles = Array.AsReadOnly(affectedRoles.ToArray());
         Issues = Array.AsReadOnly(issues.ToArray());
-        IssueCounts = new System.Collections.ObjectModel.ReadOnlyDictionary<NestedSetValidationCode, long>(
+        IssueCounts = new ReadOnlyDictionary<NestedSetValidationCode, long>(
             new Dictionary<NestedSetValidationCode, long>(issueCounts));
 
         TotalIssueCount = totalIssueCount;

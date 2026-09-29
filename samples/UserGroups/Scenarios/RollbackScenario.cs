@@ -1,3 +1,5 @@
+using System.Data;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Samples.UserGroups;
 
 /// <summary>Shows a caller decision rolling back provisional hierarchy and role writes together.</summary>

@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Migrations.Tests;
 
 /// <summary>Scaffolds, compiles and applies real migrations against one isolated database.</summary>
@@ -613,7 +615,7 @@ public sealed class MigrationDatabase : IAsyncDisposable
     private static bool ReadBoolean(
         DbDataReader reader,
         int ordinal
-    ) => Convert.ToBoolean(reader.GetValue(ordinal), System.Globalization.CultureInfo.InvariantCulture);
+    ) => Convert.ToBoolean(reader.GetValue(ordinal), CultureInfo.InvariantCulture);
 }
 
 /// <summary>The physical, ordered definition of a nonprimary index.</summary>

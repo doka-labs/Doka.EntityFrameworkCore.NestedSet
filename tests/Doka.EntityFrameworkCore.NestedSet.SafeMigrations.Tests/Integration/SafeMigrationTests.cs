@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests;
 
 /// <summary>Exercises optional SafeMigrations adapters against real generated nested-set migration code.</summary>
@@ -228,11 +230,11 @@ public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
     /// <summary>Normalizes provider quoting and whitespace for semantic check-expression assertions.</summary>
     private static string NormalizeSql(
         string expression
-    ) => System.Text.RegularExpressions.Regex.Replace(
+    ) => Regex.Replace(
         expression.ToLowerInvariant(),
         "[\\s\\\"`\\[\\]()]",
         "",
-        System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+        RegexOptions.CultureInvariant);
 
     /// <summary>Captures names, order and uniqueness so replay and rejection must preserve the exact catalog.</summary>
     private static string[] IndexSignatures(

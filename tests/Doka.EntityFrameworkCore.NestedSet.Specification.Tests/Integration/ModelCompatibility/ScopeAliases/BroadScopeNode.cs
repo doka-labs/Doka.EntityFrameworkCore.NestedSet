@@ -91,7 +91,7 @@ internal class BroadScopeContext : DbContext
         }
 
         // WHY: EF's identity map must agree with the distinct provider values, despite the domain equality.
-        var exact = new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<BroadScope>(
+        var exact = new ValueComparer<BroadScope>(
             (first, second) => StringComparer.Ordinal.Equals(first!.Value, second!.Value),
             value => StringComparer.Ordinal.GetHashCode(value.Value),
             value => new BroadScope(value.Value));

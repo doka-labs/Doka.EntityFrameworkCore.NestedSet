@@ -89,7 +89,7 @@ internal sealed class BroadTreeIdContext : DbContext
         }
 
         // WHY: EF's registry key must distinguish the same stored TreeIds as its case-sensitive column.
-        var exact = new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<BroadTreeId>(
+        var exact = new ValueComparer<BroadTreeId>(
             (
                 first,
                 second

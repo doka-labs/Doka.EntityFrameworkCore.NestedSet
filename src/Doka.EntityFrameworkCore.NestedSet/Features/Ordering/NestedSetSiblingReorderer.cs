@@ -168,13 +168,13 @@ internal sealed class NestedSetSiblingReorderer<TEntity, TKey, TTreeId, TScope>
                 values[index * 2] = new NestedSetBatchParameter($"l{index}", _store.Map.Left, item.Left);
                 values[(index * 2) + 1] = new NestedSetBatchParameter($"p{index}", _store.Map.Position, item.Position);
                 assignments.Append(
-                    System.Globalization.CultureInfo.InvariantCulture,
+                    CultureInfo.InvariantCulture,
                     $" WHEN {_batch.Parameter($"l{index}")} THEN {_batch.Parameter($"p{index}")}");
 
                 filter[index] = _batch.Parameter($"l{index}");
             }
 
-            assignments.Append(System.Globalization.CultureInfo.InvariantCulture, $" ELSE {position} END");
+            assignments.Append(CultureInfo.InvariantCulture, $" ELSE {position} END");
             var sql = $"UPDATE {_batch.Table} SET {position} = {assignments}"
                 + $" WHERE {_batch.IdentityPredicate}"
                 + $" AND {left} IN ({string.Join(", ", filter)})";
@@ -257,11 +257,11 @@ internal sealed class NestedSetSiblingReorderer<TEntity, TKey, TTreeId, TScope>
         {
             var contains = $"{right} BETWEEN {_batch.Parameter($"a{index}")} AND {_batch.Parameter($"b{index}")}";
             delta.Append(
-                System.Globalization.CultureInfo.InvariantCulture,
+                CultureInfo.InvariantCulture,
                 $" WHEN {contains} THEN {_batch.Parameter($"d{index}")}");
 
             positions.Append(
-                System.Globalization.CultureInfo.InvariantCulture,
+                CultureInfo.InvariantCulture,
                 $" WHEN {_batch.Parameter($"b{index}")} THEN {_batch.Parameter($"p{index}")}");
 
             if (index > 0)
@@ -276,7 +276,7 @@ internal sealed class NestedSetSiblingReorderer<TEntity, TKey, TTreeId, TScope>
         }
 
         delta.Append(" ELSE 0 END");
-        positions.Append(System.Globalization.CultureInfo.InvariantCulture, $" ELSE {position} END");
+        positions.Append(CultureInfo.InvariantCulture, $" ELSE {position} END");
 
         // WHY: MySQL evaluates setters in order. Every condition reads the staged Right discriminator; updating it
         // last allows one command per batch while preserving the staged coordinate for every CASE expression.

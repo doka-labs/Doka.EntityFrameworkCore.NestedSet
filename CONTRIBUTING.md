@@ -74,6 +74,16 @@ The repository `.editorconfig` is copied from `Doka.EntityFrameworkCore.MySql`
 and is authoritative. Use the existing Rider formatter for layout. Roslyn style
 and unused-import checks run independently and must remain clean.
 
+Run the focused import check without changing Rider-formatted code:
+
+```sh
+dotnet format Doka.EntityFrameworkCore.NestedSet.slnx style \
+  --diagnostics IDE0005 --severity hidden --verify-no-changes --no-restore
+```
+
+Build after moving global imports: linked source files can require an import
+even when it appears unused in one consuming project.
+
 - Use ASCII and US English in source, comments, documentation, configuration,
   test names, and user-visible text.
 - Nullable reference types and warnings-as-errors apply solution-wide.

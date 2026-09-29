@@ -1,3 +1,5 @@
+using System.Data.Common;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Execution;
 
 /// <summary>Acquires complete tree identities in deterministic database order.</summary>
@@ -250,7 +252,7 @@ internal static class NestedSetTreeLocks
     private static void AppendSqlServerJsonSource(
         StringBuilder sql,
         List<object> parameters,
-        System.Data.Common.DbCommand command,
+        DbCommand command,
         string sourceAlias,
         string scopeAlias,
         string treeAlias,
@@ -289,7 +291,7 @@ internal static class NestedSetTreeLocks
     private static void AppendJsonSource(
         StringBuilder sql,
         List<object> parameters,
-        System.Data.Common.DbCommand command,
+        DbCommand command,
         NestedSetProviderKind kind,
         string sourceAlias,
         string scopeAlias,
@@ -436,7 +438,7 @@ internal static class NestedSetTreeLocks
     /// <summary>Serializes provider-form values directly into one rowset parameter.</summary>
     private static void AddJsonParameter(
         List<object> parameters,
-        System.Data.Common.DbCommand command,
+        DbCommand command,
         NestedSetTreeRegistryMapping mapping,
         INestedSetTreeLockRequest[] requests,
         bool hexBinary
@@ -535,7 +537,7 @@ internal static class NestedSetTreeLocks
     private static void AppendParameter(
         StringBuilder sql,
         List<object> parameters,
-        System.Data.Common.DbCommand command,
+        DbCommand command,
         IProperty property,
         object? value,
         string name

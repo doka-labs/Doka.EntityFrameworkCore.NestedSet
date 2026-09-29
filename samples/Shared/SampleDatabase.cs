@@ -56,7 +56,7 @@ internal static class SampleDatabase
         cancellationToken.ThrowIfCancellationRequested();
 
         // WHY: CanConnect on a writable SQLite connection may create a file; inspection must fail before opening it.
-        if (context.Database.GetDbConnection() is Microsoft.Data.Sqlite.SqliteConnection sqlite
+        if (context.Database.GetDbConnection() is SqliteConnection sqlite
             && !File.Exists(sqlite.DataSource))
         {
             throw new InvalidOperationException("No sample results exist yet. Run a scenario first.");
@@ -79,7 +79,7 @@ internal static class SampleDatabase
 
         if (configuration.Provider == SampleProvider.Sqlite)
         {
-            var actual = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder(connection.ConnectionString);
+            var actual = new SqliteConnectionStringBuilder(connection.ConnectionString);
 
             if (!string.Equals(Path.GetFullPath(actual.DataSource), configuration.SqlitePath, StringComparison.Ordinal))
             {

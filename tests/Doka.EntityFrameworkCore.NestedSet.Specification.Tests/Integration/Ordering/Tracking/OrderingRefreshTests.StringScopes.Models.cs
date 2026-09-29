@@ -48,7 +48,7 @@ public abstract partial class OrderingRefreshTests
                 .UseCollation(collation);
 
             scope.Metadata.SetValueComparer(
-                new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<string>(
+                new ValueComparer<string>(
                     (
                         left,
                         right

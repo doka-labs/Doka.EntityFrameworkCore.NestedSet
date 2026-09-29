@@ -142,7 +142,7 @@ public sealed class BulkIntervalRefreshContext : DbContext
         // WHY: SQL distinguishes C/c while application equality deliberately does not. Refresh must verify the
         // exact inserted key instead of allowing a same-count replacement through the application's comparer.
         key.Metadata.SetValueComparer(
-            new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<string>(
+            new ValueComparer<string>(
                 (
                     left,
                     right

@@ -1,3 +1,5 @@
+using System.Data;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Samples.UserGroups;
 
 /// <summary>Provisions a group and its ordinary role data in one caller-owned transaction.</summary>

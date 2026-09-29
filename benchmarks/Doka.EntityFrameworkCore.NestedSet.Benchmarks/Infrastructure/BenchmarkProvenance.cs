@@ -1,3 +1,5 @@
+using BenchmarkDotNet.Characteristics;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks;
 
 /// <summary>Persists source, environment and effective measurement settings alongside framework exports.</summary>
@@ -275,7 +277,7 @@ public static class BenchmarkProvenance
     /// <param name="characteristics">The actual job run, accuracy or GC configuration.</param>
     /// <returns>Characteristic names and invariant formatted values without inherited process credentials.</returns>
     private static Dictionary<string, string> DescribeCharacteristics(
-        BenchmarkDotNet.Characteristics.CharacteristicObject characteristics
+        CharacteristicObject characteristics
     ) => characteristics
         .GetCharacteristicsWithValues()
         .ToDictionary(

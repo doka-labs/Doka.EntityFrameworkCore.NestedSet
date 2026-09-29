@@ -1,3 +1,5 @@
+using System.Data.Common;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Diagnostics;
 
 /// <summary>Measures library-owned boundaries without recording any application data.</summary>
@@ -428,7 +430,7 @@ internal static class NestedSetTelemetry
         ArgumentException => "invalid_argument",
         OverflowException => "overflow",
         NotSupportedException => "unsupported",
-        DbUpdateException or System.Data.Common.DbException => "database",
+        DbUpdateException or DbException => "database",
         _ => "unexpected",
     };
 

@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+
 namespace Doka.EntityFrameworkCore.NestedSet;
 
 /// <summary>Describes the structural validity of one exact tree.</summary>
@@ -22,7 +24,7 @@ public sealed class NestedSetValidationReport
         Level = level;
         NodeCount = nodeCount;
         Issues = Array.AsReadOnly(issues.ToArray());
-        IssueCounts = new System.Collections.ObjectModel.ReadOnlyDictionary<NestedSetValidationCode, long>(
+        IssueCounts = new ReadOnlyDictionary<NestedSetValidationCode, long>(
             issueCounts is null
                 ? issues
                     .GroupBy(issue => issue.Code)

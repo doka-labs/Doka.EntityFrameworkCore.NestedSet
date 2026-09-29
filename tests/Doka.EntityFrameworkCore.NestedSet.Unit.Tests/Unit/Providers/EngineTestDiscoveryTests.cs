@@ -1,3 +1,5 @@
+using Xunit.Runner.Common;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Verifies fixture-owned shared discovery, explicit exclusions, and normal xUnit enumeration.</summary>
@@ -625,8 +627,8 @@ public sealed class EngineTestDiscoveryTests
         bool preEnumerate
     )
     {
-        var options = Xunit.Runner.Common.TestFrameworkOptions.ForDiscovery(
-            new Xunit.Runner.Common.TestAssemblyConfiguration());
+        var options = TestFrameworkOptions.ForDiscovery(
+            new TestAssemblyConfiguration());
 
         options.SetValue(TestOptionsNames.Discovery.PreEnumerateTheories, preEnumerate);
 

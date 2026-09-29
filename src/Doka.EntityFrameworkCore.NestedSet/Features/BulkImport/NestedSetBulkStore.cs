@@ -383,7 +383,7 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
         }
 
         sql.Append(
-            System.Globalization.CultureInfo.InvariantCulture,
+            CultureInfo.InvariantCulture,
             $" WHERE {_batch.IdentityPredicate} AND {key} IN (");
 
         for (var index = 0; index < count; index++)
@@ -411,16 +411,16 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
     {
         var column = _batch.Column(property);
         sql.Append(
-            System.Globalization.CultureInfo.InvariantCulture,
+            CultureInfo.InvariantCulture,
             $"{column} = CASE {_batch.Column(_store.Map.Key)}");
 
         for (var index = 0; index < count; index++)
         {
             sql.Append(
-                System.Globalization.CultureInfo.InvariantCulture,
+                CultureInfo.InvariantCulture,
                 $" WHEN {_batch.Parameter($"k{index}")} THEN {_batch.Parameter($"{prefix}{index}")}");
         }
 
-        sql.Append(System.Globalization.CultureInfo.InvariantCulture, $" ELSE {column} END");
+        sql.Append(CultureInfo.InvariantCulture, $" ELSE {column} END");
     }
 }

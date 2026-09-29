@@ -1,3 +1,7 @@
+using System.Collections;
+using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class OrderingQueryShapeTests
@@ -192,9 +196,9 @@ public abstract partial class OrderingQueryShapeTests
 
         /// <inheritdoc />
         [return:
-            System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(
-                System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties
-                | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicFields)]
+            DynamicallyAccessedMembers(
+                DynamicallyAccessedMemberTypes.PublicProperties
+                | DynamicallyAccessedMemberTypes.PublicFields)]
         public override Type GetFieldType(
             int ordinal
         ) => inner.GetFieldType(ordinal);
@@ -304,9 +308,9 @@ public abstract partial class OrderingQueryShapeTests
 
         /// <inheritdoc />
         [return:
-            System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(
-                System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties
-                | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicFields)]
+            DynamicallyAccessedMembers(
+                DynamicallyAccessedMemberTypes.PublicProperties
+                | DynamicallyAccessedMemberTypes.PublicFields)]
         public override Type GetProviderSpecificFieldType(
             int ordinal
         ) => inner.GetProviderSpecificFieldType(ordinal);
@@ -323,7 +327,7 @@ public abstract partial class OrderingQueryShapeTests
         ) => inner.GetSchemaTableAsync(cancellationToken);
 
         /// <inheritdoc />
-        public override Task<System.Collections.ObjectModel.ReadOnlyCollection<DbColumn>> GetColumnSchemaAsync(
+        public override Task<ReadOnlyCollection<DbColumn>> GetColumnSchemaAsync(
             CancellationToken cancellationToken = default
         ) => inner.GetColumnSchemaAsync(cancellationToken);
 
@@ -333,7 +337,7 @@ public abstract partial class OrderingQueryShapeTests
         ) => inner.GetData(ordinal);
 
         /// <inheritdoc />
-        public override System.Collections.IEnumerator GetEnumerator() => inner.GetEnumerator();
+        public override IEnumerator GetEnumerator() => inner.GetEnumerator();
 
         /// <inheritdoc />
         public override void Close()

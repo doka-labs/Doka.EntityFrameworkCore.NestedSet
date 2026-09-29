@@ -52,6 +52,6 @@ internal static class MappingDeleteTestSupport
 
         return Convert.ToInt64(
             await command.ExecuteScalarAsync(CancellationToken.None),
-            System.Globalization.CultureInfo.InvariantCulture);
+            CultureInfo.InvariantCulture);
     }
 }

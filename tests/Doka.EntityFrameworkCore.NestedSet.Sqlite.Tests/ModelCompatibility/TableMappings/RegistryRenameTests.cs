@@ -1,3 +1,9 @@
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Sqlite;
 
 /// <summary>Guards registry persistence when an application entity changes its CLR identity.</summary>
@@ -53,7 +59,7 @@ public sealed class RegistryRenameTests : ProviderTest, IClassFixture<ProviderFi
     public async Task ClrRenameRetainsRegistryLifecycleRows()
     {
         // Arrange
-        await using var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=:memory:");
+        await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync(CancellationToken.None);
         var beforeOptions = new DbContextOptionsBuilder<RegistryRenameContext<PreviousFolder>>()
             .ConfigureTestWarnings()
@@ -111,7 +117,7 @@ public sealed class RegistryRenameTests : ProviderTest, IClassFixture<ProviderFi
     public async Task LegacyRegistryNameMigratesWithoutLosingLifecycleRows()
     {
         // Arrange
-        await using var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=:memory:");
+        await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync(CancellationToken.None);
         var beforeOptions = new DbContextOptionsBuilder<RegistryRenameContext<PreviousFolder>>()
             .ConfigureTestWarnings()
@@ -144,8 +150,8 @@ public sealed class RegistryRenameTests : ProviderTest, IClassFixture<ProviderFi
             oldName = "DokaNestedSetTrees_"
                 + Convert
                     .ToHexString(
-                        System.Security.Cryptography.SHA256.HashData(
-                            System.Text.Encoding.UTF8.GetBytes(oldIdentity)))[..16];
+                        SHA256.HashData(
+                            Encoding.UTF8.GetBytes(oldIdentity)))[..16];
 
             AddLifecycleRows(before, registry.Name, activeTree, retiredTree);
             await before.SaveChangesAsync(CancellationToken.None);
@@ -168,11 +174,11 @@ public sealed class RegistryRenameTests : ProviderTest, IClassFixture<ProviderFi
 
         // Act
         await using var after = new RegistryRenameContext<RenamedFolder>(afterOptions);
-        var migration = new Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder(after.Database.ProviderName!);
+        var migration = new MigrationBuilder(after.Database.ProviderName!);
 
         migration.RenameTable(name: oldName, newName: newName);
         var commands = after
-            .GetService<Microsoft.EntityFrameworkCore.Migrations.IMigrationsSqlGenerator>()
+            .GetService<IMigrationsSqlGenerator>()
             .Generate(migration.Operations, after.Model);
 
         var connectionService = after.GetService<IRelationalConnection>();

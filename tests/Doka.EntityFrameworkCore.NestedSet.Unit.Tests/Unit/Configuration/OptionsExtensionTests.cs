@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore.Storage;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Verifies options-based nested-set registration and its context lifetime behavior.</summary>
@@ -218,7 +220,7 @@ public sealed class OptionsExtensionTests
 
         // Act
         var script = context
-            .GetService<Microsoft.EntityFrameworkCore.Migrations.IHistoryRepository>()
+            .GetService<IHistoryRepository>()
             .GetCreateIfNotExistsScript();
 
         // Assert
@@ -279,7 +281,7 @@ public sealed class OptionsExtensionTests
         using var context = new EnabledContext(options);
 
         // Act
-        var service = context.GetService<Microsoft.EntityFrameworkCore.Storage.IDatabase>();
+        var service = context.GetService<IDatabase>();
 
         // Assert
         Assert.IsType<NestedSetRelationalDatabase>(service);
@@ -292,8 +294,8 @@ public sealed class OptionsExtensionTests
         // Arrange
         var services = new ServiceCollection();
         services.AddScoped<
-            Microsoft.EntityFrameworkCore.Storage.IDatabase,
-            Microsoft.EntityFrameworkCore.Storage.RelationalDatabase>();
+            IDatabase,
+            RelationalDatabase>();
 
         var extension = (IDbContextOptionsExtension)NestedSetOptionsExtension.Instance;
 
@@ -303,7 +305,7 @@ public sealed class OptionsExtensionTests
         // Assert
         var database = Assert.Single(
             services,
-            descriptor => descriptor.ServiceType == typeof(Microsoft.EntityFrameworkCore.Storage.IDatabase));
+            descriptor => descriptor.ServiceType == typeof(IDatabase));
 
         Assert.Equal(typeof(NestedSetRelationalDatabase), database.ImplementationType);
         Assert.Equal(ServiceLifetime.Scoped, database.Lifetime);
@@ -315,7 +317,7 @@ public sealed class OptionsExtensionTests
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddScoped<Microsoft.EntityFrameworkCore.Storage.IDatabase>(_ =>
+        services.AddScoped<IDatabase>(_ =>
             throw new InvalidOperationException("The provider-specific test service is never resolved."));
 
         IDbContextOptionsExtension extension = NestedSetOptionsExtension.Instance;

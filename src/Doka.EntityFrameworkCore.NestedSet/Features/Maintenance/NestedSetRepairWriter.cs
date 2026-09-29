@@ -77,7 +77,7 @@ internal sealed class NestedSetRepairWriter<TEntity, TKey, TTreeId, TScope>
         sql.Append(", ");
         AppendCoordinate(sql, key, _store.Map.Position, "p", count);
         sql.Append(
-            System.Globalization.CultureInfo.InvariantCulture,
+            CultureInfo.InvariantCulture,
             $" WHERE {_batch.IdentityPredicate} AND {key} IN (");
         for (var index = 0; index < count; index++)
         {
@@ -104,16 +104,16 @@ internal sealed class NestedSetRepairWriter<TEntity, TKey, TTreeId, TScope>
     )
     {
         var column = _batch.Column(property);
-        sql.Append(System.Globalization.CultureInfo.InvariantCulture, $"{column} = CASE {key}");
+        sql.Append(CultureInfo.InvariantCulture, $"{column} = CASE {key}");
         for (var index = 0; index < count; index++)
         {
             sql.Append(
-                System.Globalization.CultureInfo.InvariantCulture,
+                CultureInfo.InvariantCulture,
                 $" WHEN {_batch.Parameter($"k{index}")} THEN {_batch.Parameter($"{prefix}{index}")}");
         }
 
         // WHY: One CASE with many WHEN arms has constant nesting depth and uses only 5 * 64 + 1 parameters.
         // Both the discriminator and the scope predicate retain native database key and collation semantics.
-        sql.Append(System.Globalization.CultureInfo.InvariantCulture, $" ELSE {column} END");
+        sql.Append(CultureInfo.InvariantCulture, $" ELSE {column} END");
     }
 }

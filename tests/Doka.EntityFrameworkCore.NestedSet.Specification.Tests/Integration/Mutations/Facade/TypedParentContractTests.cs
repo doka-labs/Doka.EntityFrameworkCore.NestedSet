@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Verifies assigned default scalar keys remain present parents rather than root sentinels.</summary>
@@ -346,7 +348,7 @@ public abstract class TypedParentContractTests : ProviderTest
         {
             var node = modelBuilder.Entity<OperatorFreeNode>();
             var converter =
-                new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<OperatorFreeKey, int>(
+                new ValueConverter<OperatorFreeKey, int>(
                     key => key.Value,
                     value => new OperatorFreeKey(value));
 

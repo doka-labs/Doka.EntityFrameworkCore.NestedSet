@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Measures executed production refresh shapes across disjoint intervals and ordinal key batches.</summary>
@@ -151,8 +154,8 @@ public abstract partial class OrderingQueryShapeTests : ProviderTest
         for (var index = 0; index < observed.Commands.Length; index++)
         {
             var command = observed.Commands[index];
-            var bytes = System.Text.Encoding.UTF8.GetBytes(command.Sql);
-            var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
+            var bytes = Encoding.UTF8.GetBytes(command.Sql);
+            var hash = Convert.ToHexString(SHA256.HashData(bytes));
             var ordinals = index < observed.Readers.Length
                 ? string.Join(',', observed.Readers[index].Ordinals)
                 : "missing reader";

@@ -1,10 +1,14 @@
+using System.Collections.Concurrent;
+using MySqlConnector;
+using Npgsql;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Shares one container per server engine across an integration-test assembly.</summary>
 /// <remarks>Each caller receives a distinct database, so xUnit collections can run concurrently.</remarks>
 public sealed class TestDatabaseServers : IAsyncDisposable
 {
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, Lazy<Task<Server>>> _servers = new(
+    private readonly ConcurrentDictionary<string, Lazy<Task<Server>>> _servers = new(
         StringComparer.Ordinal);
 
     /// <summary>Resolves the server owner of the currently executing provider test assembly.</summary>
@@ -43,11 +47,11 @@ public sealed class TestDatabaseServers : IAsyncDisposable
         return engine switch
         {
             "MySql" or "MariaDb" =>
-                new MySqlConnector.MySqlConnectionStringBuilder(server.ConnectionString)
+                new MySqlConnectionStringBuilder(server.ConnectionString)
                 {
                     Database = databaseName,
                 }.ConnectionString,
-            "PostgreSql" => new Npgsql.NpgsqlConnectionStringBuilder(server.ConnectionString)
+            "PostgreSql" => new NpgsqlConnectionStringBuilder(server.ConnectionString)
             {
                 Database = databaseName,
             }.ConnectionString,

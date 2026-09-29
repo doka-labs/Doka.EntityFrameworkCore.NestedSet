@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using FileDirectory = System.IO.Directory;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests;
 
@@ -143,7 +144,7 @@ public sealed class BenchmarkProvenanceDriftTests
                 Path.GetTempPath(),
                 "nestedset-source-" + Guid.NewGuid().ToString("N"));
 
-            System.IO.Directory.CreateDirectory(directory);
+            FileDirectory.CreateDirectory(directory);
             var repository = new TemporaryRepository(directory);
             await BenchmarkLifecycle.InitializeAsync(
                 repository,
@@ -164,7 +165,7 @@ public sealed class BenchmarkProvenanceDriftTests
         /// <inheritdoc />
         public ValueTask DisposeAsync()
         {
-            System.IO.Directory.Delete(Directory, true);
+            FileDirectory.Delete(Directory, true);
 
             return ValueTask.CompletedTask;
         }

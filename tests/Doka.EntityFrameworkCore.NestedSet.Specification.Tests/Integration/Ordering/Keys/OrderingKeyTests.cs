@@ -252,7 +252,7 @@ public abstract partial class OrderingKeyTests : ProviderTest
     private static Guid GuidKey(
         int value
     ) => Guid.Parse(
-        value.ToString("X8", System.Globalization.CultureInfo.InvariantCulture) + "-2345-6789-abcd-010203040506");
+        value.ToString("X8", CultureInfo.InvariantCulture) + "-2345-6789-abcd-010203040506");
 
     /// <summary>Returns a fresh array for each reference so identity lookup must use binary contents.</summary>
     private static byte[] BinaryKey(

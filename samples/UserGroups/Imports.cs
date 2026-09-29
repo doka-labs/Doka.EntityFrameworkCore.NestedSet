@@ -1,15 +1,11 @@
 global using System;
 global using System.Collections.Generic;
-global using System.Data;
-global using System.Data.Common;
 global using System.IO;
 global using System.Linq;
 global using System.Threading;
 global using System.Threading.Tasks;
 global using Doka.EntityFrameworkCore.MySql;
-global using Doka.EntityFrameworkCore.NestedSet;
-global using Doka.EntityFrameworkCore.NestedSet.Samples;
-global using Doka.NestedSet;
+global using Microsoft.Data.Sqlite;
 global using Microsoft.EntityFrameworkCore;
 global using Microsoft.EntityFrameworkCore.Design;
 global using Microsoft.EntityFrameworkCore.Infrastructure;

@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
 
 /// <summary>Overrides inherited binary table comparison with explicit case-insensitive Scope comparison.</summary>
@@ -20,7 +22,7 @@ internal sealed class ExplicitRegistryScopeCollationContext(
 
         // WHY: The explicit column collation takes precedence over the binary physical table default.
         // EF's identity map must therefore use the same case-insensitive identity semantics for this model.
-        var comparer = new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<BroadScope>(
+        var comparer = new ValueComparer<BroadScope>(
             (first, second) => StringComparer.OrdinalIgnoreCase.Equals(first!.Value, second!.Value),
             value => StringComparer.OrdinalIgnoreCase.GetHashCode(value.Value),
             value => new BroadScope(value.Value));

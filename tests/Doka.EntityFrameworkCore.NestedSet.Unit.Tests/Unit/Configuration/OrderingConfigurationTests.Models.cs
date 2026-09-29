@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public sealed partial class OrderingConfigurationTests
@@ -133,7 +135,7 @@ public sealed partial class OrderingConfigurationTests
             string[] names => string.Join(",", names),
             bool[] descending => string.Join(",", descending),
             int[] nullSort => string.Join(",", nullSort),
-            _ => Convert.ToString(annotation.Value, System.Globalization.CultureInfo.InvariantCulture),
+            _ => Convert.ToString(annotation.Value, CultureInfo.InvariantCulture),
         }))
         .ToArray();
 

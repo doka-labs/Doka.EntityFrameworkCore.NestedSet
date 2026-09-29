@@ -256,7 +256,7 @@ public abstract partial class OrderingKeyTests
             node => Assert.Contains(
                 parameters,
                 value => value is string text
-                    && text == node.Id.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+                    && text == node.Id.ToString(CultureInfo.InvariantCulture)));
     }
 
     /// <summary>Reads every payload and structural field for exact tree-isolation and rollback comparisons.</summary>

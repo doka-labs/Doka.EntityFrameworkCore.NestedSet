@@ -1,14 +1,16 @@
+using System.ComponentModel;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Supplies real change notifications without retaining originals for ordinary scalar properties.</summary>
-public abstract class OrderingNotificationEntity : System.ComponentModel.INotifyPropertyChanging,
-    System.ComponentModel.INotifyPropertyChanged
+public abstract class OrderingNotificationEntity : INotifyPropertyChanging,
+    INotifyPropertyChanged
 {
     /// <inheritdoc />
-    public event System.ComponentModel.PropertyChangingEventHandler? PropertyChanging;
+    public event PropertyChangingEventHandler? PropertyChanging;
 
     /// <inheritdoc />
-    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     /// <summary>Raises the paired events required by EF's changing-and-changed notification strategy.</summary>
     /// <typeparam name="TValue">The mapped CLR property type.</typeparam>
@@ -26,9 +28,9 @@ public abstract class OrderingNotificationEntity : System.ComponentModel.INotify
             return;
         }
 
-        PropertyChanging?.Invoke(this, new System.ComponentModel.PropertyChangingEventArgs(name));
+        PropertyChanging?.Invoke(this, new PropertyChangingEventArgs(name));
         field = value;
-        PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(name));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 }
 

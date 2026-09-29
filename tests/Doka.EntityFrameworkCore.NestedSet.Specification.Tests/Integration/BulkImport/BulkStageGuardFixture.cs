@@ -108,7 +108,7 @@ public sealed class BulkStageGuardContext : DbContext
         // WHY: Providers may use case-insensitive string-key tracking independently of the binary SQL collation.
         // The fixture needs distinct A/a principals while only Parent and Scope deliberately use broader equality.
         key.Metadata.SetValueComparer(
-            Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer.CreateDefault<string>(
+            ValueComparer.CreateDefault<string>(
                 favorStructuralComparisons: true));
 
         var scope = text
@@ -121,7 +121,7 @@ public sealed class BulkStageGuardContext : DbContext
             .HasMaxLength(64)
             .UseCollation(collation);
 
-        var comparer = new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<string?>(
+        var comparer = new ValueComparer<string?>(
             (left, right) => string.Equals(left, right, StringComparison.OrdinalIgnoreCase),
             value => value == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode(value),
             value => value);
@@ -156,7 +156,7 @@ public sealed class BulkStageGuardContext : DbContext
             .HasMaxLength(64)
             .Metadata
             .SetValueComparer(
-                Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer.CreateDefault<byte[]>(
+                ValueComparer.CreateDefault<byte[]>(
                     favorStructuralComparisons: true));
         binaryScope.HasNestedSet(builder => builder
             .HasTreeId(node => node.TreeId)

@@ -40,7 +40,7 @@ public abstract partial class KeyFilterComparisonTests
             Engine,
             mode,
             includeExisting,
-            static index => "Collection-" + index.ToString("D2", System.Globalization.CultureInfo.InvariantCulture),
+            static index => "Collection-" + index.ToString("D2", CultureInfo.InvariantCulture),
             static id => new TextNode
             {
                 Id = id,

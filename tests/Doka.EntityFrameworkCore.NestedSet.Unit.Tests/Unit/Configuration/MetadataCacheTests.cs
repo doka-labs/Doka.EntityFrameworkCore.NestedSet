@@ -1,3 +1,7 @@
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>
@@ -154,15 +158,15 @@ public sealed class MetadataCacheTests
 
         // WHY: UseInternalServiceProvider transfers ownership of the complete EF service graph to the caller.
         // Registering the same internal services as UseNestedSets keeps this cache-isolation test representative.
-        Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions.TryAddEnumerable(
+        ServiceCollectionDescriptorExtensions.TryAddEnumerable(
             services,
             ServiceDescriptor
-                .Scoped<Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure.IConventionSetPlugin,
+                .Scoped<IConventionSetPlugin,
                     NestedSetConventionSetPlugin>());
-        Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions.TryAddEnumerable(
+        ServiceCollectionDescriptorExtensions.TryAddEnumerable(
             services,
             ServiceDescriptor
-                .Singleton<Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor,
+                .Singleton<IInterceptor,
                     Features.ManagedSave.NestedSetSaveGuardInterceptor>());
 
         return services.BuildServiceProvider();

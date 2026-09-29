@@ -1,3 +1,5 @@
+using Microsoft.Data.Sqlite;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Observes structural SQL and injects deterministic faults at repair batch boundaries.</summary>
@@ -170,9 +172,9 @@ public sealed class EnterpriseProbe : DbCommandInterceptor
             return (DbParameter)cloneable.Clone();
         }
 
-        if (parameter is Microsoft.Data.Sqlite.SqliteParameter sqlite)
+        if (parameter is SqliteParameter sqlite)
         {
-            return new Microsoft.Data.Sqlite.SqliteParameter(sqlite.ParameterName, sqlite.SqliteType)
+            return new SqliteParameter(sqlite.ParameterName, sqlite.SqliteType)
             {
                 Value = sqlite.Value,
                 Size = sqlite.Size,

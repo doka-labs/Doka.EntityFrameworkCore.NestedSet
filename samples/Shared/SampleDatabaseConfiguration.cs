@@ -63,7 +63,7 @@ internal sealed class SampleDatabaseConfiguration
                 ?? Path.Combine(Environment.CurrentDirectory, "artifacts", "samples"));
 
             var sqlitePath = Path.Combine(directory, databaseName + ".sqlite");
-            var sqlite = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+            var sqlite = new SqliteConnectionStringBuilder
             {
                 DataSource = sqlitePath,
                 ForeignKeys = true,
@@ -121,11 +121,11 @@ internal sealed class SampleDatabaseConfiguration
 
         if (Provider == SampleProvider.Sqlite)
         {
-            var sqlite = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder(_connectionString)
+            var sqlite = new SqliteConnectionStringBuilder(_connectionString)
             {
                 Mode = readOnly
-                    ? Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly
-                    : Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate,
+                    ? SqliteOpenMode.ReadOnly
+                    : SqliteOpenMode.ReadWriteCreate,
             };
 
             options.UseSqlite(sqlite.ConnectionString);

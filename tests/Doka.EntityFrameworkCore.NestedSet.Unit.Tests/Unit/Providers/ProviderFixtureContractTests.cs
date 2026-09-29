@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Checks constructor support against xUnit's public reflection metadata without creating resources.</summary>
@@ -570,7 +572,7 @@ public sealed class ProviderFixtureContractTests
     {
         /// <summary>Allows xUnit's test-class optional fallback.</summary>
         public OptionalArgumentSubject(
-            [System.Runtime.InteropServices.Optional] Resource? resource
+            [Optional] Resource? resource
         ) { }
     }
 
@@ -769,7 +771,7 @@ public sealed class ProviderFixtureContractTests
     {
         /// <summary>Declares an optional marker that cannot replace a missing fixture dependency.</summary>
         public OptionalResource(
-            [System.Runtime.InteropServices.Optional] Resource? resource
+            [Optional] Resource? resource
         ) { }
     }
 
