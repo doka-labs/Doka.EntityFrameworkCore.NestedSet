@@ -1,32 +1,49 @@
-## Problem and result
+## Summary
 
-<!-- Describe the consumer problem and the resulting behavior. Link the issue or
-design discussion. Keep security reports private through SECURITY.md. -->
+- Consumer problem and resulting behavior:
+- Why this change is needed now:
+- Risk and recovery:
 
-## Scope and compatibility
+## Contract impact
 
-<!-- Identify affected packages, providers, public APIs, migrations, transaction
-behavior, documentation, and performance. Explain meaningful tradeoffs and any
-remaining limitations. Mark unaffected areas only when their boundary is clear. -->
+Use `unchanged` or `changed` for each row. Explain changed behavior and link
+the relevant tests or documentation. For an unaffected contract, a short reason
+is enough.
 
-## Verification
-
-| Check | Command or evidence | Result |
+| Contract | Disposition | Impact and evidence |
 | --- | --- | --- |
-| Relevant checks | Replace with exact commands and provider versions where relevant | Passed, failed, or not run with reason |
+| Public APIs and the two package contracts |  |  |
+| Tree identity, bounds, ordering, and data integrity |  |  |
+| Transactions, retries, cancellation, and concurrency |  |  |
+| Provider, migration, and supported-version behavior |  |  |
 
-<!-- Include applicable success, rejection, rollback, cancellation, and concurrency
-cases. For a defect, identify its reproducer and regression test. A passing build
-does not prove live provider or package-consumer behavior. -->
+## Evidence impact
+
+| Evidence path | Disposition | Impact and evidence |
+| --- | --- | --- |
+| Positive, rejection, rollback, and provider tests |  |  |
+| Deterministic performance and allocation evidence |  |  |
+| Package, consumer, SBOM, and release evidence |  |  |
+| Public documentation and samples |  |  |
+
+## Validation
+
+Use `passed`, `not applicable`, or `pending` for each row. Give the exact command,
+CI job, provider versions, and result when applicable. Explain `not applicable`;
+resolve `pending` before requesting final review. A local workspace run does not
+establish hosted release or publication evidence.
+
+| Check | Status | Command, result, or reason |
+| --- | --- | --- |
+| Locked restore, Release build, and Roslyn style/import checks |  |  |
+| Relevant unit and provider integration tests |  |  |
+| Migration, package-consumer, or SBOM checks when affected |  |  |
+| Other targeted checks |  |  |
 
 ## Review checklist
 
-- [ ] The change follows CONTRIBUTING.md, .editorconfig, and the Code of Conduct.
-- [ ] Relevant tests and checks passed; checks not run and unresolved issues are recorded above.
-- [ ] Public XML documentation, API baselines, guides, and changelog reflect affected contracts.
-- [ ] Changed examples, links, and diagrams have been checked against the implementation.
-- [ ] Dependencies and public options have a justified consumer and the required owner approval.
-- [ ] Evidence and fixtures contain no credentials, confidential identifiers, or production data.
-
-<!-- For a genuinely unaffected item, explain why rather than claiming a check ran.
-Local package verification does not authorize external publication. -->
+- [ ] The change follows `CONTRIBUTING.md`, `.editorconfig`, and the Code of Conduct.
+- [ ] Public XML documentation, API baselines, guides, samples, and changelog reflect changed contracts.
+- [ ] New dependencies and public options have a justified consumer and the required owner approval.
+- [ ] Logs, SQL, plans, fixtures, and attachments contain no secrets or confidential production data.
+- [ ] Suspected vulnerabilities are reported privately through `SECURITY.md`.

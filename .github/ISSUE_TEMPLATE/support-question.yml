@@ -1,0 +1,87 @@
+name: Support question
+description: Ask about supported NestedSet usage or configuration.
+title: "support: "
+labels: []
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read the [support policy](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/blob/main/SUPPORT.md)
+        and documentation before posting. General database administration,
+        application authorization, and unsupported provider configurations are
+        not maintained NestedSet contracts.
+
+        Do not disclose vulnerabilities or sensitive data here. Use the private
+        [security process](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/security/policy).
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question and desired outcome
+      description: State what you are trying to do and where you are blocked.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Affected package
+      options:
+        - Doka.NestedSet
+        - Doka.EntityFrameworkCore.NestedSet
+        - Both packages
+        - Not yet determined
+    validations:
+      required: true
+
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions and environment
+      description: >-
+        Give the NestedSet version or unpublished commit SHA, .NET, EF Core,
+        provider, driver, database version, and OS when relevant. Mark database
+        details not applicable for an EF-independent Core question.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Relevant configuration and tree shape
+      description: Show the minimal redacted entity mapping, context options, operation, and synthetic tree state needed to understand the question.
+    validations:
+      required: true
+
+  - type: textarea
+    id: attempts
+    attributes:
+      label: What have you tried?
+      description: Identify the documentation, samples, APIs, and alternatives already checked.
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Sanitized diagnostics
+      description: Include only relevant redacted SQL, logs, error codes, or exceptions.
+      render: text
+
+  - type: checkboxes
+    id: readiness
+    attributes:
+      label: Submission checklist
+      options:
+        - label: I checked the README, support policy, samples, and existing issues.
+          required: true
+        - label: I removed credentials, personal data, and confidential deployment details.
+          required: true
+        - label: This public question does not disclose a suspected security vulnerability.
+          required: true
+        - label: >-
+            I agree to follow the
+            [Code of Conduct](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/blob/main/CODE_OF_CONDUCT.md).
+          required: true

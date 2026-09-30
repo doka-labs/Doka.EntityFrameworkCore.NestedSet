@@ -1,0 +1,90 @@
+name: Feature request
+description: Propose a NestedSet capability or compatibility improvement.
+title: "feature: "
+labels: []
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the consumer problem before choosing an API or algorithm.
+        Requests are evaluated against the two package boundaries, tree
+        invariants, supported providers, maintainability, and runtime cost.
+
+        Use the private [security process](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/security/policy)
+        if the request would disclose a vulnerability.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Consumer problem
+      description: Explain the concrete hierarchy use case, current limitation, and impact.
+      placeholder: What can an application not express or operate safely today?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Primary affected area
+      options:
+        - EF-independent Core model and predicates
+        - Entity mapping and indexes
+        - Tree, subtree, or ancestor queries
+        - Insert, move, or delete operations
+        - Sibling ordering and SaveChanges coordination
+        - Bulk import, validation, or rebuild
+        - Transactions, retries, or concurrency
+        - Provider or migration compatibility
+        - Diagnostics and observability
+        - Documentation or samples
+        - Other or not yet determined
+    validations:
+      required: true
+
+  - type: textarea
+    id: desired-behavior
+    attributes:
+      label: Desired observable behavior
+      description: Describe the result and any failure behavior the library should provide.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope-and-compatibility
+    attributes:
+      label: Package, provider, and compatibility scope
+      description: >-
+        Identify Core or EF integration, relevant database families, and any
+        known API, schema, migration, transaction, or performance impact.
+        State not applicable or unknown where appropriate.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe current workarounds or simpler contracts and their limitations.
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Supporting evidence
+      description: Link minimal code, relevant EF/provider primary sources, tests, or measured workload evidence.
+
+  - type: checkboxes
+    id: readiness
+    attributes:
+      label: Submission checklist
+      options:
+        - label: I searched the documentation and existing issues for this capability.
+          required: true
+        - label: This request describes library behavior rather than application-specific authorization or business rules.
+          required: true
+        - label: This public request contains no vulnerability details or sensitive data.
+          required: true
+        - label: >-
+            I agree to follow the
+            [Code of Conduct](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/blob/main/CODE_OF_CONDUCT.md).
+          required: true

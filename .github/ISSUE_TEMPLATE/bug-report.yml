@@ -1,0 +1,142 @@
+name: Bug report
+description: Report reproducible behavior in Doka.NestedSet or Doka.EntityFrameworkCore.NestedSet.
+title: "bug: "
+labels: []
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use synthetic data and a minimal reproducer. Remove credentials,
+        connection strings, customer or tenant identifiers, internal host names,
+        and production data from code, SQL, logs, plans, and attachments.
+
+        Report suspected vulnerabilities through the private
+        [security process](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/security/policy).
+        Use the support form for usage questions.
+
+  - type: textarea
+    id: defect
+    attributes:
+      label: Defect and impact
+      description: Describe the incorrect behavior and its effect on tree integrity, availability, or application behavior.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Affected package
+      options:
+        - Doka.NestedSet
+        - Doka.EntityFrameworkCore.NestedSet
+        - Both packages
+        - Not yet determined
+    validations:
+      required: true
+
+  - type: textarea
+    id: versions
+    attributes:
+      label: Exact versions and environment
+      description: >-
+        Give the NestedSet package version or unpublished commit SHA, .NET SDK/runtime,
+        EF Core, database provider and driver, optional SafeMigrations adapter
+        when used, OS, and architecture. For a
+        database-independent Core defect, mark EF/provider/driver as not applicable.
+      placeholder: Identify resolved versions, not only version ranges from project files.
+      render: text
+    validations:
+      required: true
+
+  - type: dropdown
+    id: database
+    attributes:
+      label: Database family
+      options:
+        - No database (Doka.NestedSet)
+        - MySQL (Doka provider)
+        - MariaDB (Doka provider)
+        - PostgreSQL (Npgsql)
+        - SQLite (Microsoft provider)
+        - SQL Server (Microsoft provider)
+        - Not yet determined
+    validations:
+      required: true
+
+  - type: input
+    id: database-version
+    attributes:
+      label: Database version and topology
+      description: Include the exact server version and relevant proxy, pooler, cluster, container, or SQLite file-system details; use not applicable for Core-only defects.
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction and starting tree
+      description: >-
+        Include the entity and HasNestedSet configuration, exact operation and
+        commands, and synthetic Scope, TreeId, Parent, bounds, depth, and position
+        values needed to reproduce. Add transaction, isolation, tracking, and
+        concurrent-writer details when relevant. Identify ordinary EF migrations
+        or optional SafeMigrations when involved. Use a disposable database.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: State the expected result or documented contract.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and resulting state
+      description: Include the exception type or stable NestedSet failure code and whether data, bounds, or the caller transaction changed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Sanitized diagnostics
+      description: Add only the SQL, execution plan, stack trace, or log lines needed to diagnose the defect.
+      render: text
+
+  - type: dropdown
+    id: regression
+    attributes:
+      label: Regression status
+      options:
+        - Worked in an earlier version or revision
+        - Has never worked
+        - Unknown
+    validations:
+      required: true
+
+  - type: input
+    id: last-working-version
+    attributes:
+      label: Last known working version or revision
+      description: Provide the exact version or commit SHA when this is a regression.
+
+  - type: checkboxes
+    id: readiness
+    attributes:
+      label: Submission checklist
+      options:
+        - label: I checked the supported matrix and searched existing issues.
+          required: true
+        - label: I reduced the report to a reproducible case with synthetic data.
+          required: true
+        - label: I removed secrets, personal data, and confidential deployment details.
+          required: true
+        - label: This public report does not disclose a suspected security vulnerability.
+          required: true
+        - label: >-
+            I agree to follow the
+            [Code of Conduct](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/blob/main/CODE_OF_CONDUCT.md).
+          required: true
