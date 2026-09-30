@@ -1,0 +1,54 @@
+name: Dependency Review
+
+# Reviews the dependency delta of a pull request before it can merge. GitHub's
+# Automatic Dependency Submission owns the resolved NuGet graph, and the
+# official review action owns bounded retries while that graph propagates.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  # A newer revision supersedes the dependency verdict for the same pull
+  # request. Automatic submissions remain independent and are not cancelled.
+  cancel-in-progress: true
+
+jobs:
+  dependency-review:
+    name: Dependency Review
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The license set mirrors the repository dependency policy. Packages
+      # whose license metadata is absent are reported separately rather than
+      # blocked, so a missing SPDX field cannot masquerade as a policy breach.
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          allow-licenses: >-
+            Apache-2.0,
+            BSD-2-Clause,
+            BSD-3-Clause,
+            CC0-1.0,
+            ISC,
+            MIT,
+            MIT-0,
+            Unlicense
+          comment-summary-in-pr: never
+          show-openssf-scorecard: true
+          # A warning remains fail-closed after the official bounded retry;
+          # this workflow does not implement a second snapshot state machine.
+          retry-on-snapshot-warnings: true
+          retry-on-snapshot-warnings-timeout: 180

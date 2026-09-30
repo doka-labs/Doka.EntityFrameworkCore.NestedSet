@@ -67,6 +67,8 @@ runbooks own operational procedures.
   to verify a published package and its release evidence.
 - [Security Assurance Case](security/assurance-case.md) maps security claims to
   controls, evidence, and remaining application responsibilities.
+- [OpenSSF Best Practices Evidence](openssf-best-practices.md) maps repository
+  evidence without claiming hosted settings that source cannot prove.
 - [Architecture Decisions](decisions/README.md) indexes the MADR 4.0 decision
   corpus and its status.
 - [Contributing](../CONTRIBUTING.md), [Support](../SUPPORT.md),

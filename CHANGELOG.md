@@ -95,10 +95,10 @@ Initial development line. This version is not published.
   baselines, XML documentation, exact package/symbol inspection, isolated
   package consumers, and per-package SPDX 2.2 SBOM validation using the
   standalone Microsoft binary.
-- Add full-SHA-pinned CI and release-candidate workflows with signed
-  provenance, signed SBOM attestations, protected short-lived NuGet
-  authentication, repository-signature verification, public package/symbol
-  readback, and immutable GitHub release reconciliation.
+- Add full-SHA-pinned CI, dependency review, Scorecard, and release-candidate
+  workflows with signed provenance, signed SBOM attestations, protected
+  short-lived NuGet authentication, repository-signature verification, public
+  package/symbol readback, and immutable GitHub release reconciliation.
 - Add digest-pinned MySQL 8.4, MariaDB 11.8, PostgreSQL 17, and SQL Server 2025
   test images plus Dependabot updates for SDK, images, packages, and actions.
 
@@ -107,4 +107,5 @@ Initial development line. This version is not published.
 - Add task-oriented product, configuration, ordering, migration, transaction,
   diagnostics, performance, deployment, security, and release documentation.
 - Add a Doka MADR Enterprise Profile 1.0 decision corpus based on MADR 4.0,
-  release governance, threat model, assurance case, and hosted-settings runbook.
+  release governance, threat model, assurance case, OpenSSF evidence mapping,
+  and hosted-settings runbook.
