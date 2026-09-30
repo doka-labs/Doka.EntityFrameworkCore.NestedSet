@@ -53,6 +53,13 @@ Automated checks support human review and do not replace it. Approval applies
 to the reviewed commit only. A material change after approval needs review of
 the changed result.
 
+## Release authority
+
+Only the release maintainer may choose a public version, create the authorized
+signed tag, approve the protected `nuget` job, or decide recovery from partial
+publication. Passing CI does not authorize release. The full responsibility
+split is in [Release governance](docs/release-governance.md).
+
 ## Conflicts of interest
 
 An author does not count as an independent reviewer of their own change. A
@@ -78,4 +85,4 @@ Review this document at least annually and whenever a role, organization
 setting, signing identity, trusted publisher, support line, or decision process
 changes. Reconcile it with [ROADMAP.md](ROADMAP.md),
 [SECURITY.md](SECURITY.md), the [security design](docs/security/security-design.md),
-and the current maintainer-role registry.
+and [repository settings](docs/runbooks/repository-settings.md).

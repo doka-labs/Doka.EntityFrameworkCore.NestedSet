@@ -1,6 +1,6 @@
 # Support and qualification
 
-This document owns the tested runtime, provider, engine, and migration
+This document owns the tested runtime, provider, engine, migration, and tooling
 matrix. Package declarations define what can restore; qualification evidence
 defines what this repository has exercised.
 
@@ -82,6 +82,7 @@ SafeMigrations adapter in this repository.
 | `Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests` | SQLite equivalents |
 | `Doka.EntityFrameworkCore.NestedSet.Migrations.Tests` | Ordinary migration lifecycle and physical catalog |
 | `Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests` | Optional adapter generation, execution, rejection, replay, and drift behavior |
+| Package consumers | Restores and executes exact produced archives without project references |
 | Sample | File-system, KPI, and user-group domain composition |
 
 Integration tests use Testcontainers for server engines and isolated SQLite
@@ -118,7 +119,8 @@ Qualification covers:
 - active, tombstoned, damaged, purged, and deliberately reused TreeId lifecycles;
 - physical structural indexes and stable provider query-plan assertions;
 - bounded diagnostics without application data; and
-- public API and XML documentation consistency.
+- exact primary/symbol package contents, XML docs, source metadata, SBOMs, and
+  isolated consumers.
 
 ## Deterministic performance evidence
 
@@ -127,8 +129,9 @@ affected-row formulas, and stable query-plan properties. It does not use wall-
 clock time, runner CPU, working set, or process-wide allocation as a CI or
 release pass/fail threshold.
 
-The benchmark executable is local diagnostic tooling. Measurements from
-different hardware are not comparable performance evidence. See [Performance and capacity](performance.md).
+The benchmark executable is local diagnostic tooling. Results from different
+GitHub-hosted runner hardware are not comparable release evidence. See
+[Performance and capacity](performance.md).
 
 ## Local verification levels
 
@@ -142,6 +145,20 @@ dotnet test tests/Doka.NestedSet.Tests/Doka.NestedSet.Tests.csproj \
 dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests.csproj \
   -c Release --no-build --no-restore
 ```
+
+### Complete repository qualification
+
+Docker must be available for the server matrix:
+
+```sh
+bash eng/release-candidate.sh \
+  --version 10.0.0-dev \
+  --workspace \
+  --output artifacts/qualification-local
+```
+
+This executes the complete release candidate checks locally. Pull-request CI
+uses the direct C# build and test path; a workspace run is never publishable.
 
 ### Focused projects
 
@@ -157,7 +174,8 @@ dotnet test tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests/Doka.E
   -c Release
 ```
 
-Do not use a filtered run as complete qualification.
+Do not use a filtered run as complete qualification. The release runner rejects
+inherited VSTest filters.
 
 ## Evidence boundaries
 
@@ -165,6 +183,15 @@ A green local run proves only the checked source and local environment. It does
 not prove branch protection, GitHub environment approval, OIDC identity,
 attestation availability, NuGet publication, repository signing, or public
 readback.
+
+A green hosted run proves only its exact source, dependency locks, run attempt,
+candidate bytes, and retained checks. It does not establish application schema,
+authorization, workload capacity, backup quality, or safe operation of direct
+SQL writers.
+
+Every release claim must identify the exact run, attempt, source SHA, candidate
+manifest, package hashes, and public verification result. See
+[Release process](release-process.md).
 
 ## Adding or updating support
 
@@ -175,7 +202,7 @@ A provider or engine line is supported only after:
 3. provider capabilities and lock behavior are implemented;
 4. runtime, concurrency, migration, index, and query-plan tests pass;
 5. package and documentation contracts are updated; and
-6. the complete applicable matrix has current execution evidence.
+6. a release candidate completes the same matrix.
 
 Do not infer support from a shared SQL dialect, successful compilation, or an
 unqualified provider package restore.

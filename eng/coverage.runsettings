@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="Code Coverage">
+        <Configuration>
+          <Format>Cobertura</Format>
+          <IncludeTestAssembly>false</IncludeTestAssembly>
+          <CodeCoverage>
+            <ModulePaths>
+              <Include>
+                <ModulePath>.*Doka\.NestedSet\.dll$</ModulePath>
+                <ModulePath>.*Doka\.EntityFrameworkCore\.NestedSet\.dll$</ModulePath>
+              </Include>
+            </ModulePaths>
+          </CodeCoverage>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

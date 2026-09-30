@@ -106,6 +106,25 @@ still owns nodes.
 **Limitation.** The application must separately authorize purge and retain any
 business audit or external-reference evidence required before identity reuse.
 
+## Case 7: Released evidence represents released bytes
+
+**Claim.** A completed release binds source, packages, symbols, SBOMs,
+provenance, NuGet copies, and GitHub assets to one candidate.
+
+**Argument.** Qualification seals an exact candidate inventory. GitHub signs
+the candidate subjects. Publication verifies source/run/tag identity, uses a
+protected environment and short-lived NuGet credential, downloads public
+packages, verifies repository signatures and canonical contents, and only then
+finalizes the immutable release.
+
+**Evidence.** Engineering tests exercise changed bytes, incomplete/duplicate
+inventories, malformed provenance, source/tag/run mismatch, partial NuGet
+state, public-content conflict, and retry behavior. A real release additionally
+requires hosted run and public readback evidence.
+
+**Limitation.** No documentation can substitute for configured hosted controls
+or a completed public release.
+
 ## Re-evaluation
 
 For each security-relevant change:

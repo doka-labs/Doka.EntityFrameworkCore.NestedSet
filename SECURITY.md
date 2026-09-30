@@ -9,7 +9,8 @@ discussion.
 ## System and Scope
 
 This policy covers the NestedSet repository, the `Doka.NestedSet` and
-`Doka.EntityFrameworkCore.NestedSet` packages.
+`Doka.EntityFrameworkCore.NestedSet` packages, and the repository's build and
+release tooling.
 
 `Doka.NestedSet` provides database-independent nested-set primitives.
 `Doka.EntityFrameworkCore.NestedSet` is an in-process EF Core library that
@@ -52,7 +53,9 @@ execution, transaction, isolation, collation, and locking semantics. NestedSet
 must validate the provider and mapping assumptions it depends on and fail
 before structural writes when those assumptions are unsupported.
 
-Telemetry collectors and application audit stores have
+Release contributors and pull-request content are not publication operators.
+GitHub, NuGet.org, certificate authorities, and their identities form separate
+trust boundaries. Telemetry collectors and application audit stores also have
 different access and retention boundaries from the library.
 
 ## Security Invariants
@@ -81,6 +84,9 @@ different access and retention boundaries from the library.
 - Library-owned metrics and activities must use bounded classifications and
   must exclude scope and node identifiers, entity and table names, SQL,
   credentials, connection details, exception payloads, and domain data.
+- A public release is acceptable only when source identity, qualified package
+  bytes, SBOMs, attestations, NuGet readback, and immutable release assets
+  agree. A checksum alone is not proof of origin.
 
 ## Reportable Findings and Severity Context
 
@@ -96,7 +102,9 @@ Report a reachable violation of the invariants above, including:
 - disclosure of application identifiers, payload, SQL, credentials, or
   exception content through library-owned diagnostics;
 - attacker-controlled resource consumption with a realistic availability
-  impact beyond the documented workload boundary.
+  impact beyond the documented workload boundary; or
+- substitution or misbinding of source, packages, SBOMs, attestations, signing,
+  publication, or release evidence.
 
 Include the required access, configuration, data shape, provider, database
 engine, and realistic confidentiality, integrity, or availability impact.
@@ -143,6 +151,9 @@ Reporter credit travels with an upstream handoff.
 - NestedSet telemetry is operational instrumentation, not an application audit
   trail. Applications must record authorized business actions under their own
   data classification, access, and retention policy.
+- Hosted repository controls, publishing identities, and public artifact
+  verification do not exist merely because workflow files describe them. They
+  require operator configuration and readback.
 
 Use least-privilege database identities, protected credentials, provider
 transport security, reviewed migrations, coordinated maintenance windows, and
@@ -152,7 +163,7 @@ migrations, repairs, or out-of-band maintenance.
 The OpenSSF Best Practices badge is a project self-assessment, not an
 independent audit or blanket security certification. Review this policy when a
 package, provider, SQL path, scope model, transaction protocol, diagnostic
-signal or resource boundary changes.
+signal, resource boundary, or release trust boundary changes.
 
 ## Supported Versions
 
@@ -236,15 +247,17 @@ A confirmed vulnerability fix must:
 2. add positive and negative regression evidence for the reachable path;
 3. update the security design, assurance case, operator guidance, and decision
    record when an assumption or trust boundary changed;
-4. complete the applicable provider, migration, and product regression
-   checks;
+4. complete the normal provider, migration, package-consumer, and release
+   qualification applicable to the change;
 5. preserve private reproduction details until coordinated disclosure permits
    publication; and
 6. publish affected and fixed versions, impact, mitigations, and CVE or GHSA
    identifiers when available.
 
 Release notes must identify publicly known vulnerabilities fixed by the
-release.
+release. Publication is incomplete until the public package bytes, repository
+signature, attestations, SBOM, release assets, and source identity pass the
+documented [release verification](docs/security/release-verification.md).
 
 ## Policy Basis and Evidence
 
@@ -259,7 +272,8 @@ NestedSet-specific differences are supported by repository evidence:
 - [Security assurance case](docs/security/assurance-case.md);
 - [Support and qualification](docs/support-and-qualification.md);
 - [Transactions and locking](docs/transactions-and-locking.md);
-- [Diagnostics and observability](docs/diagnostics.md).
+- [Diagnostics and observability](docs/diagnostics.md); and
+- [Release verification](docs/security/release-verification.md).
 
 External policy and technical statements use these primary sources:
 

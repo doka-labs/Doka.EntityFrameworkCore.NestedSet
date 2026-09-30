@@ -35,11 +35,16 @@
   <Folder Name="/benchmarks/">
     <Project Path="benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks.csproj" />
   </Folder>
+  <Folder Name="/eng/" />
+  <Folder Name="/eng/PackageInspection/">
+    <Project Path="eng/tools/Doka.NestedSet.PackageInspection/Doka.NestedSet.PackageInspection.csproj" />
+  </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/FileSystem/FileSystem.csproj" />
     <Project Path="samples/Kpis/Kpis.csproj" />
     <Project Path="samples/UserGroups/UserGroups.csproj" />
   </Folder>
+  <Folder Name="/src/" />
   <Folder Name="/src/Core/">
     <Project Path="src/Doka.NestedSet/Doka.NestedSet.csproj" />
   </Folder>

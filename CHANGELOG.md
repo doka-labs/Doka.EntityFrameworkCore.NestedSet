@@ -86,20 +86,25 @@ Initial development line. This version is not published.
 - Validate real provider query plans, structural command/update counts, affected
   rows, rollback, cancellation, concurrent writers, pooling, and deep-tree
   behavior across the supported matrix.
-
 - Keep local benchmark timing and allocation observations outside CI and release
   acceptance because hosted runner hardware is not a deterministic baseline.
 
-### Build and dependencies
+### Packaging and supply chain
 
-- Add the pinned .NET 10 SDK, centralized versions, nullable analysis,
-  warnings-as-errors, public API baselines, XML documentation, and locked
-  project dependency graphs.
+- Add locked dependency graphs, warning-free Release builds, public API
+  baselines, XML documentation, exact package/symbol inspection, isolated
+  package consumers, and per-package SPDX 2.2 SBOM validation using the
+  standalone Microsoft binary.
+- Add full-SHA-pinned CI and release-candidate workflows with signed
+  provenance, signed SBOM attestations, protected short-lived NuGet
+  authentication, repository-signature verification, public package/symbol
+  readback, and immutable GitHub release reconciliation.
+- Add digest-pinned MySQL 8.4, MariaDB 11.8, PostgreSQL 17, and SQL Server 2025
+  test images plus Dependabot updates for SDK, images, packages, and actions.
 
 ### Documentation and governance
 
 - Add task-oriented product, configuration, ordering, migration, transaction,
-  diagnostics, performance, deployment, and security documentation.
-- Add the Doka MADR Enterprise Profile 1.0 based on MADR 4.0, architecture
-  records with deterministic navigation, product governance, security
-  design, and an assurance case.
+  diagnostics, performance, deployment, security, and release documentation.
+- Add a Doka MADR Enterprise Profile 1.0 decision corpus based on MADR 4.0,
+  release governance, threat model, assurance case, and hosted-settings runbook.

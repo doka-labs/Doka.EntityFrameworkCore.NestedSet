@@ -1,0 +1,320 @@
+name: Release candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Reviewed exact version (X.Y.Z-rc.N or X.Y.Z), without v.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nestedset-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+env:
+  CANDIDATE_VERSION: ${{ inputs.version }}
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  preflight:
+    name: Verify source and unused version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+
+    steps:
+      - name: Checkout exact dispatch source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Reject stale source, existing tag, and used package version
+        run: >-
+          python3 -m eng.release.publication preflight
+          --version "$CANDIDATE_VERSION"
+          --output artifacts/preflight.json
+
+  qualify:
+    name: Qualify exact release candidate
+    needs: preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 130
+    outputs:
+      artifact-id: ${{ steps.candidate.outputs.artifact-id }}
+
+    steps:
+      - name: Checkout exact candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Qualify source, tests, packages, consumers, and SBOMs
+        run: >-
+          bash eng/release-candidate.sh
+          --version "$CANDIDATE_VERSION"
+          --output artifacts/qualification
+
+      - name: Retain qualification and failure evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-qualification-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/qualification/identity.json
+            artifacts/qualification/operator-summary.md
+            artifacts/qualification/logs
+            artifacts/qualification/quality
+            artifacts/qualification/tests
+            artifacts/qualification/packages/package-manifest.json
+            artifacts/qualification/consumer
+            artifacts/qualification/sbom
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Retain exact complete candidate
+        id: candidate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/qualification/candidate
+          if-no-files-found: error
+          retention-days: 30
+
+  attest:
+    name: Sign and verify candidate provenance
+    needs: qualify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+
+    steps:
+      - name: Checkout verification code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download this run's exact qualified candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.qualify.outputs.artifact-id }}
+          merge-multiple: true
+          path: artifacts/candidate
+
+      - name: Verify complete candidate inventory
+        run: python3 -c 'from eng.release.common import load_candidate; load_candidate("artifacts/candidate")'
+
+      - name: Attest manifest and primary and symbol packages
+        id: provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: |
+            artifacts/candidate/candidate.json
+            artifacts/candidate/*.nupkg
+            artifacts/candidate/*.snupkg
+
+      - name: Attest Core SBOM
+        id: core-sbom
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: artifacts/candidate/Doka.NestedSet.${{ inputs.version }}.nupkg
+          sbom-path: artifacts/candidate/Doka.NestedSet.spdx.json
+
+      - name: Attest EF Core SBOM
+        id: ef-sbom
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.${{ inputs.version }}.nupkg
+          sbom-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.spdx.json
+
+      - name: Materialize and verify portable signed bundles
+        env:
+          PROVENANCE_BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+          CORE_BUNDLE: ${{ steps.core-sbom.outputs.bundle-path }}
+          EF_BUNDLE: ${{ steps.ef-sbom.outputs.bundle-path }}
+        shell: bash
+        run: |
+          mkdir -p artifacts/provenance
+          cp "$PROVENANCE_BUNDLE" artifacts/provenance/release-provenance.jsonl
+          cp "$CORE_BUNDLE" artifacts/provenance/sbom-Doka.NestedSet.jsonl
+          cp "$EF_BUNDLE" artifacts/provenance/sbom-Doka.EntityFrameworkCore.NestedSet.jsonl
+          python3 -m eng.release.publication attest-verify \
+            --candidate artifacts/candidate \
+            --provenance artifacts/provenance
+
+      - name: Retain exact provenance artifact
+        id: upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-provenance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/provenance
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publish approved candidate
+    needs: [qualify, attest]
+    environment: nuget
+    runs-on: ubuntu-24.04
+    # WHY: NuGet package and symbol indexing has exceeded an hour in actual releases; readback needs its full budget.
+    timeout-minutes: 180
+    permissions:
+      contents: write
+      actions: read
+      attestations: read
+      id-token: write
+    env:
+      RELEASE_ALLOWED_SIGNERS: ${{ vars.RELEASE_ALLOWED_SIGNERS }}
+
+    steps:
+      - name: Checkout qualified source and signed tags
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up .NET for package verification and publication
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Download original candidate by immutable artifact ID
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.qualify.outputs.artifact-id }}
+          merge-multiple: true
+          path: artifacts/candidate
+
+      - name: Download original provenance by immutable artifact ID
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.attest.outputs.artifact-id }}
+          merge-multiple: true
+          path: artifacts/provenance
+
+      - name: Revalidate source and operator-signed tag
+        shell: bash
+        run: |
+          git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
+          git fetch --no-tags origin "refs/tags/v$CANDIDATE_VERSION:refs/tags/v$CANDIDATE_VERSION"
+          python3 -m eng.release.publication authorize \
+            --candidate artifacts/candidate \
+            --provenance artifacts/provenance
+
+      - name: Reject conflicting public package bytes
+        shell: bash
+        run: |
+          mkdir -p artifacts/packages artifacts/publication
+          cp artifacts/candidate/*.nupkg artifacts/candidate/*.snupkg artifacts/packages/
+          python3 -m eng.release.nuget availability \
+            --package-dir artifacts/packages \
+            --version "$CANDIDATE_VERSION" \
+            --manifest artifacts/candidate/package-manifest.json \
+            --output artifacts/publication/availability.json
+
+      - name: Stage complete matching draft before credentials
+        run: >-
+          python3 -m eng.release.publication stage
+          --candidate artifacts/candidate
+          --provenance artifacts/provenance
+          --output artifacts/publication/draft.json
+
+      - name: Obtain short-lived NuGet credential
+        id: login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      # WHY: A symbol-service failure must not block the dependent EF primary package.
+      - name: Publish Core package
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        shell: bash
+        run: >-
+          dotnet nuget push "artifacts/packages/Doka.NestedSet.$CANDIDATE_VERSION.nupkg"
+          --source https://api.nuget.org/v3/index.json
+          --api-key "$NUGET_API_KEY"
+          --no-symbols --skip-duplicate --timeout 300
+
+      - name: Publish EF package
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        shell: bash
+        run: >-
+          dotnet nuget push "artifacts/packages/Doka.EntityFrameworkCore.NestedSet.$CANDIDATE_VERSION.nupkg"
+          --source https://api.nuget.org/v3/index.json
+          --api-key "$NUGET_API_KEY"
+          --no-symbols --skip-duplicate --timeout 300
+
+      - name: Publish Core symbols
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        shell: bash
+        run: >-
+          dotnet nuget push "artifacts/packages/Doka.NestedSet.$CANDIDATE_VERSION.snupkg"
+          --source https://api.nuget.org/v3/index.json
+          --api-key "$NUGET_API_KEY"
+          --skip-duplicate --timeout 300
+
+      - name: Publish EF symbols
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        shell: bash
+        run: >-
+          dotnet nuget push "artifacts/packages/Doka.EntityFrameworkCore.NestedSet.$CANDIDATE_VERSION.snupkg"
+          --source https://api.nuget.org/v3/index.json
+          --api-key "$NUGET_API_KEY"
+          --skip-duplicate --timeout 300
+
+      - name: Verify signed public packages and indexed Portable PDBs
+        run: >-
+          python3 -m eng.release.nuget readback
+          --package-dir artifacts/packages
+          --version "$CANDIDATE_VERSION"
+          --manifest artifacts/candidate/package-manifest.json
+          --output artifacts/publication/nuget-readback.json
+          --timeout-seconds 7200
+
+      - name: Publish and verify immutable GitHub release
+        run: >-
+          python3 -m eng.release.publication publish-release
+          --candidate artifacts/candidate
+          --provenance artifacts/provenance
+          --readback artifacts/publication/nuget-readback.json
+          --output artifacts/publication/release.json
+
+      - name: Record complete public readback
+        run: >-
+          python3 -m eng.release.publication complete
+          --candidate artifacts/candidate
+          --provenance artifacts/provenance
+          --readback artifacts/publication/nuget-readback.json
+          --output artifacts/publication/completion.json
+
+      - name: Retain completion or interrupted publication evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: publication-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/publication
+          if-no-files-found: error
+          retention-days: 30

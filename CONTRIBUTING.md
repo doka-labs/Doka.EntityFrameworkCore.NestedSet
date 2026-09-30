@@ -8,7 +8,8 @@ suspected vulnerabilities through [Security](SECURITY.md).
 
 - the exact .NET 10 SDK pinned in `global.json`;
 - a Docker-compatible daemon for MySQL, MariaDB, PostgreSQL, and SQL Server
-  Testcontainers.
+  Testcontainers; and
+- Bash and Python 3 for repository qualification tools.
 
 The SQLite suites run in process. Tests own their server containers and do not
 require a developer-managed database.
@@ -65,8 +66,29 @@ dotnet run --project samples/UserGroups -c Release -- --provider sqlite --reset
 See the [sample catalog](samples/README.md) for Doka MySQL/MariaDB setup,
 scenario selection, and the meaning of `--reset`.
 
-A filtered run is focused feedback and does not qualify all providers.
-Never replace a failing provider test with a skip.
+For a complete local qualification of the current workspace:
+
+```sh
+bash eng/release-candidate.sh \
+  --version 10.0.0-dev \
+  --workspace \
+  --output artifacts/qualification-local
+```
+
+Use a new output directory for each run. A workspace result cannot authorize
+publication.
+
+Useful focused checks include:
+
+```sh
+dotnet format Doka.EntityFrameworkCore.NestedSet.slnx style \
+  --severity warn --verify-no-changes --no-restore
+python3 -m unittest discover -s eng/tests -p 'test_*.py' -v
+bash eng/verify-package-consumer.sh
+```
+
+A filtered or focused run is development feedback, not complete qualification.
+Never replace a failing live provider test with a skip.
 
 ## Formatting and language
 
@@ -287,6 +309,9 @@ dotnet restore Doka.EntityFrameworkCore.NestedSet.slnx --locked-mode
 
 Requalify the affected provider and migration contracts.
 
+Keep locked restore in CI. SDK and image pins require the affected full provider
+and migration matrix, not only a successful restore.
+
 ## Public API changes
 
 `PublicAPI.Shipped.txt` is the last stable release contract.
@@ -329,7 +354,7 @@ Before review:
 - check relative links, anchors, code fences, tables, and Mermaid rendering;
 - verify provider/version claims against source or current primary docs;
 - distinguish performed checks from suggested commands; and
-- run ASCII and source-hygiene checks.
+- review source text against the repository's ASCII and formatting conventions.
 
 Documentation does not create hosted controls, package availability, or support
 for an untested provider.
@@ -347,4 +372,4 @@ reviewed head; material changes require review again.
 
 External publication, Git mutations, dependency introduction, and hosted
 configuration changes remain separate authorized actions under
-[Governance](GOVERNANCE.md).
+[Governance](GOVERNANCE.md) and [Release governance](docs/release-governance.md).

@@ -44,6 +44,10 @@ runbooks own operational procedures.
 
 - [Developer Databases](../docker/README.md) explains optional Compose profiles,
   Rider connections, shared image pins, and developer volume ownership.
+- [Engineering Tools](../eng/README.md) documents local qualification, package
+  consumers, SBOMs, coverage reports, and release checks.
+- [Development Benchmarks](../benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks/README.md)
+  explains optional measurements outside CI and release gates.
 - [Implementation Design](implementation-design.md) describes package
   boundaries, mapping metadata, query and mutation execution, and provider
   integration.
@@ -51,6 +55,16 @@ runbooks own operational procedures.
   positive, negative, and adversarial tests and explains evidence limits.
 - [Security Design](security/security-design.md) defines assets, trust
   boundaries, abuse cases, controls, and residual application responsibilities.
+- [Release Process](release-process.md) defines qualification and publication
+  evidence for both packages.
+- [Release Governance](release-governance.md) defines release authority,
+  evidence, servicing, and compatibility policy.
+- [Release Publication](operations/release-publication.md) is the operator
+  procedure for an RC or stable release.
+- [Repository Security Settings](runbooks/repository-settings.md) records the
+  hosted controls that cannot be proven from repository files.
+- [Release Verification](security/release-verification.md) shows consumers how
+  to verify a published package and its release evidence.
 - [Security Assurance Case](security/assurance-case.md) maps security claims to
   controls, evidence, and remaining application responsibilities.
 - [Architecture Decisions](decisions/README.md) indexes the MADR 4.0 decision
@@ -70,6 +84,7 @@ runbooks own operational procedures.
 | Architecture decision | Context, alternatives, and consequences | Repeated feature documentation |
 | Runbook | Diagnosis, recovery, and operator steps | Architecture rationale |
 | Qualification document | Test matrix and evidence boundaries | Claims about an unexecuted run |
+| Release document | Release gates, identity, and publication recovery | Runtime incident response |
 
 Each public behavior has one canonical owner. Other documents link to that
 owner instead of maintaining a second version of the same contract. External

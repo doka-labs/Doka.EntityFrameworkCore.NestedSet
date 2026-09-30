@@ -10,6 +10,8 @@ It is not a delivery-date promise. Released packages, release notes, and the
 
 - Review and stabilize the two-package public API.
 - Keep the EF-independent core limited to contracts useful without persistence.
+- Complete real hosted CI, security settings, RC, signed tag, NuGet trusted
+  publishing, provenance, and public readback evidence.
 - Qualify ordinary migrations on every supported provider and optional
   SafeMigrations integration independently.
 - Keep examples and operations documentation aligned with file systems, KPIs,
@@ -36,6 +38,14 @@ It is not a delivery-date promise. Released packages, release notes, and the
   repository verifies the released packages.
 - Treat a future .NET/EF major as an explicit compatibility decision, not a
   routine package update.
+
+### Maintain supply-chain evidence
+
+- Keep actions, SDK, images, and dependencies pinned and reviewable.
+- Preserve exact packages, symbols, SBOMs, signed provenance, signed tags,
+  short-lived publishing credentials, immutable releases, and public readback.
+- Keep repository settings and OpenSSF claims honest about external and
+  organizational evidence.
 
 ## Explicit non-goals
 

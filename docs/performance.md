@@ -345,7 +345,7 @@ and adversarial mechanisms behind these checks. Neither its entries nor these
 targets imply universal regression coverage or certification of a particular
 hardware throughput.
 
-## Deterministic regression measurements
+## Deterministic CI and RC measurements
 
 Shared integration measurements live in the non-runnable specification library
 and execute through concrete suites in the owning provider projects. Exclusive
@@ -356,8 +356,8 @@ assembly, while databases keep their existing class or collection ownership.
 See [test project ownership](implementation-design.md#test-project-ownership).
 The source layout does not change measurement methods, budgets, or dated results.
 
-Deterministic tests do not gate on elapsed time, throughput, process working
-set, or CPU model. Hardware and load can change. They instead verify:
+GitHub CI does not gate on elapsed time, throughput, process working set, or CPU
+model. Hosted runners can change hardware and load. CI instead verifies:
 
 - final structure and payload state;
 - SQL command and hierarchy-update counts;

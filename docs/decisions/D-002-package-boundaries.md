@@ -47,7 +47,7 @@ and the EF package owns the persistence-dependent algorithms. The separation doe
 ### Confirmation
 
 - Run `dotnet test tests/Doka.NestedSet.Tests/Doka.NestedSet.Tests.csproj -c Release` and expect bounds and relationship tests to pass, including invalid default bounds.
-- Inspect both shipping project and restore graphs; expect no concrete provider or SafeMigrations runtime dependency. Verify that the EF package references the core transitively while the core has no EF dependency.
+- Inspect both shipping project and restore graphs; expect no concrete provider or SafeMigrations runtime dependency. Run the package-consumer gate in the release runbook and require independently restored core and EF consumers to pass.
 
 ## Pros and Cons of the Options
 
@@ -92,6 +92,7 @@ decision.
 - [Pure core project](../../src/Doka.NestedSet/Doka.NestedSet.csproj)
 - [EF integration project](../../src/Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj)
 - [Core tests](../../tests/Doka.NestedSet.Tests)
+- [Package consumer gate](../../eng/verify-package-consumer.sh)
 - [Implementation design](../../docs/implementation-design.md)
 
 ### Sources

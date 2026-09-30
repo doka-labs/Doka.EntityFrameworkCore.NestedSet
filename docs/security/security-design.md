@@ -1,7 +1,8 @@
 # Security design
 
 This document is the repository threat model and secure-design contract for
-`Doka.NestedSet` and `Doka.EntityFrameworkCore.NestedSet`. Report suspected vulnerabilities through [SECURITY.md](../../SECURITY.md),
+`Doka.NestedSet`, `Doka.EntityFrameworkCore.NestedSet`, and their release
+pipeline. Report suspected vulnerabilities through [SECURITY.md](../../SECURITY.md),
 not a public issue.
 
 ## Security objectives
@@ -13,7 +14,8 @@ NestedSet must:
 - parameterize runtime values and identifiers through validated model metadata;
 - reject unsupported or ambiguous mappings;
 - avoid exposing application identifiers or payload through library telemetry;
-- compose safely with caller-owned transactions.
+- compose safely with caller-owned transactions; and
+- bind released packages and evidence to one reviewed source identity.
 
 The library does not authenticate users, authorize a Scope or TreeId, define role or
 privilege inheritance, encrypt database traffic, manage database credentials,
@@ -25,6 +27,8 @@ or protect backups. Those controls belong to the application and deployment.
 - application payload and relationships attached to nodes;
 - tenant and authorization-boundary separation;
 - database connection and transaction state;
+- package binaries, symbols, XML documentation, SBOMs, and provenance;
+- release signing and GitHub/NuGet publishing identities; and
 - vulnerability reports and operational evidence.
 
 ## Trust boundaries
@@ -35,10 +39,16 @@ flowchart TB
     API[NestedSet public API]
     EF[EF Core and provider]
     DB[(Database)]
+    GH[GitHub Actions and Releases]
+    NuGet[NuGet.org]
+    Consumer[Package consumer]
 
     Caller -->|Scope, TreeId, keys, entities| API
     API -->|parameterized expressions and transactions| EF
     EF -->|commands and results| DB
+    GH -->|OIDC and package upload| NuGet
+    GH -->|signed provenance and assets| Consumer
+    NuGet -->|repository-signed package| Consumer
 ```
 
 Every arrow crosses independently administered code or infrastructure. A
@@ -126,6 +136,22 @@ paths, SQL, connection details, or exception payload.
 error classifications. They exclude scope, key, table/entity, SQL, messages,
 and payload. Detailed validation returns keys only to the direct caller.
 
+### Supply-chain substitution
+
+**Threat.** Published packages differ from tested packages, a tag is moved, a
+workflow is impersonated, or partial publication is mistaken for success.
+
+**Controls.** Locked dependencies, exact package inspection, isolated
+consumers, per-package SBOMs, source/candidate manifests, full-SHA-pinned
+actions, GitHub artifact attestations, signed annotated tag verification,
+protected environment approval, short-lived NuGet OIDC credentials, repository
+signature verification, exact public content comparison, and immutable GitHub
+release readback.
+
+**Residual risk.** GitHub, NuGet.org, certificate authorities, and operator
+accounts remain external trust dependencies. Hosted settings require operator
+readback.
+
 ## Abuse cases
 
 | Abuse case | Required response |
@@ -134,6 +160,8 @@ and payload. Detailed validation returns keys only to the direct caller.
 | Huge unauthenticated rebuild request | Application must restrict maintenance API and enforce resource/time limits |
 | Writer changes bounds with direct SQL | Stop writers, preserve evidence, validate, repair adjacency or rebuild, and prevent recurrence |
 | Attacker puts tenant ID in telemetry configuration | Application telemetry policy must reject high-cardinality/sensitive tags; library does not add them |
+| Compromised PR changes release workflow | Required review, pinned actions, branch protection, environment approval, provenance/source checks, and hosted policy limit publication |
+| NuGet upload partially succeeds | Same-run recovery reads public state and never rebuilds or reuses the version for different bytes |
 
 ## Secure deployment requirements
 
@@ -144,6 +172,8 @@ and payload. Detailed validation returns keys only to the direct caller.
 - Verify registry tables and identity mappings during migration deployment.
 - Back up and test restoration before hierarchy migrations or bulk repair.
 - Keep telemetry and incident evidence free of credentials and protected data.
+- Enable the hosted controls in
+  [Repository settings](../runbooks/repository-settings.md) before publication.
 
 ## Review triggers
 
@@ -154,6 +184,7 @@ Review this model when:
 - transaction, lock, scope, retry, or SaveChanges behavior changes;
 - telemetry adds a signal or dimension;
 - a public bulk or maintenance API changes resource ownership;
+- release identity, attestation, or publishing changes; or
 - an incident contradicts an assumption above.
 
 Update tests, the [assurance case](assurance-case.md), and the relevant MADR
