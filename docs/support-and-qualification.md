@@ -61,9 +61,9 @@ Optional adapter qualification uses:
 
 | Database | SafeMigrations adapter baseline |
 | --- | --- |
-| MySQL/MariaDB | `Doka.EntityFrameworkCore.SafeMigrations.MySql` 10.4.3 |
-| PostgreSQL | `Doka.EntityFrameworkCore.SafeMigrations.PostgreSql` 10.4.3 |
-| SQLite | `Doka.EntityFrameworkCore.SafeMigrations.Sqlite` 10.4.3 |
+| MySQL/MariaDB | `Doka.EntityFrameworkCore.SafeMigrations.MySql` 10.4.5 |
+| PostgreSQL | `Doka.EntityFrameworkCore.SafeMigrations.PostgreSql` 10.4.5 |
+| SQLite | `Doka.EntityFrameworkCore.SafeMigrations.Sqlite` 10.4.5 |
 
 SafeMigrations tests are additive. A failure there must not be described as a
 runtime requirement for Doka, Npgsql, or SQLite. SQL Server has no optional

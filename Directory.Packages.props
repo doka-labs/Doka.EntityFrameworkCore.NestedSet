@@ -21,9 +21,9 @@
   </ItemGroup>
 
   <ItemGroup Label="Optional SafeMigrations qualification">
-    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.MySql" Version="10.4.4"/>
-    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.PostgreSql" Version="10.4.4"/>
-    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.Sqlite" Version="10.4.4"/>
+    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.MySql" Version="10.4.5"/>
+    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.PostgreSql" Version="10.4.5"/>
+    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.Sqlite" Version="10.4.5"/>
   </ItemGroup>
 
   <ItemGroup Label="Test tooling">

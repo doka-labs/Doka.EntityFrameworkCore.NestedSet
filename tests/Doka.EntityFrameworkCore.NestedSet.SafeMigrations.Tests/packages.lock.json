@@ -4,23 +4,23 @@
     "net10.0": {
       "Doka.EntityFrameworkCore.SafeMigrations.MySql": {
         "type": "Direct",
-        "requested": "[10.4.4, )",
-        "resolved": "10.4.4",
-        "contentHash": "l07oBOfIvGrHhP5W3Ul9vsg0XYBVoryM1M1fazMGZAbYcpV3vpCJ4vBxzlUuF98aPfQVtMlGTKxxSEN4pnwp6A==",
+        "requested": "[10.4.5, )",
+        "resolved": "10.4.5",
+        "contentHash": "F8AZk/705h5fIqE1+yl6dR9+gruAXQ9fRsSqM0bL9mVyUDj7ilJNPG7ps8V10F2Gg+TvFttA12S5GxC7Mu0ikg==",
         "dependencies": {
           "Doka.EntityFrameworkCore.MySql": "[10.4.2, 10.5.0)",
-          "Doka.EntityFrameworkCore.SafeMigrations": "10.4.4",
+          "Doka.EntityFrameworkCore.SafeMigrations": "10.4.5",
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.12, 10.1.0)",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.12, 10.1.0)"
         }
       },
       "Doka.EntityFrameworkCore.SafeMigrations.PostgreSql": {
         "type": "Direct",
-        "requested": "[10.4.4, )",
-        "resolved": "10.4.4",
-        "contentHash": "Vw4y8Dwwk/rplrDJPOGx7EtcLe8Wuk/GEaHcXzb2q8YjF0bZT9jLAijGE4/ONwpLVf2T5Ce7AHWUecmB+pKc6w==",
+        "requested": "[10.4.5, )",
+        "resolved": "10.4.5",
+        "contentHash": "0ICfIs/2w99coL4Xm+cMfrAjtOi2SZdydAdvFpsGiSGwFF5uGVEPs3vK2habYpR9hDo4h/MLmSkrge7NXTM9Lg==",
         "dependencies": {
-          "Doka.EntityFrameworkCore.SafeMigrations": "10.4.4",
+          "Doka.EntityFrameworkCore.SafeMigrations": "10.4.5",
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.12, 10.1.0)",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.12, 10.1.0)",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, 11.0.0)"
@@ -28,11 +28,11 @@
       },
       "Doka.EntityFrameworkCore.SafeMigrations.Sqlite": {
         "type": "Direct",
-        "requested": "[10.4.4, )",
-        "resolved": "10.4.4",
-        "contentHash": "N5MCtVm//Q0mZGgmvHmFyiu7NMt1R6fP5A4tbirX3A1WFs/UCJO5P0MdO8Z7oFDdEex1JMlPrly281nvjqN5sQ==",
+        "requested": "[10.4.5, )",
+        "resolved": "10.4.5",
+        "contentHash": "JqxTGUVpJR8eUk/HF7kaTPL/DPrRooJQfmm2mriIMTcjh0a71gAGTDIOEHxEz3QG6YSZzXu5OivZuwGbSnG0dA==",
         "dependencies": {
-          "Doka.EntityFrameworkCore.SafeMigrations": "10.4.4",
+          "Doka.EntityFrameworkCore.SafeMigrations": "10.4.5",
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.12, 10.1.0)",
           "Microsoft.EntityFrameworkCore.Sqlite.Core": "[10.0.12, 10.1.0)",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.12, 10.1.0)"
@@ -173,8 +173,8 @@
       },
       "Doka.EntityFrameworkCore.SafeMigrations": {
         "type": "Transitive",
-        "resolved": "10.4.4",
-        "contentHash": "4BJnLOp9mLHRgHMgtWzcdGGKoAm4eh+Xb4cZNjLZmqO8jaCxNKDzzf9rokKL39xTHoxTZjU68vGCTY3Pfk584A==",
+        "resolved": "10.4.5",
+        "contentHash": "zWH94T+ybU9WCq06Oh87mbe2/NCN+1u38wlA8LNSfmmvsqbpG1k+ItqF/VjCtoDvHy8qSW4sDeUFw/xc9Dd0fg==",
         "dependencies": {
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.12, 10.1.0)"
         }

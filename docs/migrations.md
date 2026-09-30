@@ -168,7 +168,7 @@ coordinates.
 | SQL Server | `Microsoft.EntityFrameworkCore.SqlServer` | No adapter required by this repository |
 
 Doka, Npgsql, SQLite, and SQL Server work through ordinary EF migrations without
-SafeMigrations. Optional integration tests verify that SafeMigrations 10.4.3
+SafeMigrations. Optional integration tests verify that SafeMigrations 10.4.5
 accepts the same finalized model for MySQL, MariaDB, PostgreSQL, and SQLite.
 Pomelo is outside the supported provider contract.
 

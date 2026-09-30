@@ -51,7 +51,7 @@ Initial development line. This version is not published.
   lifecycle state while retaining SQLite's database-writer boundary.
 - Add ordinary EF migration and physical-index support for Doka MySQL/MariaDB,
   PostgreSQL, SQLite, and SQL Server.
-- Add optional SafeMigrations 10.4.3 integration tests for MySQL/MariaDB,
+- Add optional SafeMigrations 10.4.5 integration tests for MySQL/MariaDB,
   PostgreSQL, and SQLite without making SafeMigrations a runtime prerequisite.
 - Add runnable folder, KPI, and tenant user-group samples, including role and
   privilege relationships owned by the application.
