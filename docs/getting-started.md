@@ -7,15 +7,19 @@ FileSystem demonstrates the same public API without a required scope.
 
 ## Install
 
-The application normally references the EF package and one qualified provider:
+The first stable NestedSet package has not been published. To use the current
+source, build both `10.0.0-dev` packages and configure the local package feed
+as shown in [Build and install from source](../README.md#build-and-install-from-source).
+Then add the EF package and one qualified provider to the application:
 
 ```bash
-dotnet package add Doka.EntityFrameworkCore.NestedSet --version 10.0.0
+dotnet package add Doka.EntityFrameworkCore.NestedSet --version 10.0.0-dev
 dotnet package add Doka.EntityFrameworkCore.MySql --version 10.4.4
 ```
 
-The first stable NestedSet package has not been published yet. Confirm the
-version on NuGet.org and its matching GitHub release before using this command.
+The core package is a transitive dependency from the same local feed. After a
+stable release, confirm its version and matching GitHub release before using a
+published package instead.
 
 ## Define the entity
 
@@ -220,7 +224,10 @@ missing parent or repair application domain relationships.
 
 ## Create a migration
 
-Use ordinary provider migrations:
+Use ordinary provider migrations. The application needs the EF Core 10
+`dotnet-ef` tool and a matching
+`Microsoft.EntityFrameworkCore.Design` reference for these design-time
+commands. See the [EF Core CLI tools guide](https://learn.microsoft.com/en-us/ef/core/cli/dotnet).
 
 ```bash
 dotnet ef migrations add AddFolderHierarchy
