@@ -589,31 +589,52 @@ def complete(candidate, provenance, readback, output, *, commands=None, environm
     return result
 
 
-def pre_tag(version, candidate=None, *, commands=None, source_repo=ROOT):
+def pre_tag(version=None, candidate=None, *, commands=None, source_repo=ROOT):
     """Inspect local/remote source and SSH signing configuration without Git mutations."""
     commands = commands or Commands()
-    reviewed_release_notes(source_repo, version)
-    tag = version_tag(version)
+
+    if version is not None:
+        reviewed_release_notes(source_repo, version)
+
     commit = commands.run(["git", "rev-parse", "HEAD"]).strip()
-    require(not commands.run(["git", "status", "--porcelain"]).strip(),
+    require(not commands.run(["git", "status", "--porcelain", "--untracked-files=all"]).strip(),
             "source-dirty", "Prepare a clean checkout first.")
     require(commands.run(["git", "branch", "--show-current"]).strip() == "main",
             "source-branch", "Pre-tag inspection requires the main branch.")
     require(remote_main(commands) == commit, "source-stale", "Checkout is not current remote main.")
-    require(not commands.run(["git", "ls-remote", "--refs", "origin", f"refs/tags/{tag}"]).strip(),
-            "tag-exists", "The release tag already exists; use the same-run recovery procedure.")
+
+    # WHY: Remote peeled tags identify already tagged commits without fetching or trusting stale local tags.
+    remote_tags = commands.run(["git", "ls-remote", "--tags", "origin"])
+    tag_pattern = r"refs/tags/v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?(?:\^\{\})?"
+    tagged = any(value == commit and re.fullmatch(tag_pattern, reference) is not None
+                 for value, reference in (line.split() for line in remote_tags.splitlines()))
+    require(not tagged, "tag-exists", "A semantic release tag already identifies this source commit.")
+
+    if version is not None:
+        tag = version_tag(version)
+        require(not commands.run(["git", "ls-remote", "--refs", "origin", f"refs/tags/{tag}"]).strip(),
+                "tag-exists", "The release tag already exists; use the same-run recovery procedure.")
+
     require(commands.run(["git", "config", "--get", "gpg.format"]).strip() == "ssh",
             "signing-format", "Configure SSH signing before creating the release tag.")
-    require(commands.run(["git", "config", "--get", "user.signingkey"]).strip(),
+    signing_key = commands.run(["git", "config", "--get", "user.signingkey"]).strip()
+    require(signing_key,
             "signing-key", "Configure the approved signing key before creating the release tag.")
+    require(signing_key.startswith(("key::", "ssh-")) or Path(signing_key).expanduser().is_file(),
+            "signing-key", "The configured signing key file does not exist.")
 
     if candidate is not None:
         manifest = load_candidate(candidate)
         require(manifest["source"]["commit"] == commit and manifest["version"] == version,
                 "candidate-source", "Candidate does not describe this source and release version.")
 
-    return {"schemaVersion": 1, "repository": REPOSITORY, "version": version, "tag": tag,
-            "sourceCommit": commit, "state": "pre-tag-checked"}
+    result = {"schemaVersion": 1, "repository": REPOSITORY,
+              "sourceCommit": commit, "state": "pre-tag-checked"}
+
+    if version is not None:
+        result.update(version=version, tag=tag)
+
+    return result
 
 
 def preflight(version, *, commands=None, environment=None, source_repo=ROOT):
@@ -651,7 +672,7 @@ def main():
 
     for name in ("preflight", "pre-tag"):
         command = subcommands.add_parser(name)
-        command.add_argument("--version", required=True)
+        command.add_argument("--version", required=name == "preflight")
         command.add_argument("--output", type=Path)
 
         if name == "pre-tag":
@@ -686,7 +707,11 @@ def main():
         if arguments.output is not None:
             write_json(arguments.output, result)
 
-        print(json.dumps(result, sort_keys=True, indent=2))
+        if arguments.command == "pre-tag":
+            print(f"Ready to start Release candidate for {result['sourceCommit']}.")
+            print("Create the signed tag only after qualification and attestations succeed.")
+        else:
+            print(json.dumps(result, sort_keys=True, indent=2))
     except (ValueError, OSError, KeyError, TypeError) as error:
         parser.exit(1, f"Release check failed: {error}\n")
 

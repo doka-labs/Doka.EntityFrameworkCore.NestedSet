@@ -10,10 +10,16 @@ bash eng/verify-package-consumer.sh
 
 ## Qualification and release evidence
 
+Release operators start with `./eng/pre-tag-check.sh` after updating clean
+`main`, then follow [Release publication](../docs/operations/release-publication.md).
+The no-argument command checks source and SSH signing readiness through the
+existing publication module; it does not qualify packages, create tags, or
+request publication credentials.
+
 [`ci.yml`](../.github/workflows/ci.yml) runs independent jobs for C# style and
-unused imports, offline engineering regressions, the Release solution build and
-NuGet pack, nine executable test projects, and the three SQLite samples. Test
-and sample matrix cells run on separate runners without a repository-imposed
+unused imports, offline engineering regressions, the Release solution build,
+NuGet pack and archive inspection, nine executable test projects, and the
+three SQLite samples. Test and sample matrix cells run on separate runners without a repository-imposed
 parallelism cap. Each restores locked dependencies and builds its own project
 graph, so Docker resources and instrumented outputs are isolated. Coverage
 verification waits for all test reports from the current run attempt. The stable
@@ -64,10 +70,12 @@ that the restored archive hashes equal the supplied files. Temporary runtime/cac
 project/configuration files, locked restore graphs, logs, and `result.json` remain for inspection, including on failure.
 Network access to nuget.org is required; Docker is not required for these two consumers.
 
-The no-argument developer convenience still packs before verification. CI/RC always use explicit mode after their
-single qualified pack. [`packages.py`](release/packages.py) additionally checks both primary and symbol archives,
-metadata, dependencies, license, XML documentation, source commit, and actual PE/PDB identity. Its framework-only
-[.NET 10 inspector](tools/Doka.NestedSet.PackageInspection/Program.cs) is built with the solution. No new runtime package
+The no-argument developer convenience still packs before verification. RC uses explicit consumer mode after its
+single qualified pack; PR CI does not run package consumers. Both CI and RC use
+[`packages.py`](release/packages.py) to check primary and symbol archives, metadata, dependencies, license,
+XML documentation, source commit, and actual PE/PDB identity. CI retains the inspection manifest alongside its
+packages. The framework-only [.NET 10 inspector](tools/Doka.NestedSet.PackageInspection/Program.cs) is built with the
+solution. No new runtime package
 is introduced. Hosted publication uses the attested inspection manifest and exact file hashes without rebuilding.
 
 ## Architecture decision checks
@@ -140,7 +148,10 @@ python3 eng/verify-coverage.py artifacts/test-results
 every report for packages and source-line entries. Across those reports, both shipping libraries must have executed
 lines. An empty report fails even when another report contains valid coverage; no coverage-percentage threshold applies.
 
-CI runs this check before uploading test artifacts. A canceled coverage run can
+Each CI test lane requires a Cobertura report before uploading its artifacts.
+The separate coverage job downloads the reports from every lane of the current
+run attempt and runs this verifier. RC verifies its reports within the test
+stage before assembling a candidate. A canceled coverage run can
 leave instrumented DLL/PDB copies in a test output directory and cause a later
 collection to produce an empty report. Rebuild the Release configuration and
 rerun the complete test stage; the verifier reports an empty artifact instead

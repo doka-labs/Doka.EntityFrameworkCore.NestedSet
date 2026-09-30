@@ -1,127 +1,232 @@
-# Release publication
+# Release publication operations
 
-This is the maintainer runbook for one RC or stable release. It performs no
-work merely by being followed; every external action requires the project
-owner's authorization for that exact release.
+Use this runbook for every RC and stable release. The operator sequence follows
+Doka and SafeMigrations: prepare current `main`, run `./eng/pre-tag-check.sh`,
+start one untagged candidate, wait for qualification and attestations, create
+the signed tag, and approve the same waiting publication job. Run each command
+separately and stop on the first failure.
 
-## Preconditions
+The package set is `Doka.NestedSet` and `Doka.EntityFrameworkCore.NestedSet` at
+one version: two primary packages and two symbol packages. Evidence requirements
+are defined in [Release governance](../release-governance.md) and
+[Release process](../release-process.md).
 
-- Source is reviewed, clean, and current on protected `main`.
-- `CHANGELOG.md` contains one dated section for the exact version.
-- Both projects use the same reviewed version.
-- Stable public API additions have been moved from unshipped to shipped files.
-- Required hosted settings in
-  [Repository security settings](../runbooks/repository-settings.md) have been
-  read back.
-- Git SSH signing is configured for an authorized release principal.
-- No tag, NuGet package, or GitHub release uses the version.
+## One-time configuration
 
-Set the candidate version locally without a leading `v`:
+Configure the controls in
+[Repository security settings](../runbooks/repository-settings.md) before the
+first release:
 
-```sh
-version="<X.Y.Z-rc.N-or-X.Y.Z>"
-```
+- protect `main`, require reviewed pull requests, and require the repository's
+  CI and code scanning checks;
+- protect `v*` release tags against update and deletion;
+- enable immutable GitHub Releases;
+- create environment `nuget`, restrict deployments to protected `main`, require
+  maintainer approval, and store the NuGet profile name as `NUGET_USER`;
+- configure the NuGet Trusted Publishing policy below; and
+- configure SSH tag signing and the approved `RELEASE_ALLOWED_SIGNERS` entries.
 
-## 1. Local preflight
-
-Confirm the exact checkout and version without creating a tag or remote state:
-
-```sh
-git status --short
-git rev-parse HEAD
-git rev-parse origin/main
-python3 -m eng.release.publication pre-tag --version "$version"
-```
-
-The tree must be clean and `HEAD` must be exact current `origin/main`. Resolve
-any mismatch; do not override the preflight. The hosted candidate run performs
-the full qualification; a local run is not a release prerequisite.
-
-## 2. Dispatch the release candidate
-
-In GitHub Actions, dispatch `Release candidate` from `main` with the exact
-version. Record the run ID and source SHA.
-
-Wait for:
-
-1. preflight;
-2. the complete qualification run and sealed candidate;
-3. build-provenance and SBOM attestations; and
-4. the publish job waiting at the protected `nuget` environment.
-
-Inspect the exact run/attempt artifacts. Do not approve while a reversible job
-is missing, skipped, canceled, or failed.
-
-## 3. Create the signed annotated tag
-
-Only after reversible work passes, create one signed annotated tag on the exact
-qualified SHA:
-
-```sh
-qualified_sha="<sha-from-candidate-run>"
-test "$(git rev-parse HEAD)" = "$qualified_sha"
-
-git tag -s -a "v$version" "$qualified_sha" -m "Release $version"
-git verify-tag "v$version"
-git push origin "refs/tags/v$version"
-```
-
-Push that one tag. Do not use `git push --tags`. Do not recreate, force, or move
-the tag after push.
-
-## 4. Approve publication
-
-Return to the same run and same waiting publish job. Verify:
-
-- version, run ID, attempt, source SHA, and tag all match;
-- tag signature principal/key is the reviewed signer;
-- candidate and provenance artifact IDs are from this run;
-- both package IDs remain absent or match same-run recovery state; and
-- no repository/environment/trusted-publisher setting changed during review.
-
-Approve the `nuget` environment for this job. The workflow then stages the
-complete draft release and obtains the short-lived NuGet credential. It
-publishes both primary packages in dependency order (Core, EF), then both
-symbol packages (Core, EF), verifies public packages/PDBs, and publishes the
-immutable GitHub release.
-
-## 5. Verify completion
-
-Require the publish job to retain:
-
-- package availability preflight;
-- draft release receipt;
-- NuGet public readback and signature verification;
-- published immutable release receipt; and
-- final completion receipt.
-
-Run the independent public procedure in
-[Release verification](../security/release-verification.md) from a clean
-directory. Confirm NuGet pages, GitHub release classification, changelog notes,
-tag, package dependencies, XML docs, symbols, SBOMs, and provenance.
-
-Only then update documentation that says a version is publicly available.
-
-## Recovery table
-
-| Failure | Action |
+| Trusted Publishing field | Value |
 | --- | --- |
-| Preflight or qualification fails | Keep tag absent; fix source in a new reviewed commit and dispatch again |
-| Attestation fails | Keep tag absent; retain evidence and diagnose identity or platform failure |
-| Tag verification fails | Do not approve; remove only an unpushed local tag and correct signing setup |
-| Draft asset upload interrupted | Rerun the same failed publish job; matching assets are retained |
-| Core visible, EF missing | Rerun the same failed publish job; the matching Core payload is accepted, the EF push resumes, and public readback checks both packages |
-| Both primary packages visible, symbols incomplete | Rerun the same failed publish job; duplicate-tolerant pushes resume symbols and public PDB readback remains required |
-| Public package content conflicts | Stop permanently for that version and investigate as a supply-chain incident |
-| Package or symbol indexing exceeds the 120-minute readback window | Check NuGet service status and the partial readback receipt. If the service is healthy, contact NuGet support as its [publication guidance](https://learn.microsoft.com/en-us/nuget/nuget-org/publish-a-package) advises after one hour. Rerun the same failed publish job; do not declare completion |
-| GitHub release finalization times out | Rerun same job; it verifies existing state before continuation |
+| Repository owner | `doka-labs` |
+| Repository | `Doka.EntityFrameworkCore.NestedSet` |
+| Workflow file | `release-candidate.yml` |
+| Environment | `nuget` |
 
-Do not start another candidate run for a partially published version. Do not
-manually overwrite release assets or use a long-lived NuGet key as a shortcut.
+The selected NuGet owner must be allowed to publish both package IDs. Do not
+store a long-lived NuGet API key. The protected publication job uses
+`NuGet/login` only after candidate, tag, provenance, package, and draft-release
+checks pass.
 
-## RC to stable
+Read back the repository's immutable-release setting with an administrator
+token:
 
-An RC and stable version are separate releases with separate review,
-qualification, tag, approval, and readback. Stable preparation must incorporate
-accepted RC changes, update the dated changelog entry, and finalize public API
-baselines before its own qualification. Never relabel RC bytes as stable.
+```bash
+repo=doka-labs/Doka.EntityFrameworkCore.NestedSet
+gh api \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2026-03-10" \
+  "repos/${repo}/immutable-releases"
+```
+
+The response must report `"enabled": true`. Also verify the environment,
+Trusted Publishing policy, package ownership, and signer configuration. Local
+build success does not establish hosted permissions or settings.
+
+## Publication procedure
+
+### 1. Prepare reviewed main
+
+Merge the complete release preparation through protected `main`. It must
+contain the intended `VersionPrefix`, one dated changelog section for the exact
+version, current package metadata, dependencies, support documentation, and
+public API baselines. Stable preparation moves accepted declarations from
+`PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt` before qualification.
+
+Update the checkout:
+
+```bash
+git fetch origin main --tags
+git switch main
+git merge --ff-only origin/main
+git status --porcelain --untracked-files=all
+
+release_commit="$(git rev-parse HEAD)"
+test "${release_commit}" = "$(git rev-parse origin/main)"
+```
+
+The status command must print nothing. Keep this terminal and checkout
+unchanged until the tag is pushed. Record `release_commit`; every later
+identity check refers to this exact commit.
+
+### 2. Verify local pre-tag readiness
+
+```bash
+./eng/pre-tag-check.sh
+```
+
+This checks clean current `main` against the remote, rejects a semantic release
+tag already identifying the candidate commit, and checks SSH signing
+configuration. File-based signing keys must exist. It reads remote refs without
+fetching or changing the checkout, creates no tag, and requests no credentials
+or hosted runner.
+
+Success prints `Ready to start Release candidate for <commit>.` A failure
+identifies the condition to correct and returns a nonzero exit code. Stop on
+failure. This readiness check does not replace version, changelog, package
+availability, or signing-authority checks in the hosted workflow.
+
+### 3. Start the untagged candidate and wait
+
+In GitHub Actions, start **Release candidate**. Select branch `main` and enter:
+
+```text
+version: <release_version>
+```
+
+The version is `X.Y.Z-rc.N` or `X.Y.Z`, without a leading `v`. Wait for:
+
+1. `Verify source and unused version`;
+2. `Qualify exact release candidate`; and
+3. `Sign and verify candidate provenance`.
+
+Qualification runs the complete source, test, package, consumer, and SBOM
+checks from this selected commit. Benchmarks and ADR profile validation are
+separate maintainer activities. No earlier CI artifact or local rehearsal is
+required for the release candidate.
+
+The final `Publish approved candidate` job must show **Waiting** for approval
+on environment `nuget`. Do not approve it yet. Confirm that the run SHA equals
+`release_commit`, and record the run URL, run ID, and attempt. Inspect the
+qualification summary, exact candidate, and provenance artifacts. Missing,
+skipped, canceled, or failed qualification is not approval-ready evidence.
+
+### 4. Create the signed immutable identity
+
+Only after qualification and attestations succeed and the protected wait is
+visible, run:
+
+```bash
+release_version="<release_version>"
+release_tag="v${release_version}"
+
+test "$(git rev-parse HEAD)" = "${release_commit}"
+test "$(git rev-parse origin/main)" = "${release_commit}"
+git tag -s "${release_tag}" "${release_commit}" \
+  -m "Doka.EntityFrameworkCore.NestedSet ${release_version}"
+git tag -v "${release_tag}"
+test "$(git rev-list -n 1 "${release_tag}")" = "${release_commit}"
+git push origin "refs/tags/${release_tag}"
+```
+
+Push only that tag. Never use `git push --tags`, move a pushed release tag, or
+reuse a published version. The tag push does not start a second release
+workflow. A later merge on `main` does not select new release bytes: publication
+still verifies the recorded candidate commit's reachability from protected
+`main`, its exact tag, and its original candidate artifacts.
+
+### 5. Approve the same waiting run
+
+Return to the exact run checked in step 3. Verify the source SHA, version, tag,
+run, candidate artifact IDs, and approved signer. Confirm that the hosted
+repository, environment, and Trusted Publishing settings have not changed
+during review. Approve `Publish approved candidate` for environment `nuget`.
+
+The same workflow run then:
+
+1. verifies the downloaded candidate and provenance, qualified source, signed
+   annotated tag, approved signer, and hosted run identity;
+2. rejects conflicting public package contents;
+3. creates or resumes a matching draft GitHub release and verifies its exact
+   candidate and provenance assets;
+4. obtains a short-lived NuGet credential;
+5. publishes both primary packages in dependency order (Core, EF), then both
+   symbol packages (Core, EF), with duplicate tolerance;
+6. reads both primary packages and their Portable PDBs back, verifies NuGet
+   repository signatures, and compares signed package contents with the
+   qualified candidate;
+7. publishes and verifies the immutable GitHub release; and
+8. retains the complete publication receipt.
+
+No package is rebuilt after qualification. Public package and symbol readback
+has a 120-minute budget inside the 180-minute publication job. An accepted push
+and public indexing are separate states; only the completed readback establishes
+availability and matching content.
+
+### 6. Confirm completion
+
+Require the complete workflow run to be green. Inspect the published release:
+
+```bash
+gh release view "${release_tag}" \
+  --json tagName,isDraft,isImmutable,isPrerelease,assets,url
+```
+
+The release must be published and immutable, identify the exact tag, have the
+correct prerelease state, and contain exactly thirteen assets:
+
+- two `.nupkg` files;
+- two `.snupkg` files;
+- `Doka.NestedSet.spdx.json` and `Doka.EntityFrameworkCore.NestedSet.spdx.json`;
+- `candidate.json`, `package-manifest.json`, `qualification-evidence.zip`, and
+  `release-notes.md`; and
+- `release-provenance.jsonl`, `sbom-Doka.NestedSet.jsonl`, and
+  `sbom-Doka.EntityFrameworkCore.NestedSet.jsonl`.
+
+Confirm both NuGet package pages, signature verification, and symbol readback.
+Inspect `publication-<run-id>-<attempt>` for package availability, draft,
+NuGet readback, immutable-release, and completion receipts. RC releases must
+be prereleases and must not be latest; stable releases must be latest.
+
+Run [Release verification](../security/release-verification.md) independently
+from a clean directory. Only then update documentation that declares a version
+publicly available.
+
+## Failure and recovery
+
+- Before a tag exists, correct failures through review and start a new
+  candidate run. No release identity has been consumed.
+- After the tag exists, never move or delete it to hide a failure. Rerun only
+  the failed publication job in the same workflow run.
+- A failed draft staging step requests no NuGet credential and pushes no
+  package. The same job may resume only matching draft assets.
+- After a partial NuGet publication, repeat the same publication job. Matching
+  packages and duplicate-tolerant symbol pushes remain subject to complete
+  public content, signature, and PDB readback. Conflicting content fails closed.
+- If package or symbol indexing exceeds the 120-minute budget, inspect NuGet
+  service status and the retained partial receipt. If the service is healthy,
+  follow NuGet's publication guidance and contact support. The release remains
+  incomplete until the same job's readback succeeds.
+- GitHub release or attestation readback may lag publication. Retry the same
+  failed job; do not replace assets or skip verification.
+- If original qualification artifacts have expired or the run cannot be
+  retried, stop for maintainer recovery. Do not rebuild under the same tag.
+
+Stable releases use the same six steps. Each stable version is independently
+qualified; RC archives are never renamed into stable packages.
+
+## Primary sources
+
+- [Signed annotated Git tags](https://git-scm.com/docs/git-tag), retrieved 2026-09-30.
+- [GitHub Release inspection](https://cli.github.com/manual/gh_release_view), retrieved 2026-09-30.
+- [NuGet publication and indexing](https://learn.microsoft.com/en-us/nuget/nuget-org/publish-a-package), retrieved 2026-09-30.

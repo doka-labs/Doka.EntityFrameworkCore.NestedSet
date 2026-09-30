@@ -137,7 +137,10 @@ def verify_query_plans(directory):
 
 def verify_results(repo, directory):
     """Reject missing projects, skipped/failed tests, or a zero-test success."""
-    expected = {path.stem for path in solution_projects(repo) if path.relative_to(repo).parts[0] == "tests"}
+    # WHY: Specification libraries share test sources but do not execute tests or produce TRX artifacts.
+    expected = {path.stem for path in solution_projects(repo)
+                if path.relative_to(repo).parts[0] == "tests"
+                and ET.parse(path).findtext(".//IsTestProject") != "false"}
     observed = {}
     for path in sorted(directory.rglob("*.trx")):
         tree = ET.parse(path)

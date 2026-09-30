@@ -1,6 +1,10 @@
 # Doka.EntityFrameworkCore.NestedSet
 
+[![CI](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/workflows/ci.yml/badge.svg?event=pull_request)](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/workflows/ci.yml)
+[![NuGet Core](https://img.shields.io/nuget/v/Doka.NestedSet.svg?label=NuGet%20Core)](https://www.nuget.org/packages/Doka.NestedSet)
+[![NuGet EF Core](https://img.shields.io/nuget/v/Doka.EntityFrameworkCore.NestedSet.svg?label=NuGet%20EF%20Core)](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/badge)](https://scorecard.dev/viewer/?uri=github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet)
 
 `Doka.EntityFrameworkCore.NestedSet` adds persistent, ordered nested-set
 hierarchies to ordinary Entity Framework Core entities. It keeps `TreeId`,

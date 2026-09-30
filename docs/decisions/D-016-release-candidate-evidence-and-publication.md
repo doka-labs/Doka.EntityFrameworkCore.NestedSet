@@ -48,6 +48,13 @@ jobs. Each executable test project and SQLite sample owns a named matrix cell
 and runner. Coverage waits for complete test evidence; the stable Repository
 qualification check rejects any failed, skipped, or canceled gate. Project-local
 builds avoid transporting or sharing coverage-instrumented binary outputs.
+The build job inspects both primary and both symbol archives before uploading
+them, using the inspector already built with the solution. This binds package
+metadata, XML documentation, source commit, and PE/PDB identity without another
+pack or a dependency on consumer restores and SBOM services.
+Development builds use the SDK's shared version prefix and suffix so package
+and assembly informational versions agree. Release qualification supplies the
+exact reviewed version to both the build and pack operations.
 
 ### Consequences
 
@@ -112,9 +119,13 @@ conflicts before duplicate-tolerant pushes, and public package and PDB readback 
 - 2026-09-30: Split CI into independently named parallel checks and project/sample matrices, retaining the complete existing checks and stable required aggregate. RC qualification remains independent of CI artifacts.
 - 2026-09-30: Aligned the two-package upload order with the SafeMigrations multi-package release: both primary packages precede symbol uploads. The Core package remains before its dependent EF package; same-run recovery and readback remain mandatory.
 - 2026-09-30: Added early source-version and dated-notes checks, PR-time release-tooling regressions, and a 120-minute NuGet readback inside a 180-minute publish job. GitHub asset verification shares a retry budget. Negative SBOM fixtures remain offline while the RC validates the actual candidate.
+- 2026-09-30: Aligned the operator runbook and no-argument `eng/pre-tag-check.sh` entry point with Doka and SafeMigrations. Readiness shares the existing source and signing checks; exact version and changelog validation remains mandatory in hosted preflight. Publication order and qualification gates are unchanged.
+- 2026-09-30: Restored offline archive inspection to the independent CI build job and retained its manifest. RC result coverage requires only executable test projects; shared specification libraries are excluded. API tokens are scoped to the jobs that use GitHub APIs. ADR validation remains a separate maintainer check.
+- 2026-09-30: Aligned development package and assembly informational versions through the SDK's VersionPrefix/VersionSuffix properties. The actual package inspector rejects version drift; the explicit reviewed release-version override remains unchanged.
 
 ### Implementation References
 
+- [Operator pre-tag entry point](../../eng/pre-tag-check.sh)
 - [Local release entry point](../../eng/release-candidate.sh)
 - [Shared identity and manifest checks](../../eng/release/common.py)
 - [Shared qualification runner](../../eng/release/qualification.py)
@@ -136,3 +147,5 @@ conflicts before duplicate-tolerant pushes, and public package and PDB readback 
 - [GitHub Actions job timeouts](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax) (primary source; retrieved 2026-09-30)
 - [GitHub Actions job matrices and parallelism](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/run-job-variations) (primary source; retrieved 2026-09-30)
 - [GitHub Actions job dependencies and result conditions](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idneeds) (primary source; retrieved 2026-09-30)
+- [NuGet MSBuild package version defaults](https://learn.microsoft.com/en-us/nuget/reference/msbuild-targets#pack-target) (primary source; retrieved 2026-09-30)
+- [.NET generated assembly version attributes](https://learn.microsoft.com/en-us/dotnet/standard/assembly/set-attributes-project-file) (primary source; retrieved 2026-09-30)

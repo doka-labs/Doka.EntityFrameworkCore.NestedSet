@@ -543,7 +543,7 @@ class TestResultTests(unittest.TestCase):
     """TRX coverage must include every test project and actual passing cases."""
 
     def setUp(self):
-        """Create two declared test projects and write no compiled output."""
+        """Declare two executable suites and their shared, non-executable specification library."""
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.repo = Path(temporary.name)
@@ -555,6 +555,9 @@ class TestResultTests(unittest.TestCase):
             text_file(self.repo / path, "<Project />")
             ET.SubElement(root, "Project", Path=path)
 
+        library = "tests/Specification.Tests/Specification.Tests.csproj"
+        text_file(self.repo / library, "<Project><PropertyGroup><IsTestProject>false</IsTestProject></PropertyGroup></Project>")
+        ET.SubElement(root, "Project", Path=library)
         ET.ElementTree(root).write(self.repo / qualification.SOLUTION)
 
     def report(self, project, *, name=None, outcomes=("Passed",), duplicate_case=False):
@@ -577,7 +580,7 @@ class TestResultTests(unittest.TestCase):
         return path
 
     def test_complete_results_pass(self):
-        """All declared projects contribute one positive result artifact."""
+        """Every executable suite supplies a result; the specification library supplies none."""
         # Arrange
         self.report("First.Tests")
         self.report("Second.Tests")
@@ -588,6 +591,19 @@ class TestResultTests(unittest.TestCase):
         # Assert
         self.assertEqual({"First.Tests", "Second.Tests"}, set(result))
         self.assertTrue(all(value["passed"] == 1 for value in result.values()))
+
+    def test_library_report_cannot_replace_executable_suite(self):
+        """A result attributed to a non-test library cannot satisfy missing executable coverage."""
+        # Arrange
+        self.report("First.Tests")
+        self.report("Specification.Tests")
+
+        # Act
+        error = capture(lambda: qualification.verify_results(self.repo, self.results))
+
+        # Assert
+        self.assertIsInstance(error, common.ReleaseError)
+        self.assertEqual("tests_identity", error.code)
 
     def test_missing_project_is_rejected(self):
         """One green project cannot stand in for a missing suite."""

@@ -3,6 +3,8 @@
 import base64
 import copy
 import json
+import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -42,6 +44,10 @@ class HostedFixture:
         self.sleep_calls = []
         self.local_dirty = False
         self.remote_tag_exists = False
+        self.remote_tags = ""
+        self.branch = "main"
+        self.signing_format = "ssh"
+        self.signing_key = "key::ssh-ed25519 fixture"
         self.api_overrides = {}
         self.during_signer_verification = None
 
@@ -117,13 +123,17 @@ class HostedFixture:
         simple = {("remote", "get-url", "origin"): f"https://github.com/{release.REPOSITORY}.git",
                   ("rev-parse", "HEAD"): commit, ("rev-parse", "HEAD^{tree}"): self.manifest["source"]["tree"],
                   ("status", "--porcelain"): " M changed.py" if self.local_dirty else "",
-                  ("branch", "--show-current"): "main", ("config", "--get", "gpg.format"): "ssh",
-                  ("config", "--get", "user.signingkey"): "key-from-existing-operator-configuration"}
+                  ("status", "--porcelain", "--untracked-files=all"): "?? untracked.txt" if self.local_dirty else "",
+                  ("branch", "--show-current"): self.branch, ("config", "--get", "gpg.format"): self.signing_format,
+                  ("config", "--get", "user.signingkey"): self.signing_key}
 
         if tuple(arguments[1:]) in simple:
             return simple[tuple(arguments[1:])]
 
         if arguments[1] == "ls-remote":
+            if arguments[2:] == ["--tags", "origin"]:
+                return self.remote_tags
+
             reference = arguments[-1]
 
             if reference == "refs/heads/main":
@@ -859,6 +869,151 @@ class PublicationTests(unittest.TestCase):
         self.assertRegex(str(error), "source-dirty")
         self.assertEqual([], self.hosted.writes)
 
+    def test_pre_tag_without_version_checks_readiness_without_release_notes(self):
+        """The shared operator entry point checks source readiness before versioned hosted qualification."""
+        # Arrange
+        (self.directory / "CHANGELOG.md").unlink()
+
+        # Act
+        result = release.pre_tag(commands=self.hosted, source_repo=self.directory)
+
+        # Assert
+        self.assertEqual("pre-tag-checked", result["state"])
+        self.assertEqual(self.manifest["source"]["commit"], result["sourceCommit"])
+        self.assertNotIn("version", result)
+        self.assertEqual([], self.hosted.writes)
+        self.assertFalse(any(call[1] in ("fetch", "tag", "commit", "push", "add") for call in self.hosted.calls))
+
+    def test_pre_tag_cli_accepts_no_version_and_reports_the_checked_commit(self):
+        """The operator wrapper reaches the shared check without inventing a release version."""
+        # Arrange
+        result = {"sourceCommit": self.manifest["source"]["commit"], "state": "pre-tag-checked"}
+
+        # Act
+        with patch("sys.argv", ["publication", "pre-tag"]), \
+                patch("eng.release.publication.pre_tag", return_value=result) as check, \
+                patch("builtins.print") as output:
+            release.main()
+
+        # Assert
+        check.assert_called_once_with(None, None)
+        output.assert_any_call(f"Ready to start Release candidate for {result['sourceCommit']}.")
+        output.assert_any_call("Create the signed tag only after qualification and attestations succeed.")
+
+    def test_pre_tag_rejects_remote_semantic_tag_on_candidate(self):
+        """Annotated and lightweight release tags both consume the candidate's release identity."""
+        # Arrange
+        commit = self.manifest["source"]["commit"]
+        references = ("refs/tags/v1.2.3", "refs/tags/v1.2.3-rc.1^{}", "refs/tags/v1.2.3+build.1^{}")
+        fixtures = [HostedFixture(self.candidate, self.provenance, self.manifest) for _ in references]
+
+        for fixture, reference in zip(fixtures, references, strict=True):
+            fixture.remote_tags = f"{commit}\t{reference}\n"
+
+        # Act
+        errors = [record_error(lambda fixture=fixture: release.pre_tag(commands=fixture)) for fixture in fixtures]
+
+        # Assert
+        for reference, error, fixture in zip(references, errors, fixtures, strict=True):
+            with self.subTest(reference=reference):
+                self.assertRegex(str(error), "tag-exists")
+                self.assertEqual([], fixture.writes)
+
+    def test_pre_tag_ignores_other_commits_and_nonrelease_tags(self):
+        """Other releases and ordinary source labels do not consume this candidate."""
+        # Arrange
+        commit = self.manifest["source"]["commit"]
+        self.hosted.remote_tags = f"{'b' * 40}\trefs/tags/v1.2.2^{{}}\n{commit}\trefs/tags/reviewed\n"
+
+        # Act
+        result = release.pre_tag(commands=self.hosted)
+
+        # Assert
+        self.assertEqual("pre-tag-checked", result["state"])
+        self.assertEqual([], self.hosted.writes)
+
+    def test_pre_tag_rejects_wrong_branch_or_detached_head(self):
+        """An operator cannot qualify a side branch or detached checkout as main."""
+        # Arrange
+        branches = ("feature/release", "")
+        fixtures = [HostedFixture(self.candidate, self.provenance, self.manifest) for _ in branches]
+
+        for fixture, branch in zip(fixtures, branches, strict=True):
+            fixture.branch = branch
+
+        # Act
+        errors = [record_error(lambda fixture=fixture: release.pre_tag(commands=fixture)) for fixture in fixtures]
+
+        # Assert
+        for branch, error in zip(branches, errors, strict=True):
+            with self.subTest(branch=branch):
+                self.assertRegex(str(error), "source-branch")
+
+    def test_pre_tag_rejects_stale_main(self):
+        """Local refs cannot hide a newer remote main commit."""
+        # Arrange
+        self.hosted.remote_commit = "b" * 40
+
+        # Act
+        error = record_error(lambda: release.pre_tag(commands=self.hosted))
+
+        # Assert
+        self.assertRegex(str(error), "source-stale")
+        self.assertEqual([], self.hosted.writes)
+
+    def test_pre_tag_rejects_non_ssh_signing(self):
+        """The operator entry point enforces the signature format required by publication."""
+        # Arrange
+        self.hosted.signing_format = "openpgp"
+
+        # Act
+        error = record_error(lambda: release.pre_tag(commands=self.hosted))
+
+        # Assert
+        self.assertRegex(str(error), "signing-format")
+
+    def test_pre_tag_rejects_missing_signing_material(self):
+        """An empty key or nonexistent key file fails before the operator can create a tag."""
+        # Arrange
+        keys = ("", str(self.directory / "missing.pub"))
+        fixtures = [HostedFixture(self.candidate, self.provenance, self.manifest) for _ in keys]
+
+        for fixture, key in zip(fixtures, keys, strict=True):
+            fixture.signing_key = key
+
+        # Act
+        errors = [record_error(lambda fixture=fixture: release.pre_tag(commands=fixture)) for fixture in fixtures]
+
+        # Assert
+        for key, error in zip(keys, errors, strict=True):
+            with self.subTest(key=key):
+                self.assertRegex(str(error), "signing-key")
+
+    def test_pre_tag_accepts_existing_signing_key_file(self):
+        """File-based SSH signing configuration is supported alongside inline public keys."""
+        # Arrange
+        key = self.directory / "release.pub"
+        key.write_text("ssh-ed25519 fixture\n", encoding="ascii")
+        self.hosted.signing_key = str(key)
+
+        # Act
+        result = release.pre_tag(commands=self.hosted)
+
+        # Assert
+        self.assertEqual("pre-tag-checked", result["state"])
+
+    def test_pre_tag_rejects_used_version_on_other_commit(self):
+        """The optional version-specific inspection still rejects a version already used elsewhere."""
+        # Arrange
+        self.hosted.remote_tag_exists = True
+
+        # Act
+        error = record_error(lambda: release.pre_tag(self.version, commands=self.hosted, source_repo=self.directory))
+
+        # Assert
+        self.assertRegex(str(error), "tag-exists")
+        self.assertEqual([], self.hosted.writes)
+
     def test_preflight_checks_unused_version_without_building(self):
         """The preflight inspects public availability before qualification creates packages."""
         # Arrange
@@ -887,6 +1042,56 @@ class PublicationTests(unittest.TestCase):
         # Assert
         self.assertRegex(str(error), "source-version")
         self.assertEqual([], self.hosted.calls)
+
+
+class PreTagEntryPointTests(unittest.TestCase):
+    """Exercise the public shell command without querying real Git or publishing anything."""
+
+    def setUp(self):
+        """Replace only the interpreter so the actual shell entry point remains under test."""
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.directory = Path(self.temporary.name)
+        self.python = self.directory / "python3"
+        self.python.write_text('#!/bin/sh\nprintf "%s\\n" "$PWD" "$@"\nexit "${PRE_TAG_TEST_EXIT:-0}"\n',
+                               encoding="ascii")
+        self.python.chmod(0o755)
+        self.environment = {**os.environ, "PATH": f"{self.directory}{os.pathsep}{os.environ['PATH']}"}
+        self.script = release.ROOT / "eng/pre-tag-check.sh"
+
+    def test_entry_point_runs_shared_check_from_repository_root(self):
+        """Starting the operator command elsewhere still selects this repository's release module."""
+        # Act
+        result = subprocess.run([str(self.script)], cwd=self.directory, env=self.environment,
+                                capture_output=True, text=True, check=False, timeout=10)
+
+        # Assert
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual([str(release.ROOT.resolve()), "-m", "eng.release.publication", "pre-tag"],
+                         result.stdout.splitlines())
+
+    def test_entry_point_propagates_failure(self):
+        """A failed readiness check cannot be reported as a successful shell command."""
+        # Arrange
+        self.environment["PRE_TAG_TEST_EXIT"] = "19"
+
+        # Act
+        result = subprocess.run([str(self.script)], cwd=self.directory, env=self.environment,
+                                capture_output=True, text=True, check=False, timeout=10)
+
+        # Assert
+        self.assertEqual(19, result.returncode)
+
+    def test_entry_point_rejects_extra_arguments(self):
+        """The shared no-argument operator command cannot silently accept ignored options."""
+        # Act
+        result = subprocess.run([str(self.script), "unexpected"], cwd=self.directory, env=self.environment,
+                                capture_output=True, text=True, check=False, timeout=10)
+
+        # Assert
+        self.assertEqual(2, result.returncode)
+        self.assertIn("Usage:", result.stderr)
+        self.assertEqual("", result.stdout)
 
 
 if __name__ == "__main__":

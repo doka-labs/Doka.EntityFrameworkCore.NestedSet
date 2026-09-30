@@ -381,6 +381,27 @@ class WorkflowBoundaryTests(unittest.TestCase):
         self.assertIn("fail-fast: false", self.ci["samples"])
         self.assertNotIn("-m:1", self.ci["tests"])
 
+    def test_ci_inspects_packed_archives_before_upload(self):
+        """PR qualification checks metadata and PE/PDB identity without a second pack or build."""
+        # Arrange
+        build = self.ci["build"]
+        boundaries = ("dotnet pack", "python3 -m eng.release.packages", "name: Retain NuGet packages")
+
+        # Act
+        positions = [build.find(boundary) for boundary in boundaries]
+
+        # Assert
+        self.assertTrue(all(position >= 0 for position in positions))
+        self.assertEqual(sorted(positions), positions)
+        self.assertEqual(1, build.count("dotnet pack"))
+        self.assertEqual(1, build.count("dotnet build"))
+        self.assertIn("-getProperty:PackageVersion", build)
+        self.assertIn('--version "$package_version"', build)
+        self.assertIn('--source-commit "$(git rev-parse HEAD)"', build)
+        self.assertIn("--package-dir artifacts/ci-packages", build)
+        self.assertIn("--output artifacts/ci-package-manifest.json", build)
+        self.assertIn("            artifacts/ci-package-manifest.json", build)
+
     def test_ci_matrix_covers_each_executable_test_project_once(self):
         """Adding a suite cannot silently leave it outside pull-request qualification."""
         # Arrange
@@ -474,6 +495,18 @@ class WorkflowBoundaryTests(unittest.TestCase):
         self.assertIn("environment: nuget", publish)
         self.assertIn("needs: [qualify, attest]", publish)
         self.assertIn("uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841", publish)
+
+    def test_api_token_is_limited_to_jobs_that_use_github(self):
+        """Qualification does not inherit the API token used by source and publication guards."""
+        # Arrange
+        header = self.release_path.read_text(encoding="ascii").split("\njobs:\n", 1)[0]
+
+        # Act
+        token_jobs = {name for name, body in self.release.items() if "GH_TOKEN:" in body}
+
+        # Assert
+        self.assertNotIn("GH_TOKEN:", header)
+        self.assertEqual({"preflight", "attest", "publish"}, token_jobs)
 
     def test_authorization_and_draft_precede_login(self):
         """Credentials are requested only after source, public-byte, and draft guards."""

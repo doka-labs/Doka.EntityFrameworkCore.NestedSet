@@ -4,6 +4,12 @@ This document defines the package and evidence contract. The operator sequence
 is in [Release publication](operations/release-publication.md), and decision
 authority is in [Release governance](release-governance.md).
 
+The operator entry point is `./eng/pre-tag-check.sh`, as in Doka and
+SafeMigrations. It checks readiness from the current `main` checkout before the
+untagged hosted candidate starts. The runbook uses `release_commit`,
+`release_version`, and `release_tag` throughout checkout, tag creation, and
+public release inspection.
+
 ## Release identity
 
 One version publishes two package IDs:
@@ -20,10 +26,10 @@ and dispatch must target exact current protected `main`.
 
 Pull-request CI checks the offline engineering regressions, locked restore,
 C# style, Release build, all test projects, coverage reports, runnable samples,
-and pack. The PR-only lockfile diagnostic tests run there. The release
-candidate independently repeats the solution and release-tooling checks from
-its selected `main` commit and additionally verifies package contents,
-isolated package consumers, and SBOMs. Its runner
+pack, and primary/symbol archive inspection. The PR-only lockfile diagnostic
+tests run there. The release candidate independently repeats the solution and release-tooling checks from
+its selected `main` commit and additionally verifies isolated package consumers
+and SBOMs. Its runner
 checks source, dependency locks, and tested binaries between phases; it seals
 the candidate only after every check passes. A failed run requires a new output
 directory and reruns all checks.

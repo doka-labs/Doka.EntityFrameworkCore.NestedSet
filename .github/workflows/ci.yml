@@ -89,11 +89,23 @@ jobs:
           --configuration Release --no-build --no-restore
           --output artifacts/ci-packages
 
+      - name: Inspect primary and symbol packages
+        shell: bash
+        run: |
+          package_version="$(dotnet msbuild src/Doka.NestedSet/Doka.NestedSet.csproj -nologo -getProperty:PackageVersion)"
+          python3 -m eng.release.packages \
+            --package-dir artifacts/ci-packages \
+            --version "$package_version" \
+            --source-commit "$(git rev-parse HEAD)" \
+            --output artifacts/ci-package-manifest.json
+
       - name: Retain NuGet packages
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ci-packages-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/ci-packages
+          path: |
+            artifacts/ci-packages
+            artifacts/ci-package-manifest.json
           if-no-files-found: error
           retention-days: 14
 

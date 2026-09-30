@@ -104,6 +104,10 @@ dotnet format Doka.EntityFrameworkCore.NestedSet.slnx style \
   --diagnostics IDE0005 --severity hidden --verify-no-changes --no-restore
 ```
 
+This formatter check also covers tests, benchmarks, and samples without XML
+documentation output. Microsoft's [XML documentation prerequisite for IDE0005](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/style-rules/ide0005)
+applies to reporting the diagnostic during a build.
+
 Build after moving global imports: linked source files can require an import
 even when it appears unused in one consuming project.
 

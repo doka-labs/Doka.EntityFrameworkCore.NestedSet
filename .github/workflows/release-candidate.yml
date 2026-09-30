@@ -17,7 +17,6 @@ concurrency:
 
 env:
   CANDIDATE_VERSION: ${{ inputs.version }}
-  GH_TOKEN: ${{ github.token }}
 
 jobs:
   preflight:
@@ -27,6 +26,8 @@ jobs:
     permissions:
       contents: read
       actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
 
     steps:
       - name: Checkout exact dispatch source
@@ -104,6 +105,8 @@ jobs:
       contents: read
       id-token: write
       attestations: write
+    env:
+      GH_TOKEN: ${{ github.token }}
     outputs:
       artifact-id: ${{ steps.upload.outputs.artifact-id }}
 
@@ -183,6 +186,7 @@ jobs:
       attestations: read
       id-token: write
     env:
+      GH_TOKEN: ${{ github.token }}
       RELEASE_ALLOWED_SIGNERS: ${{ vars.RELEASE_ALLOWED_SIGNERS }}
 
     steps:
