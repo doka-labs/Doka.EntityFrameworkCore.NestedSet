@@ -43,6 +43,12 @@ Container image tags and SHA-256 digests are pinned in
 [the shared Dockerfile](../docker/database-images.Dockerfile). Digest pinning identifies exact test
 content; it does not replace compatibility or vulnerability review.
 
+[Dependabot](../.github/dependabot.yml) proposes maintenance updates within the
+qualified MySQL 8.4, MariaDB 11.8, and PostgreSQL 17 lines. MySQL and MariaDB
+major and minor changes are excluded; PostgreSQL major changes are excluded
+while its minor maintenance releases remain eligible. Adding or replacing an
+engine line requires an explicit qualification decision and an updated matrix.
+
 SQL Server container images are supported by Microsoft only on Linux x86-64
 hosts. Emulation or translation on Arm hosts is not a qualified substitute for
 the SQL Server integration matrix, even if a local run succeeds. Run that

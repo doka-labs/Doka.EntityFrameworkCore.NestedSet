@@ -8,6 +8,22 @@ updates:
     directory: /docker
     schedule:
       interval: weekly
+    ignore:
+      # WHY: Qualification owns the MySQL 8.4 and MariaDB 11.8 LTS lines;
+      # automatic proposals may update their patches, but must not replace them.
+      - dependency-name: mysql
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+      - dependency-name: mariadb
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+      # WHY: PostgreSQL maintenance releases change the second version number,
+      # so minor updates within the qualified major must remain eligible.
+      - dependency-name: postgres
+        update-types:
+          - version-update:semver-major
   - package-ecosystem: nuget
     directory: /
     schedule:
