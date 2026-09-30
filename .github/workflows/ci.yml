@@ -13,10 +13,54 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  qualify:
-    name: Source, build, and tests
+  source-quality:
+    name: C# style and unused imports
     runs-on: ubuntu-24.04
-    timeout-minutes: 130
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Restore locked dependencies
+        run: dotnet restore Doka.EntityFrameworkCore.NestedSet.slnx --locked-mode
+
+      - name: Check C# style
+        run: dotnet format Doka.EntityFrameworkCore.NestedSet.slnx style --severity warn --verify-no-changes --no-restore
+
+      - name: Check unused imports
+        run: dotnet format Doka.EntityFrameworkCore.NestedSet.slnx style --diagnostics IDE0005 --severity hidden --verify-no-changes --no-restore
+
+  engineering-tests:
+    name: Engineering regression tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run release engineering regressions
+        run: python3 -m unittest discover -s eng/tests -p 'test_*.py'
+
+      - name: Run Dependabot diagnostic regressions
+        run: python3 -m unittest discover -s eng/ci-tests -p 'test_*.py'
+
+  build:
+    name: Release build and NuGet packages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
 
     steps:
       - name: Checkout exact source
@@ -32,53 +76,26 @@ jobs:
           cache: true
           cache-dependency-path: "**/packages.lock.json"
 
-      - name: Check offline engineering regressions
-        shell: bash
-        run: |
-          python3 -m unittest discover -s eng/tests -p 'test_*.py'
-          python3 -m unittest discover -s eng/ci-tests -p 'test_*.py'
-
       - name: Restore locked dependencies
         id: restore
         run: dotnet restore Doka.EntityFrameworkCore.NestedSet.slnx --locked-mode
 
-      - name: Check C# style and unused imports
-        shell: bash
-        run: |
-          dotnet format Doka.EntityFrameworkCore.NestedSet.slnx style --severity warn --verify-no-changes --no-restore
-          dotnet format Doka.EntityFrameworkCore.NestedSet.slnx style --diagnostics IDE0005 --severity hidden --verify-no-changes --no-restore
-
       - name: Build Release solution
         run: dotnet build Doka.EntityFrameworkCore.NestedSet.slnx --configuration Release --no-restore
-
-      - name: Run all C# tests
-        env:
-          DOKA_NESTEDSET_QUERY_PLAN_DIR: ${{ github.workspace }}/artifacts/ci-tests/query-plans
-        shell: bash
-        run: |
-          docker info
-          dotnet test Doka.EntityFrameworkCore.NestedSet.slnx --configuration Release --no-build --no-restore -m:1 \
-            --settings eng/coverage.runsettings --collect:"Code Coverage" --logger trx \
-            --results-directory artifacts/ci-tests
-
-      - name: Verify coverage reports
-        run: python3 eng/verify-coverage.py artifacts/ci-tests
-
-      - name: Run SQLite samples
-        env:
-          NESTEDSET_SAMPLE_SQLITE_DIRECTORY: ${{ github.workspace }}/artifacts/ci-tests/sample-data
-        shell: bash
-        run: |
-          for sample in FileSystem Kpis UserGroups; do
-            dotnet run --project "samples/$sample" --configuration Release --no-build --no-restore \
-              -- --provider sqlite --reset
-          done
 
       - name: Pack shipping projects
         run: >-
           dotnet pack Doka.EntityFrameworkCore.NestedSet.slnx
           --configuration Release --no-build --no-restore
           --output artifacts/ci-packages
+
+      - name: Retain NuGet packages
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-packages-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ci-packages
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Prepare failed Dependabot lockfile diagnostic
         id: dependabot-diagnostic
@@ -97,25 +114,182 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Retain test and coverage reports
+  tests:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 130
+
+    # WHY: Separate runners isolate Docker resources and coverage-instrumented
+    # outputs. Each lane builds its own project graph without a binary handoff.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: core
+            name: Core unit tests
+            project: tests/Doka.NestedSet.Tests/Doka.NestedSet.Tests.csproj
+            docker: false
+          - id: ef-unit
+            name: EF Core unit tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests.csproj
+            docker: false
+          - id: benchmark-contracts
+            name: Benchmark contract tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests.csproj
+            docker: false
+          - id: mysql
+            name: MySQL and MariaDB integration tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
+            docker: true
+          - id: postgresql
+            name: PostgreSQL integration tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests.csproj
+            docker: true
+          - id: sqlserver
+            name: SQL Server integration tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests/Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests.csproj
+            docker: true
+          - id: sqlite
+            name: SQLite integration tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests.csproj
+            docker: false
+          - id: migrations
+            name: EF migration integration tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests.csproj
+            docker: true
+          - id: safe-migrations
+            name: SafeMigrations integration tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests.csproj
+            docker: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Restore locked test dependencies
+        run: dotnet restore "${{ matrix.project }}" --locked-mode
+
+      - name: Build test project
+        run: dotnet build "${{ matrix.project }}" --configuration Release --no-restore
+
+      - name: Check Docker availability
+        if: matrix.docker
+        run: docker info
+
+      - name: Run tests with coverage
+        env:
+          DOKA_NESTEDSET_QUERY_PLAN_DIR: ${{ github.workspace }}/artifacts/ci-tests/${{ matrix.id }}/query-plans
+        run: >-
+          dotnet test "${{ matrix.project }}" --configuration Release --no-build --no-restore
+          --settings eng/coverage.runsettings --collect:"Code Coverage" --logger trx
+          --results-directory artifacts/ci-tests/${{ matrix.id }}
+
+      - name: Require this project's coverage report
+        run: test -n "$(find artifacts/ci-tests/${{ matrix.id }} -type f -name '*.cobertura.xml' -print -quit)"
+
+      - name: Retain test, coverage, and query-plan reports
         if: always()
-        continue-on-error: true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ci-tests-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/ci-tests
-          if-no-files-found: warn
+          name: ci-tests-${{ matrix.id }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ci-tests/${{ matrix.id }}
+          if-no-files-found: error
           retention-days: 30
+
+  samples:
+    name: SQLite sample / ${{ matrix.sample }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        sample: [FileSystem, Kpis, UserGroups]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Restore locked sample dependencies
+        run: dotnet restore "samples/${{ matrix.sample }}" --locked-mode
+
+      - name: Build sample
+        run: dotnet build "samples/${{ matrix.sample }}" --configuration Release --no-restore
+
+      - name: Run sample
+        env:
+          NESTEDSET_SAMPLE_SQLITE_DIRECTORY: ${{ github.workspace }}/artifacts/sample-data
+        run: >-
+          dotnet run --project "samples/${{ matrix.sample }}" --configuration Release --no-build --no-restore
+          -- --provider sqlite --reset
+
+  coverage:
+    name: Coverage reports
+    needs: tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download all test reports from this attempt
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: ci-tests-*-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ci-tests
+
+      - name: Verify coverage across all test projects
+        run: python3 eng/verify-coverage.py artifacts/ci-tests
 
   repository-qualification:
     name: Repository qualification
     if: always()
-    needs: qualify
+    needs: [source-quality, engineering-tests, build, tests, samples, coverage]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
 
     steps:
-      - name: Require complete qualification
+      - name: Require every qualification job to succeed
         env:
-          QUALIFICATION_RESULT: ${{ needs.qualify.result }}
-        run: test "$QUALIFICATION_RESULT" = success
+          RESULTS: >-
+            source-quality=${{ needs.source-quality.result }}
+            engineering-tests=${{ needs.engineering-tests.result }}
+            build=${{ needs.build.result }}
+            tests=${{ needs.tests.result }}
+            samples=${{ needs.samples.result }}
+            coverage=${{ needs.coverage.result }}
+        run: |
+          status=0
+          printf '| Check | Result |\n| --- | --- |\n' >> "$GITHUB_STEP_SUMMARY"
+          for entry in ${RESULTS}; do
+            job="${entry%%=*}"
+            result="${entry#*=}"
+            printf '| %s | %s |\n' "$job" "$result" >> "$GITHUB_STEP_SUMMARY"
+            if [[ "$result" != success ]]; then
+              echo "::error title=Repository qualification::${job} concluded '${result}'."
+              status=1
+            fi
+          done
+
+          exit "$status"

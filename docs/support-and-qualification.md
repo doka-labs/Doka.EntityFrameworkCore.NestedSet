@@ -164,7 +164,12 @@ bash eng/release-candidate.sh \
 ```
 
 This executes the complete release candidate checks locally. Pull-request CI
-uses the direct C# build and test path; a workspace run is never publishable.
+uses independent source-quality, engineering, build/package, test-project, and
+SQLite-sample jobs. Every executable test project has its own named matrix
+cell; MySQL and MariaDB share their provider project. Cells can run concurrently
+on isolated runners. Coverage is verified across the complete test reports,
+and `Repository qualification` requires every gate to succeed. A workspace run
+is never publishable.
 
 ### Focused projects
 

@@ -43,6 +43,12 @@ published package is the consumer contract, and one release runner gives local a
 of readiness. Pull-request CI uses direct .NET and offline engineering checks so release-only services cannot block a product change.
 Publication remains a separate authorized action. PR-only diagnostics do not enter the RC qualification run.
 
+CI runs independent source, engineering, build/package, test-project, and sample
+jobs. Each executable test project and SQLite sample owns a named matrix cell
+and runner. Coverage waits for complete test evidence; the stable Repository
+qualification check rejects any failed, skipped, or canceled gate. Project-local
+builds avoid transporting or sharing coverage-instrumented binary outputs.
+
 ### Consequences
 
 - Good, because a candidate can be reviewed through explicit manifests and operator evidence before any registry write.
@@ -103,6 +109,7 @@ conflicts before duplicate-tolerant pushes, and public package and PDB readback 
 - 2026-09-28: The maintainer accepted the current decision and designated the core-maintainers audience. Complete RC qualification and authorized hosted publication remain pending; existing scripts do not establish those outcomes.
 - 2026-09-30: Separated ADR profile validation from blocking qualification at the maintainer's request; package and publication evidence requirements remain unchanged.
 - 2026-09-30: Limited required pull-request CI to direct C# checks and pack. RC runs the complete package, consumer, SBOM, and provenance qualification from its selected main commit in one fresh pass, without resumable qualification receipts. Publication still verifies the sealed candidate and same-run provenance.
+- 2026-09-30: Split CI into independently named parallel checks and project/sample matrices, retaining the complete existing checks and stable required aggregate. RC qualification remains independent of CI artifacts.
 - 2026-09-30: Aligned the two-package upload order with the SafeMigrations multi-package release: both primary packages precede symbol uploads. The Core package remains before its dependent EF package; same-run recovery and readback remain mandatory.
 - 2026-09-30: Added early source-version and dated-notes checks, PR-time release-tooling regressions, and a 120-minute NuGet readback inside a 180-minute publish job. GitHub asset verification shares a retry budget. Negative SBOM fixtures remain offline while the RC validates the actual candidate.
 
@@ -127,3 +134,5 @@ conflicts before duplicate-tolerant pushes, and public package and PDB readback 
 - [NuGet trusted publishing](https://learn.microsoft.com/en-us/nuget/nuget-org/trusted-publishing) (primary source; retrieved 2026-09-19)
 - [NuGet package validation and indexing](https://learn.microsoft.com/en-us/nuget/nuget-org/publish-a-package) (primary source; retrieved 2026-09-30)
 - [GitHub Actions job timeouts](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax) (primary source; retrieved 2026-09-30)
+- [GitHub Actions job matrices and parallelism](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/run-job-variations) (primary source; retrieved 2026-09-30)
+- [GitHub Actions job dependencies and result conditions](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idneeds) (primary source; retrieved 2026-09-30)

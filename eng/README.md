@@ -10,9 +10,15 @@ bash eng/verify-package-consumer.sh
 
 ## Qualification and release evidence
 
-[`ci.yml`](../.github/workflows/ci.yml) runs offline engineering regressions,
-then restores, checks C# style, builds, tests, runs samples, and packs the
-solution for pull requests into `main`.
+[`ci.yml`](../.github/workflows/ci.yml) runs independent jobs for C# style and
+unused imports, offline engineering regressions, the Release solution build and
+NuGet pack, nine executable test projects, and the three SQLite samples. Test
+and sample matrix cells run on separate runners without a repository-imposed
+parallelism cap. Each restores locked dependencies and builds its own project
+graph, so Docker resources and instrumented outputs are isolated. Coverage
+verification waits for all test reports from the current run attempt. The stable
+`Repository qualification` check requires every job to succeed and rejects
+failed, canceled, or skipped gates.
 [`release-candidate.yml`](../.github/workflows/release-candidate.yml) runs
 [`release-candidate.sh`](release-candidate.sh) once from a fresh checkout. The
 release runner executes `quality`, `tests`, `packages`, `consumer`, and `sbom`
