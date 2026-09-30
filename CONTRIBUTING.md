@@ -84,6 +84,7 @@ Useful focused checks include:
 dotnet format Doka.EntityFrameworkCore.NestedSet.slnx style \
   --severity warn --verify-no-changes --no-restore
 python3 -m unittest discover -s eng/tests -p 'test_*.py' -v
+bash eng/validate-adrs.sh
 bash eng/verify-package-consumer.sh
 ```
 
@@ -335,12 +336,13 @@ Material decisions follow MADR 4.0 with the
 2. complete metadata, context, drivers, options, consequences, confirmation,
    triggers, history, references, and sources;
 3. distinguish proposed from accepted status and never reconstruct approval;
-4. record both sides of amendments or supersession; and
-5. keep the human and machine indexes consistent with the included records.
+4. record both sides of amendments or supersession;
+5. run `bash eng/validate-adrs.sh --write-index`; and
+6. run `bash eng/validate-adrs.sh` and its separate validator fixtures in
+   `eng/quality/tests`.
 
 External links belong under Sources with primary-source retrieval dates.
-ADR metadata is authoritative; keep the human index, machine index, and
-relationship graph consistent with the included records.
+Generated ADR navigation must not be edited by hand.
 
 ## Documentation
 

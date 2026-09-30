@@ -446,6 +446,10 @@ filtered run does not establish coverage for a provider introduced later.
   contradictory applicable declarations must reject unless an explicit
   identity-column collation provides the authoritative comparison.
 
+- Run `eng/validate-adrs.sh`; expect complete profile conformance and
+  reciprocal amendment links. These commands are confirmation procedures,
+  not claims that a new full qualification run has completed.
+
 ## Pros and Cons of the Options
 
 ### Typed feature execution with one exact-tree store

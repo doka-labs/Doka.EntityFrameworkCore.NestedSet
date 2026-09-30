@@ -155,6 +155,8 @@ require a repeated comparison against stable source before attributing results.
 
 ### Confirmation
 
+- Run `eng/validate-adrs.sh`; expect the complete decision corpus and generated
+  indexes to validate, including primary-source and local-link provenance.
 - Run `dotnet run --project tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests`
   with both `-c Debug` and `-c Release`;
   expect the scenario, reset/effect, job, lifecycle, diagnostics, and provenance

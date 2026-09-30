@@ -64,6 +64,30 @@ metadata, dependencies, license, XML documentation, source commit, and actual PE
 [.NET 10 inspector](tools/Doka.NestedSet.PackageInspection/Program.cs) is built with the solution. No new runtime package
 is introduced. Hosted publication uses the attested inspection manifest and exact file hashes without rebuilding.
 
+## Architecture decision checks
+
+```bash
+bash eng/validate-adrs.sh
+python3 -m unittest discover -s eng/quality/tests -p 'test_*.py' -v
+```
+
+The first command verifies the complete [MADR profile](../docs/decisions/MADR-PROFILE.md), links, history, relationships,
+and deterministic indexes. Use `bash eng/validate-adrs.sh --write-index` to update navigation after valid ADR edits;
+the check is separate from CI and RC qualification. The second command verifies the validator against positive and
+negative fixtures. Run the release engineering tests separately with
+`python3 -m unittest discover -s eng/tests -p 'test_*.py' -v`. Run the PR-only
+lockfile diagnostic fixtures with
+`python3 -m unittest discover -s eng/ci-tests -p 'test_*.py' -v`.
+Both suites run in pull-request CI; only the release suite reruns during RC
+qualification. Release fixtures include offline failure/retry/publication
+contracts and parse every engineering Python source with the standard library,
+including release entry points that unit discovery does not import. They do
+not perform external publication or establish hosted signature evidence.
+
+For local Python linting, run `ruff check eng` when Ruff is installed. The
+engineering sources pass Ruff 0.16.3. Ruff is not a repository or CI dependency;
+the standard-library syntax test above remains the mandatory check.
+
 ## SBOM generation and verification
 
 After packing the two shipping packages, run:

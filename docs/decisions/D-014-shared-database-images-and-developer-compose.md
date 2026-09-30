@@ -114,8 +114,8 @@ while a Rider UI readback remains a separate presentation check.
   password and expect authenticated readiness and the original data to survive.
 - Run selected live provider and ordinary migration tests plus benchmark contract
   tests; expect the existing independent resource lifetimes to work.
-- Validate source hygiene and the ADR corpus; expect no stale image-source path,
-  duplicate pin source, invalid local link, or changed Git index.
+- Inspect image-source paths and the ADR corpus separately; expect no stale
+  image-source path, duplicate pin source, invalid local link, or changed Git index.
 
 ## Pros and Cons of the Options
 

@@ -390,6 +390,9 @@ filtered run does not establish coverage for a provider introduced later.
   preserving output-directory overrides, file names, double-newline separators,
   and asynchronous cancellation behavior.
 
+- Run `eng/validate-adrs.sh` and the local Markdown link check; neither may
+  report stale project or source paths.
+
 ## Pros and Cons of the Options
 
 ### Referenced specification suites with fixture-owned engine identity

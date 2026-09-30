@@ -15,8 +15,8 @@ The [template](adr-template.md) provides the complete starting structure. The
 Records preserve their actual recording dates and initial proposal history.
 The maintainer accepted the decisions then present on 2026-09-28; later records
 preserve their own acceptance dates. Implemented records
-are confirmed against linked repository evidence. Complete qualification and
-authorized publication require their own evidence.
+are confirmed against linked repository evidence; the accepted release decision
+still requires complete qualification and authorized hosted publication.
 Implementation existence and passing checks MUST NOT be treated as historical
 approval. Acceptance requires a recorded owner decision under
 [project governance](../../GOVERNANCE.md).
@@ -141,7 +141,7 @@ Local links MUST resolve inside this repository, including after symlink and
 percent-escape resolution. Use relative paths without query strings. Inline
 Markdown links are supported; reference-style links are intentionally rejected
 so hidden link definitions cannot evade provenance checks. Link fragments are
-navigation hints; path resolution and anchor spelling require separate checks.
+navigation hints; this validator checks the path, not Markdown anchor spelling.
 
 Relations MUST name existing IDs, never themselves. `supersedes` /
 `superseded-by` and `amends` / `amended-by` MUST be reciprocal. A superseded
@@ -162,16 +162,34 @@ require HTTPS and MUST NOT contain credentials. Repository-only decisions MUST
 use exactly `- No external sources; repository evidence only.` and MUST NOT mix
 that marker with external entries.
 
-Review MUST verify provenance syntax, dates, placement, source authority,
-claim support, credible alternatives, and whether consultation or acceptance
-actually happened. Indexes must derive from the included record metadata.
+The mechanical check verifies provenance syntax, dates, and placement. Human
+review MUST still check source authority, claim support, credible alternatives,
+and whether consultation or acceptance actually happened.
+
+## Tooling and document validation
+
+Run `eng/validate-adrs.sh` for read-only validation. Run
+`eng/validate-adrs.sh --write-index` to update README.md and decision-index.json
+only after the corpus validates. Both indexes MUST match deterministic metadata
+rendering. The relationship graph is generated only when real amendment or
+supersession edges exist. An empty corpus, missing index, stale index, malformed
+record, or unresolved local link fails validation.
+
+The implementation is [one standard-library Python module](../../eng/quality/adr.py)
+behind a [stable shell entry point](../../eng/validate-adrs.sh). Maintainers run
+this document check separately; CI and release qualification do not invoke it.
+This does not add a Python invocation to consumer MSBuild or a shipping dependency.
+Run fixture regressions with `python3 -m unittest discover -s eng/quality/tests -p test_adrs.py`.
+Unknown command options and missing option values fail with usage exit code 2;
+corpus failures return 1 with diagnostics. Checks do not execute ADR commands,
+fetch external links, or establish semantic approval.
 
 ## Attribution
 
 The template structure is adapted from MADR 4.0.0 using its CC0-1.0 alternative;
 project-specific prose follows the [repository license](../../LICENSE).
 This attribution does not imply upstream endorsement. Doka's stricter profile
-defines NestedSet's decision-record contract.
+is adapted for NestedSet's existing Python engineering tools.
 
 Primary upstream sources, retrieved 2026-09-19:
 

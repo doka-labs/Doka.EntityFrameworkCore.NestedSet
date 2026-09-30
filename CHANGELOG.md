@@ -107,5 +107,5 @@ Initial development line. This version is not published.
 - Add task-oriented product, configuration, ordering, migration, transaction,
   diagnostics, performance, deployment, security, and release documentation.
 - Add a Doka MADR Enterprise Profile 1.0 decision corpus based on MADR 4.0,
-  release governance, threat model, assurance case, OpenSSF evidence mapping,
-  and hosted-settings runbook.
+  deterministic validation/indexing, release governance, threat model,
+  assurance case, OpenSSF evidence mapping, and hosted-settings runbook.

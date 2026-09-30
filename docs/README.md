@@ -45,7 +45,7 @@ runbooks own operational procedures.
 - [Developer Databases](../docker/README.md) explains optional Compose profiles,
   Rider connections, shared image pins, and developer volume ownership.
 - [Engineering Tools](../eng/README.md) documents local qualification, package
-  consumers, SBOMs, coverage reports, and release checks.
+  consumers, SBOMs, coverage reports, and independent ADR checks.
 - [Development Benchmarks](../benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks/README.md)
   explains optional measurements outside CI and release gates.
 - [Implementation Design](implementation-design.md) describes package
