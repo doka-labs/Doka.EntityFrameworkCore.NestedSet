@@ -54,7 +54,8 @@ first release:
 - create environment `nuget`, restrict deployments to protected `main`, require
   maintainer approval, and store the NuGet profile name as `NUGET_USER`;
 - configure the NuGet Trusted Publishing policy below; and
-- configure SSH tag signing and the approved `RELEASE_ALLOWED_SIGNERS` entries.
+- configure SSH tag signing and review the public keys in
+  [`.github/allowed_signers`](../../.github/allowed_signers).
 
 | Trusted Publishing field | Value |
 | --- | --- |

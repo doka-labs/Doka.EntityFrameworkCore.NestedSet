@@ -56,6 +56,11 @@ Development builds use the SDK's shared version prefix and suffix so package
 and assembly informational versions agree. Release qualification supplies the
 exact reviewed version to both the build and pack operations.
 
+Approved SSH release-tag signers are recorded in `.github/allowed_signers`,
+following Doka and SafeMigrations. Signer changes require a reviewed protected-main
+pull request. Publication verifies the tag directly against this file and retains
+GitHub's independent signature verdict, without extra hosted signer configuration.
+
 ### Consequences
 
 - Good, because a candidate can be reviewed through explicit manifests and operator evidence before any registry write.
@@ -122,6 +127,7 @@ conflicts before duplicate-tolerant pushes, and public package and PDB readback 
 - 2026-09-30: Aligned the operator runbook and no-argument `eng/pre-tag-check.sh` entry point with Doka and SafeMigrations. Readiness shares the existing source and signing checks; exact version and changelog validation remains mandatory in hosted preflight. Publication order and qualification gates are unchanged.
 - 2026-09-30: Restored offline archive inspection to the independent CI build job and retained its manifest. RC result coverage requires only executable test projects; shared specification libraries are excluded. API tokens are scoped to the jobs that use GitHub APIs. ADR validation remains a separate maintainer check.
 - 2026-09-30: Aligned development package and assembly informational versions through the SDK's VersionPrefix/VersionSuffix properties. The actual package inspector rejects version drift; the explicit reviewed release-version override remains unchanged.
+- 2026-10-02: Replaced the extra hosted signer configuration with the versioned `.github/allowed_signers` file at the maintainer's request, following Doka and SafeMigrations. Local Git and hosted tag-signature verification remain required.
 
 ### Implementation References
 
@@ -130,6 +136,7 @@ conflicts before duplicate-tolerant pushes, and public package and PDB readback 
 - [Shared identity and manifest checks](../../eng/release/common.py)
 - [Shared qualification runner](../../eng/release/qualification.py)
 - [Publication guards](../../eng/release/publication.py)
+- [Approved release signers](../../.github/allowed_signers)
 - [NuGet verification](../../eng/release/nuget.py)
 - [Hosted continuous integration](../../.github/workflows/ci.yml)
 - [Hosted release candidate](../../.github/workflows/release-candidate.yml)
@@ -140,6 +147,7 @@ conflicts before duplicate-tolerant pushes, and public package and PDB readback 
 
 ### Sources
 
+- [Git SSH allowed-signers policy](https://git-scm.com/docs/git-config#Documentation/git-config.txt-gpgsshallowedSignersFile) (primary source; retrieved 2026-10-02)
 - [NuGet signed packages](https://learn.microsoft.com/en-us/nuget/reference/signed-packages-reference) (primary source; retrieved 2026-09-19)
 - [NuGet package content hash design](https://github.com/NuGet/Home/wiki/Nupkg-Metadata-File) (primary source; retrieved 2026-09-19)
 - [NuGet trusted publishing](https://learn.microsoft.com/en-us/nuget/nuget-org/trusted-publishing) (primary source; retrieved 2026-09-19)

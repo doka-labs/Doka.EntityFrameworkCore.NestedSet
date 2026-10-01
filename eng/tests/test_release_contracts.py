@@ -521,7 +521,7 @@ class WorkflowBoundaryTests(unittest.TestCase):
 
         # Assert
         self.assertEqual(sorted(positions), positions)
-        self.assertIn("RELEASE_ALLOWED_SIGNERS: ${{ vars.RELEASE_ALLOWED_SIGNERS }}", publish)
+        self.assertNotIn("RELEASE_ALLOWED_SIGNERS", publish)
 
     def test_publication_reuses_immutable_artifact_ids_without_build(self):
         """The protected job receives exact earlier artifacts instead of repacking source."""
