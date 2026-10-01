@@ -158,7 +158,7 @@ Docker must be available for the server matrix:
 
 ```sh
 bash eng/release-candidate.sh \
-  --version 10.0.0-dev \
+  --version 10.0.0-rc.1 \
   --workspace \
   --output artifacts/qualification-local
 ```

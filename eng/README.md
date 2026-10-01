@@ -39,7 +39,7 @@ properties such as hierarchy validity, SQL command counts, update counts, and
 affected rows. See [performance and capacity](../docs/performance.md).
 
 ```bash
-bash eng/release-candidate.sh --version 10.0.0-dev --workspace --output artifacts/qualification-local
+bash eng/release-candidate.sh --version 10.0.0-rc.1 --workspace --output artifacts/qualification-local
 ```
 
 The default two-hour deadline terminates the owned process group and retains failed logs. Use `--timeout-seconds`
@@ -64,7 +64,7 @@ See [release publication](../docs/operations/release-publication.md) for externa
 Verify already-produced files without packing again:
 
 ```bash
-bash eng/verify-package-consumer.sh --package-dir artifacts/packages --version 10.0.0-dev \
+bash eng/verify-package-consumer.sh --package-dir artifacts/packages --version 10.0.0-rc.1 \
   --output artifacts/package-consumers
 ```
 

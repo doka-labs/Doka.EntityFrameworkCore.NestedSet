@@ -1,8 +1,8 @@
 # Doka.EntityFrameworkCore.NestedSet
 
 [![CI](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/workflows/ci.yml/badge.svg?event=pull_request)](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/workflows/ci.yml)
-[![NuGet Core](https://img.shields.io/nuget/v/Doka.NestedSet.svg?label=NuGet%20Core)](https://www.nuget.org/packages/Doka.NestedSet)
-[![NuGet EF Core](https://img.shields.io/nuget/v/Doka.EntityFrameworkCore.NestedSet.svg?label=NuGet%20EF%20Core)](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet)
+[![NuGet Core](https://img.shields.io/nuget/vpre/Doka.NestedSet.svg?label=NuGet%20Core)](https://www.nuget.org/packages/Doka.NestedSet)
+[![NuGet EF Core](https://img.shields.io/nuget/vpre/Doka.EntityFrameworkCore.NestedSet.svg?label=NuGet%20EF%20Core)](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/badge)](https://scorecard.dev/viewer/?uri=github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15143/badge)](https://www.bestpractices.dev/projects/15143)
@@ -21,16 +21,35 @@ The [runnable samples](samples/README.md) demonstrate these uses in independent
 FileSystem, Kpis, and UserGroups console projects. They use Doka and MariaDB by
 default, with optional MySQL and SQLite routes and persistent, inspectable results.
 
-## Packages and baseline
+## Packages
 
 | Package | Purpose |
 | --- | --- |
-| `Doka.NestedSet` | Small EF-independent node and bounds contracts |
-| `Doka.EntityFrameworkCore.NestedSet` | EF mapping, queries, mutations, ordering, transactions, validation, and rebuild |
+| [`Doka.NestedSet`](https://www.nuget.org/packages/Doka.NestedSet) | Small EF-independent node and bounds contracts |
+| [`Doka.EntityFrameworkCore.NestedSet`](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet) | EF mapping, queries, mutations, ordering, transactions, validation, and rebuild |
 
 The 10.x package line targets .NET 10 and EF Core 10. The EF package references
-`Doka.NestedSet` transitively. Source builds default to `10.0.0-dev`; that
-development version does not establish the availability of a stable release.
+`Doka.NestedSet` transitively.
+
+## Install
+
+The following command installs the first release candidate once it is
+published. `10.0.0-rc.1` is currently in preparation:
+
+```bash
+dotnet package add Doka.EntityFrameworkCore.NestedSet --version 10.0.0-rc.1
+```
+
+Add the EF Core provider used by the application separately. For Doka
+MySQL/MariaDB:
+
+```bash
+dotnet package add Doka.EntityFrameworkCore.MySql --version 10.4.4
+```
+
+Use the exact version from the matching
+[GitHub release](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/releases)
+or NuGet package page when installing a published release.
 
 The provider qualification matrix is:
 
@@ -355,44 +374,6 @@ scans, parent/position lookups, and configured sibling ordering. Generate and
 review an ordinary EF migration after enabling the hierarchy. See
 [migrations and indexes][migrations] for the exact index and typed registry
 contract.
-
-## Build and install from source
-
-Use the exact SDK declared in [global.json](global.json). Restore and build
-the shipping EF project, which also builds its core project dependency:
-
-```bash
-dotnet restore src/Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj --locked-mode
-dotnet build src/Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj -c Release --no-restore
-```
-
-Create both development packages in a local feed:
-
-```bash
-dotnet pack src/Doka.NestedSet/Doka.NestedSet.csproj -c Release --no-build --no-restore -o artifacts/packages
-dotnet pack src/Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj -c Release --no-build --no-restore -o artifacts/packages
-```
-
-Add the output directory as a package source in the consuming application's
-`NuGet.Config`, retaining the existing sources for EF Core and its provider:
-
-```xml
-<configuration>
-  <packageSources>
-    <add key="nestedset-local" value="/absolute/path/to/artifacts/packages" />
-  </packageSources>
-</configuration>
-```
-
-Then install the EF package in that application:
-
-```bash
-dotnet package add Doka.EntityFrameworkCore.NestedSet --version 10.0.0-dev
-```
-
-The core package is resolved transitively from the same feed. The application
-also references its chosen EF provider; the NestedSet runtime does not select
-or install a database provider.
 
 ## Tests
 

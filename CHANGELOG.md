@@ -4,11 +4,19 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and released versions
 follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 10.0.0-dev (unreleased)
+The first release candidate is prepared below. Its date is the proposed
+publication date; publication is confirmed only by matching GitHub and NuGet
+readback. Stable `10.0.0` requires a separate reviewed release preparation after
+the RC process has been exercised successfully.
 
-Initial development line. This version is not published.
+## 10.0.0-rc.1 (2026-10-01)
 
-### Breaking changes during development
+First release candidate of `Doka.NestedSet` and
+`Doka.EntityFrameworkCore.NestedSet` for .NET 10 and EF Core 10. This prerelease
+precedes the initial stable `10.0.0`; no stable compatibility baseline has been
+published yet.
+
+### Changes from development builds
 
 - Hierarchy insertion and deletion require the `NestedSet<TEntity>` facade;
   direct `DbSet<TEntity>.Add` and `Remove` do not coordinate bounds, registry
@@ -109,3 +117,7 @@ Initial development line. This version is not published.
 - Add a Doka MADR Enterprise Profile 1.0 decision corpus based on MADR 4.0,
   deterministic validation/indexing, release governance, threat model,
   assurance case, OpenSSF evidence mapping, and hosted-settings runbook.
+- Prepare the 10.0.0-rc.1 public API declarations in the unshipped baselines and
+  complete Passing evidence for OpenSSF project 15143, including
+  secure-development guidance and measured branch coverage. The badge remains
+  a self-assessment, not a certification.
