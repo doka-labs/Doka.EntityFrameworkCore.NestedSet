@@ -539,6 +539,88 @@ class SourceAndLockTests(unittest.TestCase):
         self.assertEqual("[10.0.0, )", rebased["dependencies"]["net10.0"]["consumer"]["dependencies"]["ThirdParty"])
 
 
+class PackageLockTests(unittest.TestCase):
+    """Qualification requires reviewed shipping locks without imposing locks on every solution project."""
+
+    def setUp(self):
+        """Declare two shipping packages and a nonshipping test project without a lockfile."""
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.repo = Path(temporary.name) / "repo"
+        self.output = Path(temporary.name) / "output"
+        solution = ET.Element("Solution")
+        self.lock = {"version": 2, "dependencies": {"net10.0": {}}}
+        for package in common.PACKAGES:
+            project = f"src/{package}/{package}.csproj"
+            text_file(self.repo / project, "<Project />")
+            common.write_json(self.repo / "src" / package / "packages.lock.json", self.lock)
+            ET.SubElement(solution, "Project", Path=project)
+
+        test_project = "tests/Example.Tests/Example.Tests.csproj"
+        text_file(self.repo / test_project, "<Project />")
+        ET.SubElement(solution, "Project", Path=test_project)
+        ET.ElementTree(solution).write(self.repo / qualification.SOLUTION)
+
+    def test_only_shipping_locks_are_prepared(self):
+        """An ordinary test project without a committed lock must not block RC preparation."""
+        # Arrange
+        source_locks = {package: (self.repo / "src" / package / "packages.lock.json").read_bytes()
+                        for package in common.PACKAGES}
+
+        # Act
+        qualification.prepare_locks(self.repo, self.output, VERSION)
+        records = common.read_json(self.output / "quality/dependencies.json")
+
+        # Assert
+        self.assertEqual(set(common.PACKAGES), set(records))
+        self.assertEqual(2, len(list((self.output / "locks").rglob("packages.lock.json"))))
+        self.assertFalse((self.repo / "tests/Example.Tests/packages.lock.json").exists())
+        for package, original in source_locks.items():
+            self.assertEqual(original, (self.repo / "src" / package / "packages.lock.json").read_bytes())
+            self.assertEqual(self.lock, records[package]["value"])
+
+    def test_missing_shipping_lock_is_rejected(self):
+        """Reducing the lock scope must not allow an unlocked published package."""
+        # Arrange
+        (self.repo / "src" / common.PACKAGES[0] / "packages.lock.json").unlink()
+
+        # Act
+        error = capture(lambda: qualification.prepare_locks(self.repo, self.output, VERSION))
+
+        # Assert
+        self.assertIsInstance(error, common.ReleaseError)
+        self.assertEqual("lock_missing", error.code)
+
+    def test_shipping_project_missing_from_solution_is_rejected(self):
+        """A lockfile on disk cannot compensate for omitting its shipping project from qualification."""
+        # Arrange
+        solution = ET.parse(self.repo / qualification.SOLUTION)
+        solution.getroot().remove(solution.getroot().find("Project"))
+        solution.write(self.repo / qualification.SOLUTION)
+
+        # Act
+        error = capture(lambda: qualification.prepare_locks(self.repo, self.output, VERSION))
+
+        # Assert
+        self.assertIsInstance(error, common.ReleaseError)
+        self.assertEqual("package_project_missing", error.code)
+
+    def test_changed_owned_shipping_lock_is_rejected(self):
+        """Restore cannot silently replace a reviewed package graph in the candidate workspace."""
+        # Arrange
+        qualification.prepare_locks(self.repo, self.output, VERSION)
+        changed = copy.deepcopy(self.lock)
+        changed["dependencies"]["net10.0"]["Unexpected.Package"] = {"type": "Direct", "resolved": "1.0.0"}
+        common.write_json(self.output / "locks" / common.PACKAGES[0] / "packages.lock.json", changed)
+
+        # Act
+        error = capture(lambda: qualification.verify_locks(self.output))
+
+        # Assert
+        self.assertIsInstance(error, common.ReleaseError)
+        self.assertEqual("dependencies_changed", error.code)
+
+
 class TestResultTests(unittest.TestCase):
     """TRX coverage must include every test project and actual passing cases."""
 

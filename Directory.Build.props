@@ -25,15 +25,10 @@
     <NuGetAudit>true</NuGetAudit>
     <NuGetAuditMode>all</NuGetAuditMode>
     <NuGetAuditLevel>low</NuGetAuditLevel>
-    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
 
   <PropertyGroup Label="CI and release isolation">
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
-    <RestoreLockedMode Condition="'$(ContinuousIntegrationBuild)' == 'true'">true</RestoreLockedMode>
-    <!-- WHY: Candidate versions change internal project references, while reviewed external dependencies stay locked.
-         Release qualification owns these copies and leaves the working tree's development lockfiles unchanged. -->
-    <NuGetLockFilePath Condition="'$(NestedSetReleaseLockRoot)' != ''">$(NestedSetReleaseLockRoot)/$(MSBuildProjectName)/packages.lock.json</NuGetLockFilePath>
   </PropertyGroup>
 
   <PropertyGroup Label="Project defaults">

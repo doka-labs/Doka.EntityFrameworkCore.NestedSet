@@ -302,9 +302,11 @@ and limitations in [Performance](docs/performance.md).
 
 ## Dependency updates
 
-A dependency change requires project-owner approval and review of every
-affected lockfile, including transitive changes. After approval, update and
-review the solution lockfiles:
+A dependency change requires project-owner approval. Only the two shipping
+packages under `src/` commit `packages.lock.json`; tests, samples, benchmarks,
+and engineering tools restore their own graphs without committed locks.
+Review affected shipping locks, including transitive changes. After approval,
+update the dependency declarations and restore:
 
 ```sh
 dotnet restore Doka.EntityFrameworkCore.NestedSet.slnx \
@@ -314,8 +316,9 @@ dotnet restore Doka.EntityFrameworkCore.NestedSet.slnx --locked-mode
 
 Requalify the affected provider and migration contracts.
 
-Keep locked restore in CI. SDK and image pins require the affected full provider
-and migration matrix, not only a successful restore.
+Keep the shipping package graphs locked in CI and RC qualification. SDK and
+image pins require the affected full provider and migration matrix, not only
+a successful restore.
 
 ## Public API changes
 
