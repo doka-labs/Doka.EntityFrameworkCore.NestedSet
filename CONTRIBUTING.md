@@ -91,6 +91,15 @@ bash eng/verify-package-consumer.sh
 A filtered or focused run is development feedback, not complete qualification.
 Never replace a failing live provider test with a skip.
 
+## Secure development
+
+Follow [Secure development](docs/security/secure-development.md) when reviewing
+trust boundaries, SQL construction, Scope/TreeId isolation, callback ownership,
+resource bounds, dependency changes, or publication identity. Security fixes
+need a reproducer, a negative regression, and a legitimate positive control.
+Record the analyzed revision and test evidence in the pull request. Keep
+private reports and credentials out of public issues, fixtures, and logs.
+
 ## Formatting and language
 
 The repository `.editorconfig` is copied from `Doka.EntityFrameworkCore.MySql`

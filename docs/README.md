@@ -55,6 +55,8 @@ runbooks own operational procedures.
   positive, negative, and adversarial tests and explains evidence limits.
 - [Security Design](security/security-design.md) defines assets, trust
   boundaries, abuse cases, controls, and residual application responsibilities.
+- [Secure Development](security/secure-development.md) defines security review,
+  analysis evidence, dependency handling, and private vulnerability follow-up.
 - [Release Process](release-process.md) defines qualification and publication
   evidence for both packages.
 - [Release Governance](release-governance.md) defines release authority,
@@ -68,7 +70,7 @@ runbooks own operational procedures.
 - [Security Assurance Case](security/assurance-case.md) maps security claims to
   controls, evidence, and remaining application responsibilities.
 - [OpenSSF Best Practices Evidence](openssf-best-practices.md) maps repository
-  evidence without claiming hosted settings that source cannot prove.
+  and dated hosted evidence to all 67 Passing criteria for project 15143.
 - [Architecture Decisions](decisions/README.md) indexes the MADR 4.0 decision
   corpus and its status.
 - [Contributing](../CONTRIBUTING.md), [Support](../SUPPORT.md),

@@ -46,6 +46,8 @@ It is not a delivery-date promise. Released packages, release notes, and the
   short-lived publishing credentials, immutable releases, and public readback.
 - Keep repository settings and OpenSSF claims honest about external and
   organizational evidence.
+- Maintain [Passing evidence](docs/openssf-best-practices.md) for project 15143,
+  including actual analysis results, report history, and maintainer attestations.
 
 ## Explicit non-goals
 

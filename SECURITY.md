@@ -269,6 +269,7 @@ This policy follows the Doka Labs security-policy structure established by:
 NestedSet-specific differences are supported by repository evidence:
 
 - [Security design](docs/security/security-design.md);
+- [Secure development](docs/security/secure-development.md);
 - [Security assurance case](docs/security/assurance-case.md);
 - [Support and qualification](docs/support-and-qualification.md);
 - [Transactions and locking](docs/transactions-and-locking.md);
