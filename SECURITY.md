@@ -168,12 +168,12 @@ signal, resource boundary, or release trust boundary changes.
 ## Supported Versions
 
 No NestedSet package has been published. The repository is preparing the
-`10.0.0-dev` development line, which is not a supported public release and has
-no backport promise.
+first release candidate, `10.0.0-rc.1`, before stable `10.0.0`. This unpublished
+prerelease is not a supported public release and has no backport promise.
 
 | Release state | Security support |
 | --- | --- |
-| Unreleased `10.0.0-dev` source | Reports are accepted and triaged against the exact source revision and package build |
+| Prepared, unpublished `10.0.0-rc.1` source | Reports are accepted and triaged against the exact source revision and package build |
 | Stable releases | None published |
 
 The first verified publication must update this table as part of release
@@ -269,6 +269,7 @@ This policy follows the Doka Labs security-policy structure established by:
 NestedSet-specific differences are supported by repository evidence:
 
 - [Security design](docs/security/security-design.md);
+- [Secure development](docs/security/secure-development.md);
 - [Security assurance case](docs/security/assurance-case.md);
 - [Support and qualification](docs/support-and-qualification.md);
 - [Transactions and locking](docs/transactions-and-locking.md);

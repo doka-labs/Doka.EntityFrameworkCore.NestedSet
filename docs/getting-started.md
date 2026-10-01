@@ -7,19 +7,19 @@ FileSystem demonstrates the same public API without a required scope.
 
 ## Install
 
-The first stable NestedSet package has not been published. To use the current
-source, build both `10.0.0-dev` packages and configure the local package feed
-as shown in [Build and install from source](../README.md#build-and-install-from-source).
-Then add the EF package and one qualified provider to the application:
+Install the EF package and the application's database provider. These commands
+select the prepared first RC and the qualified Doka MySQL/MariaDB provider;
+the RC command becomes available after `10.0.0-rc.1` is published on NuGet:
 
 ```bash
-dotnet package add Doka.EntityFrameworkCore.NestedSet --version 10.0.0-dev
+dotnet package add Doka.EntityFrameworkCore.NestedSet --version 10.0.0-rc.1
 dotnet package add Doka.EntityFrameworkCore.MySql --version 10.4.4
 ```
 
-The core package is a transitive dependency from the same local feed. After a
-stable release, confirm its version and matching GitHub release before using a
-published package instead.
+The core package is included transitively. Use the exact version from the
+matching [GitHub release](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/releases)
+or NuGet package page. The RC is a prerelease; stable `10.0.0` follows a
+separate release preparation.
 
 ## Define the entity
 

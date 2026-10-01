@@ -70,7 +70,7 @@ For a complete local qualification of the current workspace:
 
 ```sh
 bash eng/release-candidate.sh \
-  --version 10.0.0-dev \
+  --version 10.0.0-rc.1 \
   --workspace \
   --output artifacts/qualification-local
 ```
@@ -90,6 +90,15 @@ bash eng/verify-package-consumer.sh
 
 A filtered or focused run is development feedback, not complete qualification.
 Never replace a failing live provider test with a skip.
+
+## Secure development
+
+Follow [Secure development](docs/security/secure-development.md) when reviewing
+trust boundaries, SQL construction, Scope/TreeId isolation, callback ownership,
+resource bounds, dependency changes, or publication identity. Security fixes
+need a reproducer, a negative regression, and a legitimate positive control.
+Record the analyzed revision and test evidence in the pull request. Keep
+private reports and credentials out of public issues, fixtures, and logs.
 
 ## Formatting and language
 
@@ -302,9 +311,11 @@ and limitations in [Performance](docs/performance.md).
 
 ## Dependency updates
 
-A dependency change requires project-owner approval and review of every
-affected lockfile, including transitive changes. After approval, update and
-review the solution lockfiles:
+A dependency change requires project-owner approval. Only the two shipping
+packages under `src/` commit `packages.lock.json`; tests, samples, benchmarks,
+and engineering tools restore their own graphs without committed locks.
+Review affected shipping locks, including transitive changes. After approval,
+update the dependency declarations and restore:
 
 ```sh
 dotnet restore Doka.EntityFrameworkCore.NestedSet.slnx \
@@ -314,14 +325,17 @@ dotnet restore Doka.EntityFrameworkCore.NestedSet.slnx --locked-mode
 
 Requalify the affected provider and migration contracts.
 
-Keep locked restore in CI. SDK and image pins require the affected full provider
-and migration matrix, not only a successful restore.
+Keep the shipping package graphs locked in CI and RC qualification. SDK and
+image pins require the affected full provider and migration matrix, not only
+a successful restore.
 
 ## Public API changes
 
 `PublicAPI.Shipped.txt` is the last stable release contract.
-`PublicAPI.Unshipped.txt` contains additions for the next release. The Public
-API analyzer must remain clean.
+`PublicAPI.Unshipped.txt` contains additions for the next stable release,
+including declarations first published in an RC. The initial `10.0.0-rc.1`
+preparation keeps all reviewed declarations there; no stable baseline has been
+published. The Public API analyzer must remain clean.
 
 Before a stable release, move reviewed additions into the shipped file in the
 release-preparation source commit. Removals and signature changes require an

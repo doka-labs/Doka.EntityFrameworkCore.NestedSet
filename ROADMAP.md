@@ -6,9 +6,13 @@ It is not a delivery-date promise. Released packages, release notes, and the
 
 ## Direction
 
-### Complete the first release
+### Qualify 10.0.0-rc.1 before the first stable 10.0.0
 
-- Review and stabilize the two-package public API.
+- Exercise the complete RC qualification and publication process first with
+  `10.0.0-rc.1`; its first hosted run is still pending.
+- Keep the reviewed two-package API declarations in the unshipped baselines
+  through prereleases. Establish the stable compatibility baseline in a
+  separate reviewed `10.0.0` preparation after successful RC evidence.
 - Keep the EF-independent core limited to contracts useful without persistence.
 - Complete real hosted CI, security settings, RC, signed tag, NuGet trusted
   publishing, provenance, and public readback evidence.
@@ -46,6 +50,8 @@ It is not a delivery-date promise. Released packages, release notes, and the
   short-lived publishing credentials, immutable releases, and public readback.
 - Keep repository settings and OpenSSF claims honest about external and
   organizational evidence.
+- Maintain [Passing evidence](docs/openssf-best-practices.md) for project 15143,
+  including actual analysis results, report history, and maintainer attestations.
 
 ## Explicit non-goals
 

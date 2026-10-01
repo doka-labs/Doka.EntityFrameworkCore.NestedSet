@@ -11,7 +11,6 @@ import json
 import os
 import re
 import subprocess
-import tempfile
 import time
 from pathlib import Path
 
@@ -291,7 +290,7 @@ def verify_run(commands, manifest, environment):
             "run-mismatch", "GitHub run-attempt metadata differs from this candidate's source and workflow.")
 
 
-def verify_signed_tag(commands, manifest, environment):
+def verify_signed_tag(commands, manifest):
     """Verify the exact annotated SSH tag locally and GitHub's independent signature verdict."""
     tag = manifest["tag"]
     commit = manifest["source"]["commit"]
@@ -310,16 +309,10 @@ def verify_signed_tag(commands, manifest, environment):
             "tag-commit", "Signed release tag does not resolve to the qualified commit.")
     raw_tag = commands.run(["git", "cat-file", "tag", f"refs/tags/{tag}"])
     require("-----BEGIN SSH SIGNATURE-----" in raw_tag, "tag-signature", "Expected an SSH-signed annotated tag.")
-    signers = environment.get("RELEASE_ALLOWED_SIGNERS", "")
-    require(signers.strip(), "signer-policy-missing",
-            "RELEASE_ALLOWED_SIGNERS must contain the approved OpenSSH policy.")
-
-    # WHY: The policy is maintained outside the candidate so candidate code cannot authorize its own tag signer.
-    with tempfile.TemporaryDirectory(prefix="nestedset-tag-policy-") as temporary:
-        policy = Path(temporary) / "allowed_signers"
-        policy.write_text(signers, encoding="utf-8")
-        policy.chmod(0o600)
-        commands.run(["git", "-c", "gpg.format=ssh", "-c", f"gpg.ssh.allowedSignersFile={policy}", "verify-tag", tag])
+    # WHY: Signer changes use the same reviewed, versioned policy as Doka and SafeMigrations.
+    policy = ROOT / ".github/allowed_signers"
+    require(policy.is_file(), "signer-policy-missing", "Missing reviewed .github/allowed_signers file.")
+    commands.run(["git", "-c", "gpg.format=ssh", "-c", f"gpg.ssh.allowedSignersFile={policy}", "verify-tag", tag])
 
     local_tag = commands.run(["git", "rev-parse", f"refs/tags/{tag}"]).strip()
     reference = api(commands, f"git/ref/tags/{tag}")
@@ -343,7 +336,7 @@ def authorize(candidate, provenance, *, commands=None, environment=None):
     manifest = attest_verify(candidate, provenance, commands=commands, environment=environment)
     verify_repository(commands)
     verify_run(commands, manifest, environment)
-    verify_signed_tag(commands, manifest, environment)
+    verify_signed_tag(commands, manifest)
     require(file_inventory(candidate) == original_candidate and file_inventory(provenance) == original_provenance,
             "evidence-changed", "Candidate or provenance changed during authorization.")
 

@@ -24,7 +24,7 @@ and dispatch must target exact current protected `main`.
 
 ## Qualification stages
 
-Pull-request CI checks the offline engineering regressions, locked restore,
+Pull-request CI checks the offline engineering regressions, shipping package locks,
 C# style, Release build, all test projects, coverage reports, runnable samples,
 pack, and primary/symbol archive inspection. The PR-only lockfile diagnostic
 tests run there. The release candidate independently repeats the solution and release-tooling checks from
@@ -34,9 +34,14 @@ checks source, dependency locks, and tested binaries between phases; it seals
 the candidate only after every check passes. A failed run requires a new output
 directory and reruns all checks.
 
+Only the two shipping projects under `src/` commit dependency locks. RC
+qualification copies those locks into its owned workspace and verifies that
+restore preserves them. Tests, samples, benchmarks, and tools restore their
+own graphs without additional committed lockfiles.
+
 | Stage | Required evidence |
 | --- | --- |
-| `quality` | Offline release-tooling tests, shell syntax, locked restore, Roslyn style/import checks, warning-free Release build |
+| `quality` | Offline release-tooling tests, shell syntax, reviewed shipping package locks, Roslyn style/import checks, warning-free Release build |
 | `tests` | Docker readiness, every test project, all provider cells, ordinary and optional migrations, coverage artifacts, query plans, and runnable samples |
 | `packages` | One pack from tested binaries; exact primary/symbol metadata, assembly, PDB, XML docs, source, dependencies, and archive inventory |
 | `consumer` | Independent core-only and EF/SQLite applications restore and execute the exact archives |

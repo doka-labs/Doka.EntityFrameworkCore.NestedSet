@@ -1,10 +1,10 @@
 <Project>
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))"/>
 
-  <PropertyGroup>
+  <PropertyGroup Label="Package metadata and release baseline">
+    <!-- WHY: Local builds use the first RC version; qualified candidates pass their exact version explicitly. -->
     <VersionPrefix>10.0.0</VersionPrefix>
-    <!-- WHY: The SDK derives both package and assembly informational versions from the same prefix and suffix. -->
-    <VersionSuffix Condition="'$(VersionSuffix)' == ''">dev</VersionSuffix>
+    <VersionSuffix>rc.1</VersionSuffix>
     <Authors>Dominic Kalkbrenner</Authors>
     <Company>Doka Labs</Company>
     <Copyright>Copyright (c) 2026 Dominic Kalkbrenner</Copyright>
@@ -22,6 +22,14 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Package dependency locks">
+    <!-- WHY: Only shipping packages commit dependency locks; test, sample, and tooling graphs are restored independently. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(RuntimeIdentifier)' == ''">true</RestoreLockedMode>
+    <!-- WHY: Qualified candidates use owned lock copies so restore cannot rewrite the reviewed source locks. -->
+    <NuGetLockFilePath Condition="'$(NestedSetReleaseLockRoot)' != ''">$(NestedSetReleaseLockRoot)/$(MSBuildProjectName)/packages.lock.json</NuGetLockFilePath>
   </PropertyGroup>
 
   <ItemGroup>

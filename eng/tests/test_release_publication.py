@@ -216,6 +216,12 @@ class PublicationTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.directory = Path(self.temporary.name)
+        source_patch = patch.object(release, "ROOT", self.directory)
+        source_patch.start()
+        self.addCleanup(source_patch.stop)
+        self.signer_policy = self.directory / ".github/allowed_signers"
+        self.signer_policy.parent.mkdir()
+        self.signer_policy.write_text("fixture-principal ssh-ed25519 fixture-public-key\n", encoding="ascii")
         source_props = self.directory / "src/Directory.Build.props"
         source_props.parent.mkdir()
         source_props.write_text("<Project><PropertyGroup><VersionPrefix>1.2.3</VersionPrefix>"
@@ -267,8 +273,7 @@ class PublicationTests(unittest.TestCase):
                             "GITHUB_REF": "refs/heads/main", "GITHUB_SHA": self.manifest["source"]["commit"],
                             "GITHUB_WORKFLOW_REF": f"{release.REPOSITORY}/{release.WORKFLOW}@refs/heads/main",
                             "GITHUB_EVENT_NAME": "workflow_dispatch", "GITHUB_RUN_ID": "1234",
-                            "GITHUB_RUN_ATTEMPT": "1",
-                            "RELEASE_ALLOWED_SIGNERS": "fixture-principal ssh-ed25519 fixture-public-key\n"}
+                            "GITHUB_RUN_ATTEMPT": "1"}
         self.hosted = HostedFixture(self.candidate, self.provenance, self.manifest)
         self.options = {"commands": self.hosted, "environment": self.environment,
                         "attempts": 3, "sleep": self.hosted.sleep}
@@ -526,8 +531,22 @@ class PublicationTests(unittest.TestCase):
         self.assertRegex(str(error), "signature verification rejected")
         self.assertEqual([], self.hosted.writes)
 
+    def test_repository_signer_policy_authorizes_without_external_configuration(self):
+        """The reviewed source file supplies the Git trust policy without a GitHub signer variable."""
+        # Arrange
+        expected_policy = f"gpg.ssh.allowedSignersFile={self.signer_policy}"
+
+        # Act
+        result = self.stage()
+
+        # Assert
+        self.assertEqual("staged", result["state"])
+        verification = [call for call in self.hosted.calls if "verify-tag" in call]
+        self.assertEqual(1, len(verification))
+        self.assertIn(expected_policy, verification[0])
+
     def test_unapproved_ssh_signer_blocks_all_writes(self):
-        """The external allowed-signers policy must authorize the actual tag signature."""
+        """The repository's allowed-signers file must authorize the actual tag signature."""
         # Arrange
         self.hosted.signer_failure = True
 
@@ -541,7 +560,7 @@ class PublicationTests(unittest.TestCase):
     def test_missing_signer_policy_blocks_all_writes(self):
         """No default or invented operator key may authorize publication."""
         # Arrange
-        del self.environment["RELEASE_ALLOWED_SIGNERS"]
+        self.signer_policy.unlink()
 
         # Act
         error = record_error(self.stage)

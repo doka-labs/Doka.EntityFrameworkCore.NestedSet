@@ -73,7 +73,8 @@ Create a protected GitHub environment named `nuget`:
 - require the project owner or designated release maintainer to approve;
 - prevent self-review when another authorized reviewer exists;
 - restrict deployment branches/tags to the release policy;
-- keep secrets empty when NuGet trusted publishing is used; and
+- store only the NuGet profile name as `NUGET_USER`, without a long-lived
+  publishing key; and
 - review environment changes with the same care as workflow changes.
 
 The release workflow reaches this environment after candidate qualification
@@ -100,7 +101,7 @@ The workflow uses the pinned official `NuGet/login` action to exchange the
 GitHub OIDC identity for a short-lived credential. No long-lived NuGet API key
 belongs in repository or environment secrets.
 
-Configure the repository secret `NUGET_USER` with the NuGet.org profile name of
+Configure the protected `nuget` environment secret `NUGET_USER` with the NuGet.org profile name of
 the account that owns the trusted-publishing policy. It is a username, not an
 email address or API key. The workflow passes it to `NuGet/login` as `user`;
 without it the token exchange cannot identify the account. Keep the protected
@@ -125,10 +126,12 @@ settings remain an independent administrative control.
 
 ## SSH release signer
 
-Set the protected environment variable `RELEASE_ALLOWED_SIGNERS` to the
-reviewed Git allowed-signers content used for release tag verification. It must
-name the authorized principal and public SSH signing key. Do not put a private
-key in a variable or repository file.
+The versioned [`.github/allowed_signers`](../../.github/allowed_signers) contains
+the approved principals and public SSH signing keys, following Doka and
+SafeMigrations. The workflow passes this file directly to Git's
+`gpg.ssh.allowedSignersFile` when verifying the release tag. Review changes to
+this file through protected-main pull requests. No separate GitHub signer
+variable is needed, and no private key belongs in the repository.
 
 The operator creates and pushes the signed annotated tag only after reversible
 candidate jobs pass. See [Release publication](../operations/release-publication.md).

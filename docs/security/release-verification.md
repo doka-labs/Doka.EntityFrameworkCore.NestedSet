@@ -34,17 +34,22 @@ Fetch the exact tag and inspect its signed annotated object:
 
 ```sh
 git fetch origin "refs/tags/${release_tag}:refs/tags/${release_tag}"
-git verify-tag "${release_tag}"
+git -c gpg.format=ssh \
+  -c gpg.ssh.allowedSignersFile=.github/allowed_signers \
+  verify-tag "${release_tag}"
 
 release_commit="$(git rev-list -n 1 "${release_tag}")"
 test -n "${release_commit}"
 test "$(git rev-parse HEAD)" = "${release_commit}"
 ```
 
-Configure Git with the independently obtained Doka Labs allowed-signers policy
-used for that release. A cryptographically valid signature from an unapproved
-principal is not sufficient. Run the repository readback helper below only from
-this exact verified source checkout.
+Review the public keys in [`.github/allowed_signers`](../../.github/allowed_signers)
+against the approved Doka Labs signing identity before using that policy. Obtain
+it from reviewed protected-main history or an already trusted checkout; an
+arbitrary candidate cannot establish signer approval by including its own key.
+A cryptographically valid signature from an unapproved principal is not
+sufficient. Run the repository readback helper below only from this exact
+verified source checkout.
 
 ## Download release assets
 

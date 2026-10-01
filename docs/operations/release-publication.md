@@ -11,6 +11,36 @@ one version: two primary packages and two symbol packages. Evidence requirements
 are defined in [Release governance](../release-governance.md) and
 [Release process](../release-process.md).
 
+## First release candidate 10.0.0-rc.1 preparation
+
+The source defaults to `10.0.0-rc.1` through `VersionPrefix` and `VersionSuffix`.
+The `release/10.0.0-rc.1` branch prepares only this prerelease. Both
+`PublicAPI.Unshipped.txt` files contain the reviewed initial API; their shipped
+files retain only the nullable header. No NuGet or GitHub release exists yet,
+and the hosted RC process has not been executed. Complete the ordinary reviewed
+PR and publication sequence below; this document does not authorize publication.
+
+Before starting the candidate:
+
+1. Confirm the intended publication date in `CHANGELOG.md` and retain the exact
+   `## 10.0.0-rc.1 (YYYY-MM-DD)` heading expected by the existing release tooling.
+2. Review the RC API, package READMEs, provider qualification, and
+   [Passing evidence](../openssf-best-practices.md) against the candidate source.
+3. Retain maintainer knowledge/report-history confirmations separately from
+   source evidence. The achieved Passing badge does not replace RC qualification.
+
+After successful public readback, update the publication statements in the
+root/package READMEs, Getting Started, Support, and Security's supported-version
+table in a reviewed change. Retain the dated qualification evidence; do not
+replace it with the presence of a tag. Add the release/tag/package URLs to the
+OpenSSF entry and verify the saved badge state.
+
+Stable `10.0.0` requires its own later release preparation and candidate on the
+then-current `main`. Review feedback and RC evidence, remove `VersionSuffix`,
+move accepted API declarations to the shipped files, and add the exact dated
+stable changelog section before starting that candidate. Do not reuse the RC
+candidate, tag, or package bytes as a stable publication.
+
 ## One-time configuration
 
 Configure the controls in
@@ -24,7 +54,8 @@ first release:
 - create environment `nuget`, restrict deployments to protected `main`, require
   maintainer approval, and store the NuGet profile name as `NUGET_USER`;
 - configure the NuGet Trusted Publishing policy below; and
-- configure SSH tag signing and the approved `RELEASE_ALLOWED_SIGNERS` entries.
+- configure SSH tag signing and review the public keys in
+  [`.github/allowed_signers`](../../.github/allowed_signers).
 
 | Trusted Publishing field | Value |
 | --- | --- |
@@ -60,8 +91,9 @@ build success does not establish hosted permissions or settings.
 Merge the complete release preparation through protected `main`. It must
 contain the intended `VersionPrefix`, one dated changelog section for the exact
 version, current package metadata, dependencies, support documentation, and
-public API baselines. Stable preparation moves accepted declarations from
-`PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt` before qualification.
+public API baselines. Prerelease preparation keeps new declarations in
+`PublicAPI.Unshipped.txt`. Stable preparation moves accepted declarations to
+`PublicAPI.Shipped.txt` before qualification.
 
 Update the checkout:
 
@@ -101,10 +133,11 @@ availability, or signing-authority checks in the hosted workflow.
 In GitHub Actions, start **Release candidate**. Select branch `main` and enter:
 
 ```text
-version: <release_version>
+version: 10.0.0-rc.1
 ```
 
-The version is `X.Y.Z-rc.N` or `X.Y.Z`, without a leading `v`. Wait for:
+The first run uses `10.0.0-rc.1`. Subsequent versions are `X.Y.Z-rc.N` or `X.Y.Z`,
+without a leading `v`. Wait for:
 
 1. `Verify source and unused version`;
 2. `Qualify exact release candidate`; and

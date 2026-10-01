@@ -101,9 +101,13 @@ def rebased_lock(value, version):
 
 
 def prepare_locks(repo, output, version):
-    """Copy reviewed locks and adapt internal package edges without allowing dependency reevaluation."""
+    """Copy both shipping-package locks without requiring locks for nonshipping solution projects."""
     records = {}
-    for project in solution_projects(repo):
+    projects = set(solution_projects(repo))
+    # WHY: Only the published package graphs are reviewed locks; tests, samples, and tools restore their own graphs.
+    for package in PACKAGES:
+        project = repo / "src" / package / f"{package}.csproj"
+        require(project in projects, "package_project_missing", f"Shipping project is absent from the solution: {project}.")
         original = project.parent / "packages.lock.json"
         require(original.is_file(), "lock_missing", f"Missing reviewed lockfile: {original}.")
         target = output / "locks" / project.stem / "packages.lock.json"

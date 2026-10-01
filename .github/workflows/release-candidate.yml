@@ -187,7 +187,6 @@ jobs:
       id-token: write
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_ALLOWED_SIGNERS: ${{ vars.RELEASE_ALLOWED_SIGNERS }}
 
     steps:
       - name: Checkout qualified source and signed tags

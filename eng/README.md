@@ -20,8 +20,9 @@ request publication credentials.
 unused imports, offline engineering regressions, the Release solution build,
 NuGet pack and archive inspection, nine executable test projects, and the
 three SQLite samples. Test and sample matrix cells run on separate runners without a repository-imposed
-parallelism cap. Each restores locked dependencies and builds its own project
-graph, so Docker resources and instrumented outputs are isolated. Coverage
+parallelism cap. Each restores its own project graph while the shipping
+packages retain their reviewed locks, so Docker resources and instrumented
+outputs are isolated. Coverage
 verification waits for all test reports from the current run attempt. The stable
 `Repository qualification` check requires every job to succeed and rejects
 failed, canceled, or skipped gates.
@@ -38,7 +39,7 @@ properties such as hierarchy validity, SQL command counts, update counts, and
 affected rows. See [performance and capacity](../docs/performance.md).
 
 ```bash
-bash eng/release-candidate.sh --version 10.0.0-dev --workspace --output artifacts/qualification-local
+bash eng/release-candidate.sh --version 10.0.0-rc.1 --workspace --output artifacts/qualification-local
 ```
 
 The default two-hour deadline terminates the owned process group and retains failed logs. Use `--timeout-seconds`
@@ -47,7 +48,11 @@ failed run cannot be resumed. `identity.json`, stage directories, and `logs/` pr
 context. GitHub retains these files even when qualification fails.
 The `candidate/` directory contains the four packages, two SBOMs, manifests, notes, and portable qualification evidence.
 `operator-summary.md` routes review to the exact source and candidate hashes. Build outputs and candidate lockfile
-copies stay in the run-owned directory. Only internal project-version edges are adapted; external packages remain locked.
+copies stay in the run-owned directory. Only the two shipping package graphs
+have committed locks. Qualification copies those locks and adapts internal
+project-version edges while keeping their external dependencies locked.
+Tests, samples, benchmarks, and engineering tools do not require separate
+committed lockfiles.
 
 A normal run requires clean committed source. `--workspace` verifies changes without making them publishable.
 Only the exact main workflow-dispatch context produces a publication-eligible candidate, and it still requires
@@ -59,7 +64,7 @@ See [release publication](../docs/operations/release-publication.md) for externa
 Verify already-produced files without packing again:
 
 ```bash
-bash eng/verify-package-consumer.sh --package-dir artifacts/packages --version 10.0.0-dev \
+bash eng/verify-package-consumer.sh --package-dir artifacts/packages --version 10.0.0-rc.1 \
   --output artifacts/package-consumers
 ```
 
