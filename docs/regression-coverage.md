@@ -54,6 +54,38 @@ hierarchy before the one operation being assessed.
 The sections below name the source methods behind the matrix. The matrix is a
 selection guide, not a replacement for the full provider suites.
 
+## Generated invariant coverage
+
+FsCheck properties execute in the existing core and EF unit projects. Each
+property receives generated arguments, and failures retain the seed and shrunk
+counterexample. A fresh EF context is created per invocation without opening a
+database. These properties complement provider regressions rather than replacing
+transaction, SQL, collation, concurrency, or capacity evidence.
+
+- `ValidBoundsPreserveCounts` checks paired widths, leaf detection, and descendant
+  counts across the Int64 coordinate domain.
+- `ConstructionAcceptsExactlyValidIntervals` exercises positive and rejected
+  arbitrary coordinates; `ContainmentMatchesStrictCoordinateOrder` checks
+  strict, asymmetric containment independently of identity predicates.
+- `UnscopedAncestryRequiresTreeIdentity` and
+  `ScopedAncestryRequiresCompleteIdentity` check ancestry and descendant duality
+  while identical coordinates occur in matching and different trees/scopes.
+- `GeneratedForestsPreserveGeometry` compares dense coordinates, depth,
+  containment, descendants, and sibling positions with generated input adjacency.
+- `GeneratedRanksPreserveSiblingAndParentContracts` verifies that a complete
+  native rank order changes sibling order while preserving parent relationships.
+- `RepeatedEntitiesAreRejectedBeforeStaging` and
+  `DuplicateAssignedKeysAreRejectedBeforeStaging` reject malformed forests without
+  tracking or changing detached inputs.
+
+The core properties execute 8,000 generated cases and the bulk properties 4,000
+per successful suite run. Each generated forest contains at most 64 nodes; the
+existing deterministic mutation sequences and capacity tests remain unchanged.
+
+Sources: [core properties](../tests/Doka.NestedSet.Tests/Unit/NestedSetPropertyTests.cs),
+[bulk-plan properties](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/BulkPlanPropertyTests.cs),
+and [generated-test guidance](../CONTRIBUTING.md#generated-invariant-tests).
+
 ## Optional SQL Server migrations
 
 The optional suite consumes published SafeMigrations 10.4.9 with ordinary

@@ -28,6 +28,7 @@
   </ItemGroup>
 
   <ItemGroup Label="Test tooling">
+    <PackageVersion Include="FsCheck.Xunit.v3" Version="3.4.0"/>
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12"/>
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1"/>
     <PackageVersion Include="xunit.v3.mtp-off" Version="4.0.1"/>

@@ -214,6 +214,25 @@ the actual inspection ID, such as `MethodHasAsyncOverload` or
 
 ## Test structure
 
+### Generated invariant tests
+
+The existing core and EF unit projects use `FsCheck.Xunit.v3` for shrinkable
+properties. They run with ordinary Rider discovery and `dotnet test`; no extra
+project or workflow is required. Core properties exercise Int64 bounds and
+scoped/unscoped ancestry. EF properties compare production bulk geometry and
+native sibling ranks with independent input adjacency, and reject repeated
+entities and assigned keys before staging.
+
+Use generated arguments rather than an internal random seed so FsCheck can
+shrink a failure. Create fresh mutable state inside each invocation; shrinking
+reexecutes the property. Bound each forest to 64 nodes because the existing
+capacity suites own large-scale evidence. Keep ordinary runs randomized. To
+reproduce a failure, copy the reported seed tuple into the property's `Replay`
+attribute temporarily, then retain the minimal failing input as a regression.
+Each property keeps one Arrange/Act/Assert sequence.
+
+### Provider fixture ownership
+
 Keep common integration assertions, models, and helpers in
 `Doka.EntityFrameworkCore.NestedSet.Specification.Tests`. Its common test suites
 are public abstract classes. Each applicable provider project owns a thin

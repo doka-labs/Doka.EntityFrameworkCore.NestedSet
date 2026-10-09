@@ -78,6 +78,15 @@ execution. The library's defensive validation is not compiled away for Release.
 This does not claim a separate fuzzing campaign or production `Debug.Assert`
 instrumentation.
 
+The existing unit projects also run FsCheck properties for bounds, complete
+tree identity, generated bulk geometry, native sibling ordering, and rejected
+imports. [Generated coverage](../regression-coverage.md#generated-invariant-coverage)
+names the positive and negative cases. FsCheck reports a replay seed and shrinks
+failures to smaller inputs. The pinned Scorecard version recognizes the actual
+`FsCheck.Xunit` imports; detection alone does not establish a successful test run
+or coverage of database execution paths. Hosted alerts reflect the revision of
+the latest hosted analysis.
+
 The proposed Passing assertion answer interprets active test-suite assertions
 as satisfying the testing configuration described by the criterion. The
 official definition does not explicitly settle that equivalence. If the
@@ -146,3 +155,10 @@ Retrieved 2026-10-01:
 - [.NET SHA256.HashData](https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.sha256.hashdata?view=net-10.0).
 - [Doka security policy](https://github.com/doka-labs/Doka.EntityFrameworkCore.MySql/blob/main/SECURITY.md).
 - [SafeMigrations secure development](https://github.com/doka-labs/Doka.EntityFrameworkCore.SafeMigrations/blob/main/docs/security/secure-development.md).
+
+Retrieved 2026-10-09:
+
+- [FsCheck xUnit v3 3.4.0 package and dependencies](https://www.nuget.org/packages/FsCheck.Xunit.v3/3.4.0).
+- [FsCheck property testing and shrinking](https://fscheck.github.io/FsCheck/).
+- [Scorecard 5.5.0 C# detection](https://github.com/ossf/scorecard/blob/v5.5.0/checks/raw/fuzzing.go).
+- [Pinned Scorecard action version](https://github.com/ossf/scorecard-action/blob/2d1146689b8cda280b9bc96326124645441f03bc/go.mod).

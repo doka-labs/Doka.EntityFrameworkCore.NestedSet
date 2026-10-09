@@ -73,6 +73,10 @@ Both packages share the same stable version and reviewed API contract.
 
 ### Added
 
+- Add FsCheck properties for Int64 bounds, complete tree identity, generated
+  bulk geometry and sibling ordering, and malformed-import rejection. Keep
+  shrinkable input and replay evidence in the existing unit test projects.
+
 - Add optional SQL Server SafeMigrations 10.4.9 consumer integration for `dbo`
   and explicit schemas, generated tooling registration, index apply/replay and
   drift rejection, and CHECK creation, trust, and data-proof boundaries. Verify
