@@ -541,12 +541,15 @@ a non-runnable, non-packable library. Its common test suites are public abstract
 classes, including nested suites; they are not independently discovered tests.
 
 The four provider projects reference that library and own thin concrete
-subclasses for every common suite and engine. xUnit discovers inherited methods
+subclasses for every common suite with an applicable declaration on that engine.
+xUnit discovers inherited methods
 on those concrete classes. The MySql project contains separate same-named MySQL
 and MariaDB suites; MariaDB wrappers live under its `MariaDb` folder and namespace.
 PostgreSql, SqlServer, and Sqlite own their respective engines. A suite remains
-structurally owned even when a justified method exclusion leaves that engine
-with no executable methods. A common method and every scenario variant must
+structurally owned while at least one declared method applies. Wholly excluded
+families have no wrapper, so raw IDE metadata cannot advertise their unsupported
+methods. Partially excluded families retain their wrapper and specific exclusions.
+A common method and every scenario variant must
 span more than one executable provider project after combining method and row
 exclusions. MySQL and MariaDB share one executable for this ownership rule.
 Provider-exclusive test bodies and helpers live in that project. Models and

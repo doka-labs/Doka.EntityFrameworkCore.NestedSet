@@ -169,11 +169,17 @@ original failure evidence remains historical evidence for the adapter fix.
 | Sample | File-system, KPI, and user-group domain composition |
 
 Integration tests use Testcontainers for server engines and isolated SQLite
-databases. Each provider assembly starts at most one container per engine;
+databases. Each eligible provider assembly starts at most one container per engine;
 concurrent test fixtures receive separate databases on that server. This
 keeps xUnit's collection parallelism without multiplying server processes.
 The test infrastructure owns its containers and credentials; it does not
 depend on a developer-managed database.
+
+MySQL/MariaDB database teardown disposes its context before asynchronously
+clearing the exact connection pool owned by that database. Unique fixture
+database names must not accumulate idle sessions against the shared server's
+connection limit. Initialization and deletion failures retain their original
+errors; cleanup does not clear another database's active or idle pool.
 
 The optional [developer Compose environment](../docker/README.md) builds the
 same vendor bases into separate local service images for manual debugging and

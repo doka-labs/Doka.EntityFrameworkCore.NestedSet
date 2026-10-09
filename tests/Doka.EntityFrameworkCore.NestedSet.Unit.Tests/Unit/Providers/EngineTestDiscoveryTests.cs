@@ -692,7 +692,7 @@ public sealed partial class EngineTestDiscoveryTests
     }
 
     /// <summary>Keeps deliberately failing metadata controls abstract and outside normal Unit discovery.</summary>
-    public abstract class DiscoveryProbe
+    public abstract partial class DiscoveryProbe
     {
         private static readonly AsyncLocal<SourceCounter?> s_sourceCalls = new();
 

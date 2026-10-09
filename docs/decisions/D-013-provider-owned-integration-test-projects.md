@@ -114,7 +114,7 @@ the framework or introduce another dependency version.
 
 The four provider projects and the EF unit project use `ProjectReference` to
 consume the library without compiling linked copies of its sources. Each
-engine owns a thin public concrete subclass for every common suite,
+engine owns a thin public concrete subclass for every applicable common suite,
 including nested suites. xUnit discovers inherited methods on those concrete
 classes. Provider-exclusive tests and their helpers live only in their owning
 project; mixed source files are split along that ownership boundary. A common
@@ -188,11 +188,39 @@ enumerate them again. The shared ownership guard rejects a method or variant
 whose combined exclusions leave only one executable project. This boundary is
 enforced through existing exclusion metadata; no `OnlyEngines` API is added.
 
-Every common suite retains a concrete structural owner on every engine, even
-when all its methods are explicitly excluded there. For example, the SQLite
-server-query-plan wrapper remains structurally owned while its unsupported
-method is excluded. The ownership guard must not equate no runnable methods with
-a missing concrete suite.
+The shared runner configuration explicitly enables `preEnumerateTheories`.
+This aligns the native runner with Rider/VSTest and gives ordinary serializable
+variants the same discovery contract. xUnit 4.0.1's deferred path checks for
+missing data inside the data-attribute loop; an empty excluded source sorted
+before a valid source can therefore reject the entire theory. Its discovery
+path checks the combined result after all sources. Tests load the actual copied
+configuration and verify an empty source both before and after a valid source,
+while genuinely empty or over-filtered theories still produce failures.
+This discovery setting introduces no custom executor or duplicate factory
+enumeration. Explicitly deferred, nonserializable, or disposable data still uses
+xUnit's deferred path and requires separate qualification when combined with
+empty conditional sources. Re-evaluate this setting if an xUnit update changes
+that behavior; collection parallelism remains unchanged.
+
+Every common suite retains a concrete structural owner on every engine with an
+applicable declared method. A family whose method declarations all exclude an
+engine has no wrapper there; the ownership guard rejects an unexpected wrapper
+as well as a missing required one. Raw IDE metadata otherwise advertises
+unsupported inherited methods before xUnit can apply its exclusions.
+Partially excluded suites retain their wrapper and specific method or variant
+exclusions. The common `ConcurrentWriterTests` scenario runs on all five engines;
+the two `ConcurrentCapacityTests` scenarios and server query-plan family have
+no SQLite wrapper. Raw provider-metadata regressions enforce this distinction
+without relying on a discovery mode or converting unsupported execution to a
+passing result. This corrects IDE-visible structure; it does not establish the
+cause of an earlier cancellation or a database-container startup failure.
+Both server writer families use the same type-based xUnit collection on each
+engine, preserving the previous single class's serial scenario scheduling.
+Each scenario still opens 64 concurrent writers. Running both scenarios at
+once would exceed PostgreSQL's default 100-client limit before tree-lock
+independence could be tested. Other collections remain parallel, and MySQL
+and MariaDB use separate collection types. Raw metadata guards enforce the
+same collection type and its ordinary parallelization setting.
 
 Fixture-owned provider-local feature suites use ordinary `Fact`, `Theory`,
 `InlineData`, and `MemberData` with scenario-only arguments. Their concrete
@@ -363,7 +391,8 @@ filtered run does not establish coverage for a provider introduced later.
   expected. Reconcile exactly five duplicate MariaDB metadata cases separately;
   their removal must not hide a behavioral omission. The
   specification library must not appear as a runner. Every common and nested
-  suite must have one concrete owner per engine, including wholly excluded suites.
+  suite must have one concrete owner per engine with an applicable declared
+  method; wholly excluded suites must have no wrapper for that engine.
 - Repeat provider-only discovery with xUnit theory pre-enumeration disabled;
   justified method exclusions must remain absent, row exclusions must preserve
   each eligible variant, and intentionally empty or unexpectedly over-filtered
@@ -510,7 +539,6 @@ optional SafeMigrations adapter retain their own existing test projects.
 - A provider-local context or entity rename changes conventional physical names
   or measured cache warmups; qualify the mapping rather than assuming namespace
   and short-name changes are interchangeable.
-
 - Microsoft changes the SQL Server container platform boundary, or xUnit changes
   dynamic skip and before-test hook ordering; requalify platform checks and lazy
   fixtures before changing the local ARM execution policy.
@@ -532,6 +560,9 @@ optional SafeMigrations adapter retain their own existing test projects.
 - 2026-09-28: The maintainer accepted the current decision and designated the core-maintainers audience.
 - 2026-09-28: Status changed from accepted to implemented.
 - 2026-09-28: Confirmed the referenced specification library, fixture-owned engine suites, provider-local source ownership, and registration and discovery regression specifications against the linked repository evidence.
+- 2026-10-04: Explicit shared theory pre-enumeration aligns native and IDE discovery after reproducing xUnit's mixed-source deferred failure. Configured positive and empty-data negative controls preserve provider coverage and the no-skipped-case contract.
+- 2026-10-09: Wholly excluded families no longer require or retain an engine wrapper. The common same-tree writer scenario is separated from server-only concurrency scenarios, preserving all 13 original engine/scenario cases and their deadlines and assertions. Raw metadata and applicability regressions reject unsupported inherited scenarios and missing supported owners. Prior history remains intact; this amendment does not attribute an earlier cancellation or claim a vendor startup fix.
+- 2026-10-09: The first split exposed PostgreSQL error 53300 when two 64-writer scenarios overlapped. One type-based collection per server engine preserves the original single-class serialization without reducing writer count, increasing server limits, or disabling other collections. The raw metadata regression also protects this scheduling boundary.
 - 2026-10-09: The owner approved visible runtime skips for SQL Server database cases on local ARM before container startup, while retaining metadata and unit execution. Native Linux x64 CI retains mandatory provider, ordinary migration, and SafeMigrations cases with zero skips; unsupported CI must fail. The policy uses xUnit's runtime skip hook with lazy resources and records no new native CI qualification result or vendor startup correction.
 
 ### Implementation References
@@ -546,6 +577,7 @@ optional SafeMigrations adapter retain their own existing test projects.
 - [Engine and executable ownership](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Providers/ProviderEngineOwnership.cs)
 - [Shared and local ownership guard](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Providers/ProviderTestContract.cs)
 - [Ownership guard regressions](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/ProviderTestContractTests.cs)
+- [Suite applicability regressions](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/ProviderSuiteApplicabilityTests.cs)
 - [Immutable provider fixture](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Providers/ProviderFixture.cs)
 - [Engine metadata selection](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Providers/EngineTestSelection.cs)
 - [Engine exclusions and discovery](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Providers/EngineTestAttributes.cs)
@@ -590,6 +622,11 @@ optional SafeMigrations adapter retain their own existing test projects.
 - [Installed xUnit dynamic skip recognition](https://github.com/xunit/xunit/blob/8ed8aa354c7298e157a0fc2dcd61b95df345256a/src/xunit.v3.core/Runners/Core/CoreTestRunnerContext.cs) (primary source; retrieved 2026-10-09)
 - [SQL Server container platform boundary](https://learn.microsoft.com/en-us/sql/linux/containers/deploy?view=sql-server-ver17) (primary source; retrieved 2026-10-09)
 - [xUnit v3 dynamic skips and before-test hooks](https://xunit.net/docs/getting-started/v3/whats-new) (primary source; retrieved 2026-10-09)
+- [Rider 2026.2 xUnit discovery modes](https://www.jetbrains.com/help/rider/Reference_Options_Tools_Unit_Testing_xUnit.html) (primary source; retrieved 2026-10-09)
+
+- [xUnit theory enumeration configuration and runner defaults](https://xunit.net/docs/config-xunit-runner-json#preEnumerateTheories) (primary source; retrieved 2026-10-04)
+- [xUnit 4.0.1 combined discovery data check](https://github.com/xunit/xunit/blob/8ed8aa354c7298e157a0fc2dcd61b95df345256a/src/xunit.v3.core/Framework/TheoryDiscoverer_reflection.cs) (primary source; retrieved 2026-10-04)
+- [xUnit 4.0.1 native configuration loader](https://github.com/xunit/xunit/blob/8ed8aa354c7298e157a0fc2dcd61b95df345256a/src/xunit.v3.runner.common/Configuration/ConfigReader_Json.cs) (primary source; retrieved 2026-10-04)
 - [xUnit 4.0.1 test constructor resolution](https://github.com/xunit/xunit/blob/8ed8aa354c7298e157a0fc2dcd61b95df345256a/src/xunit.v3.core/Runners/Reflection/XunitTestClassRunnerBase_reflection.cs) (primary source; retrieved 2026-09-27)
 - [xUnit 4.0.1 fixture parent mapping](https://github.com/xunit/xunit/blob/8ed8aa354c7298e157a0fc2dcd61b95df345256a/src/xunit.v3.core/Runners/Reflection/XunitTestCollectionRunnerBaseContext_reflection.cs) (primary source; retrieved 2026-09-27)
 - [xUnit 4.0.1 public collection factory](https://github.com/xunit/xunit/blob/8ed8aa354c7298e157a0fc2dcd61b95df345256a/src/xunit.v3.core/Framework/TestCollectionFactoryBase_reflection.cs) (primary source; retrieved 2026-09-27)

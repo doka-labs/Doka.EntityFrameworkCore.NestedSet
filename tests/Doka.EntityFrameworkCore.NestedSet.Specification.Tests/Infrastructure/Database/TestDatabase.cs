@@ -1,3 +1,6 @@
+using System.Runtime.ExceptionServices;
+using MySqlConnector;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Owns an isolated relational test database or temporary SQLite file.</summary>
@@ -18,15 +21,64 @@ public sealed class TestDatabase : IAsyncDisposable
         _ownsServerDatabase = ownsServerDatabase;
     }
 
-    /// <summary>Drops the fixture-owned server database or removes its SQLite files.</summary>
+    /// <summary>Drops the fixture-owned database and releases its pool, or removes its SQLite files.</summary>
     /// <returns>A task that completes after the database resources have been released.</returns>
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync() => DisposeAsync(null);
+
+    /// <summary>Permits deterministic deletion failures while preserving the fixture's cleanup ownership.</summary>
+    /// <param name="delete">An optional database deletion operation used by lifecycle fault probes.</param>
+    /// <returns>A task that completes after deletion and the owned connection pool have been released.</returns>
+    internal async ValueTask DisposeAsync(
+        Func<TreeContext, Task>? delete
+    )
     {
         if (_ownsServerDatabase)
         {
             // WHY: The assembly owns the engine, but completed classes must release their schemas and data.
-            await using var context = CreateContext();
-            await context.Database.EnsureDeletedAsync(CancellationToken.None);
+            var context = CreateContext();
+            var connection = context.Database.GetDbConnection() as MySqlConnection;
+            var deletionFailure = (Exception?)null;
+
+            try
+            {
+                await using (context)
+                {
+                    if (delete is null)
+                    {
+                        await context.Database.EnsureDeletedAsync(CancellationToken.None);
+                    }
+                    else
+                    {
+                        await delete(context);
+                    }
+                }
+            }
+            catch (Exception error)
+            {
+                deletionFailure = error;
+            }
+
+            try
+            {
+                if (connection is not null)
+                {
+                    // WHY: Each isolated database has its own pool. Return the context's session before clearing
+                    // that exact pool, including failed deletion, without disturbing another live fixture's pool.
+                    await MySqlConnection.ClearPoolAsync(connection, CancellationToken.None);
+                }
+            }
+            catch (Exception poolFailure) when (deletionFailure is not null)
+            {
+                throw new AggregateException(
+                    "Database fixture deletion and connection-pool cleanup both failed.",
+                    deletionFailure,
+                    poolFailure);
+            }
+
+            if (deletionFailure is not null)
+            {
+                ExceptionDispatchInfo.Capture(deletionFailure).Throw();
+            }
         }
 
         if (_file is not null)

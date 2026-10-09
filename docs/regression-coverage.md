@@ -48,6 +48,7 @@ hierarchy before the one operation being assessed.
 | Framework seams resolved too late | Complete registration-time insertion contract | Incompatible member/version diagnostic before context creation |
 | Unchanged insertion keys allocate per boundary | Typed scalar/FK snapshot reuse | Sidecars, conceptual nulls, custom sentinels, mutable-key rejection |
 | PostgreSQL generic plan differs | Native PREPARE counters and partial-index selection | Principal-only exclusion, SQL error, cancellation/session cleanup |
+| Native discovery loses mixed-source variants | Copied official runner configuration | Genuinely empty and over-filtered theories still fail |
 | Optional SQL Server adapter loses physical contracts | Generated schemas, absent indexes, integer widening, and populated CHECK proof/replay | Index columns/directions, disabled/untrusted CHECKs, invalid coordinates, narrowing, and complete rollback |
 
 The sections below name the source methods behind the matrix. The matrix is a
@@ -825,6 +826,28 @@ database writer exclusion at the transaction boundary, so waiting for both
 writers to reach a later row-lock command would block the probe itself.
 SQLite retains its transaction, mutation, and callback regressions.
 
+## Ordering-refresh fixture setup
+
+`NativeSeedPreservesEveryRowWithBoundedCommands` verifies the empty, single-child
+and cross-batch arrangements on MySQL, MariaDB, PostgreSQL, SQL Server and SQLite.
+The fixture tracks only its root; each native child insert uses seven mapped
+parameters and inserts at most 10,000 rows. The shared nonrecursive number source
+provides up to 100,000 candidate IDs per statement, so this is an inserted-row
+bound rather than a bound on all server work. The tests stream and check every
+stored coordinate, identity, name and payload value, plus the registered tree.
+
+`NativeSeedFailureRollsBackEveryEarlierWrite` rejects either the first native
+write or the second write after a completed batch. Both paths must roll back
+the root, tree registration and all children. The negative-cardinality case
+rejects input before resetting an existing fixture. These controls protect test
+arrangement; they do not replace the production import or refresh assertions.
+The existing 100,000-child sparse refresh case retains its original cardinality
+and command budgets.
+
+Sources: [seeding regressions](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Ordering/Tracking/OrderingRefreshScaleTests.Seeding.cs),
+[setup observer](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Ordering/Tracking/OrderingSeedProbe.cs),
+and [ordering fixture setup](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Ordering/Tracking/OrderingRefreshTestSupport.cs).
+
 ## Metadata cache, query composition, and deterministic budgets
 
 `UnchangedScalarRefreshReusesSnapshots` warms and budgets 10,000 refreshes of
@@ -910,6 +933,15 @@ and [move budgets](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tes
 
 ## Execution and evidence limits
 
+`ConfiguredDiscoveryRetainsMixedSources` loads the copied runner configuration
+with the native public loader and verifies valid rows with an excluded source
+before or after them. `ConfiguredDiscoveryRejectsMissingData` retains visible
+empty and over-filtered failures. The official `preEnumerateTheories` setting
+aligns native and IDE discovery without changing database-platform applicability.
+Explicitly deferred data retains xUnit's separately documented limitation.
+
+Source: [configured discovery controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/EngineTestDiscoveryTests.Configuration.cs).
+
 SQL Server database cases remain discoverable on local ARM and report a runtime
 skip before container startup. The standard xUnit before-test hook reads the
 concrete provider fixture or the migration row's named engine argument; SQL-only
@@ -928,14 +960,24 @@ Sources: [shared platform contract](../tests/Shared/SqlServerTestPlatform.cs),
 and [qualification limits](support-and-qualification.md#provider-and-engine-matrix).
 
 Four provider projects reference the non-runnable specification library and
-own concrete subclasses of every abstract common suite for every engine. The
+own concrete subclasses of every applicable abstract common suite. The
 MySql project has separate same-named MySQL and MariaDB suites with distinct
 closed provider fixtures; their test bodies remain shared. Common methods obtain
 immutable `Engine` from their injected fixture. Ordinary fact and theory data
 contains only scenario arguments and runs on every concrete engine by default.
 Reasoned method and variant exclusions retain specific unsupported cases.
-Even an engine with all methods explicitly excluded retains the suite's concrete
-structural owner. Each common method and scenario variant must retain more than
+A wholly excluded family has no wrapper on that engine. The wrapper guard rejects
+both missing applicable wrappers and unexpected wholly excluded wrappers.
+`ConcurrentWriterMetadataMatchesEngineCapabilities` inspects raw inherited
+method metadata: SQLite contains only the same-tree writer scenario; all four
+server engines also contain independent-tree and blocked-caller scenarios.
+The guard also requires both server writer families to use the same provider-local
+type-based collection with ordinary parallelization. This preserves their
+original serial scenario boundary; each scenario's 64 writers still run
+concurrently, and other collections remain parallel.
+`ProviderSuiteApplicabilityTests` covers ordinary, wholly excluded, partially
+excluded, helper-only and unknown-engine contracts. Each common method and
+scenario variant must retain more than
 one executable provider owner after combining method and row exclusions;
 MySQL and MariaDB count as one owner. Exclusive bodies and helpers live in the
 owning project. Local neutral cases obtain their engine from the exact leaf
@@ -954,6 +996,14 @@ Unit tests exercise metadata and planning contracts separately while referencing
 the same reusable infrastructure. Migration projects qualify ordinary EF
 migrations and optional SafeMigrations integration.
 See [supported databases and qualification](support-and-qualification.md).
+
+MySQL/MariaDB fixture lifecycle cases verify pool release after ordinary
+disposal, partial initialization failure, and database deletion failure. Each
+control preserves a peer database's active and idle connections and persisted
+row. This guards server-wide connection exhaustion without raising limits,
+disabling pooling, or serializing unrelated test collections.
+
+Source: [owned pool lifecycle controls](../tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Infrastructure/DatabasePoolLifecycleTestBase.cs).
 
 Source links below the matrix point to common assertions or their exclusive
 provider owners. They do not imply that the specification library runs tests

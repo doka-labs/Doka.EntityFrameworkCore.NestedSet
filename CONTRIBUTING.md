@@ -224,8 +224,10 @@ than one executable provider project. MySQL and MariaDB count as one project
 for this boundary. Combine method and data-row exclusions when checking it;
 an exclusion list must not conceal provider-exclusive ownership. Retain a model
 or helper in the common library only while it has real shared consumers.
-Add a new common suite's concrete subclass for every engine so inherited
-methods are discovered, including suites whose methods have explicit engine
+Add a new common suite's concrete subclass for every engine with an applicable
+declared method. A wholly excluded family has no wrapper on that engine;
+otherwise IDE metadata discovery still exposes unsupported inherited methods.
+Partially excluded families retain their wrapper and specific method or variant
 exclusions. The MySql project contains separate same-named MySQL and MariaDB
 suites; MariaDB wrappers live in its `MariaDb` folder and namespace. Common test
 bodies still compile once in the specification library.
@@ -282,6 +284,28 @@ concrete leaf, including
 inherited family helpers. Constructor guards inspect the actual leaf class and
 xUnit's class, collection, and assembly registrations; inheriting a fixture
 interface alone does not prove injection.
+
+For Rider, select **Settings/Preferences > Build, Execution, Deployment > Unit
+Testing > xUnit.net > Test discovery > Test runner** when checking the provider
+test list. Our engine exclusions run during xUnit discovery. Rider's default
+**Metadata** mode scans the compiled assembly without launching xUnit, so its
+list is not evidence that an inherited method is eligible for that provider.
+Running a whole provider project also refreshes Rider's list from the runner.
+See [Rider's xUnit discovery modes](https://www.jetbrains.com/help/rider/Reference_Options_Tools_Unit_Testing_xUnit.html).
+An entry in the IDE or a shared-base stack frame alone does not identify the
+provider that executed a failing case; retain the concrete suite or assembly
+name with failure evidence.
+
+`ConcurrentWriterTests` contains the same-tree scenario supported by all engines.
+`ConcurrentCapacityTests` contains only the two simultaneous server-transaction
+scenarios and has no SQLite wrapper. `ConcurrentWriterMetadataMatchesEngineCapabilities`
+inspects raw inherited method metadata, independently of xUnit exclusions, so
+reintroducing those scenarios into SQLite fails the provider guard.
+The two server families share one type-based xUnit collection per engine. This
+preserves their previous serial scheduling while each scenario still runs 64
+writers concurrently. Other collections remain parallel; MySQL and MariaDB
+have distinct collection types. The raw metadata guard also rejects missing
+or different collection types and assembly-wide isolation for these families.
 
 Cross-suite probes belong in independent internal helper classes when shared
 and provider-local suites both consume them. Reference those types directly,

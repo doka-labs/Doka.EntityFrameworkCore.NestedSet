@@ -467,6 +467,15 @@ aggregate-only observers; the observer never retains a list of SQL commands
 or parameters. Small 129-node cases verify wide/deep seeding and the same late
 failure boundaries before a full-size run.
 
+Ordering-refresh arrangements also use native `INSERT SELECT` batches, with
+at most 10,000 children inserted per statement and only the root tracked by EF.
+Root registration and every child batch share one transaction. Mapped parameters
+preserve provider representations, including binary Guid and converted enum
+values. This bounds client setup memory and insert cardinality without reducing
+the measured forest or changing command timeouts. It is a fixture control,
+not a production throughput measurement. The [seeding regressions](regression-coverage.md#ordering-refresh-fixture-setup)
+verify stored values, command counts and early/late failure rollback.
+
 Heap measurements warm the provider and model first, then collect a baseline
 after the caller-owned entities, topology, and payload exist. The inputs stay
 alive throughout the operation. Provider and framework allocations above that
