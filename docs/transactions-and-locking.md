@@ -146,6 +146,23 @@ Rollback and cleanup use `CancellationToken.None` after forward progress has
 failed. Reusing an already canceled request token could abandon transaction
 cleanup and leave context state unknown.
 
+That token does not disable provider recovery timeouts. Microsoft.Data.SqlClient
+6.1.6 uses its connection-string `Connect Timeout` for native whole-transaction
+rollback; its default is 15 seconds. EF's ordinary command timeout does not
+control that request. Set the connection's recovery budget for the application's
+largest transaction and deployment; there is no universally suitable duration.
+The inherited async rollback calls synchronous provider rollback after its
+initial cancellation check. See the pinned
+[SqlClient timeout selection](https://github.com/dotnet/SqlClient/blob/b862260e80dd3d159b812cbe5c51b933fe348afe/src/Microsoft.Data.SqlClient/netcore/src/Microsoft/Data/SqlClient/SqlInternalConnectionTds.cs#L1190-L1193),
+[EF rollback implementation](https://github.com/dotnet/efcore/blob/v10.0.12/src/EFCore.Relational/Storage/RelationalTransaction.cs#L209-L254),
+and [default async rollback contract](https://learn.microsoft.com/en-us/dotnet/api/system.data.common.dbtransaction.rollbackasync?view=net-10.0).
+
+If rollback or disposal also fails, the library preserves both the operation
+and recovery failures in an `AggregateException`. Discard the context and any
+caller transaction. A client-side timeout is not proof that the server has
+finished undoing the transaction; reconcile its final state through a fresh
+connection before retrying the complete application unit.
+
 A connection failure during commit can be ambiguous: the server may have
 committed even though the client did not receive acknowledgement. The library
 does not automatically replay that outcome. Discard the context, open a new

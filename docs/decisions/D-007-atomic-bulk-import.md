@@ -52,6 +52,12 @@ filtered run does not establish coverage for a provider introduced later.
 
 - Run `dotnet test Doka.EntityFrameworkCore.NestedSet.slnx -c Release --filter "FullyQualifiedName~Bulk"` and expect all bulk regression cases to pass.
 - Require generated keys, assigned keys, foreign parent/scope rejection, repeated input references, callback stage corruption, cancellation, and interval-refresh failure coverage. Expect atomic rollback and the configured write-budget assertions to hold.
+- Run the real relational capacity cases separately on all five engines. One
+  million direct children must pass through the public import, and million-node
+  failure/cancellation at final refresh must restore every earlier payload wave,
+  caller input, and reservation. Record sampled additional occupied heap and
+  allocation traffic with provider/framework overhead included, excluding only
+  pre-existing caller input; identify key types and original input state.
 
 ## Pros and Cons of the Options
 
@@ -148,6 +154,9 @@ unauthorized callback edits.
 - A measured ingestion workload requires streaming beyond the complete-input memory contract.
 - A provider-native path can preserve the same generated-value and rollback behavior with independently qualified evidence.
 - EF changes insertion callbacks or generated-key propagation used by the staged import.
+- A real-size import exceeds its stated additional-heap budget, including
+  non-sentinel structural rollback values; profile retained state before
+  changing snapshots, batch size, or callback guards.
 - EF changes its runtime-property setter acquisition contract or complex-value
   copyback behavior. Requalify metadata access, compiled models, generated-value
   refresh/rollback, and detached-input collection before upgrading.
@@ -161,6 +170,7 @@ unauthorized callback edits.
 - 2026-09-28: The maintainer accepted the current decision and designated the core-maintainers audience.
 - 2026-09-28: Status changed from accepted to implemented.
 - 2026-09-28: Confirmed atomic forest and branch import, bounded structural batches, and rejection and rollback regression specifications against the linked repository evidence.
+- 2026-10-03: Added real persisted capacity and late million-node rollback qualification instead of treating small-plan extrapolation as full execution evidence. Heap observations explicitly distinguish sampled maxima from exact peaks and retain non-sentinel caller structure.
 - 2026-10-03: The real public import exposed retained detached EF entries during final refresh. Replaced entry creation with metadata-cached compiled setters while preserving complete mapped CLR assignment and caller tracker ownership.
 - 2026-10-03: Million-node profiling identified persistent coordinate boxing in non-sentinel rollback snapshots. Retained native coordinate values and added non-sentinel allocation and sentinel-distinction controls.
 - 2026-10-03: Guarded assigned-key callback edits, preserved never-staged generated inputs, and completed throwing CLR access before entry creation. Added exact restoration and weak-reference regressions for early failures.
@@ -186,6 +196,8 @@ unauthorized callback edits.
 - [Mapped setter shape regressions](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/DetachedRefreshValueTests.cs)
 - [Compact coordinate snapshot regressions](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/BulkOriginalStructureTests.cs)
 - [Interval refresh regressions](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/BulkImport/BulkIntervalRefreshTests.cs)
+- [Real relational capacity and rollback cases](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Capacity/CapacityTests.cs)
+- [Heap and capacity qualification boundaries](../../docs/performance.md#real-relational-capacity-cases)
 - [Import guide](../../docs/bulk-import.md)
 
 ### Sources

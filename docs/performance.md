@@ -327,8 +327,10 @@ forest-insertion allocation ceilings remain separate contracts.
 
 Bulk planning and full rebuild use iterative compact buffers and bounded
 64-entity write batches. The qualification target is at most 512 MiB additional
-managed heap for one million planned nodes. Application payload size and an
-already populated change tracker remain outside that library-only budget.
+managed heap for one million operated nodes above the existing caller inputs.
+Provider and framework allocations during the operation remain included;
+pre-existing application payload and an already populated change tracker are
+outside that additional-heap budget.
 Full tree validation and rebuild plans retain at most 1,024 individual issue
 keys while counting every violation by code. Public reports use this bounded
 issue-key representation.
@@ -422,7 +424,7 @@ and [identity recovery controls](../tests/Doka.EntityFrameworkCore.NestedSet.Uni
 | Bulk import | 1 million nodes in one atomic batched operation |
 | Bulk/rebuild heap | At most 512 MiB additional managed heap for 1 million nodes |
 | Anchor query | One SQL command without loading the anchor entity first |
-| Normal mutation | Command count independent of node count, width, and depth |
+| Single-table structural mutation | Command count independent of node count, width, and depth |
 | Independent writers | At least 64 writers on different trees without a global library lock |
 | Hot tree | 64 writers serialize without deadlock or structural damage |
 | Cross-tree move | Stable database lock order for opposing moves |
@@ -430,10 +432,168 @@ and [identity recovery controls](../tests/Doka.EntityFrameworkCore.NestedSet.Uni
 These are release qualification targets, not latency guarantees for arbitrary
 hardware. Repository tests enforce deterministic width, depth, planning,
 command-count, affected-row, and concurrency properties.
+Mapped payload deletion across TPT or split tables instead uses bounded key
+batches; its command count grows with the number of deleted rows. The
+single-table structural target does not promise constant command count for
+every mapping or for bulk import and rebuild.
 The [regression matrix](regression-coverage.md) names the positive, negative,
 and adversarial mechanisms behind these checks. Neither its entries nor these
 targets imply universal regression coverage or certification of a particular
 hardware throughput.
+
+### Real relational capacity cases
+
+The shared [capacity suite](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Capacity/CapacityTests.cs)
+executes through the existing provider projects. Its fixture contains actual
+persisted rows, rather than an in-memory plan extrapolated to a larger size:
+
+- Ten million nodes are streamed through the public tree query and checked by
+  Full validation. A scalar mismatch aggregate independently checks geometry.
+- One root and one million direct children pass through public atomic forest
+  import. The original caller inputs have non-sentinel structural values,
+  which also exercises retained rollback snapshots.
+- A chain reaches Depth 100,000, with 100,001 stored nodes. Full inspection
+  and public rebuild exercise iterative traversal on the real database.
+- One million corrupted rows pass through public rebuild in 15,625 bounded
+  repair statements. Failure and cancellation at the last batch must undo
+  earlier repairs and preserve the registry revision.
+- Failure and cancellation at the final import refresh occur after every
+  million-node payload wave. All inputs and the tree reservation must restore.
+
+Read-only fixture seeding uses bounded server-side `INSERT SELECT` batches
+after registering the root through the public API. It does not qualify bulk
+import throughput. Import and rebuild cases use their production paths and
+aggregate-only observers; the observer never retains a list of SQL commands
+or parameters. Small 129-node cases verify wide/deep seeding and the same late
+failure boundaries before a full-size run.
+
+Heap measurements warm the provider and model first, then collect a baseline
+after the caller-owned entities, topology, and payload exist. The inputs stay
+alive throughout the operation. Provider and framework allocations above that
+baseline remain included. A five-millisecond timer and command-boundary
+samples record a conservative occupied-heap estimate from completed-GC heap
+minus fragmentation, plus precise managed allocations since a preceding
+collection observation. Stable index reads and full-GC start anchors cover
+collection races and background snapshot publication. Each full-start anchor
+keeps its preceding sample's generation-zero collection count. The newer anchor
+is used only when that count is strictly below the snapshot's collection-start
+index and the index does not exceed the accepted current count. Uncertain or
+wrapped counter epochs, including completion followed by another full start,
+keep the earlier anchor. This avoids charging an entire preceding cycle when
+its allocation history is provably unnecessary. Snapshot adoption remains
+monotone by start index and can conservatively retain an older completion
+record. This is not an exact
+peak or an upper bound on an unobserved transient spike. Total allocation traffic is
+reported separately. Samples and assertions finish before verification reads.
+The precise allocation counter has a documented performance cost. These heap
+samples use it to account for allocations after a completed GC, rather than
+only to read a lifetime total. Replacing it with an approximate counter could
+understate the observed occupied heap. Local elapsed times include this
+instrumentation; they do not establish a GitHub runner time budget or a
+production latency guarantee. The separate total-allocation measurement uses
+precise counters at the operation boundaries.
+The 512 MiB assertion applies to the documented integer-key, Guid-TreeId,
+integer-Scope fixture and its fresh operation context. It cannot bound
+arbitrarily large binary keys, application callbacks, or a million independent
+root plans. Full validation of ten million nodes retains linear structural
+state and has a different memory requirement.
+
+The isolated plan test uses blocking collections and completed heap minus
+fragmentation for retained bytes. On the qualified macOS arm64 .NET 10.0.12
+runtime, `GC.GetTotalMemory` reported approximately twice the independently
+allocated size of promoted small objects; it is therefore not used for these
+capacity assertions. For 20,000 inputs, the current plan retained approximately
+3.14 million bytes with sentinel structure and 6.18 million bytes with fully
+prefilled child structure, below the unchanged 6.7-million-byte plan budget.
+These plan measurements do not replace actual public million-node operations.
+The [heap observer](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Observation/ManagedHeapObservation.cs)
+has [held-allocation controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Observation/ManagedHeapObservationTests.cs).
+The same controls include a captured native scalar tuple, qualified-anchor
+cases, unknown identities, and the completion/start race that would otherwise
+understate occupied bytes. They verify measurement safety rather than relaxing
+the operation's dataset or memory limit.
+Microsoft documents [last-GC heap size](https://learn.microsoft.com/en-us/dotnet/api/system.gcmemoryinfo.heapsizebytes?view=net-10.0),
+[fragmentation](https://learn.microsoft.com/en-us/dotnet/api/system.gcmemoryinfo.fragmentedbytes?view=net-10.0),
+and [precise lifetime allocation](https://learn.microsoft.com/en-us/dotnet/api/system.gc.gettotalallocatedbytes?view=net-10.0).
+The [qualified runtime source](https://github.com/dotnet/runtime/blob/v10.0.12/src/coreclr/gc/gc.cpp)
+defines the segmented estimate and background snapshot ordering.
+
+### Local capacity observations
+
+The following public operations completed on 2026-10-04 using the same frozen
+source and .NET 10.0.12 binaries. Each import contains one root and one million
+direct children, with 15,626 payload saves. Each million-node rebuild completes
+15,625 repair batches. The additional occupied figures are the maximum sampled
+conservative estimates described above; total allocations include transient
+provider and framework traffic across the whole operation.
+
+| Engine | Import additional occupied MiB | Import total allocated GiB | Rebuild additional occupied MiB | Rebuild total allocated GiB |
+| --- | ---: | ---: | ---: | ---: |
+| MySQL | 483.6 | 15.58 | 233.2 | 4.02 |
+| MariaDB | 482.8 | 15.57 | 228.0 | 4.02 |
+| PostgreSQL | 484.9 | 16.88 | 217.0 | 4.85 |
+| SQL Server | 487.7 | 16.44 | 229.7 | 4.37 |
+| SQLite | 483.2 | 19.06 | 161.4 | 3.89 |
+
+MiB and GiB use binary units. The unchanged limit is 512 MiB of additional
+occupied heap for these operations, not 512 MiB of lifetime allocation traffic.
+Deep public rebuilds on the 100,001-node chain observed 53.7-71.7 additional
+occupied MiB. These are observations of the documented fixtures, including
+their sampling overhead; they are neither exact peaks nor allocation or
+throughput comparisons with the preceding implementation. The SQL Server host
+limitation below applies to its row as well.
+
+The five complete capacity runs passed 70/70 cases, with 14 per engine and no
+skips. This includes exact restoration after million-node late failure and
+cancellation for both import and rebuild. These local results do not establish
+hosted CI/RC qualification or remove the SQL Server supported-host requirement.
+
+Run the capacity suite separately when selecting focused feedback; the cases
+remain discoverable ordinary tests with `Category=Capacity`:
+
+In Rider, the local **Skip tests from categories = Capacity** preference keeps
+ordinary mixed Run All selections free of these datasets. Select and run only
+the **Capacity** category node to execute capacity cases across the provider
+projects; Rider's category-only selection overrides this exclusion. Ignored
+cases in an ordinary Rider session are not executed evidence. These personal
+IDE preferences do not filter CLI, CI, or RC runs. See
+[Rider setup](../CONTRIBUTING.md#rider-feedback-and-capacity-qualification).
+
+```bash
+dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests.csproj \
+  -c Release --filter 'FullyQualifiedName~.Sqlite.CapacityTests.' \
+  --logger 'console;verbosity=normal' --logger 'trx;LogFileName=sqlite-capacity.trx'
+```
+
+Use the PostgreSql, SqlServer, and MySql projects for their owning engines.
+The MySql project has separate `.MySql.CapacityTests.` and
+`.MariaDb.CapacityTests.` filters. Execute full-size provider qualifications
+serially on a shared local Docker host; each fixture releases its own database.
+When selecting all capacity cases in Rider on that host, temporarily set
+**Maximum number of test runners to run in parallel** to `1` for this deliberate
+qualification, then restore your ordinary regression setting. The allocation
+collection serializes cases within an assembly; it does not serialize separate
+provider processes or reserve Docker memory for their servers.
+
+SQL Server capacity contexts remove the connection timeout for this functional
+suite only. SqlClient 6.1.6 reuses that timeout for native transaction rollback,
+so its default 15-second wait would also impose an implicit undo-speed gate.
+The local million-row rollback diagnosis observed continuing server undo for
+about 33 seconds after the deliberately injected failure. Ordinary command
+timeouts, dataset sizes, memory limits, and exact rollback assertions remain
+unchanged. The test runner owns end-to-end termination; this fixture setting
+is not a production configuration recommendation. SQL Server under x64
+translation on the local Arm host remains outside Microsoft's supported-host
+release qualification. See [provider recovery timeouts](transactions-and-locking.md#savepoints-and-failure-handling)
+and [supported-host requirements](support-and-qualification.md#provider-and-engine-matrix).
+
+The [server 64-writer suite](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Concurrency/ConcurrentCapacityTests.cs)
+holds 64 distinct existing registry locks simultaneously on server engines,
+then commits and fully validates all trees. The [common writer suite](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Concurrency/ConcurrentWriterTests.cs) releases 64
+writers against one existing root and verifies dense persisted positions on
+all engines. A canceled server contender retains both callers' earlier
+application writes. SQLite cannot hold independent write transactions
+simultaneously because its database-wide writer boundary precedes tree locks.
 
 ## Deterministic CI and RC measurements
 

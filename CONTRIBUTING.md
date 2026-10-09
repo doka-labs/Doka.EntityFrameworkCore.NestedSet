@@ -59,6 +59,35 @@ provider projects reference it through `ProjectReference`; they do not compile
 linked copies of its sources. Run the provider project to execute its inherited
 contracts. Running the specification project does not run integration tests.
 
+### Rider feedback and capacity qualification
+
+The provider projects contain both ordinary regression tests and the large
+`Category=Capacity` cases. Rider's **Run All Tests from Solution** includes the
+million-node imports, repairs, and ten-million-node reads unless explicitly
+configured otherwise.
+
+For ordinary feedback, open **Settings > Build, Execution, Deployment > Unit
+Testing** and set **Skip tests from categories** to `Capacity`. Save this in
+the **Solution personal** settings layer. A mixed Run All then displays these
+cases as ignored by Rider, before their bodies execute. To deliberately run
+them, group the Unit Tests Explorer by **Categories** and run only the
+**Capacity** node; Rider permits a selection consisting exclusively of an
+ignored category. This selects capacity tests across provider projects.
+
+Set **Maximum number of test runners to run in parallel** to the number of
+logical processors available on your development machine. This enables
+independent test assemblies to run concurrently. Rider requires an explicit
+integer; it has no automatic CPU-count setting. The existing xUnit allocation
+collection isolation still applies within each assembly.
+
+These are local IDE preferences, not repository defaults. Git ignores
+`*.DotSettings.user`, and CLI, CI, and RC execution retain every capacity case. A normal
+Rider run with ignored capacity cases is not complete qualification. Full-size
+capacity runs also need adequate Docker memory and I/O; on a shared local host,
+follow the [capacity execution guidance](docs/performance.md#capacity-targets).
+See JetBrains' [category selection](https://www.jetbrains.com/help/rider/Test_Categories.html)
+and [runner settings](https://www.jetbrains.com/help/rider/Reference__Options__Tools__Unit_Testing.html).
+
 ## Runnable samples
 
 The independent console samples keep their results for inspection. These local

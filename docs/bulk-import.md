@@ -221,10 +221,12 @@ sentinel-valued inputs allocate no per-node generated-value snapshot. An input
 with an explicit non-sentinel value for a store-generated property retains one
 compact snapshot array so a definite rollback can restore that exact value.
 
-The deterministic release tests qualify one million direct children, 100,000
-levels, and a retained plan budget of at most 320 MiB per million nodes. The
-remaining 192 MiB of the 512 MiB total target is reserved for native ordering
-ranks, query buffers, and the active EF batch.
+The retained-plan allocation test budgets at most 320 MiB per million planned
+nodes. The remaining 192 MiB of the 512 MiB whole-operation target is reserved
+for native ordering ranks, query buffers, provider allocations, and the active
+EF batch. The [real relational capacity cases](performance.md#real-relational-capacity-cases)
+exercise one million direct children and 100,000 levels through persisted public
+operations; a small retained-plan measurement alone does not qualify them.
 
 The operation opens the destination interval once rather than once per node. It
 streams neither the caller's topology nor provider-native bulk-copy input; it

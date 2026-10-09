@@ -42,6 +42,9 @@ hierarchy before the one operation being assessed.
 | Query UX adds hidden reads | Composed anchor query uses one command | Missing or filtered anchor returns no rows |
 | Structural work loses bounds | Existing statement/allocation limits | Wide, deep, and failed-operation regressions |
 | SQLite keyed writes scan whole trees | Actual unanalyzed repair UPDATE plans | Excluded scope/tree keys and membership-alias collisions |
+| Capacity inferred from small fixtures | Actual ten-million reads and million-node import/rebuild | Last-wave failure/cancellation and complete rollback |
+| Background heap observation charges an unnecessary preceding cycle | Proven earlier allocation anchor and captured native scalar tuple | Completion/start race, unknown identities, counter epochs, and held allocations |
+| Tree lock independence inferred | 64 simultaneous server registry row locks | 64 hot-tree writers and canceled caller transactions |
 | Framework seams resolved too late | Complete registration-time insertion contract | Incompatible member/version diagnostic before context creation |
 | Unchanged insertion keys allocate per boundary | Typed scalar/FK snapshot reuse | Sidecars, conceptual nulls, custom sentinels, mutable-key rejection |
 | PostgreSQL generic plan differs | Native PREPARE counters and partial-index selection | Principal-only exclusion, SQL error, cancellation/session cleanup |
@@ -210,6 +213,16 @@ no surviving owned statement, and preservation of an unrelated prepared query.
 Sources: [prepared generic-plan cases](../tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests/Indexes/NullableParentIndexTests.GenericPlans.cs)
 and [prepared session cleanup](../tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests/Indexes/NullableParentIndexTests.PreparedPlan.cs).
 
+The capacity heap observer has independent held-allocation controls and
+deterministic background-cycle guards. Qualified collection-start identities
+exclude unnecessary older allocation traffic; completion followed by another
+full start, invalid counts, and unknown counter epochs retain the conservative
+earlier anchor. A captured native MySQL tuple rejects the old unconditional
+selection. These controls preserve the 512 MiB limit, precise sampling, and
+actual public million-node operations.
+
+Sources: [heap observer](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Observation/ManagedHeapObservation.cs)
+and [measurement controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Observation/ManagedHeapObservationTests.cs).
 
 ## Parent presence and ownership
 

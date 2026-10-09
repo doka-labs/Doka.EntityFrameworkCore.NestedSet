@@ -57,6 +57,8 @@ filtered run does not establish coverage for a provider introduced later.
 - Require the SQLite repair UPDATE to seek bounded unique keys without manually
   running ANALYZE. Include scoped composite and converted unscoped keys, excluded
   trees/scopes, and a physical table name matching the internal membership alias.
+- Run million-row repair and Depth 100,000 through public rebuild; late failure
+  and cancellation must roll back all earlier batches and the registry revision.
 
 ## Pros and Cons of the Options
 
@@ -116,6 +118,7 @@ must differ from the physical outer table name under SQLite identifier equality.
 - [Inspector tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Validation)
 - [Rebuild tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Hierarchy/Maintenance/RelationalTests.Rebuild.cs)
 - [SQLite keyed write plans and isolation](../../tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests/Indexes/SqliteQueryPlanTests.cs)
+- [Real repair capacity and late rollback](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Capacity/CapacityTests.cs)
 - [Implementation design](../../docs/implementation-design.md)
 
 ### Sources

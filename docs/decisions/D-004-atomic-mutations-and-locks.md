@@ -102,6 +102,15 @@ and identity column names. CLR entity renames therefore leave the registry
 table intact. Databases created with the earlier CLR-name-based hash require
 the data-preserving table rename described in the migration guide.
 Rollback cleanup uses `CancellationToken.None` after forward progress fails.
+This prevents request cancellation from suppressing recovery, not provider
+rollback timeouts. SqlClient 6.1.6's native transaction rollback uses the
+connection timeout rather than EF's ordinary command timeout. Applications
+must budget recovery for their largest transaction. If rollback or disposal
+fails, preserve both errors, discard the context and caller transaction, and
+reconcile through a fresh connection; client timeout does not prove server undo
+has finished. Capacity fixtures remove this implicit undo-speed gate only for
+their functional tests, retaining ordinary command deadlines and every exact
+rollback assertion.
 A connection loss during commit requires a fresh-context reconciliation. The
 only supported registry-row deletion is `PurgeTreeIdAsync`: it follows the same
 transaction and exact-identity lock protocol, rejects active identities, and
@@ -178,6 +187,7 @@ not enumerate these maps.
 ### Re-evaluation Triggers
 
 - A supported provider changes row-lock, transaction, savepoint, or execution-strategy behavior.
+- A provider changes native rollback timeout or cancellation behavior. Requalify full-size late failure and cancellation with actual database, registry, input and tracker restoration, retaining recovery failure classification.
 - Query-plan evidence shows a registry statement takes locks outside its exact identity.
 - A tested idempotency and commit-verification contract makes optimistic replay safe for a complete application unit.
 - EF changes reference registration, identity-map or dependent-map cleanup, generated-value acceptance, or the insertion lifecycle contracts. Requalify initial tracking rejection, mutable and generated keys, owned payload, unrelated identities, retry, and definite database rollback before upgrading.
@@ -198,6 +208,7 @@ not enumerate these maps.
 - 2026-09-28: Confirmed typed registry locks, caller savepoints, complete-unit retries, tracker recovery, and provider regression specifications against the linked repository evidence.
 - 2026-10-04: Qualified exact insertion identity recovery after initial tracking rejection and callback key mutation. Preserved the existing persistence boundary, caller tracker ownership, and explicit framework-seam failure policy.
 - 2026-10-04: Separated insertion framework bindings from lifecycle state and moved their cached compatibility check to options registration, with member-specific startup diagnostics and an explicit framework-contract regression.
+- 2026-10-04: Diagnosed SqlClient's native connection-timeout boundary during million-row undo. Kept runtime recovery and aggregate error preservation unchanged; separated the functional capacity fixture from implicit rollback timing gates and documented application-owned recovery budgets.
 - 2026-10-08: Removed unchanged-path boxing and eager bucket storage, preserved installed relationship snapshots and native property-bag diagnostics, and separated metadata-only startup validation from model-consumed delegate compilation. Added allocation, semantic, lazy-cache, and actual registration controls.
 
 ### Implementation References
@@ -225,6 +236,7 @@ not enumerate these maps.
 - [Tree identity purge tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Mutations/Facade/NestedSetMutationFacadeTests.Purge.cs)
 - [Registry rename tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/ModelCompatibility/TableMappings/RegistryMigrationProviderTests.cs)
 - [Transaction guide](../../docs/transactions-and-locking.md)
+- [Full-size failure and cancellation controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Capacity/CapacityTests.cs)
 - [Registry migration guide](../../docs/migrations.md)
 
 ### Sources
@@ -237,6 +249,9 @@ not enumerate these maps.
 - [EF Core 10.0.12 CLR getter conversion](https://github.com/dotnet/efcore/blob/v10.0.12/src/EFCore/Metadata/Internal/ClrPropertyGetterFactory.cs#L164) (primary source; retrieved 2026-10-08)
 - [EF Core 10.0.12 sentinel null guards](https://github.com/dotnet/efcore/blob/v10.0.12/src/EFCore/Extensions/Internal/ExpressionExtensions.cs#L56) (primary source; retrieved 2026-10-08)
 - [EF Core 10.0.12 comparer null guards](https://github.com/dotnet/efcore/blob/v10.0.12/src/EFCore/ChangeTracking/ValueComparer%60.cs#L239) (primary source; retrieved 2026-10-08)
+- [SqlClient 6.1.6 native rollback timeout selection](https://github.com/dotnet/SqlClient/blob/b862260e80dd3d159b812cbe5c51b933fe348afe/src/Microsoft.Data.SqlClient/netcore/src/Microsoft/Data/SqlClient/SqlInternalConnectionTds.cs#L1190-L1193) (primary source; retrieved 2026-10-04)
+- [EF Core 10.0.12 native rollback forwarding](https://github.com/dotnet/efcore/blob/v10.0.12/src/EFCore.Relational/Storage/RelationalTransaction.cs#L209-L254) (primary source; retrieved 2026-10-04)
+- [.NET default async rollback cancellation behavior](https://learn.microsoft.com/en-us/dotnet/api/system.data.common.dbtransaction.rollbackasync?view=net-10.0) (primary source; retrieved 2026-10-04)
 - [EF Core 10.0.12 state manager and reference lifecycle](https://github.com/dotnet/efcore/blob/v10.0.12/src/EFCore/ChangeTracking/Internal/StateManager.cs) (primary source; retrieved 2026-10-03)
 - [EF Core 10.0.12 exact identity-map removal](https://github.com/dotnet/efcore/blob/v10.0.12/src/EFCore/ChangeTracking/Internal/IdentityMap.cs) (primary source; retrieved 2026-10-03)
 - [EF Core value comparers and key snapshots](https://learn.microsoft.com/en-us/ef/core/modeling/value-comparers) (primary source; retrieved 2026-10-03)

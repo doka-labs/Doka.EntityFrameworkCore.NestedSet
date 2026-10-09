@@ -95,6 +95,7 @@ filtered run does not establish coverage for a provider introduced later.
 - Run `dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests.csproj -c Release` and expect generated migration lifecycle and physical index tests to pass without SafeMigrations references.
 - Run `dotnet test tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests.csproj -c Release` and require optional adapter tests to pass before claiming compatibility with the published adapter. Include SQLite script rejection, foreign database qualifier rejection, safe replay, and same-name wrong-definition drift rejection. SQL Server additionally verifies directions, stamped CHECK enforcement/trust, valid populated predicates, rejected invalid rows, complete integer-upgrade rollback, and refused narrowing.
 - Run the PostgreSQL nullable-parent index tests: actual catalog predicates and public tree-query plans must match for native and converted TreeIds, while principal checks exclude generated structural paths.
+- Run the million-child public import with normal FK and automatic-maintenance settings. Require completed geometry/Full validation and the unchanged additional-heap budget; observe actual RI lookup after statistics-driven replanning.
 - Require positive convention-ownership and negative explicit/adopted-index tests, including custom filters, names, uniqueness, provider facets, and physical-name collisions.
 
 ## Pros and Cons of the Options
