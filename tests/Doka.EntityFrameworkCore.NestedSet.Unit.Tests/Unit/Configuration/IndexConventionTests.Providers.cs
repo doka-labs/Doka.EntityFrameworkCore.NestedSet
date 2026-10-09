@@ -119,7 +119,7 @@ public sealed partial class IndexConventionTests
 
         Assert.Equal(2, leftIndexes.Length);
         Assert.Equal(
-            5,
+            6,
             entity
                 .GetIndexes()
                 .Count());

@@ -6,19 +6,25 @@ internal sealed class NestedSetIndexConvention : IEntityTypePrimaryKeyChangedCon
     /// <summary>The active provider's SQL identifier service.</summary>
     private readonly ISqlGenerationHelper _sql;
 
-    /// <summary>The registered provider identity controlling canonical table collation support.</summary>
+    /// <summary>The registered provider identity controlling collation support.</summary>
     private readonly string _providerName;
+
+    /// <summary>The provider service resolving implicit conversions from configured store facets.</summary>
+    private readonly ITypeMappingSource _typeMappings;
 
     /// <summary>Creates the hierarchy convention for one provider service graph.</summary>
     /// <param name="sql">The provider's SQL identifier service.</param>
     /// <param name="providerName">The official registered database provider name.</param>
+    /// <param name="typeMappings">The provider's effective property-mapping service.</param>
     internal NestedSetIndexConvention(
         ISqlGenerationHelper sql,
-        string providerName
+        string providerName,
+        ITypeMappingSource typeMappings
     )
     {
         _sql = sql;
         _providerName = providerName;
+        _typeMappings = typeMappings;
     }
 
     /// <inheritdoc />
@@ -50,6 +56,6 @@ internal sealed class NestedSetIndexConvention : IEntityTypePrimaryKeyChangedCon
             NestedSetConstraints.Reconcile(entity, mapping, _sql);
         }
 
-        NestedSetCollations.Capture(modelBuilder.Metadata, _providerName);
+        NestedSetCollations.Capture(modelBuilder.Metadata, _providerName, _typeMappings);
     }
 }

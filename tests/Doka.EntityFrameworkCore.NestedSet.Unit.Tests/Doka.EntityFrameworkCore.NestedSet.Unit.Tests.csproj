@@ -2,6 +2,7 @@
   <Import Project="../Shared/TestRunnerReferences.props"/>
 
   <ItemGroup>
+    <PackageReference Include="FsCheck.Xunit.v3"/>
     <ProjectReference Include="../Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests.csproj"/>
     <ProjectReference Include="../../samples/UserGroups/UserGroups.csproj"/>
   </ItemGroup>

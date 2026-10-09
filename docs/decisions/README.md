@@ -29,7 +29,7 @@ Validate with `eng/validate-adrs.sh`; regenerate with `eng/validate-adrs.sh --wr
 | [D-013](D-013-provider-owned-integration-test-projects.md) | implemented | 2026-09-25 | Give each database provider its own integration test project | None |
 | [D-014](D-014-shared-database-images-and-developer-compose.md) | implemented | 2026-09-29 | Share database image pins with optional developer Compose | None |
 | [D-015](D-015-benchmarkdotnet-development-measurements.md) | accepted | 2026-09-28 | Use BenchmarkDotNet for optional development measurements | None |
-| [D-016](D-016-release-candidate-evidence-and-publication.md) | accepted | 2026-09-19 | Qualify immutable candidates before operator-controlled publication | None |
+| [D-016](D-016-release-candidate-evidence-and-publication.md) | implemented | 2026-09-19 | Qualify immutable candidates before operator-controlled publication | None |
 | [D-017](D-017-madr-profile-and-decision-validation.md) | implemented | 2026-09-19 | Validate decision records independently of release qualification | None |
 
 ## Relationships

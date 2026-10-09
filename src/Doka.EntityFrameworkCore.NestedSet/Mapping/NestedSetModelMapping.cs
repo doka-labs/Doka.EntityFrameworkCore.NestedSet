@@ -9,6 +9,7 @@ internal sealed class NestedSetModelMapping
     private static readonly ConditionalWeakTable<IModel, NestedSetModelMapping> s_models = new();
 
     private readonly Dictionary<IEntityType, NestedSetModelDescriptor> _descriptors = new();
+    private readonly Dictionary<IEntityType, IEntityType> _owners = new();
     private readonly Dictionary<IEntityType, NestedSetOrdering> _ordering = new();
     private readonly Dictionary<IEntityType, IReadOnlyList<IProperty>> _structure = new();
 
@@ -26,6 +27,7 @@ internal sealed class NestedSetModelMapping
 
             var descriptor = NestedSetModelDescriptor.FromFinalized(entity);
             _descriptors.Add(entity, descriptor);
+            _owners.Add(entity, entity);
             var properties = descriptor
                 .StructuralProperties
                 .Select(property => property.Resolve(entity))
@@ -61,6 +63,7 @@ internal sealed class NestedSetModelMapping
                 }
 
                 _descriptors.Add(entity, descriptor);
+                _owners.Add(entity, _owners[current]);
                 _structure.Add(entity, _structure[current]);
 
                 if (_ordering.TryGetValue(current, out var ordering))
@@ -83,6 +86,15 @@ internal sealed class NestedSetModelMapping
 
     /// <summary>Gets whether the model contains at least one configured hierarchy.</summary>
     internal bool HasHierarchies => _descriptors.Count != 0;
+
+    /// <summary>Gets the exact entity that declares a node's hierarchy contract and owns its queries.</summary>
+    /// <param name="entity">The concrete or configured hierarchy entity metadata.</param>
+    /// <returns>The configured owner, including its stable shared-type identity.</returns>
+    internal IEntityType Owner(
+        IEntityType entity
+    ) => _owners.TryGetValue(entity, out var owner)
+        ? owner
+        : throw new InvalidOperationException($"Entity '{entity.Name}' is not configured as a nested set.");
 
     /// <summary>Gets the single immutable role and ordering contract for one nested-set entity.</summary>
     internal NestedSetModelDescriptor Descriptor(

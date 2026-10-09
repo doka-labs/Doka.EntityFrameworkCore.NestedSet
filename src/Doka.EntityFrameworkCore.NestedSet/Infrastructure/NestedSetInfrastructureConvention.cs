@@ -6,13 +6,19 @@ internal sealed class NestedSetInfrastructureConvention : IModelFinalizingConven
     /// <summary>The official registered provider identity controlling canonical table collation support.</summary>
     private readonly string _providerName;
 
+    /// <summary>The provider service resolving the exact registry identity's effective conversion.</summary>
+    private readonly ITypeMappingSource _typeMappings;
+
     /// <summary>Creates registry metadata conventions for the registered database provider.</summary>
     /// <param name="providerName">The official registered database provider name.</param>
+    /// <param name="typeMappings">The provider's effective property-mapping service.</param>
     internal NestedSetInfrastructureConvention(
-        string providerName
+        string providerName,
+        ITypeMappingSource typeMappings
     )
     {
         _providerName = providerName;
+        _typeMappings = typeMappings;
     }
 
     /// <inheritdoc />
@@ -29,7 +35,7 @@ internal sealed class NestedSetInfrastructureConvention : IModelFinalizingConven
 
         foreach (var hierarchy in hierarchies)
         {
-            AddRegistry(modelBuilder, hierarchy, _providerName);
+            AddRegistry(modelBuilder, hierarchy, _providerName, _typeMappings);
         }
     }
 
@@ -37,10 +43,12 @@ internal sealed class NestedSetInfrastructureConvention : IModelFinalizingConven
     /// <param name="modelBuilder">The convention model receiving the registry entity.</param>
     /// <param name="hierarchy">The already validated nested-set hierarchy.</param>
     /// <param name="providerName">The official registered database provider name.</param>
+    /// <param name="typeMappings">The provider's effective property-mapping service.</param>
     private static void AddRegistry(
         IConventionModelBuilder modelBuilder,
         IConventionEntityType hierarchy,
-        string providerName
+        string providerName,
+        ITypeMappingSource typeMappings
     )
     {
         var descriptor = NestedSetModelValidator.Validate(hierarchy, true)
@@ -94,7 +102,8 @@ internal sealed class NestedSetInfrastructureConvention : IModelFinalizingConven
                     registry,
                     scopeProperty,
                     NestedSetTreeRegistryMetadata.Scope,
-                    NestedSetCollations.ResolveEffective(hierarchy, scopeProperty, hierarchyStore, providerName)));
+                    NestedSetCollations.ResolveEffective(
+                        hierarchy, scopeProperty, hierarchyStore, providerName, typeMappings)));
         }
 
         var treeProperty = descriptor.TreeId.Resolve(hierarchy);
@@ -104,7 +113,12 @@ internal sealed class NestedSetInfrastructureConvention : IModelFinalizingConven
                 registry,
                 treeProperty,
                 NestedSetTreeRegistryMetadata.TreeId,
-                NestedSetCollations.ResolveEffective(hierarchy, treeProperty, hierarchyStore, providerName)));
+                NestedSetCollations.ResolveEffective(
+                    hierarchy,
+                    treeProperty,
+                    hierarchyStore,
+                    providerName,
+                    typeMappings)));
 
         var revision = registry.Property(typeof(long), NestedSetTreeRegistryMetadata.Revision, false, true)
             ?? throw new InvalidOperationException("The EF model rejected the tree-registry revision.");

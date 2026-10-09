@@ -1,6 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Migrations.Tests;
 
 /// <summary>Verifies generated migrations independently of the optional SafeMigrations integration.</summary>
+[DatabasePlatform]
 public sealed class MigrationTests : IClassFixture<MigrationFixture>
 {
     private readonly MigrationFixture _fixture;
@@ -37,9 +38,9 @@ public sealed class MigrationTests : IClassFixture<MigrationFixture>
         var migration = chain.GetMigration(context, 0);
 
         // Assert
-        AssertCurrentIndexes(indexes);
+        AssertCurrentIndexes(engine, indexes);
         Assert.Equal(
-            6,
+            engine == "PostgreSql" ? 7 : 6,
             migration
                 .UpOperations
                 .OfType<CreateIndexOperation>()
@@ -94,7 +95,7 @@ public sealed class MigrationTests : IClassFixture<MigrationFixture>
         Assert.DoesNotContain(
             operations,
             operation => operation is DropTableOperation { Name: MigrationContext.TableName });
-        AssertCurrentIndexes(indexes);
+        AssertCurrentIndexes(engine, indexes);
     }
 
     /// <summary>Restores the complete historical schema and data when rolling back the upgrade.</summary>
@@ -159,7 +160,7 @@ public sealed class MigrationTests : IClassFixture<MigrationFixture>
 
         // Assert
         Assert.Equal(before, after);
-        AssertCurrentIndexes(indexes);
+        AssertCurrentIndexes(engine, indexes);
     }
 
     /// <summary>Round-trips the generated snapshot without producing a phantom index migration.</summary>
@@ -218,8 +219,13 @@ public sealed class MigrationTests : IClassFixture<MigrationFixture>
         var specialized = Assert.Single(indexes, x => x.Name == "application_filtered_left_lookup");
         Assert.Equal(["tree_scope", "tree_id", "left_bound"], specialized.Columns);
         Assert.False(specialized.IsOrdinary);
-        Assert.Single(indexes, x => x.IsOrdinary && x.Columns.SequenceEqual(specialized.Columns));
-        Assert.Equal(8, indexes.Length);
+
+        var fallback = Assert.Single(
+            indexes,
+            index => index.Name != specialized.Name && index.Columns.SequenceEqual(specialized.Columns));
+
+        Assert.Equal(engine != "PostgreSql", fallback.IsOrdinary);
+        Assert.Equal(engine == "PostgreSql" ? 9 : 8, indexes.Length);
         Assert.Empty(migration.UpOperations);
         Assert.Empty(migration.DownOperations);
         Assert.False(
@@ -446,18 +452,22 @@ public sealed class MigrationTests : IClassFixture<MigrationFixture>
 
     /// <summary>Checks application and structural indexes against their complete expected physical key order.</summary>
     private static void AssertCurrentIndexes(
+        string engine,
         MigrationIndex[] indexes
     )
     {
-        Assert.Equal(7, indexes.Length);
+        Assert.Equal(engine == "PostgreSql" ? 8 : 7, indexes.Length);
         Assert.Single(indexes, x => x.IsUnique && x.Columns.SequenceEqual(["tree_scope", "entry_id"]));
-        Assert.All(indexes, x => Assert.True(x.IsOrdinary));
+        Assert.All(indexes, index => Assert.Equal(
+            engine != "PostgreSql" || index.IsUnique || index.Name == "application_payload_lookup",
+            index.IsOrdinary));
+
         var columns = indexes
             .Select(x => string.Join(",", x.Columns))
             .Order(StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(
+        string[] expected =
             [
                 "entry_payload",
                 "tree_scope,entry_id",
@@ -466,8 +476,11 @@ public sealed class MigrationTests : IClassFixture<MigrationFixture>
                 "tree_scope,tree_id,parent_entry,entry_payload,entry_category,entry_id",
                 "tree_scope,tree_id,parent_entry,sibling_position",
                 "tree_scope,tree_id,right_bound",
-            ],
-            columns);
+            ];
+
+        Assert.Equal(engine == "PostgreSql"
+            ? expected.Append("tree_scope,entry_id,parent_entry").Order(StringComparer.Ordinal)
+            : expected, columns);
     }
 
     /// <summary>Checks the real provider catalog against the complete physical hierarchy contract.</summary>
@@ -479,7 +492,7 @@ public sealed class MigrationTests : IClassFixture<MigrationFixture>
         IReadOnlyDictionary<string, string> columnTypes
     )
     {
-        AssertCurrentIndexes(indexes);
+        AssertCurrentIndexes(engine, indexes);
         var order = Assert.Single(
             indexes,
             index => index.Columns.SequenceEqual(

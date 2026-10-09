@@ -14,6 +14,14 @@ suspected vulnerabilities through [Security](SECURITY.md).
 The SQLite suites run in process. Tests own their server containers and do not
 require a developer-managed database.
 
+SQL Server database cases remain visible but skip at runtime on a local ARM
+machine before starting a SQL Server container. Metadata and unit tests still
+run. Native Linux x64 CI must execute every applicable SQL Server provider,
+ordinary migration, and SafeMigrations case with zero skips; an unsupported CI
+platform fails. A local ARM run supplies development feedback and cannot
+complete repository qualification. See the
+[platform and qualification contract](docs/support-and-qualification.md#provider-and-engine-matrix).
+
 For manual debugging and Rider database access, use the optional
 [developer Compose environment](docker/README.md). Its profiles build from the
 same pinned images as Testcontainers. It owns separate persistent volumes and
@@ -51,6 +59,35 @@ provider projects reference it through `ProjectReference`; they do not compile
 linked copies of its sources. Run the provider project to execute its inherited
 contracts. Running the specification project does not run integration tests.
 
+### Rider feedback and capacity qualification
+
+The provider projects contain both ordinary regression tests and the large
+`Category=Capacity` cases. Rider's **Run All Tests from Solution** includes the
+million-node imports, repairs, and ten-million-node reads unless explicitly
+configured otherwise.
+
+For ordinary feedback, open **Settings > Build, Execution, Deployment > Unit
+Testing** and set **Skip tests from categories** to `Capacity`. Save this in
+the **Solution personal** settings layer. A mixed Run All then displays these
+cases as ignored by Rider, before their bodies execute. To deliberately run
+them, group the Unit Tests Explorer by **Categories** and run only the
+**Capacity** node; Rider permits a selection consisting exclusively of an
+ignored category. This selects capacity tests across provider projects.
+
+Set **Maximum number of test runners to run in parallel** to the number of
+logical processors available on your development machine. This enables
+independent test assemblies to run concurrently. Rider requires an explicit
+integer; it has no automatic CPU-count setting. The existing xUnit allocation
+collection isolation still applies within each assembly.
+
+These are local IDE preferences, not repository defaults. Git ignores
+`*.DotSettings.user`, and CLI, CI, and RC execution retain every capacity case. A normal
+Rider run with ignored capacity cases is not complete qualification. Full-size
+capacity runs also need adequate Docker memory and I/O; on a shared local host,
+follow the [capacity execution guidance](docs/performance.md#capacity-targets).
+See JetBrains' [category selection](https://www.jetbrains.com/help/rider/Test_Categories.html)
+and [runner settings](https://www.jetbrains.com/help/rider/Reference__Options__Tools__Unit_Testing.html).
+
 ## Runnable samples
 
 The independent console samples keep their results for inspection. These local
@@ -66,11 +103,12 @@ dotnet run --project samples/UserGroups -c Release -- --provider sqlite --reset
 See the [sample catalog](samples/README.md) for Doka MySQL/MariaDB setup,
 scenario selection, and the meaning of `--reset`.
 
-For a complete local qualification of the current workspace:
+For complete local qualification of the current workspace on supported Linux
+x64:
 
 ```sh
 bash eng/release-candidate.sh \
-  --version 10.0.0-rc.1 \
+  --version 10.0.0 \
   --workspace \
   --output artifacts/qualification-local
 ```
@@ -89,7 +127,9 @@ bash eng/verify-package-consumer.sh
 ```
 
 A filtered or focused run is development feedback, not complete qualification.
-Never replace a failing live provider test with a skip.
+The local ARM platform skips are an explicit environment policy, applied before
+database work; never convert a container startup or live provider failure to a
+skip. Unsupported SQL Server CI hosts fail; RC qualification rejects skipped cases.
 
 ## Secure development
 
@@ -174,6 +214,25 @@ the actual inspection ID, such as `MethodHasAsyncOverload` or
 
 ## Test structure
 
+### Generated invariant tests
+
+The existing core and EF unit projects use `FsCheck.Xunit.v3` for shrinkable
+properties. They run with ordinary Rider discovery and `dotnet test`; no extra
+project or workflow is required. Core properties exercise Int64 bounds and
+scoped/unscoped ancestry. EF properties compare production bulk geometry and
+native sibling ranks with independent input adjacency, and reject repeated
+entities and assigned keys before staging.
+
+Use generated arguments rather than an internal random seed so FsCheck can
+shrink a failure. Create fresh mutable state inside each invocation; shrinking
+reexecutes the property. Bound each forest to 64 nodes because the existing
+capacity suites own large-scale evidence. Keep ordinary runs randomized. To
+reproduce a failure, copy the reported seed tuple into the property's `Replay`
+attribute temporarily, then retain the minimal failing input as a regression.
+Each property keeps one Arrange/Act/Assert sequence.
+
+### Provider fixture ownership
+
 Keep common integration assertions, models, and helpers in
 `Doka.EntityFrameworkCore.NestedSet.Specification.Tests`. Its common test suites
 are public abstract classes. Each applicable provider project owns a thin
@@ -184,8 +243,10 @@ than one executable provider project. MySQL and MariaDB count as one project
 for this boundary. Combine method and data-row exclusions when checking it;
 an exclusion list must not conceal provider-exclusive ownership. Retain a model
 or helper in the common library only while it has real shared consumers.
-Add a new common suite's concrete subclass for every engine so inherited
-methods are discovered, including suites whose methods have explicit engine
+Add a new common suite's concrete subclass for every engine with an applicable
+declared method. A wholly excluded family has no wrapper on that engine;
+otherwise IDE metadata discovery still exposes unsupported inherited methods.
+Partially excluded families retain their wrapper and specific method or variant
 exclusions. The MySql project contains separate same-named MySQL and MariaDB
 suites; MariaDB wrappers live in its `MariaDb` folder and namespace. Common test
 bodies still compile once in the specification library.
@@ -196,6 +257,14 @@ the exact registered `ProviderFixture<TResource, TEngine>` and forwards it to th
 base. Use its immutable `Engine` instead of passing an engine argument in every
 test row. The provider fixture owns the existing resource and forwards its
 asynchronous initialization and disposal; individual tests must not dispose it.
+
+The shared `ProviderTest` base supplies the xUnit before-test platform hook.
+Mark a metadata-only suite with `[DatabaseIndependent]` explicitly; a
+`ProviderResources` fixture alone does not prove independence because a body
+may still create a database. Mixed migration hooks select the named engine row.
+SQL-only SafeMigrations theories use `[DatabasePlatform("SqlServer")]` to record
+their engine even when it is absent from scenario data. Keep resource acquisition
+lazy until after this hook; startup reached on a non-x64 host fails visibly.
 
 Use ordinary `Fact`, `Theory`, `InlineData`, and `MemberData` for common cases.
 Their data contains only scenario arguments, and every concrete engine runs them
@@ -234,6 +303,28 @@ concrete leaf, including
 inherited family helpers. Constructor guards inspect the actual leaf class and
 xUnit's class, collection, and assembly registrations; inheriting a fixture
 interface alone does not prove injection.
+
+For Rider, select **Settings/Preferences > Build, Execution, Deployment > Unit
+Testing > xUnit.net > Test discovery > Test runner** when checking the provider
+test list. Our engine exclusions run during xUnit discovery. Rider's default
+**Metadata** mode scans the compiled assembly without launching xUnit, so its
+list is not evidence that an inherited method is eligible for that provider.
+Running a whole provider project also refreshes Rider's list from the runner.
+See [Rider's xUnit discovery modes](https://www.jetbrains.com/help/rider/Reference_Options_Tools_Unit_Testing_xUnit.html).
+An entry in the IDE or a shared-base stack frame alone does not identify the
+provider that executed a failing case; retain the concrete suite or assembly
+name with failure evidence.
+
+`ConcurrentWriterTests` contains the same-tree scenario supported by all engines.
+`ConcurrentCapacityTests` contains only the two simultaneous server-transaction
+scenarios and has no SQLite wrapper. `ConcurrentWriterMetadataMatchesEngineCapabilities`
+inspects raw inherited method metadata, independently of xUnit exclusions, so
+reintroducing those scenarios into SQLite fails the provider guard.
+The two server families share one type-based xUnit collection per engine. This
+preserves their previous serial scheduling while each scenario still runs 64
+writers concurrently. Other collections remain parallel; MySQL and MariaDB
+have distinct collection types. The raw metadata guard also rejects missing
+or different collection types and assembly-wide isolation for these families.
 
 Cross-suite probes belong in independent internal helper classes when shared
 and provider-local suites both consume them. Reference those types directly,
@@ -325,17 +416,27 @@ dotnet restore Doka.EntityFrameworkCore.NestedSet.slnx --locked-mode
 
 Requalify the affected provider and migration contracts.
 
+Dependency Review retains the SPDX allowlist and vulnerability gate. Its only
+package-specific license exceptions are `Microsoft.Data.SqlClient.SNI.runtime`
+6.0.2 and `Microsoft.Identity.Client.NativeInterop` 0.20.6, which ship Microsoft
+license files. The workflow checks the action's complete dependency delta to
+enforce those exact versions; a new version requires review of its license file
+and an explicit exception update. Do not allow `LicenseRef-scancode-unknown`
+globally or disable license checking. SafeMigrations' missing GitHub license
+metadata is reported separately and is not resolved by its Scorecard result.
+
 Keep the shipping package graphs locked in CI and RC qualification. SDK and
 image pins require the affected full provider and migration matrix, not only
 a successful restore.
 
 ## Public API changes
 
-`PublicAPI.Shipped.txt` is the last stable release contract.
+`PublicAPI.Shipped.txt` records the reviewed stable release contract.
 `PublicAPI.Unshipped.txt` contains additions for the next stable release,
-including declarations first published in an RC. The initial `10.0.0-rc.1`
-preparation keeps all reviewed declarations there; no stable baseline has been
-published. The Public API analyzer must remain clean.
+including declarations first published in an RC. The initial `10.0.0` contract
+is recorded in both shipped baselines; the unshipped files retain only the
+nullable directive until new declarations are added. The Public API analyzer
+must remain clean.
 
 Before a stable release, move reviewed additions into the shipped file in the
 release-preparation source commit. Removals and signature changes require an

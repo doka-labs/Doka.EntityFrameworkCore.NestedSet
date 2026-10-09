@@ -5,7 +5,7 @@ internal abstract class NestedSetSaveGroup
 {
     private static readonly ConditionalWeakTable<IModel, FactoryCache> s_models = new();
 
-    /// <summary>Creates one coordinator for each affected entity type using model-lifetime factories.</summary>
+    /// <summary>Creates one coordinator for each affected hierarchy owner using model-lifetime factories.</summary>
     /// <param name="context">The context whose entries and metadata define this save.</param>
     /// <param name="entries">The modified hierarchy entries discovered before persistence.</param>
     /// <returns>Typed groups without retaining the context in the factory cache.</returns>
@@ -15,24 +15,24 @@ internal abstract class NestedSetSaveGroup
     )
     {
         var factories = s_models.GetValue(context.Model, static _ => new FactoryCache());
+        var modelMapping = NestedSetModelMapping.For(context.Model);
         var groups = new List<NestedSetSaveGroup>();
 
-        foreach (var group in entries.GroupBy(entry => entry.Metadata))
+        foreach (var group in entries.GroupBy(entry => modelMapping.Owner(entry.Metadata)))
         {
-            Func<DbContext, EntityEntry[], NestedSetSaveGroup> factory;
+            Func<DbContext, IEntityType, EntityEntry[], NestedSetSaveGroup> factory;
 
             lock (factories.Factories)
             {
                 if (!factories.Factories.TryGetValue(group.Key, out factory!))
                 {
                     var entity = group.Key;
-                    var descriptor = NestedSetModelMapping
-                        .For(context.Model)
-                        .Descriptor(entity);
+                    var descriptor = modelMapping.Descriptor(entity);
 
                     var scopeType = descriptor.Scope?.ClrType ?? typeof(NestedSetNoScope);
 
-                    // WHY: Close generic queries once per EF model; no context or tracked entity enters the cache.
+                    // WHY: Concrete subtype queries hide sibling types and cannot bind a base ordering lambda.
+                    // Close each configured owner's queries once per model without retaining tracked state.
                     factory = typeof(NestedSetSaveGroup).GetMethod(
                             nameof(CreateTyped),
                             BindingFlags.NonPublic | BindingFlags.Static)!
@@ -41,13 +41,13 @@ internal abstract class NestedSetSaveGroup
                             descriptor.NodeKey.ClrType,
                             descriptor.TreeId.ClrType,
                             scopeType)
-                        .CreateDelegate<Func<DbContext, EntityEntry[], NestedSetSaveGroup>>();
+                        .CreateDelegate<Func<DbContext, IEntityType, EntityEntry[], NestedSetSaveGroup>>();
 
                     factories.Factories.Add(entity, factory);
                 }
             }
 
-            groups.Add(factory(context, group.ToArray()));
+            groups.Add(factory(context, group.Key, group.ToArray()));
         }
 
         return groups;
@@ -93,17 +93,19 @@ internal abstract class NestedSetSaveGroup
     /// <summary>Creates the closed generic coordinator invoked by the cached metadata factory.</summary>
     private static NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope> CreateTyped<TEntity, TKey, TTreeId, TScope>(
         DbContext context,
+        IEntityType entityType,
         EntityEntry[] entries
     )
         where TEntity : class
         where TKey : notnull
         where TTreeId : notnull
-        where TScope : notnull => new(context, entries);
+        where TScope : notnull => new(context, entityType, entries);
 
     /// <summary>Keeps factory lifetime bounded by the EF model while permitting concurrent context creation.</summary>
     private sealed class FactoryCache
     {
         /// <summary>Stores closed generic factories guarded by this dictionary's monitor.</summary>
-        internal Dictionary<IEntityType, Func<DbContext, EntityEntry[], NestedSetSaveGroup>> Factories { get; } = new();
+        internal Dictionary<IEntityType, Func<DbContext, IEntityType, EntityEntry[], NestedSetSaveGroup>>
+            Factories { get; } = new();
     }
 }

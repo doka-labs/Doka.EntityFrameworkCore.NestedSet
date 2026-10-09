@@ -94,6 +94,7 @@ public sealed class ProviderFixture<TResource, TEngine> : IProviderFixture<TReso
 public sealed class ProviderResources;
 
 /// <summary>Reads engine identity from the fixture supplied by the concrete provider suite.</summary>
+[ProviderDatabasePlatform]
 public abstract class ProviderTest
 {
     /// <summary>Retains the immutable engine identity for shared test methods.</summary>

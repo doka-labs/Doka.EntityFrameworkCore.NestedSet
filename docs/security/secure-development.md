@@ -63,6 +63,17 @@ Dependency Review checks proposed dependency changes. Secret scanning and push
 protection complement review; their enabled state is not proof of an empty
 alert history. Triage alerts rather than treating a green build as a substitute.
 
+Two reviewed Microsoft native-package licenses need targeted exceptions:
+[SNI.runtime 6.0.2](https://www.nuget.org/packages/Microsoft.Data.SqlClient.SNI.runtime/6.0.2/License)
+and [NativeInterop 0.20.6](https://www.nuget.org/packages/Microsoft.Identity.Client.NativeInterop/0.20.6/License).
+These are license files, not MIT expressions. The exceptions apply to the test
+dependency graph; neither shipping NestedSet package gains these dependencies.
+The existing action continues checking other licenses and vulnerabilities. Since
+its pinned v5.0.0 PURL exclusion compares identities without enforcing versions,
+the following workflow step verifies the exact reviewed versions against the
+action's complete comparison output. A package update requires a new license
+review. Null license metadata and Scorecard results are separate inputs.
+
 Before a major production release, retain the actual static-analysis results
 for the proposed revision and fix confirmed exploitable medium-or-higher
 findings promptly. Do not count Scorecard configuration/process warnings as
@@ -77,6 +88,15 @@ and late callback changes. Their xUnit assertions remain active in Release test
 execution. The library's defensive validation is not compiled away for Release.
 This does not claim a separate fuzzing campaign or production `Debug.Assert`
 instrumentation.
+
+The existing unit projects also run FsCheck properties for bounds, complete
+tree identity, generated bulk geometry, native sibling ordering, and rejected
+imports. [Generated coverage](../regression-coverage.md#generated-invariant-coverage)
+names the positive and negative cases. FsCheck reports a replay seed and shrinks
+failures to smaller inputs. The pinned Scorecard version recognizes the actual
+`FsCheck.Xunit` imports; detection alone does not establish a successful test run
+or coverage of database execution paths. Hosted alerts reflect the revision of
+the latest hosted analysis.
 
 The proposed Passing assertion answer interprets active test-suite assertions
 as satisfying the testing configuration described by the criterion. The
@@ -146,3 +166,12 @@ Retrieved 2026-10-01:
 - [.NET SHA256.HashData](https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.sha256.hashdata?view=net-10.0).
 - [Doka security policy](https://github.com/doka-labs/Doka.EntityFrameworkCore.MySql/blob/main/SECURITY.md).
 - [SafeMigrations secure development](https://github.com/doka-labs/Doka.EntityFrameworkCore.SafeMigrations/blob/main/docs/security/secure-development.md).
+
+Retrieved 2026-10-09:
+
+- [FsCheck xUnit v3 3.4.0 package and dependencies](https://www.nuget.org/packages/FsCheck.Xunit.v3/3.4.0).
+- [FsCheck property testing and shrinking](https://fscheck.github.io/FsCheck/).
+- [Scorecard 5.5.0 C# detection](https://github.com/ossf/scorecard/blob/v5.5.0/checks/raw/fuzzing.go).
+- [Pinned Scorecard action version](https://github.com/ossf/scorecard-action/blob/2d1146689b8cda280b9bc96326124645441f03bc/go.mod).
+- [Dependency Review v5.0.0 license handling](https://github.com/actions/dependency-review-action/blob/v5.0.0/src/licenses.ts).
+- [Dependency Review v5.0.0 PURL comparison](https://github.com/actions/dependency-review-action/blob/v5.0.0/src/purl.ts).

@@ -5,6 +5,10 @@ guide by the task you need to complete. Feature guides define supported
 behavior, architecture records explain why material decisions exist, and
 runbooks own operational procedures.
 
+These guides describe the stable `10.0.0` contract. See the
+[changelog](../CHANGELOG.md) for changes since `10.0.0-rc.1` and the
+[support matrix](support-and-qualification.md) for qualified versions.
+
 ## Use NestedSet
 
 - [Getting Started](getting-started.md) builds a complete Doka MySQL/MariaDB

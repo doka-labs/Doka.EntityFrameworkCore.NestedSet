@@ -21,12 +21,14 @@
   </ItemGroup>
 
   <ItemGroup Label="Optional SafeMigrations qualification">
-    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.MySql" Version="10.4.5"/>
-    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.PostgreSql" Version="10.4.5"/>
-    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.Sqlite" Version="10.4.5"/>
+    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.MySql" Version="10.4.9"/>
+    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.PostgreSql" Version="10.4.9"/>
+    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.SqlServer" Version="10.4.9"/>
+    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.Sqlite" Version="10.4.9"/>
   </ItemGroup>
 
   <ItemGroup Label="Test tooling">
+    <PackageVersion Include="FsCheck.Xunit.v3" Version="3.4.0"/>
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12"/>
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1"/>
     <PackageVersion Include="xunit.v3.mtp-off" Version="4.0.1"/>

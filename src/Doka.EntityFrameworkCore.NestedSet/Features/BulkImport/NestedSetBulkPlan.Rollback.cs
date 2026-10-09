@@ -20,7 +20,7 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     /// </summary>
     internal void Restore()
     {
-        var errors = DetachActiveBatch();
+        var errors = DetachActiveBatch(failed: true);
 
         foreach (var node in Nodes)
         {
@@ -86,6 +86,21 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
             RestoreGeneratedValues(node, ref errors);
         }
 
+        if (_ownedValues is { } ownedValues)
+        {
+            foreach (var snapshot in ownedValues)
+            {
+                try
+                {
+                    snapshot.Restore();
+                }
+                catch (Exception error)
+                {
+                    (errors ??= []).Add(error);
+                }
+            }
+        }
+
         if (errors is not null)
         {
             throw new AggregateException("One or more imported entities could not be restored.", errors);
@@ -98,37 +113,37 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         ref List<Exception>? errors
     )
     {
-        if (_generatedProperties.Length == 0)
+        if (!node.GeneratedValuesCaptured
+            || _generatedProperties.Length == 0)
         {
+            // WHY: A null snapshot denotes sentinels only after capture completed. Inputs in a later batch,
+            // or an import rejected before staging, still own their untouched generated CLR payload values.
             return;
         }
-
-        var entry = _store.Entry(node.Entity);
 
         for (var index = 0; index < _generatedProperties.Length; index++)
         {
             var property = _generatedProperties[index];
+
+            if (!NestedSetRefreshProperties.AppliesTo(property, node.Entity))
+            {
+                continue;
+            }
+
             var original = node.OriginalGeneratedValues is { } values ? values[index] : property.Sentinel;
 
             try
             {
-                // WHY: EF can write defaults and computed complex leaves into caller-owned inputs before a later
-                // refresh failure. CurrentValues resolves the complete complex path while the entry remains detached.
-                entry.CurrentValues[property] = NestedSetStructuralValue.Snapshot(property, original);
+                // WHY: EF can assign defaults and computed complex leaves before a later failure. The same
+                // compiled CLR setter restores their exact snapshots without retaining detached entry handles.
+                _generatedSetters[index].SetClrValueUsingContainingEntity(
+                    node.Entity,
+                    NestedSetStructuralValue.Snapshot(property, original));
             }
             catch (Exception exception)
             {
                 (errors ??= []).Add(exception);
             }
-        }
-
-        try
-        {
-            entry.State = EntityState.Detached;
-        }
-        catch (Exception exception)
-        {
-            (errors ??= []).Add(exception);
         }
     }
 
@@ -151,7 +166,7 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     }
 
     /// <summary>Attempts every owned detachment and retains failures for the operation boundary to aggregate.</summary>
-    private List<Exception>? DetachActiveBatch()
+    private List<Exception>? DetachActiveBatch(bool failed = false)
     {
         if (_activeEntries is not { } entries)
         {
@@ -159,7 +174,17 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         }
 
         List<Exception>? errors = null;
-        Detach(entries, ref errors);
+        Detach(entries, _activeIdentities!, ref errors);
+
+        if (failed)
+        {
+            VerifyFailedCleanup(entries, ref errors);
+        }
+
+        if (_activeRelationships is { } relationships)
+        {
+            RestoreRelationships(relationships, ref errors);
+        }
 
         if (errors is not null)
         {
@@ -169,6 +194,8 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         }
 
         _activeEntries = null;
+        _activeIdentities = null;
+        _activeRelationships = null;
         _activeRoots = null;
         _activeOffset = 0;
 
@@ -178,14 +205,37 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     /// <summary>Detaches a bounded entry set in reverse dependency order.</summary>
     private static void Detach(
         IReadOnlyList<EntityEntry> entries,
+        IReadOnlyDictionary<IUpdateEntry, NestedSetInsertionTracking.Identity> identities,
         ref List<Exception>? errors
     )
     {
+        foreach (var entry in entries)
+        {
+            if (identities.TryGetValue(NestedSetInsertionTracking.EntryIdentity(entry), out var identity))
+            {
+                try
+                {
+                    identity.PrepareDetach();
+                }
+                catch (Exception exception)
+                {
+                    (errors ??= []).Add(exception);
+                }
+            }
+        }
+
         for (var index = entries.Count - 1; index >= 0; index--)
         {
             try
             {
-                entries[index].State = EntityState.Detached;
+                if (identities.TryGetValue(NestedSetInsertionTracking.EntryIdentity(entries[index]), out var identity))
+                {
+                    identity.Detach();
+                }
+                else
+                {
+                    NestedSetInsertionTracking.Detach(entries[index]);
+                }
             }
             catch (Exception exception)
             {
@@ -196,15 +246,51 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
 
     /// <summary>Detaches a partial batch while preserving its original exception.</summary>
     private static void Detach(
-        IReadOnlyList<EntityEntry> entries
+        IReadOnlyList<EntityEntry> entries,
+        IReadOnlyDictionary<IUpdateEntry, NestedSetInsertionTracking.Identity> identities,
+        IReadOnlyList<(EntityEntry Owner, INavigationBase Navigation, object Entity)> relationships
     )
     {
         List<Exception>? errors = null;
-        Detach(entries, ref errors);
+        Detach(entries, identities, ref errors);
+        VerifyFailedCleanup(entries, ref errors);
+        RestoreRelationships(relationships, ref errors);
 
         if (errors is not null)
         {
             throw new AggregateException("One or more imported entities could not be detached.", errors);
+        }
+    }
+
+    /// <summary>Checks only the failed batch's touched native maps without replacing its original error.</summary>
+    private static void VerifyFailedCleanup(IReadOnlyList<EntityEntry> entries, ref List<Exception>? errors)
+    {
+        try
+        {
+            NestedSetInsertionTracking.VerifyFailedCleanup(entries);
+        }
+        catch (Exception error)
+        {
+            (errors ??= []).Add(error);
+        }
+    }
+
+    /// <summary>Restores caller-owned aggregate memberships after native detachment changed their links.</summary>
+    private static void RestoreRelationships(
+        IReadOnlyList<(EntityEntry Owner, INavigationBase Navigation, object Entity)> relationships,
+        ref List<Exception>? errors
+    )
+    {
+        foreach (var (owner, navigation, entity) in relationships)
+        {
+            try
+            {
+                NestedSetInsertionTracking.RestoreRelationship(owner.Entity, navigation, entity);
+            }
+            catch (Exception error)
+            {
+                (errors ??= []).Add(error);
+            }
         }
     }
 

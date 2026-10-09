@@ -1,6 +1,6 @@
 ---
 id: D-016
-status: accepted
+status: implemented
 date: 2026-09-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
@@ -91,7 +91,11 @@ GitHub's independent signature verdict, without extra hosted signer configuratio
 
 ## More Information
 
-The maintainer accepted this release design; complete RC qualification and hosted publication remain pending.
+The first RC, `10.0.0-rc.1`, was published on 2026-10-02 as an immutable GitHub release with thirteen
+candidate, qualification, package, symbol, SBOM, and provenance assets. Both package identities are publicly
+available on NuGet. Readback on 2026-10-06 confirms these states; the sources below record the evidence.
+This implements the accepted release design for that RC. Stable `10.0.0` establishes the first stable source
+contract and uses the same qualification, approval, and exact-package publication process.
 A dirty local workspace is explicitly non-publishable. NuGet/login exchanges the protected workflow's OIDC identity for
 short-lived publish credentials after candidate and tag checks. Binding the trusted publishing policy to the
 repository, workflow, and protected environment limits where those credentials can be obtained.
@@ -128,6 +132,8 @@ conflicts before duplicate-tolerant pushes, and public package and PDB readback 
 - 2026-09-30: Restored offline archive inspection to the independent CI build job and retained its manifest. RC result coverage requires only executable test projects; shared specification libraries are excluded. API tokens are scoped to the jobs that use GitHub APIs. ADR validation remains a separate maintainer check.
 - 2026-09-30: Aligned development package and assembly informational versions through the SDK's VersionPrefix/VersionSuffix properties. The actual package inspector rejects version drift; the explicit reviewed release-version override remains unchanged.
 - 2026-10-02: Replaced the extra hosted signer configuration with the versioned `.github/allowed_signers` file at the maintainer's request, following Doka and SafeMigrations. Local Git and hosted tag-signature verification remain required.
+- 2026-10-06: Status changed from accepted to implemented.
+- 2026-10-06: Read back the actual immutable RC and both public NuGet identities, preserving the earlier pending statements as dated history. Established stable 10.0.0 metadata, shipped API baselines, and operator guidance without changing the release mechanism or treating RC artifacts as stable evidence.
 
 ### Implementation References
 
@@ -147,6 +153,11 @@ conflicts before duplicate-tolerant pushes, and public package and PDB readback 
 
 ### Sources
 
+- [Published immutable first RC](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/releases/tag/v10.0.0-rc.1) (primary source; retrieved 2026-10-06)
+- [First RC candidate identity](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/releases/download/v10.0.0-rc.1/candidate.json) (primary source; retrieved 2026-10-06)
+- [First RC annotated-tag verification](https://api.github.com/repos/doka-labs/Doka.EntityFrameworkCore.NestedSet/git/tags/b067f7caf94f09f770822d66e5b7185fef34a9d2) (primary source; retrieved 2026-10-06)
+- [Core NuGet version inventory](https://api.nuget.org/v3-flatcontainer/doka.nestedset/index.json) (primary source; retrieved 2026-10-06)
+- [EF NuGet version inventory](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.nestedset/index.json) (primary source; retrieved 2026-10-06)
 - [Git SSH allowed-signers policy](https://git-scm.com/docs/git-config#Documentation/git-config.txt-gpgsshallowedSignersFile) (primary source; retrieved 2026-10-02)
 - [NuGet signed packages](https://learn.microsoft.com/en-us/nuget/reference/signed-packages-reference) (primary source; retrieved 2026-09-19)
 - [NuGet package content hash design](https://github.com/NuGet/Home/wiki/Nupkg-Metadata-File) (primary source; retrieved 2026-09-19)

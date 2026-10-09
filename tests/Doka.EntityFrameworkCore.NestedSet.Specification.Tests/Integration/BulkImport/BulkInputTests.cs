@@ -14,6 +14,7 @@ public abstract class BulkInputTests : ProviderTest
     }
 
     /// <summary>Later mutation of a caller-owned child array cannot alter a branch's copied topology.</summary>
+    [DatabaseIndependent]
     [Fact]
     public void BranchCopiesItsChildCollection()
     {
@@ -50,8 +51,14 @@ public abstract class BulkInputTests : ProviderTest
     }
 
     /// <summary>Assigned duplicate identities are rejected before opening the destination interval.</summary>
-    [Fact]
-    public async Task DuplicateAssignedKeysAreRejectedBeforeDatabaseWork()
+    /// <param name="differentTrees">Whether the duplicate occurs across tree plans instead of within one plan.</param>
+    /// <returns>A task that completes after checking pre-write rejection and unchanged inputs.</returns>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DuplicateAssignedKeysAreRejectedBeforeDatabaseWork(
+        bool differentTrees
+    )
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine);
@@ -61,17 +68,27 @@ public abstract class BulkInputTests : ProviderTest
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        var forest = new[]
+        var inputs = new[]
         {
-            new NestedSetBranch<TreeNode>(new TreeNode { NodeId = 1 }),
-            new NestedSetBranch<TreeNode>(new TreeNode { NodeId = 1 }),
+            new TreeNode
+            {
+                NodeId = 1,
+                Start = 17,
+                End = 18,
+                Tree = 9,
+            },
+            new TreeNode
+            {
+                NodeId = 1,
+                Start = 17,
+                End = 18,
+                Tree = 9,
+            },
         };
 
-        var trees = forest
-            .Select((branch, index) => new NestedSetTreeImport<TreeNode, Guid>(
-                index == 0 ? Guid.Empty : Guid.NewGuid(),
-                branch))
-            .ToArray();
+        NestedSetTreeImport<TreeNode, Guid>[] trees = differentTrees
+            ? [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(inputs[0])), new NestedSetTreeImport<TreeNode, Guid>(Guid.NewGuid(), new NestedSetBranch<TreeNode>(inputs[1]))]
+            : [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(inputs[0], [new NestedSetBranch<TreeNode>(inputs[1])]))];
 
         // Act
         var error = await Record.ExceptionAsync(() => tree.InsertForestAsync(trees, CancellationToken.None));
@@ -79,6 +96,9 @@ public abstract class BulkInputTests : ProviderTest
         // Assert
         Assert.Equal(NestedSetErrorCode.InvalidImport, Assert.IsType<NestedSetException>(error).Code);
         Assert.Empty(probe.Commands);
+        Assert.All(inputs, node => Assert.Equal((17L, 18L, 9), (node.Start, node.End, node.Tree)));
+        Assert.Empty(context.ChangeTracker.Entries());
+        Assert.Null(context.Database.CurrentTransaction);
     }
 
     /// <summary>An already-canceled token cannot attach input entities or initialize a lock row.</summary>

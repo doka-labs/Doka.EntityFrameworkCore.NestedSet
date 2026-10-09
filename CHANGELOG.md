@@ -4,10 +4,95 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and released versions
 follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-The first release candidate is prepared below. Its date is the proposed
-publication date; publication is confirmed only by matching GitHub and NuGet
-readback. Stable `10.0.0` requires a separate reviewed release preparation after
-the RC process has been exercised successfully.
+## Unreleased
+
+## 10.0.0 (2026-10-09)
+
+First stable contract for `Doka.NestedSet` and
+`Doka.EntityFrameworkCore.NestedSet`, targeting .NET 10 and EF Core 10.
+It includes the hierarchy, query, mutation, ordering, bulk-import, maintenance,
+and diagnostics APIs introduced in `10.0.0-rc.1`, with the corrections below.
+Both packages share the same stable version and reviewed API contract.
+
+### Fixed
+
+- Observe asynchronous server-session removal in the MySQL/MariaDB fixture
+  lifecycle tests while proving foreign idle-pool reuse.
+- Seed ordering-refresh fixtures in bounded native batches inside one
+  transaction, preserving mapped values and rollback without tracking every
+  child before the measured operation.
+- Coordinate mixed TPH/TPT parent and ordering changes through the configured
+  hierarchy owner, including sibling derived types and tracked descendants.
+- Preserve principal database collation for converted string-backed NodeKeys
+  when resolving Parent links in queries and structural operations.
+- Project absent nullable Parents without materializing a converted default
+  value key from SQL NULL, including custom value-type keys at tree roots.
+- Keep SQLite repair and bulk-finalization batches on unique-key lookups
+  without requiring manually collected optimizer statistics, while retaining
+  exact Scope and TreeId membership checks.
+- Specialize untouched PostgreSQL indexes with TreeId and nullable-Parent
+  predicates so FK principal checks cannot scan generated scope-leading tree
+  paths during large atomic imports. Preserve application-owned metadata;
+  review scaffolded index rebuilds as described in the migration guide.
+- Refresh generated concurrency tokens declared only on derived types for
+  coordinated saves, structural mutations, and base-facade single/bulk inputs.
+- Avoid retaining detached EF entries during bulk final refresh and store
+  native rollback coordinates without per-coordinate boxes.
+- Preserve never-staged generated input values after early bulk failure and
+  reject callback changes to assigned import keys before they replace rollback
+  identity snapshots.
+- Reject assigned and generated single-insert key changes before callbacks can
+  hide them through EF acceptance. Restore failed insertion graphs and release
+  their exact native reference, identity, and dependent-map memberships without
+  clearing unrelated application tracking.
+- Complete single-insert detachment before commit or caller savepoint release,
+  restoring generated root and owned payload values, owned keys, and ownership
+  foreign keys after failure while preserving ordinary payload and business
+  foreign-key edits.
+- Validate insertion's EF reflection contract once at `UseNestedSets()`
+  registration, reporting incompatible framework members before a context
+  performs writes.
+- Reuse unchanged scalar insertion identity snapshots and foreign-key vectors
+  through typed comparisons, retaining mutable-key snapshots and every
+  callback-boundary verification.
+- Extend typed insertion comparisons to identity matching and detach preparation,
+  preserving installed relationship snapshots and comparer null semantics.
+  Allocate dependent-bucket storage only when used, and validate exact framework
+  signatures at registration without compiling unused probe operations.
+- Share tracked structural/token refresh through the exact EF entry identity
+  without redundant key arrays or unused update adapters.
+- Avoid duplicate forest-wide identity indexes for a single imported tree.
+  Keep cross-tree reference/key rejection before database work and release its
+  validation indexes before entering the asynchronous mutation boundary.
+
+### Changed
+
+- Establish the reviewed public API contract in both shipped baselines and use
+  `10.0.0` as the shared package version without a prerelease suffix.
+- Upgrade optional SafeMigrations qualification adapters from 10.4.5 to
+  10.4.9. Verify PostgreSQL's canonical Parent and TreeId null-filter indexes
+  through creation, preflight, replay, catalog comparison, and drift rejection
+  without changing the regression expectations or ordinary migration path.
+
+### Added
+
+- Add FsCheck properties for Int64 bounds, complete tree identity, generated
+  bulk geometry and sibling ordering, and malformed-import rejection. Keep
+  shrinkable input and replay evidence in the existing unit test projects.
+- Review the two native Microsoft license files used by optional SQL Server
+  qualification through targeted Dependency Review exceptions, restricted to
+  SNI.runtime 6.0.2 and NativeInterop 0.20.6 by the inline version check.
+
+- Add optional SQL Server SafeMigrations 10.4.9 consumer integration for `dbo`
+  and explicit schemas, generated tooling registration, index apply/replay and
+  drift rejection, and CHECK creation, trust, and data-proof boundaries. Verify
+  generated Int32-to-Int64 upgrades and valid populated integer CHECKs, reject
+  invalid rows with complete upgrade rollback, and preserve Int64 schemas on
+  refused narrowing even when rows fit Int32. Ordinary EF migrations and shipping
+  dependencies remain unchanged.
+- Add real relational capacity cases for ten million stored nodes, one million
+  direct children, Depth 100,000, million-node import/rebuild memory and late
+  rollback, plus 64 independent-tree and hot-tree writers.
 
 ## 10.0.0-rc.1 (2026-10-01)
 

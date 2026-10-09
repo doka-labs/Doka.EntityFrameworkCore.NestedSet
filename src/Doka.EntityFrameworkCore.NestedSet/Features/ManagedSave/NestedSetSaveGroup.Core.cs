@@ -1,6 +1,6 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Features.ManagedSave;
 
-/// <summary>Coordinates one hierarchy entity type without materializing its domain payload.</summary>
+/// <summary>Coordinates one configured hierarchy owner without materializing its domain payload.</summary>
 /// <typeparam name="TEntity">The mapped hierarchy entity.</typeparam>
 /// <typeparam name="TKey">The configured scalar node-key type.</typeparam>
 /// <typeparam name="TTreeId">The stable tree-identity type.</typeparam>
@@ -12,7 +12,6 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
     where TScope : notnull
 {
     private readonly DbContext _context;
-    private readonly IUpdateAdapter _updates;
     private readonly EntityEntry<TEntity>[] _changed;
     private readonly EntityEntry<TEntity>[] _tracked;
     private readonly NestedSetMapping<TEntity, TKey, TScope> _map;
@@ -30,18 +29,17 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
 
     /// <summary>Captures tracked identities and validated structural metadata before the payload save.</summary>
     /// <param name="context">The context that owns all reads, writes, and tracked entries.</param>
+    /// <param name="entityType">The exact configured owner shared by all changed derived entries.</param>
     /// <param name="changed">The entries whose domain ordering values will be saved.</param>
     internal NestedSetSaveGroup(
         DbContext context,
+        IEntityType entityType,
         EntityEntry[] changed
     )
     {
         _context = context;
-        _updates = context
-            .GetService<IUpdateAdapterFactory>()
-            .Create();
-
-        _map = NestedSetMapping<TEntity, TKey, TScope>.For(context, changed[0].Metadata);
+        _map = NestedSetMapping<TEntity, TKey, TScope>.For(context, entityType);
+        var modelMapping = NestedSetModelMapping.For(context.Model);
         var tracker = context.ChangeTracker;
         var automaticDetection = tracker.AutoDetectChangesEnabled;
 
@@ -55,9 +53,11 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
                 .Select(entry => NestedSetEntityAccess<TEntity>.Entry(context, entry.Metadata, (TEntity)entry.Entity))
                 .ToArray();
 
-            _tracked = tracker
-                .Entries<TEntity>()
-                .Where(entry => entry.Metadata == _map.EntityType)
+            // WHY: Bulk updates move sibling and descendant subtypes too. Retain the complete owner's tracker
+            // while keeping independently configured descendants and named shared types in their own groups.
+            _tracked = NestedSetEntityAccess<TEntity>
+                .Entries(context, _map.EntityType)
+                .Where(entry => modelMapping.Owner(entry.Metadata) == _map.EntityType)
                 .ToArray();
         }
         finally
@@ -108,23 +108,13 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
             _map.ParentProperty,
         };
 
-        _refreshProperties = structure
-            .Concat(
-                _map
-                    .EntityType
-                    .GetFlattenedProperties()
-                    .Where(property =>
-                        property.IsConcurrencyToken && (property.ValueGenerated & ValueGenerated.OnUpdate) != 0))
-            .Distinct()
-            .ToArray();
+        _refreshProperties = NestedSetRefreshProperties.Collect(_map.EntityType, structure);
 
         var parameter = Expression.Parameter(typeof(NestedSetTrackedRowset<TEntity>.Row), "row");
         var entity = Expression.Property(parameter, nameof(NestedSetTrackedRowset<>.Row.Entity));
         var ordinal = Expression.Property(parameter, nameof(NestedSetTrackedRowset<>.Row.Ordinal));
         var projection = new[] { Expression.Convert(ordinal, typeof(object)) }.Concat(
-            _refreshProperties.Select(property => Expression.Convert(
-                NestedSetExpressions.Property(entity, property),
-                typeof(object))));
+            _refreshProperties.Select(property => NestedSetRefreshProperties.Project(entity, property)));
 
         _refreshProjection = Expression.Lambda<Func<NestedSetTrackedRowset<TEntity>.Row, object[]>>(
             Expression.NewArrayInit(typeof(object), projection),

@@ -183,7 +183,8 @@ internal sealed class NestedSetBulkInsert<TEntity, TKey, TTreeId, TScope>
                 using (var managedSave = NestedSetSaveChanges.EnterManagedSave(
                            _store.Context,
                            plan.ManagedEntities,
-                           plan.RequireSavedStage))
+                           plan.RequireSavedStage,
+                           plan.RefreshInsertionIdentities))
                 {
                     try
                     {

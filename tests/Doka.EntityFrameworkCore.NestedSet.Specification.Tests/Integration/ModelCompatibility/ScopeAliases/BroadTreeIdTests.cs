@@ -15,6 +15,7 @@ public abstract class BroadTreeIdTests : ProviderTest
     }
 
     /// <summary>Compares converted TreeIds by stored value in typed and runtime guards.</summary>
+    [DatabaseIndependent]
     [Fact]
     public void ProviderComparerSeparatesTreeAliases()
     {

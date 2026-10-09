@@ -2,7 +2,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Verifies supported relational inheritance strategies through real hierarchy mutations.</summary>
 [Collection("Model compatibility")]
-public abstract class InheritanceTests : ProviderTest
+public abstract partial class InheritanceTests : ProviderTest
 {
     private readonly ModelCompatibilityDatabase _fixture;
 
@@ -203,10 +203,12 @@ public abstract class InheritanceTests : ProviderTest
 
         // Assert
         Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(error).Code);
+
         var persisted = await context
             .Set<InheritanceNode>()
             .AsNoTracking()
             .SingleAsync(node => node.Id == 3_002, CancellationToken.None);
+
         Assert.Equal(3_001, persisted.ParentId);
     }
 }

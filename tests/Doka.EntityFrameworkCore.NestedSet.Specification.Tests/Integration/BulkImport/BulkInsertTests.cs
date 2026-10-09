@@ -124,8 +124,14 @@ public abstract class BulkInsertTests : ProviderTest
     }
 
     /// <summary>Repeated references cannot silently create a cycle or give one entity multiple parents.</summary>
-    [Fact]
-    public async Task RepeatedEntityIsRejectedBeforeDatabaseWork()
+    /// <param name="differentTrees">Whether the same entity occurs across tree plans instead of within one plan.</param>
+    /// <returns>A task that completes after checking pre-write rejection and unchanged inputs.</returns>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RepeatedEntityIsRejectedBeforeDatabaseWork(
+        bool differentTrees
+    )
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine);
@@ -139,21 +145,25 @@ public abstract class BulkInsertTests : ProviderTest
             Tree = 9,
         };
 
-        var branch = new NestedSetBranch<TreeNode>(entity, [new NestedSetBranch<TreeNode>(entity)]);
+        NestedSetTreeImport<TreeNode, Guid>[] trees = differentTrees
+            ? [new(Guid.Empty, new(entity)), new(Guid.NewGuid(), new(entity))]
+            : [new(Guid.Empty, new(entity, [new(entity)]))];
+
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
         // Act
         var error = await Record.ExceptionAsync(() => tree.InsertForestAsync(
-            [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, branch),],
+            trees,
             CancellationToken.None));
 
         // Assert
-        Assert.IsAssignableFrom<InvalidOperationException>(error);
+        Assert.Equal(NestedSetErrorCode.InvalidImport, Assert.IsType<NestedSetException>(error).Code);
         Assert.Empty(probe.Commands);
         Assert.Equal((17, 18, 9), (entity.Start, entity.End, entity.Tree));
         Assert.Empty(context.ChangeTracker.Entries());
+        Assert.Null(context.Database.CurrentTransaction);
     }
 
     /// <summary>A parent from another scope cannot become an import destination.</summary>

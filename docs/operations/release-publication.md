@@ -11,41 +11,55 @@ one version: two primary packages and two symbol packages. Evidence requirements
 are defined in [Release governance](../release-governance.md) and
 [Release process](../release-process.md).
 
-## First release candidate 10.0.0-rc.1 preparation
+## Release identity
 
-The source defaults to `10.0.0-rc.1` through `VersionPrefix` and `VersionSuffix`.
-The `release/10.0.0-rc.1` branch prepares only this prerelease. Both
-`PublicAPI.Unshipped.txt` files contain the reviewed initial API; their shipped
-files retain only the nullable header. No NuGet or GitHub release exists yet,
-and the hosted RC process has not been executed. Complete the ordinary reviewed
-PR and publication sequence below; this document does not authorize publication.
+Version `10.0.0` is the first stable release. The source uses
+`VersionPrefix=10.0.0` without a prerelease suffix. Both
+`PublicAPI.Shipped.txt` files contain the reviewed initial API; their unshipped
+files retain only the nullable directive. The first RC, `10.0.0-rc.1`, is
+already published on GitHub and NuGet. Its immutable release remains evidence
+for that version, not for the changed stable source or packages.
+
+Use the reviewed PR and publication sequence below for each release.
 
 Before starting the candidate:
 
 1. Confirm the intended publication date in `CHANGELOG.md` and retain the exact
-   `## 10.0.0-rc.1 (YYYY-MM-DD)` heading expected by the existing release tooling.
-2. Review the RC API, package READMEs, provider qualification, and
+   `## 10.0.0 (YYYY-MM-DD)` heading expected by the existing release tooling.
+   The release date is `2026-10-09`; update it through review if publication
+   takes place on a later day.
+2. Review the stable API, package READMEs, provider qualification, and
    [Passing evidence](../openssf-best-practices.md) against the candidate source.
 3. Retain maintainer knowledge/report-history confirmations separately from
-   source evidence. The achieved Passing badge does not replace RC qualification.
+   source evidence. The achieved Passing badge does not replace stable qualification.
+4. Inspect the matching PR CI provider-lane durations and occupied-heap output
+   for the capacity cases before starting RC. Local import observations approach
+   the 512 MiB ceiling and do not establish hosted GC headroom. The serial RC
+   run includes coverage and all five engines; successful parallel PR lanes do
+   not by themselves prove its two-hour deadline. Retain the actual RC result
+   as qualification evidence without relaxing these correctness or memory checks.
 
-After successful public readback, update the publication statements in the
-root/package READMEs, Getting Started, Support, and Security's supported-version
-table in a reviewed change. Retain the dated qualification evidence; do not
-replace it with the presence of a tag. Add the release/tag/package URLs to the
-OpenSSF entry and verify the saved badge state.
+Prepare the versioned root/package READMEs, Getting Started, Support, and
+Security policy in the release PR before starting the candidate. They describe
+the candidate source's stable contract and installation commands; they must
+not claim that public readback has already succeeded. Do not require a second
+source change after publication just to document the version already qualified.
 
-Stable `10.0.0` requires its own later release preparation and candidate on the
-then-current `main`. Review feedback and RC evidence, remove `VersionSuffix`,
-move accepted API declarations to the shipped files, and add the exact dated
-stable changelog section before starting that candidate. Do not reuse the RC
-candidate, tag, or package bytes as a stable publication.
+After successful public readback, confirm public package availability and the
+immutable GitHub release. Retain dated qualification evidence; the presence of
+a tag does not replace it. Add the release/tag/package URLs to the OpenSSF
+entry and verify the saved badge state.
+
+The stable candidate must be built and qualified on then-current protected
+`main`. Do not reuse the RC candidate, tag, or package bytes as a stable
+publication. SQL Server release evidence must come from a supported Linux
+x86-64 host; successful local emulation on Arm does not establish that boundary.
 
 ## One-time configuration
 
-Configure the controls in
-[Repository security settings](../runbooks/repository-settings.md) before the
-first release:
+Recheck the controls in
+[Repository security settings](../runbooks/repository-settings.md) before
+starting the release:
 
 - protect `main`, require reviewed pull requests, and require the repository's
   CI and code scanning checks;
@@ -133,11 +147,11 @@ availability, or signing-authority checks in the hosted workflow.
 In GitHub Actions, start **Release candidate**. Select branch `main` and enter:
 
 ```text
-version: 10.0.0-rc.1
+version: 10.0.0
 ```
 
-The first run uses `10.0.0-rc.1`. Subsequent versions are `X.Y.Z-rc.N` or `X.Y.Z`,
-without a leading `v`. Wait for:
+Use `10.0.0` for this stable release. Other release versions use
+`X.Y.Z-rc.N` or `X.Y.Z`, without a leading `v`. Wait for:
 
 1. `Verify source and unused version`;
 2. `Qualify exact release candidate`; and

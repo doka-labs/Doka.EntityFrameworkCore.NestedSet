@@ -14,8 +14,15 @@ defines what this repository has exercised.
 | Core package | `Doka.NestedSet` |
 | EF package | `Doka.EntityFrameworkCore.NestedSet` |
 
-The exact dependency graph is locked per project. Updating a package requires
-reviewing the lockfiles and rerunning the complete applicable matrix.
+The two shipping package graphs are locked. Tests, samples, and tooling use
+the centrally reviewed dependency versions without additional committed
+lockfiles. Updating a package requires reviewing affected locks and rerunning
+the complete applicable matrix.
+
+Version `10.0.0` is the first stable contract for both packages. Qualification
+always identifies its exact source and artifacts. The dated local results
+below describe their own runs; hosted release evidence belongs to the matching
+release and is not inferred from a successful local execution.
 
 `Doka.EntityFrameworkCore.NestedSet` 10.x does not support `PublishTrimmed` or
 `PublishAot`. Runtime model-based generic construction and dynamically
@@ -31,13 +38,13 @@ This statement does not assert the same limitation for the separate
 
 ## Provider and engine matrix
 
-| Database | EF provider baseline | Qualified engine image |
+| Database | EF provider baseline | Engine image baseline |
 | --- | --- | --- |
 | MySQL | `Doka.EntityFrameworkCore.MySql` 10.4.4 | MySQL 8.4.11 |
 | MariaDB | `Doka.EntityFrameworkCore.MySql` 10.4.4 | MariaDB 11.8.9 |
 | PostgreSQL | `Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.3 | PostgreSQL 17.11 |
 | SQLite | `Microsoft.EntityFrameworkCore.Sqlite` 10.0.12 | In-process native runtime from the locked package graph |
-| SQL Server | `Microsoft.EntityFrameworkCore.SqlServer` 10.0.12 | SQL Server 2025 CU9 |
+| SQL Server | `Microsoft.EntityFrameworkCore.SqlServer` 10.0.12 | SQL Server 2022 CU27 on Ubuntu 22.04 |
 
 Container image tags and SHA-256 digests are pinned in
 [the shared Dockerfile](../docker/database-images.Dockerfile). Digest pinning identifies exact test
@@ -51,9 +58,33 @@ engine line requires an explicit qualification decision and an updated matrix.
 
 SQL Server container images are supported by Microsoft only on Linux x86-64
 hosts. Emulation or translation on Arm hosts is not a qualified substitute for
-the SQL Server integration matrix, even if a local run succeeds. Run that
-matrix on a supported host when collecting release evidence. See Microsoft's
+the SQL Server integration matrix, even if a local run succeeds. See Microsoft's
 [SQL Server container support note](https://learn.microsoft.com/en-us/sql/linux/containers/deploy?view=sql-server-ver17).
+
+The 2026-10-09 policy keeps SQL Server database cases visible on local ARM
+machines and skips them at runtime before container startup. It applies to the
+SQL Server provider project and SQL Server cases in the ordinary migration and
+SafeMigrations projects. Metadata and unit cases, including SQL Server model
+and platform-policy checks, remain runnable; other engines retain their cases.
+The environment decision does not catch or suppress container startup or SQL
+failures on an eligible platform.
+
+Native Linux x64 CI is the required SQL Server qualification environment. All
+applicable SQL Server cases remain mandatory with zero skips; unsupported CI
+platforms fail instead of skipping. The SQL Server CI guard fails on unsupported hosts; release-candidate
+qualification rejects skipped cases. A local ARM run therefore cannot qualify the complete
+matrix. The approved 2022 CU27 baseline still requires native x64 CI evidence;
+the image change does not itself establish successful qualification or a vendor
+correction for the earlier 2025 CU9 startup failures.
+
+The private candidate assessment preceding this policy recorded 1,072 SQL
+Server provider cases, 10 ordinary SQL Server migration cases, 51 SQL Server
+SafeMigrations cases, and 30 startup attempts passing under macOS ARM x86-64
+emulation. Those results support only that candidate and local environment;
+they do not qualify native CI or establish Microsoft support for emulation.
+[D-014](decisions/D-014-shared-database-images-and-developer-compose.md)
+retains the image decision and the unresolved CU9 crash history, including the
+native GitHub-hosted x64 report.
 
 Pomelo is not a supported provider. MySQL and MariaDB support is qualified only
 with Doka.
@@ -65,15 +96,68 @@ They must work without SafeMigrations.
 
 Optional adapter qualification uses:
 
-| Database | SafeMigrations adapter baseline |
-| --- | --- |
-| MySQL/MariaDB | `Doka.EntityFrameworkCore.SafeMigrations.MySql` 10.4.5 |
-| PostgreSQL | `Doka.EntityFrameworkCore.SafeMigrations.PostgreSql` 10.4.5 |
-| SQLite | `Doka.EntityFrameworkCore.SafeMigrations.Sqlite` 10.4.5 |
+| Database | SafeMigrations adapter baseline | Qualification boundary |
+| --- | --- | --- |
+| MySQL/MariaDB | `Doka.EntityFrameworkCore.SafeMigrations.MySql` 10.4.9 | Optional adapter regression suite |
+| PostgreSQL | `Doka.EntityFrameworkCore.SafeMigrations.PostgreSql` 10.4.9 | Canonical null-filter indexes, replay, and drift qualified |
+| SQL Server | `Doka.EntityFrameworkCore.SafeMigrations.SqlServer` 10.4.9 | `dbo`/explicit schemas, integer widening, indexes and CHECKs |
+| SQLite | `Doka.EntityFrameworkCore.SafeMigrations.Sqlite` 10.4.9 | Optional adapter regression suite |
 
 SafeMigrations tests are additive. A failure there must not be described as a
-runtime requirement for Doka, Npgsql, or SQLite. SQL Server has no optional
-SafeMigrations adapter in this repository.
+runtime requirement for Doka, Npgsql, SQLite, or SQL Server. Adapter packages
+are referenced only by the optional test project; neither shipping package
+depends on SafeMigrations.
+
+The PostgreSQL 10.4.9 adapter retains recognition of EF-generated canonical
+provider-delimited single-column `IS NULL` and `IS NOT NULL` index predicates.
+The authored raw SQL and immutable definition remain intact; generation,
+preflight, catalog comparison, replay, and drift rejection are exercised by the
+consumer regressions. See the [migration contract](migrations.md#provider-matrix).
+
+SQL Server coverage includes the default `dbo` and explicit schemas, package tooling
+registration, absent-index application, replay, wrong columns and directions,
+and pending-upgrade drift without advancing history. Unqualified safe operations
+require the database user's default schema to be `dbo`; otherwise configure an
+explicit schema in the EF model. Generated integer CHECKs can validate existing
+rows; valid predicates are `Missing`/`Apply`, while a violating row is
+`DataBlocked`. Stamped, enabled, trusted checks replay on populated tables;
+disabled or enabled-but-untrusted checks are rejected without repair.
+The adapter's `RepairIfSafe` contract admits proven historical `int`-to-`bigint`
+coordinate widening, including the preceding dependency drops in the real
+scaffolded upgrade. Empty and valid populated fixtures retain their data and
+gain Int64 capacity. A new CHECK rejected for invalid legacy coordinates rolls
+back the full upgrade, preserving original column types, rows, indexes,
+constraints, and migration history. Narrowing back to Int32 remains refused
+for both fitting and oversized values. The SQL Server cases in the dated local
+runs below executed under x86-64 emulation on ARM; they do not replace native
+x86-64 hosted qualification. Current local ARM execution follows the visible
+platform-skip policy above.
+
+The local 2026-10-08 run passed all 112 cases against the published 10.4.9
+adapters, with zero failures or skips: 13 MySQL, 13 MariaDB, 22 PostgreSQL,
+10 SQLite, 50 SQL Server, and four package/design-service controls. The SQL
+Server cases include complete empty/populated integer upgrades, CHECK proof
+and stamped replay, each invalid predicate's full-upgrade rollback, and
+narrowing rejection with fitting or oversized coordinates. The separate
+ordinary EF migration suite passed all 49 cases without enabling SafeMigrations.
+The full solution Release build completed with zero warnings or errors;
+read-only Roslyn style and unused-import checks also passed. These are local
+results for the recorded provider baselines, not hosted publication evidence.
+
+For historical comparison, the local 2026-10-06 run passed all 92 cases against the
+published 10.4.8 adapters, with zero failures or skips: 13 MySQL, 13 MariaDB,
+22 PostgreSQL, 10 SQLite, 30 SQL Server, and four package/design-service
+controls. The 61 previously qualified cases retained their identities and
+expectations; SQL Server contributes 31 additional cases. The separate ordinary EF migration
+suite passed all 49 cases without enabling SafeMigrations.
+
+For historical comparison, the 2026-10-04 run against published 10.4.5 passed
+40 of 61 cases. All 21 failures were PostgreSQL: 19 reported
+`P1002:doka_sm_unsupported`; two preflight assertions observed ten unsupported
+objects instead of four and `Unsupported` index drift instead of `Different`.
+The same six canonical null filters caused those failures. All 21 case
+identities passed against published 10.4.8 and in the dated 10.4.9 run; the
+original failure evidence remains historical evidence for the adapter fix.
 
 ## Test ownership
 
@@ -92,11 +176,17 @@ SafeMigrations adapter in this repository.
 | Sample | File-system, KPI, and user-group domain composition |
 
 Integration tests use Testcontainers for server engines and isolated SQLite
-databases. Each provider assembly starts at most one container per engine;
+databases. Each eligible provider assembly starts at most one container per engine;
 concurrent test fixtures receive separate databases on that server. This
 keeps xUnit's collection parallelism without multiplying server processes.
 The test infrastructure owns its containers and credentials; it does not
 depend on a developer-managed database.
+
+MySQL/MariaDB database teardown disposes its context before asynchronously
+clearing the exact connection pool owned by that database. Unique fixture
+database names must not accumulate idle sessions against the shared server's
+connection limit. Initialization and deletion failures retain their original
+errors; cleanup does not clear another database's active or idle pool.
 
 The optional [developer Compose environment](../docker/README.md) builds the
 same vendor bases into separate local service images for manual debugging and
@@ -154,11 +244,12 @@ dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Doka.EntityFrame
 
 ### Complete repository qualification
 
-Docker must be available for the server matrix:
+Docker and supported Linux x64 execution must be available for the complete
+server matrix. Local ARM skips provide development feedback only:
 
 ```sh
 bash eng/release-candidate.sh \
-  --version 10.0.0-rc.1 \
+  --version 10.0.0 \
   --workspace \
   --output artifacts/qualification-local
 ```

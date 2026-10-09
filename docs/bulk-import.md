@@ -63,6 +63,11 @@ Every input entity must be detached. The import owns its temporary EF entry
 state and structural property assignments. Existing tracked nodes remain
 outside the import set.
 
+Assigned keys keep their original database identity throughout the import.
+Callbacks cannot replace that identity or mutate a binary key in place. The
+library verifies keys both before and after each payload save; only genuinely
+generated keys replace the plan's initial key representation.
+
 ## Scope and structural values
 
 The facade's bound Scope and each import's explicit TreeId are authoritative.
@@ -122,17 +127,69 @@ repeated invocation within one bulk operation.
 
 When a definite failure rolls back the database, the library restores the
 caller's original CLR hierarchy values, generated keys, defaults, computed
-values, and generated complex leaves, then detaches every import-owned entry.
+values, and generated root, complex, and owned leaves, and releases every
+import-owned entry. Owned keys and ownership foreign keys also return to their
+original CLR values before relationship fixup, even when configured as
+`ValueGenerated.Never`. These insertion-owned values are retained across completed
+payload waves, including caller-visible collection keys. The retained state
+grows with the application's generated and owned model; the plain-root capacity
+fixture does not allocate owned-value snapshots.
 Ordinary payload remains application-owned: the library does not reverse
-payload changes made by application save callbacks. Ordinary audit or outbox
+payload changes or non-ownership business foreign keys changed by application
+save callbacks. Ordinary audit or outbox
 writes that EF accepted with an earlier batch return to their pending state, so
 the tracker never reports rows that the rollback removed. If restoration fails,
 an `AggregateException` preserves both errors and the context must be discarded.
+
+Generated input values are captured immediately before their own batch is
+staged. Inputs not yet reached by an early failure retain their original
+generated payload. Root generated CLR reads and structural CLR assignments
+finish before creating its EF entry. Owned graph entries are collected before
+their first tracking transition; owned generated reads occur within that
+protected initialization. A throwing getter, setter, or tracking callback
+therefore has exact introduced entries available for cleanup. Final refresh and generated
+rollback use metadata-cached mapped setters without clearing or retracking
+unrelated application state. Shadow properties have no detached CLR value to
+refresh; their persisted values remain available through normal queries.
+
+Tracking can fail before an entry becomes Added, or after EF installs only
+some of its keys. Cleanup owns each introduced root and owned dependent from
+its first entry creation. It removes that exact entry's partial registrations;
+an existing entity with a colliding key remains tracked. Installed key
+snapshots also protect cleanup when callbacks replace a scalar key or mutate a
+converted mutable key or Scope in place. The lifecycle handles cover only the
+active insertion batch and its owned payload, not the entire input forest.
+
+If a prohibited callback changes a mutable key, explicitly runs EF change
+detection, and then mutates the newly installed key again, EF itself can retain
+a hash slot that no key lookup can recover. Failed cleanup checks the exact
+touched maps once for surviving introduced entries. It does not repair private
+dictionary storage or clear caller state. Any residual produces the aggregate
+recovery error and requires discarding the context, even though the database
+was rolled back. This audit is failure-only, uses memory proportional to the
+active batch, and takes time proportional to entries in the touched maps;
+successful import does not scan those maps.
+
+Insertion keys must remain unchanged throughout a callback, including before
+an explicit `DetectChanges`. Boundary checks compare the observable identities;
+they are not an event history of transient edits reverted inside application
+code. Mutating a key, rekeying EF, and restoring the CLR value before returning
+violates this contract even when the final-value guard cannot see the edit.
+
+Provider-generated identities are captured after persistence and before EF
+acceptance or `SavedChanges`. A legitimate generated key is retained; a
+callback's CLR key edit is rejected even while EF holds the actual generated
+value in a sidecar. Forest and subtree import share this boundary. These exact
+cleanup operations use a version-qualified EF infrastructure seam; its limits
+and upgrade triggers are recorded in
+[D-004](decisions/D-004-atomic-mutations-and-locks.md) and
+[D-007](decisions/D-007-atomic-bulk-import.md).
 
 Save callbacks may update ordinary payload values. For an exact-TreeId import,
 this includes already-tracked nodes in unaffected trees. Callbacks must not:
 
 - add or remove hierarchy entities from the planned import;
+- replace an assigned key's database identity;
 - change scope, TreeId, parent, bounds, depth, position, or configured ordering properties;
 - detach imported entries; or
 - start a recursive save.
@@ -142,8 +199,9 @@ these rows participate in the same EF save and transaction as the import batch.
 An entity added in `SavedChanges` is pending for a later save and does not
 participate in the completed batch.
 
-The library verifies the staged structure immediately after save and rejects a
-callback that breaks these rules.
+The library verifies staged structure before persistence and after save
+callbacks, including before acceptance in the coordinated context path. It
+rejects a callback that breaks these rules.
 
 Cancellation stops forward progress and rolls the transaction back. Cleanup is
 not canceled with the caller token. A commit exception can still have an
@@ -158,15 +216,22 @@ use sparse rollback snapshots. Traversal is iterative, so a deep input does not
 consume the CLR call stack, but the complete immutable input topology and compact
 plan must fit in memory.
 
+Each plan validates its entity references and assigned keys once. A forest with
+several trees also checks duplicates across plans before any database work;
+those temporary cross-tree indexes end with preparation. A single-tree import
+does not allocate a second pair of per-node identity indexes.
+
 Generated CLR values use the same sparse restoration strategy: conventional
 sentinel-valued inputs allocate no per-node generated-value snapshot. An input
 with an explicit non-sentinel value for a store-generated property retains one
 compact snapshot array so a definite rollback can restore that exact value.
 
-The deterministic release tests qualify one million direct children, 100,000
-levels, and a retained plan budget of at most 320 MiB per million nodes. The
-remaining 192 MiB of the 512 MiB total target is reserved for native ordering
-ranks, query buffers, and the active EF batch.
+The retained-plan allocation test budgets at most 320 MiB per million planned
+nodes. The remaining 192 MiB of the 512 MiB whole-operation target is reserved
+for native ordering ranks, query buffers, provider allocations, and the active
+EF batch. The [real relational capacity cases](performance.md#real-relational-capacity-cases)
+exercise one million direct children and 100,000 levels through persisted public
+operations; a small retained-plan measurement alone does not qualify them.
 
 The operation opens the destination interval once rather than once per node. It
 streams neither the caller's topology nor provider-native bulk-copy input; it

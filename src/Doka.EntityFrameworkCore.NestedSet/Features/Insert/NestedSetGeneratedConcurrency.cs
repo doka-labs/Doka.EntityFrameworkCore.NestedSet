@@ -34,9 +34,7 @@ internal sealed class NestedSetGeneratedConcurrency<TEntity>
         _projection = Expression.Lambda<Func<TEntity, object[]>>(
             Expression.NewArrayInit(
                 typeof(object),
-                _properties.Select(property => Expression.Convert(
-                    NestedSetExpressions.Property(parameter, property),
-                    typeof(object)))),
+                _properties.Select(property => NestedSetRefreshProperties.Project(parameter, property))),
             parameter);
     }
 

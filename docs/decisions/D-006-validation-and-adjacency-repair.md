@@ -54,6 +54,11 @@ filtered run does not establish coverage for a provider introduced later.
 
 - Run `dotnet test Doka.EntityFrameworkCore.NestedSet.slnx -c Release --filter "FullyQualifiedName~InspectionTests|FullyQualifiedName~RelationalTests|FullyQualifiedName~EnterpriseTests"` and expect inspection and rebuild tests to pass.
 - Expect cycles, missing parents, and ambiguous manual positions to reject before updates. Test cancellation during inspection and repair batches; expect rollback to preserve the prior database state. A no-change rebuild must not rewrite every row.
+- Require the SQLite repair UPDATE to seek bounded unique keys without manually
+  running ANALYZE. Include scoped composite and converted unscoped keys, excluded
+  trees/scopes, and a physical table name matching the internal membership alias.
+- Run million-row repair and Depth 100,000 through public rebuild; late failure
+  and cancellation must roll back all earlier batches and the registry revision.
 
 ## Pros and Cons of the Options
 
@@ -78,11 +83,20 @@ Strict ordering can reconstruct sibling positions from its database rule. Manual
 order and reject negative or duplicate positions when that order is ambiguous. Validation selects a consistent read
 boundary; rebuild shares the mutation lock. Bounded write batches do not imply bounded total inspection memory.
 
+For SQLite keyed writes, an outer Scope/NodeKey predicate finds the batch and a
+correlated unique-key probe validates TreeId in the same statement. This avoids
+a repeated complete-tree scan selected for fresh, unanalyzed databases while
+preserving native column equality. Existing required unique keys back both
+lookups; no new index or migration is introduced. The internal membership alias
+must differ from the physical outer table name under SQLite identifier equality.
+
 ### Re-evaluation Triggers
 
 - An application requires inspection of scopes larger than the agreed memory budget.
 - A new repair proposal changes parent links or resolves ambiguous adjacency automatically.
 - Provider comparison rules require a new parent-key canonicalization strategy.
+- An actual repair plan scans a tree for each bounded key batch or loses exact
+  Scope/TreeId membership on an accepted physical mapping.
 
 ### Decision History
 
@@ -93,6 +107,7 @@ boundary; rebuild shares the mutation lock. Bounded write batches do not imply b
 - 2026-09-28: The maintainer accepted the current decision and designated the core-maintainers audience.
 - 2026-09-28: Status changed from accepted to implemented.
 - 2026-09-28: Confirmed iterative adjacency inspection, changed-row repair batches, and validation and rebuild regression specifications against the linked repository evidence.
+- 2026-10-03: Real million-row qualification exposed a SQLite complete-tree scan per repair batch. Separated unique-key access from statement-local membership checks and added plan/isolation regressions without manual statistics.
 
 ### Implementation References
 
@@ -102,8 +117,11 @@ boundary; rebuild shares the mutation lock. Bounded write batches do not imply b
 - [Shared batch limit](../../src/Doka.EntityFrameworkCore.NestedSet/Storage/NestedSetBatch.cs)
 - [Inspector tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Validation)
 - [Rebuild tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Hierarchy/Maintenance/RelationalTests.Rebuild.cs)
+- [SQLite keyed write plans and isolation](../../tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests/Indexes/SqliteQueryPlanTests.cs)
+- [Real repair capacity and late rollback](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Capacity/CapacityTests.cs)
 - [Implementation design](../../docs/implementation-design.md)
 
 ### Sources
 
-- No external sources; repository evidence only.
+- [SQLite optimizer overview](https://sqlite.org/optoverview.html) (primary source; retrieved 2026-10-03)
+- [SQLite EXPLAIN QUERY PLAN](https://sqlite.org/eqp.html) (primary source; retrieved 2026-10-03)

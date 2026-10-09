@@ -47,6 +47,8 @@ public sealed class MigrationFixture : IAsyncLifetime
                 file);
         }
 
+        SqlServerTestPlatform.RequireSupportedContainerHost(engine);
+
         if (!_servers.TryGetValue(engine, out var server))
         {
             server = await StartServerAsync(engine);

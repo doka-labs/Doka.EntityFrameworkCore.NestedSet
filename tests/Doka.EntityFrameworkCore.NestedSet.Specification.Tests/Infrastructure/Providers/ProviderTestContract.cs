@@ -17,6 +17,24 @@ internal static class ProviderTestContract
     ) => DeclaredMethods(type)
         .Any(IsTestMethod);
 
+    /// <summary>Requires a wrapper only when at least one declared scenario applies to its engine.</summary>
+    internal static bool RequiresSharedWrapper(
+        Type suite,
+        string engine
+    )
+    {
+        if (!ProviderEngineOwnership.IsKnown(engine))
+        {
+            throw new InvalidOperationException($"Unknown integration test provider '{engine}'.");
+        }
+
+        // WHY: A fully excluded family must not be inherited merely to satisfy the coverage guard;
+        // IDE metadata discovery would still expose its unsupported methods before xUnit filters them.
+        return DeclaredMethods(suite)
+            .Where(IsTestMethod)
+            .Any(method => !MethodExclusions(method).Contains(engine, StringComparer.Ordinal));
+    }
+
     /// <summary>Includes local abstract-base declarations as seen by each concrete fixture-owned leaf.</summary>
     internal static bool HasLocalTestCases(
         Type type

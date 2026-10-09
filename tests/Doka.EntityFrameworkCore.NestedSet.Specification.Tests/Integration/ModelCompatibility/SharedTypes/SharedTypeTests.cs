@@ -56,6 +56,7 @@ public abstract class SharedTypeTests : ProviderTest
     }
 
     /// <summary>Rejects ambiguous CLR-only access when the model contains named shared entity types.</summary>
+    [DatabaseIndependent]
     [Fact]
     public void SharedTypeWithoutEntityNameIsRejected()
     {

@@ -6,9 +6,11 @@ internal static class NestedSetCollations
     /// <summary>Captures hierarchy-specific string identities before EF removes relational collations.</summary>
     /// <param name="model">The convention model whose physical hierarchy stores have been validated.</param>
     /// <param name="providerName">The official registered database provider name.</param>
+    /// <param name="typeMappings">The provider service resolving effective conversions before finalization.</param>
     internal static void Capture(
         IConventionModel model,
-        string providerName
+        string providerName,
+        ITypeMappingSource typeMappings
     )
     {
         foreach (var hierarchy in model.GetEntityTypes())
@@ -31,7 +33,7 @@ internal static class NestedSetCollations
             {
                 if (hierarchy.FindAnnotation(NestedSetAnnotationNames.Prefix + role)?.Value is not string name
                     || hierarchy.FindProperty(name) is not { } property
-                    || !HasStringStore(property))
+                    || !HasStringStore(property, typeMappings))
                 {
                     continue;
                 }
@@ -40,7 +42,7 @@ internal static class NestedSetCollations
                 // have different collations. Capture on the configured owner, never on that shared property.
                 hierarchy.SetAnnotation(
                     AnnotationName(property.Name),
-                    ResolveEffective(hierarchy, property, store, providerName) ?? string.Empty);
+                    ResolveEffective(hierarchy, property, store, providerName, typeMappings) ?? string.Empty);
             }
         }
 
@@ -121,15 +123,17 @@ internal static class NestedSetCollations
     /// <param name="property">The identity property whose physical column is inspected.</param>
     /// <param name="store">The validated structural table, including an entity-splitting fragment.</param>
     /// <param name="providerName">The official registered database provider name.</param>
+    /// <param name="typeMappings">The provider service when type mappings are not yet finalized.</param>
     /// <returns>The physical-column, supported table, or model collation; otherwise null.</returns>
     internal static string? ResolveEffective(
         IReadOnlyEntityType hierarchy,
         IReadOnlyProperty property,
         StoreObjectIdentifier store,
-        string providerName
+        string providerName,
+        ITypeMappingSource? typeMappings = null
     )
     {
-        if (!HasStringStore(property))
+        if (!HasStringStore(property, typeMappings))
         {
             return null;
         }
@@ -225,12 +229,21 @@ internal static class NestedSetCollations
         return false;
     }
 
-    /// <summary>Checks both conversion metadata forms before relational type mappings are initialized.</summary>
+    /// <summary>Checks the effective converter, including conversions selected by the relational store type.</summary>
     private static bool HasStringStore(
-        IReadOnlyProperty property
-    ) => (property.GetValueConverter()?.ProviderClrType
-        ?? property.GetProviderClrType()
-        ?? property.ClrType) == typeof(string);
+        IReadOnlyProperty property,
+        ITypeMappingSource? typeMappings = null
+    )
+    {
+        // WHY: HasConversion metadata omits an enum-to-text converter selected solely by a store type. Runtime
+        // mappings are already cached; conventions ask the same provider service before those mappings exist.
+        var mapping = property.FindTypeMapping()
+            ?? (property is IProperty mapped && typeMappings is not null ? typeMappings.FindMapping(mapped) : null);
+
+        return (mapping?.Converter?.ProviderClrType
+            ?? property.GetValueConverter()?.ProviderClrType
+            ?? property.GetProviderClrType() ?? property.ClrType) == typeof(string);
+    }
 
     /// <summary>Keys the runtime-safe facet by property within its exact hierarchy owner.</summary>
     private static string AnnotationName(

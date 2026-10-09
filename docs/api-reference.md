@@ -3,6 +3,11 @@
 This reference describes the public 10.x API. The application keeps its normal
 `DbSet<TEntity>` and obtains hierarchy behavior from the caller-owned context.
 
+The initial `10.0.0` contract is recorded in the shipped baselines for
+[Core](../src/Doka.NestedSet/PublicAPI.Shipped.txt) and
+[EF Core](../src/Doka.EntityFrameworkCore.NestedSet/PublicAPI.Shipped.txt).
+These declarations are unchanged from the accepted RC API.
+
 ## Registration and mapping
 
 `DbContextOptionsBuilder.UseNestedSets()` installs the conventions, typed tree

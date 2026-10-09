@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <Compile Include="../Shared/DatabaseTestTargets.cs" Link="Infrastructure/DatabaseTestTargets.cs"/>
+    <Compile Include="../Shared/SqlServerTestPlatform.cs" Link="Infrastructure/SqlServerTestPlatform.cs"/>
     <EmbeddedResource Include="../../docker/database-images.Dockerfile" LogicalName="NestedSet.TestImages" Visible="false"/>
   </ItemGroup>
   <ItemGroup>

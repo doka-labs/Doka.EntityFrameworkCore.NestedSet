@@ -10,8 +10,9 @@ The inventory was checked on 2026-10-01 against the live Passing page and
 OpenSSF source revision `e1b85623fd6ccad3283943db5957f3130e6bb84b`:
 43 MUST, 10 SHOULD, and 14 SUGGESTED criteria. `Met` below is an evidence-backed
 proposed answer, not the saved badge state. `Confirm` needs maintainer knowledge
-or private history. `Pending` needs the actual first release or its exact
-revision's hosted evidence. `N/A` is used only where the definition allows it.
+or private history. `Pending` needs the exact proposed release's hosted
+evidence. `N/A` is used only where the definition allows it. The first RC was
+published on 2026-10-02; `10.0.0` establishes the first stable contract.
 
 MUST criteria need Met or a permitted N/A. A justified unmet SHOULD or an unmet
 SUGGESTED criterion can still permit Passing. Unknown answers do not complete
@@ -30,7 +31,7 @@ the assessment. Do not select N/A merely because this is a new project.
 | `license_location` | MUST | Met: root [LICENSE](../LICENSE) and shipping package license metadata |
 | `documentation_basics` | MUST | Met: [Getting Started](getting-started.md), samples, configuration, and operations |
 | `documentation_interface` | MUST | Met: [API Reference](api-reference.md), operation contracts, and package XML documentation |
-| `sites_https` | MUST | Met: GitHub and the OpenSSF project use HTTPS; the prepared NuGet delivery route also requires HTTPS |
+| `sites_https` | MUST | Met: GitHub, OpenSSF, and both published NuGet package routes use HTTPS |
 | `discussion` | MUST | Met: public [issues](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/issues) and PR discussions have searchable, addressable browser access |
 | `english` | SHOULD | Met: public documentation and contribution/reporting paths accept US English |
 | `maintained` | MUST | Met: active [commit history](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/commits/main/) and [roadmap](../ROADMAP.md) |
@@ -44,9 +45,9 @@ the assessment. Do not select N/A merely because this is a new project.
 | `repo_interim` | MUST | Met: Git history contains development changes between release boundaries |
 | `repo_distributed` | SUGGESTED | Met: Git is distributed version control |
 | `version_unique` | MUST | Met: [Release governance](release-governance.md) assigns both packages one immutable unique version per release |
-| `version_semver` | SUGGESTED | Met: [Changelog](../CHANGELOG.md) and governance use SemVer, starting with prerelease 10.0.0-rc.1 before stable 10.0.0 |
-| `version_tags` | SUGGESTED | Pending: signed `v10.0.0-rc.1` tag after candidate qualification; no first-release tag is claimed now |
-| `release_notes` | MUST | Met for prepared notes: reviewed [10.0.0-rc.1 notes](../CHANGELOG.md) describe the proposed RC; attach them to the actual release before claiming delivery |
+| `version_semver` | SUGGESTED | Met: [Changelog](../CHANGELOG.md) and governance use SemVer; published 10.0.0-rc.1 precedes stable 10.0.0 |
+| `version_tags` | SUGGESTED | Met for the published RC: immutable [v10.0.0-rc.1 release](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/releases/tag/v10.0.0-rc.1) identifies that version; stable v10.0.0 requires its own reviewed signed tag |
+| `release_notes` | MUST | Met for the published RC: its release contains release-notes.md; the [10.0.0 notes](../CHANGELOG.md) describe stable behavior and accompany its release through the same process |
 | `release_notes_vulns` | MUST | N/A while no publicly known project vulnerability has been fixed; recheck [advisories](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/security/advisories) for the release |
 
 ## Reporting
@@ -95,7 +96,7 @@ the assessment. Do not select N/A merely because this is a new project.
 | `crypto_pfs` | SHOULD | N/A: no key agreement protocol |
 | `crypto_password_storage` | MUST | N/A: no external-user password authentication/storage; ordinary database connection credentials belong to the application/provider |
 | `crypto_random` | MUST | N/A: no cryptographic key/nonce generation; tree identifiers are not secrets |
-| `delivery_mitm` | MUST | Met for current HTTPS source delivery; retain HTTPS NuGet/release readback for 10.0.0-rc.1 |
+| `delivery_mitm` | MUST | Met for HTTPS source and published RC package delivery; repeat package, signature, and public-content readback for stable 10.0.0 |
 | `delivery_unsigned` | MUST | Met: no unauthenticated HTTP hash delivery; [verification](security/release-verification.md) uses authenticated HTTPS and release signatures |
 | `vulnerabilities_fixed_60_days` | MUST | Met at dated check: no project advisory was present; recheck public advisories and private confirmed findings before release |
 | `vulnerabilities_critical_fixed` | SHOULD | Met at dated check: no known open critical project advisory; [Security Policy](../SECURITY.md#response-and-coordinated-disclosure) prioritizes critical/actively exploited defects |
@@ -130,12 +131,16 @@ provider reports. No fabricated union or line-to-branch substitution is used.
 The GitHub comparison to main `d2ab4669c6165668dddb28a324c6570bf934f2ca` changes no
 shipping C# or test source; it changes delivery configuration, documentation,
 image pins, and package properties. This is historical source evidence, not a
-hosted qualification of an unpublished candidate. The first hosted RC process
-for `10.0.0-rc.1` has not been executed yet.
+hosted qualification of the changed stable source. The first RC was published
+on 2026-10-02 as an immutable release with its candidate, package manifest,
+qualification evidence, provenance, SBOMs, packages, and symbols. The
+stable `10.0.0` contains subsequent runtime changes. The percentages above
+remain dated RC-era evidence, not current stable coverage measurements; refresh
+analysis for the exact stable revision through its normal qualification.
 
 Hosted [CodeQL run 36895136867](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/runs/36895136867)
 succeeded on that main revision on 2026-10-01; the associated successful
-analysis records have zero results. The current code-scanning alert list also
+analysis records have zero results. The then-current code-scanning alert list also
 contains Scorecard process warnings. Those are not silently classified as
 source vulnerabilities or claimed fixed by this document.
 
@@ -150,9 +155,13 @@ as proof of scan frequency.
 
 Read-only API checks on 2026-10-01 confirmed a public MIT repository, private
 vulnerability reporting, release immutability, secret scanning, push protection,
-zero secret alerts, and no project advisories or releases. These are dated
-observations. Follow [Repository settings](runbooks/repository-settings.md) to
-recheck them; configuration in source alone does not prove hosted state.
+zero secret alerts, and no project advisories or releases. These remain dated
+historical observations. A new public readback on 2026-10-06 confirms the
+published immutable RC release and both NuGet package identities at
+`10.0.0-rc.1`. Each release's qualification and publication receipts establish
+its own state. Follow
+[Repository settings](runbooks/repository-settings.md) to recheck controls;
+configuration in source alone does not prove hosted state.
 
 No non-PR bug or enhancement issues were present. On 2026-10-01 the maintainer
 also confirmed no ordinary reports or requests through other channels. The
@@ -164,8 +173,8 @@ is not adopted, retain Unknown and seek clarification rather than fabricating
 history. Reassess both answers when actual reports or requests arrive.
 
 The maintainer confirmed the two developer-knowledge criteria and absence of
-private security reports on 2026-10-01. Publish evidence documents through
-review and complete the actual release's notes/tag/readback. Passing was verified
+private security reports on 2026-10-01. Preserve that dated attestation and
+complete stable-specific notes, tag, analysis, and package readback. Passing was verified
 on the public entry on 2026-10-01; update and read back its answers when the
 underlying evidence changes. No Silver/Gold, human security
 audit, multi-maintainer continuity, independent reproducible build, or unexecuted
@@ -183,6 +192,12 @@ Retrieved 2026-10-01:
 - [GitHub default-setup scan triggers](https://docs.github.com/en/code-security/concepts/code-scanning/setup-types#about-default-setup).
 - [Doka evidence structure](https://github.com/doka-labs/Doka.EntityFrameworkCore.MySql/blob/main/docs/openssf-best-practices.md).
 - [SafeMigrations evidence structure](https://github.com/doka-labs/Doka.EntityFrameworkCore.SafeMigrations/blob/main/docs/openssf-best-practices.md).
+
+Release-state readback, retrieved 2026-10-06:
+
+- [Published immutable RC release](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/releases/tag/v10.0.0-rc.1).
+- [Core package version index](https://api.nuget.org/v3-flatcontainer/doka.nestedset/index.json).
+- [EF package version index](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.nestedset/index.json).
 
 The criteria are licensed by their upstream project. This mapping paraphrases
 them for NestedSet; the official definitions remain authoritative.

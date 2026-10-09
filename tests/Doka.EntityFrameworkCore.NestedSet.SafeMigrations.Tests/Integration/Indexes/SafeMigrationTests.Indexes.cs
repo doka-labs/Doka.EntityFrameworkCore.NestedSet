@@ -9,6 +9,8 @@ public sealed partial class SafeMigrationTests
     [Theory]
     [InlineData("Sqlite", false)]
     [InlineData("PostgreSql", true)]
+    [InlineData("SqlServer", false)]
+    [InlineData("SqlServer", true)]
     [InlineData("MySql", false)]
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
@@ -42,7 +44,7 @@ public sealed partial class SafeMigrationTests
         var nodesAfter = await database.ReadNodesAsync();
 
         // Assert
-        AssertFreshIndexOperations(operations);
+        AssertFreshIndexOperations(engine, operations);
         Assert.All(
             operations,
             operation => Assert.Equal(database.Schema, ((EnsureIndexIntent)operation.Intent).Definition.Schema));
@@ -66,6 +68,8 @@ public sealed partial class SafeMigrationTests
     [Theory]
     [InlineData("Sqlite", false)]
     [InlineData("PostgreSql", true)]
+    [InlineData("SqlServer", false)]
+    [InlineData("SqlServer", true)]
     [InlineData("MySql", false)]
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
@@ -121,6 +125,8 @@ public sealed partial class SafeMigrationTests
     [Theory]
     [InlineData("Sqlite", false)]
     [InlineData("PostgreSql", true)]
+    [InlineData("SqlServer", false)]
+    [InlineData("SqlServer", true)]
     [InlineData("MySql", false)]
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
@@ -134,7 +140,7 @@ public sealed partial class SafeMigrationTests
         await using var database = await CreateDatabaseAsync(engine, qualifySchema);
         var baseline = database.Scaffold(MigrationStage.Baseline, "SafeBaseline");
         await database.MigrateAsync(baseline);
-        await database.SeedAsync();
+        await database.SeedAsync(MigrationStage.Baseline);
         var upgrade = database.Scaffold(MigrationStage.Current, "SafeScopeKey", baseline);
         await using var context = database.CreateContext(MigrationStage.Current, upgrade.Assembly);
         var allOperations = GetUpOperations(upgrade, context, 1);
@@ -149,7 +155,8 @@ public sealed partial class SafeMigrationTests
         // WHY: The pending upgrade must classify an externally created index before EF records its history row.
         await SafeMigrationTestServices.CreateConflictingIndexAsync(context, definition, "entry_depth");
         var indexesBefore = IndexSignatures(await database.ReadIndexesAsync());
-        var nodesBefore = await database.ReadNodesAsync();
+        // WHY: The upgrade has not run; SQL Server still stores the historical Int32 coordinates.
+        var nodesBefore = await database.ReadNodesAsync(MigrationStage.Baseline);
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         // Act
@@ -161,15 +168,20 @@ public sealed partial class SafeMigrationTests
                 CancellationToken.None);
 
         var indexesAfter = IndexSignatures(await database.ReadIndexesAsync());
-        var nodesAfter = await database.ReadNodesAsync();
+        var nodesAfter = await database.ReadNodesAsync(MigrationStage.Baseline);
         var historyAfter = await context.Database.GetAppliedMigrationsAsync(CancellationToken.None);
 
         // Assert
-        AssertUpgradeIndexOperations(indexOperations);
+        AssertUpgradeIndexOperations(engine, indexOperations);
         Assert.Equal(allOperations.Length, report.Assessments.Count);
         AssertRejectedIndexDrift(report, definition.Name);
 
-        if (engine != "Sqlite")
+        if (engine == "SqlServer")
+        {
+            // WHY: Index drift remains a blocker even when valid integer rows prove the new CHECK predicates.
+            AssertApplicableIntegerChecks(report);
+        }
+        else if (engine != "Sqlite")
         {
             AssertOpaqueCheckConstraintBlockers(report);
         }

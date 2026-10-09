@@ -24,6 +24,14 @@ persistence boundary replaces the provider's standard relational `IDatabase`
 service in either extension order; a provider-specific `IDatabase`
 implementation is rejected instead of being replaced.
 
+Registration also validates the required insertion identity and detached-setter
+contracts against the loaded EF assembly once. An incompatible framework
+fails with `InvalidOperationException` naming its version and the missing
+member before a context performs hierarchy writes. This checks the framework
+shape; it does not replace provider tests or qualify every future EF patch.
+Requalify insertion, callback rejection, rollback, and mapped refresh behavior
+when upgrading EF.
+
 Do not add any of these former registrations:
 
 - `ModelConfigurationBuilder.UseNestedSets()`;
@@ -248,6 +256,30 @@ This policy means structure-only set updates do not change that token. The
 application remains responsible for advancing and validating it with domain
 payload changes.
 
+Generated tokens declared only on a derived entity also participate. Owner-level
+queries project each token only for the subtype that maps it; sibling rows do
+not receive that property. Coordinated saves honor both tracker acceptance
+modes. Single and bulk insertions return current generated CLR values even
+when the facade uses the configured base type. A late failure restores captured
+input values without changing generated properties of inputs not yet staged.
+
+Single, forest, and subtree insertion guard assigned and generated NodeKeys
+across save callbacks. Ordinary payload and non-hierarchy audit writes remain
+permitted; key, Scope, TreeId, and other managed structure edits are rejected.
+When a definite failure rolls back the database, exact introduced entries and
+owned payload are released without clearing unrelated tracked entities.
+Single insertion finishes detachment before commit or savepoint release, so
+a rejecting state callback still rolls back the write. Captured generated CLR
+leaves, owned keys, and ownership foreign keys restore to their pre-fixup values;
+ordinary callback payload and non-ownership business foreign keys remain
+caller-owned. The input root and its owned aggregate must be detached before
+insertion; already-tracked caller graph members are rejected and preserved.
+Generated sidecar values and the CLR key representation are checked separately
+before acceptance can overwrite a callback edit. A cleanup failure preserves
+the original error in an `AggregateException`; discard that context rather
+than retrying with partially restored tracking. See
+[insertion recovery](bulk-import.md#failure-and-restoration).
+
 ## Model compatibility
 
 The qualified model shapes include:
@@ -256,12 +288,28 @@ The qualified model shapes include:
 - composite primary keys with a scalar alternate NodeKey;
 - shadow and field-only structural properties;
 - converted key, Scope, and TreeId values;
-- TPH and qualified TPT mappings;
+- TPH and qualified TPT mappings, including trees containing different derived
+  entity types;
 - table and entity splitting within the documented single-write-fragment
   contract;
 - temporal current-table mutations;
 - compiled models; and
 - pooled contexts.
+
+Configure an inherited hierarchy on its common mapped owner. Coordinated
+`SaveChangesAsync` then treats changes to different derived types as one
+hierarchy: a Parent may refer to another derived type, base-property ordering
+applies across sibling types, and structural refresh includes tracked derived
+descendants. The owner is the type with the NestedSet configuration, not
+necessarily EF's inheritance root. Named shared mappings and independently
+configured concrete TPC stores retain their separate identities.
+
+For a NodeKey converted to string storage, parent comparisons use the
+principal key's effective database collation just as native string keys do.
+The query expression retains the model key type and its converter. Different
+Parent and NodeKey column collations therefore cannot silently change which
+parent a stored alias resolves to. This does not replace an application's
+key converter or require case-insensitive keys.
 
 Regenerate a compiled model whenever the NestedSet version or hierarchy
 configuration changes. The generated metadata includes registry table names;

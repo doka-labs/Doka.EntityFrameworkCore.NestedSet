@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 namespace Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests;
 
 /// <summary>Exercises optional SafeMigrations adapters against real generated nested-set migration code.</summary>
+[DatabasePlatform]
 public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
 {
     private readonly MigrationFixture _fixture;
@@ -72,13 +73,16 @@ public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
 
     /// <summary>Asserts the exact current-model indexes using the actual physical catalog.</summary>
     private static void AssertCurrentIndexes(
+        string engine,
         MigrationIndex[] indexes
     )
     {
-        Assert.Equal(7, indexes.Length);
+        Assert.Equal(engine == "PostgreSql" ? 8 : 7, indexes.Length);
         Assert.Single(indexes, index => index.IsUnique && index.Columns.SequenceEqual(["tree_scope", "entry_id"]));
-        Assert.All(indexes, index => Assert.True(index.IsOrdinary));
-        Assert.Equal(
+        Assert.All(indexes, index => Assert.Equal(
+            engine != "PostgreSql" || index.IsUnique || index.Name == "application_payload_lookup",
+            index.IsOrdinary));
+        string[] expected =
             [
                 "entry_payload",
                 "tree_scope,entry_id",
@@ -87,7 +91,10 @@ public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
                 "tree_scope,tree_id,parent_entry,entry_payload,entry_category,entry_id",
                 "tree_scope,tree_id,parent_entry,sibling_position",
                 "tree_scope,tree_id,right_bound",
-            ],
+            ];
+        Assert.Equal(engine == "PostgreSql"
+            ? expected.Append("tree_scope,entry_id,parent_entry").Order(StringComparer.Ordinal)
+            : expected,
             indexes
                 .Select(index => string.Join(",", index.Columns))
                 .Order(StringComparer.Ordinal));
@@ -139,8 +146,10 @@ public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
 
     /// <summary>Asserts every index intent required by a fresh current-model migration.</summary>
     private static void AssertFreshIndexOperations(
+        string engine,
         SafeMigrationOperation[] operations
     ) => AssertIndexOperations(
+        engine,
         operations,
         [
             "entry_payload",
@@ -153,8 +162,10 @@ public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
 
     /// <summary>Asserts every index intent introduced by the current tree-identity upgrade.</summary>
     private static void AssertUpgradeIndexOperations(
+        string engine,
         SafeMigrationOperation[] operations
     ) => AssertIndexOperations(
+        engine,
         operations,
         [
             "tree_scope,parent_entry",
@@ -166,6 +177,7 @@ public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
 
     /// <summary>Compares SafeMigrations intents by their complete ordered physical key columns.</summary>
     private static void AssertIndexOperations(
+        string engine,
         SafeMigrationOperation[] operations,
         string[] expectedColumns
     )
@@ -177,7 +189,22 @@ public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
             .Order(StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(expectedColumns.Order(StringComparer.Ordinal), actualColumns);
+        Assert.Equal((engine == "PostgreSql"
+            ? expectedColumns.Append("tree_scope,entry_id,parent_entry")
+            : expectedColumns).Order(StringComparer.Ordinal), actualColumns);
+        Assert.All(operations, operation =>
+        {
+            var definition = ((EnsureIndexIntent)operation.Intent).Definition;
+            var columns = definition.Keys.Select(key => key.Column).ToArray();
+            var expectedFilter = engine == "PostgreSql"
+                ? columns.SequenceEqual(["tree_scope", "parent_entry"])
+                    ? "parent_entry IS NOT NULL"
+                    : columns.SequenceEqual(["tree_scope", "entry_id", "parent_entry"])
+                        ? "parent_entry IS NULL"
+                        : columns.Contains("tree_id", StringComparer.Ordinal) ? "tree_id IS NOT NULL" : null
+                : null;
+            Assert.Equal(expectedFilter, definition.Filter);
+        });
     }
 
     /// <summary>Asserts checks, the scoped self-reference, and Int64 coordinate storage in the real catalog.</summary>
@@ -189,7 +216,7 @@ public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
         IReadOnlyDictionary<string, string> columnTypes
     )
     {
-        AssertCurrentIndexes(indexes);
+        AssertCurrentIndexes(engine, indexes);
         Assert.Equal(4, checks.Length);
         Assert.Contains(
             checks,
@@ -236,12 +263,13 @@ public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
         "",
         RegexOptions.CultureInvariant);
 
-    /// <summary>Captures names, order and uniqueness so replay and rejection must preserve the exact catalog.</summary>
+    /// <summary>Captures names, ordered keys, directions and uniqueness to verify exact catalog preservation.</summary>
     private static string[] IndexSignatures(
         MigrationIndex[] indexes
     ) => indexes
         .Select(index =>
-            index.Name + ":" + index.IsUnique + ":" + index.IsOrdinary + ":" + string.Join(",", index.Columns))
+            index.Name + ":" + index.IsUnique + ":" + index.IsOrdinary + ":" + string.Join(",", index.Columns)
+            + ":" + string.Join(",", index.Descending))
         .Order(StringComparer.Ordinal)
         .ToArray();
 }

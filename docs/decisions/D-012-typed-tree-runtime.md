@@ -105,6 +105,10 @@ without an intermediate array of erased requests.
 
 Managed-save groups convert their heterogeneous pending entries to typed
 `EntityEntry<TEntity>` wrappers once when constructing the closed group.
+Their cached factory is keyed by the exact configured hierarchy owner and
+closes `TEntity` to that owner's CLR type. Mixed derived entries share its
+Parent, ordering, lock, and refresh plan. Neither the concrete changed subtype
+nor an unconditional EF inheritance-root lookup defines this boundary.
 Multi-role NodeKey, Scope, TreeId, and structural reads use the public
 `PropertyValues.GetValue<TValue>(IProperty)` API. A guard candidate retains one
 live `CurrentValues` wrapper, and structural checks reuse one wrapper for
@@ -134,7 +138,10 @@ the exact mapped model type without constructing a property wrapper. The
 public same-context acquisition route is
 `context.GetService<IUpdateAdapterFactory>().Create().Entries`;
 `CreateStandalone()` owns another tracker and is not interchangeable.
-Managed-save groups already own a same-context adapter and could reuse it.
+Managed-save groups no longer retain a same-context adapter solely for token
+refresh: the shared refresh path uses the exact tracked entry already owned by
+the caller. Insertion identity cleanup separately requires that entry's native
+identity and reuses its public typed current-value contract for comparison.
 The current readers retain their existing `EntityEntry` processing paths:
 changing those paths must account for how matching update entries are acquired,
 associated with exact named mappings, and retained for live and late checks.
@@ -494,6 +501,10 @@ coverage mechanisms rather than claiming an unexecuted qualification result.
 
 ### Re-evaluation Triggers
 
+- EF changes the translation of generic `Collate<TProperty>` over converted
+  properties, or effective provider-type resolution. Rerun converted
+  principal/Parent collation regressions, including asymmetric column
+  declarations and nullable model key types, before changing the typed seam.
 - EF changes finalized model identity, value-comparer snapshot behavior, or
   model caching; rerun converted-identity and pooled-context regressions.
 - A supported deployment requires a dispatch mechanism unavailable to the
@@ -553,6 +564,8 @@ coverage mechanisms rather than claiming an unexecuted qualification result.
 - 2026-09-28: The maintainer accepted the current decision and designated the core-maintainers audience.
 - 2026-09-28: Status changed from accepted to implemented.
 - 2026-09-28: Confirmed typed tree and optional-scope execution, feature dispatch, identity snapshots, provider mapping, and positive and negative runtime regression specifications against the linked repository evidence.
+- 2026-10-03: Converted string-backed NodeKeys retain principal collation through generic model-typed Parent expressions; mixed inherited saves bind to the cached configured hierarchy owner rather than concrete entry metadata.
+- 2026-10-04: Shared token refresh removed the unused managed-save adapter. Insertion identity comparisons reuse their already required native entry without changing the guard-reader acquisition trade-off.
 
 ### Implementation References
 
@@ -585,6 +598,8 @@ coverage mechanisms rather than claiming an unexecuted qualification result.
 
 ### Sources
 
+- [EF Core 10.0.12 generic Collate translation](https://github.com/dotnet/efcore/blob/v10.0.12/src/EFCore.Relational/Query/Internal/Translators/CollateTranslator.cs) (primary source; retrieved 2026-10-03)
+- [EF Core 10.0.12 converter provider representation](https://github.com/dotnet/efcore/blob/v10.0.12/src/EFCore/Storage/ValueConversion/ValueConverter.cs) (primary source; retrieved 2026-10-03)
 - [EF Core typed property queries](https://learn.microsoft.com/en-us/dotnet/api/microsoft.entityframeworkcore.ef.property?view=efcore-10.0) (primary source; retrieved 2026-09-26)
 - [EF Core relational Join and SelectMany translation](https://learn.microsoft.com/en-us/ef/core/querying/complex-query-operators#selectmany) (primary source; retrieved 2026-09-26)
 - [EF Core value snapshots](https://learn.microsoft.com/en-us/dotnet/api/microsoft.entityframeworkcore.changetracking.valuecomparer.snapshot?view=efcore-10.0) (primary source; retrieved 2026-09-26)

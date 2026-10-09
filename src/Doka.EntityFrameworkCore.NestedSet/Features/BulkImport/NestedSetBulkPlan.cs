@@ -13,12 +13,17 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
 {
     private readonly NestedSetStore<TEntity, TKey, TTreeId, TScope> _store;
     private readonly IProperty[] _generatedProperties;
+    private readonly IClrPropertySetter[] _generatedSetters;
     private readonly bool _parentHasNoNavigations;
     private readonly bool _parentHasDependency;
+    private readonly bool _hasInputNavigations;
     private readonly TScope _stagedScope;
     private readonly TTreeId _stagedTreeId;
     private readonly HashSet<TEntity> _knownTracked;
     private EntityEntry[]? _activeEntries;
+    private Dictionary<IUpdateEntry, NestedSetInsertionTracking.Identity>? _activeIdentities;
+    private List<(EntityEntry Owner, INavigationBase Navigation, object Entity)>? _activeRelationships;
+    private List<NestedSetInsertionValues.Snapshot>? _ownedValues;
     private EntityEntry<TEntity>[]? _activeRoots;
     private int _activeOffset;
 
@@ -36,12 +41,16 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     {
         _store = store;
         _knownTracked = knownTracked;
-        _generatedProperties = store
+        _hasInputNavigations = store
             .Map
             .EntityType
-            .GetFlattenedProperties()
-            .Where(property => property.ValueGenerated != ValueGenerated.Never
-                && property != store.Map.KeyProperty
+            .GetDerivedTypesInclusive()
+            .Any(type => type.GetNavigations().Any()
+                || type.GetSkipNavigations().Any());
+
+        _generatedProperties = NestedSetRefreshProperties
+            .Generated(store.Map.EntityType)
+            .Where(property => property != store.Map.KeyProperty
                 && property != store.Map.ScopeProperty
                 && property != store.Map.TreeIdProperty
                 && property != store.Map.ParentProperty
@@ -50,6 +59,12 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
                 && property != store.Map.DepthProperty
                 && property != store.Map.PositionProperty
                 && !property.IsShadowProperty())
+            .ToArray();
+
+        // WHY: Resolve generated CLR access before writes. Rollback must not recreate detached EF entries or
+        // discover an unsupported metadata setter only after the database has assigned caller-owned values.
+        _generatedSetters = _generatedProperties
+            .Select(property => NestedSetDetachedValueSetter.Get(property)!)
             .ToArray();
 
         _stagedScope = store.Map.ScopeProperty is { } scope
@@ -87,7 +102,7 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // WHY: Repeated entity references to describe either a cycle or multiple parents; neither has a tree meaning.
+            // WHY: Repeated entity references describe cycles or multiple parents; neither has a tree meaning.
             if (!seen.Add(item.Branch.Entity))
             {
                 throw new NestedSetException(

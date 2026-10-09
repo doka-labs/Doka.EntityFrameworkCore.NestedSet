@@ -1,1 +1,30 @@
 #nullable enable
+Doka.NestedSet.INestedSetNode<TNodeKey, TTreeId>
+Doka.NestedSet.INestedSetNode<TNodeKey, TTreeId>.Depth.get -> int
+Doka.NestedSet.INestedSetNode<TNodeKey, TTreeId>.Id.get -> TNodeKey
+Doka.NestedSet.INestedSetNode<TNodeKey, TTreeId>.Left.get -> long
+Doka.NestedSet.INestedSetNode<TNodeKey, TTreeId>.Position.get -> long
+Doka.NestedSet.INestedSetNode<TNodeKey, TTreeId>.Right.get -> long
+Doka.NestedSet.INestedSetNode<TNodeKey, TTreeId>.TreeId.get -> TTreeId
+Doka.NestedSet.IScopedNestedSetNode<TNodeKey, TTreeId, TScope>
+Doka.NestedSet.IScopedNestedSetNode<TNodeKey, TTreeId, TScope>.Scope.get -> TScope
+Doka.NestedSet.NestedSetBounds
+Doka.NestedSet.NestedSetBounds.Contains(Doka.NestedSet.NestedSetBounds other) -> bool
+Doka.NestedSet.NestedSetBounds.DescendantCount.get -> long
+Doka.NestedSet.NestedSetBounds.Equals(Doka.NestedSet.NestedSetBounds other) -> bool
+Doka.NestedSet.NestedSetBounds.IsLeaf.get -> bool
+Doka.NestedSet.NestedSetBounds.Left.get -> long
+Doka.NestedSet.NestedSetBounds.NestedSetBounds() -> void
+Doka.NestedSet.NestedSetBounds.NestedSetBounds(long left, long right) -> void
+Doka.NestedSet.NestedSetBounds.Right.get -> long
+Doka.NestedSet.NestedSetBounds.Width.get -> long
+Doka.NestedSet.NestedSetNodeExtensions
+override Doka.NestedSet.NestedSetBounds.GetHashCode() -> int
+static Doka.NestedSet.NestedSetBounds.operator !=(Doka.NestedSet.NestedSetBounds left, Doka.NestedSet.NestedSetBounds right) -> bool
+static Doka.NestedSet.NestedSetBounds.operator ==(Doka.NestedSet.NestedSetBounds left, Doka.NestedSet.NestedSetBounds right) -> bool
+static Doka.NestedSet.NestedSetNodeExtensions.IsAncestorOf<TNodeKey, TTreeId, TScope>(this Doka.NestedSet.IScopedNestedSetNode<TNodeKey, TTreeId, TScope>! node, Doka.NestedSet.IScopedNestedSetNode<TNodeKey, TTreeId, TScope>! other) -> bool
+static Doka.NestedSet.NestedSetNodeExtensions.IsAncestorOf<TNodeKey, TTreeId>(this Doka.NestedSet.INestedSetNode<TNodeKey, TTreeId>! node, Doka.NestedSet.INestedSetNode<TNodeKey, TTreeId>! other) -> bool
+static Doka.NestedSet.NestedSetNodeExtensions.IsDescendantOf<TNodeKey, TTreeId, TScope>(this Doka.NestedSet.IScopedNestedSetNode<TNodeKey, TTreeId, TScope>! node, Doka.NestedSet.IScopedNestedSetNode<TNodeKey, TTreeId, TScope>! other) -> bool
+static Doka.NestedSet.NestedSetNodeExtensions.IsDescendantOf<TNodeKey, TTreeId>(this Doka.NestedSet.INestedSetNode<TNodeKey, TTreeId>! node, Doka.NestedSet.INestedSetNode<TNodeKey, TTreeId>! other) -> bool
+~override Doka.NestedSet.NestedSetBounds.Equals(object obj) -> bool
+override Doka.NestedSet.NestedSetBounds.ToString() -> string!

@@ -24,10 +24,14 @@ internal sealed class NestedSetMappedBatch<TEntity, TKey, TTreeId, TScope>
         _sql = store.Context.GetService<ISqlGenerationHelper>();
         var table = store.Map.Store;
         Table = _sql.DelimitIdentifier(table.Name, table.Schema);
+        KeyBatchIdentityPredicate = CreateKeyBatchIdentityPredicate();
     }
 
     /// <summary>The safely delimited schema-qualified hierarchy table.</summary>
     internal string Table { get; }
+
+    /// <summary>Restricts keyed writes to this tree without making SQLite scan the complete tree per batch.</summary>
+    internal string KeyBatchIdentityPredicate { get; }
 
     /// <summary>Gets the mandatory optional-Scope and exact-TreeId predicate for this store.</summary>
     internal string IdentityPredicate
@@ -60,6 +64,41 @@ internal sealed class NestedSetMappedBatch<TEntity, TKey, TTreeId, TScope>
     internal string Parameter(
         string name
     ) => _sql.GenerateParameterName(name);
+
+    /// <summary>Keeps SQLite's unique-key access separate from the exact membership check.</summary>
+    private string CreateKeyBatchIdentityPredicate()
+    {
+        if (NestedSetProviderCapabilities.Resolve(_store.Context).Kind != NestedSetProviderKind.Sqlite)
+        {
+            return IdentityPredicate;
+        }
+
+        // WHY: SQLite resolves identifiers without ASCII case sensitivity. An inner alias equal to the outer
+        // table would shadow the correlated reference and turn the key comparison into a self-comparison.
+        var memberName = string.Equals(_store.Map.Store.Name, "nestedSetMembership", StringComparison.OrdinalIgnoreCase)
+            ? "nestedSetMembershipRow"
+            : "nestedSetMembership";
+
+        var member = _sql.DelimitIdentifier(memberName);
+        var outer = _sql.DelimitIdentifier(_store.Map.Store.Name);
+        var key = Column(_store.Map.Key);
+        var tree = Column(_store.Map.TreeId);
+        var membership = $"EXISTS (SELECT 1 FROM {Table} AS {member} "
+            + $"WHERE {member}.{key} = {outer}.{key} AND {member}.{tree} = {Parameter("treeId")}";
+
+        if (_store.Map.Scope is { } scopeName)
+        {
+            var scope = Column(scopeName);
+            membership += $" AND {member}.{scope} = {Parameter("scope")})";
+
+            // WHY: Without statistics, SQLite can choose the Scope/TreeId range index for every 64-key batch.
+            // Keep Scope/NodeKey visible to the outer lookup; the correlated unique-key probe still enforces
+            // exact tree membership, including database-native scope equality, before any row is modified.
+            return $"{scope} = {Parameter("scope")} AND {membership}";
+        }
+
+        return membership + ")";
+    }
 
     /// <summary>Executes through EF with command interception, logging, and caller transactions intact.</summary>
     /// <param name="sql">A template containing only delimited model identifiers and parameter markers.</param>

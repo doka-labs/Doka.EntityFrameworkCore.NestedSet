@@ -1,6 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Prevents shared integration cases from silently bypassing fixture-owned provider coverage.</summary>
+[DatabaseIndependent]
 public abstract class ProviderAnnotationTests : ProviderTest
 {
     /// <summary>Uses the concrete provider fixture as the immutable engine owner.</summary>
@@ -68,7 +69,7 @@ public abstract class ProviderAnnotationTests : ProviderTest
     }
 
     /// <summary>
-    /// Every shared suite has one body-free concrete subclass per fixture engine with resolvable arguments.
+    /// Every applicable shared suite has one body-free subclass; wholly excluded suites have no wrapper.
     /// </summary>
     [EngineFact(
         ExcludedEngines = ["MariaDb"],
@@ -104,10 +105,18 @@ public abstract class ProviderAnnotationTests : ProviderTest
                     .Where(type => EngineTestSelection.ResolveEngine(type) == engine)
                     .ToArray();
 
-                if (matching.Length != 1)
-                {
-                    errors.Add($"{suite.FullName}: expected one '{engine}' wrapper, found {matching.Length}.");
+                var required = ProviderTestContract.RequiresSharedWrapper(suite, engine);
+                var expected = required ? 1 : 0;
 
+                if (matching.Length != expected)
+                {
+                    errors.Add($"{suite.FullName}: expected {expected} '{engine}' wrappers, found {matching.Length}.");
+
+                    continue;
+                }
+
+                if (!required)
+                {
                     continue;
                 }
 
@@ -134,6 +143,62 @@ public abstract class ProviderAnnotationTests : ProviderTest
         Assert.NotEmpty(suites);
         Assert.Contains(suites, type => type.IsNested);
         Assert.Empty(errors);
+    }
+
+    /// <summary>Raw IDE-visible metadata includes only the concurrent scenarios supported by the engine.</summary>
+    [Fact]
+    public void ConcurrentWriterMetadataMatchesEngineCapabilities()
+    {
+        // Arrange
+        var provider = GetType().Assembly;
+        var families = new[] { typeof(ConcurrentWriterTests), typeof(ConcurrentCapacityTests) };
+
+        var suites = provider
+            .GetExportedTypes()
+            .Where(type => !type.IsAbstract && families.Any(family => family.IsAssignableFrom(type)))
+            .Where(type => EngineTestSelection.ResolveEngine(type) == Engine)
+            .ToArray();
+
+        var expected = Engine == "Sqlite"
+            ? new[] { nameof(ConcurrentWriterTests.SameTreeSerializes64ChildWritersWithDensePositions) }
+            : new[]
+            {
+                nameof(ConcurrentCapacityTests.CanceledBlockedContenderPreservesBothCallerTransactions),
+                nameof(ConcurrentCapacityTests.IndependentExistingTreesHold64LocksInOneScope),
+                nameof(ConcurrentWriterTests.SameTreeSerializes64ChildWritersWithDensePositions),
+            };
+
+        // Act
+        var scenarios = suites
+            .SelectMany(type => type.GetMethods())
+            .Where(method => method.CustomAttributes.Any(attribute =>
+                typeof(IFactAttribute).IsAssignableFrom(attribute.AttributeType)))
+            .Select(method => method.Name)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToArray();
+
+        var collections = suites
+            .Select(type => type.GetCustomAttribute<CollectionAttribute>()?.Type)
+            .ToArray();
+
+        var definitions = collections
+            .Select(type => type?.GetCustomAttribute<CollectionDefinitionAttribute>())
+            .ToArray();
+
+        // Assert
+        Assert.Equal(expected, scenarios);
+
+        if (Engine != "Sqlite")
+        {
+            // WHY: The split must preserve the original class's serial scenario scheduling without
+            // lowering the 64 concurrent writers or changing the server's connection limit.
+            Assert.Equal(2, collections.Length);
+            Assert.All(collections, type => Assert.NotNull(type));
+            Assert.Same(collections[0], collections[1]);
+            Assert.Equal(provider, collections[0]!.Assembly);
+            Assert.All(definitions, definition => Assert.NotNull(definition));
+            Assert.False(definitions[0]!.DisableParallelization);
+        }
     }
 
     /// <summary>

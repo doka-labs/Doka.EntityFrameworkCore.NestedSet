@@ -36,6 +36,8 @@ public sealed class TestDatabaseServers : IAsyncDisposable
             throw new InvalidOperationException($"The current test assembly does not own the {engine} server.");
         }
 
+        SqlServerTestPlatform.RequireSupportedContainerHost(engine);
+
         // WHY: Lazy ensures simultaneous xUnit collections cannot each start an expensive server container.
         var server = await _servers.GetOrAdd(engine, static name => new Lazy<Task<Server>>(() => StartAsync(name))).Value;
 

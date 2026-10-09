@@ -15,6 +15,7 @@ public abstract class BroadScopeTests : ProviderTest
     }
 
     /// <summary>Compares the stored representation instead of the value object's broad equality.</summary>
+    [DatabaseIndependent]
     [Fact]
     public void ProviderComparerSeparatesReferenceAliases()
     {

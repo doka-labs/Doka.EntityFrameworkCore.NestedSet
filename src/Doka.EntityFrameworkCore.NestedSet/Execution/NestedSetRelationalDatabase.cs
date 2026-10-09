@@ -9,7 +9,7 @@ internal sealed class NestedSetRelationalDatabase : RelationalDatabase
 {
     private readonly ICurrentDbContext _currentContext;
 
-    /// <summary>Creates the relational database service used by every context registered through UseNestedSets.</summary>
+    /// <summary>Creates the relational service used by every context registered through UseNestedSets.</summary>
     /// <param name="dependencies">The provider-independent database dependencies.</param>
     /// <param name="relationalDependencies">The relational batching, execution, and connection dependencies.</param>
     /// <param name="currentContext">The context whose managed insertion state is checked before persistence.</param>
@@ -28,8 +28,11 @@ internal sealed class NestedSetRelationalDatabase : RelationalDatabase
     )
     {
         NestedSetSaveChanges.ValidateManagedPersistence(_currentContext.Context, entries);
+        var completion = NestedSetSaveChanges.ManagedPersistenceCompletion(_currentContext.Context);
+        var result = base.SaveChanges(entries);
+        completion?.Invoke();
 
-        return base.SaveChanges(entries);
+        return result;
     }
 
     /// <inheritdoc />
@@ -39,7 +42,29 @@ internal sealed class NestedSetRelationalDatabase : RelationalDatabase
     )
     {
         NestedSetSaveChanges.ValidateManagedPersistence(_currentContext.Context, entries);
+        var completion = NestedSetSaveChanges.ManagedPersistenceCompletion(_currentContext.Context);
 
-        return base.SaveChangesAsync(entries, cancellationToken);
+        return completion is null
+            ? base.SaveChangesAsync(entries, cancellationToken)
+            : CompleteManagedAsync(entries, completion, cancellationToken);
+    }
+
+    /// <summary>Captures native identities before EF accepts provider results and publishes SavedChanges.</summary>
+    /// <param name="entries">The exact validated provider write set.</param>
+    /// <param name="completion">The bounded insertion identity callback.</param>
+    /// <param name="cancellationToken">The caller's provider-operation cancellation token.</param>
+    /// <returns>The provider's unchanged affected-entry count.</returns>
+    private async Task<int> CompleteManagedAsync(
+        IList<IUpdateEntry> entries,
+        Action completion,
+        CancellationToken cancellationToken
+    )
+    {
+        // WHY: Store-generated identities exist when the relational service returns; EF acceptance and
+        // SavedChanges happen afterward. Stabilize only managed insertion keys at this existing boundary.
+        var result = await base.SaveChangesAsync(entries, cancellationToken).ConfigureAwait(false);
+        completion();
+
+        return result;
     }
 }

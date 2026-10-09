@@ -140,6 +140,64 @@ Convention-owned names use a deterministic hash of final entity, table,
 schema, column, and direction identity. An application-customized index remains
 application-owned and is not removed when the hierarchy configuration changes.
 
+### PostgreSQL index predicates
+
+PostgreSQL keeps the same structural key sequences, but adds
+`"TreeId" IS NOT NULL` to untouched library-created structural indexes. TreeId
+is required, so every hierarchy row remains indexed. Tree-local equality
+queries imply this predicate, including parameterized queries with converted
+TreeIds. A self-FK principal check constrains only `(Scope?, NodeKey)` and does
+not imply the TreeId predicate.
+
+This distinction prevents a principal check from choosing a scope-only scan
+of a structural index during a large atomic import. In qualification, automatic
+statistics collection saw no committed rows while hundreds of thousands of
+new rows were visible to the importing transaction. A replanned FK lookup
+then scanned the growing scope for every child. A nullable-Parent predicate
+on the dependent index alone was insufficient: another structural index
+remained eligible. The TreeId predicates exclude those generated paths from
+that principal lookup without disabling automatic maintenance or changing
+the FK. See PostgreSQL's [partial-index rules][pg-partial] and
+[statistics-driven prepared-plan invalidation][pg-prepare].
+
+An untouched convention-created nullable self-FK index is also partitioned:
+
+```text
+(Scope?, ParentId) WHERE ParentId IS NOT NULL
+(Scope?, NodeKey, ParentId) WHERE ParentId IS NULL
+```
+
+The first path indexes dependents; the second retains a root access path.
+The trailing Parent column keeps the root index on tables that actually map
+the filter column. EF's TPT table mapping uses index keys rather than filter
+references; a key-only root index could otherwise reach a payload table without
+Parent. The leading Scope/NodeKey prefix remains available, and Parent is null
+on every indexed row.
+The root index name derives from physical schema, table, Parent, and principal
+columns, rather than the CLR entity name. These predicates use the actual
+mapped and delimited column names. PK and alternate-key uniqueness, FK
+definition, and the required structural key sequences remain unchanged.
+
+Explicit or adopted application indexes are preserved, including names,
+filters, uniqueness, directions, and provider facets. Other providers retain
+their existing index definitions. An application-owned unfiltered scope-leading
+index can still make the expensive FK plan eligible; inspect the application's
+actual plans after adding such an index. No model convention can promise an
+optimal plan for arbitrary application indexes or statistics.
+
+When upgrading from a model with unfiltered PostgreSQL indexes, scaffold a
+normal migration. Review its index drop/create operations and filters against
+the model snapshot; hierarchy rows and registry lifecycle data must remain
+intact. Account for index-build locks and extra disk space in the application's
+deployment policy. The optional SafeMigrations regression cases require replay
+and drift support for both Parent predicates and the TreeId predicates. Their
+creation, preflight, replay, and drift outcomes are qualified against the
+published 10.4.9 adapters; see the provider matrix below. SafeMigrations remains
+optional.
+
+[pg-partial]: https://www.postgresql.org/docs/17/indexes-partial.html
+[pg-prepare]: https://www.postgresql.org/docs/17/sql-prepare.html
+
 ## Existing tables
 
 Adopting NestedSet on populated data requires an explicit transition:
@@ -165,12 +223,81 @@ coordinates.
 | MySQL/MariaDB | `Doka.EntityFrameworkCore.MySql` | Optional MySQL adapter |
 | PostgreSQL | `Npgsql.EntityFrameworkCore.PostgreSQL` | Optional PostgreSQL adapter |
 | SQLite | `Microsoft.EntityFrameworkCore.Sqlite` | Optional SQLite adapter |
-| SQL Server | `Microsoft.EntityFrameworkCore.SqlServer` | No adapter required by this repository |
+| SQL Server | `Microsoft.EntityFrameworkCore.SqlServer` | Optional SQL Server adapter |
 
 Doka, Npgsql, SQLite, and SQL Server work through ordinary EF migrations without
-SafeMigrations. Optional integration tests verify that SafeMigrations 10.4.5
-accepts the same finalized model for MySQL, MariaDB, PostgreSQL, and SQLite.
+SafeMigrations. The complete optional integration suite passed all 112 cases
+against the published 10.4.9 adapters on 2026-10-08 for MySQL, MariaDB,
+PostgreSQL, SQLite, and SQL Server, without failures or skips. PostgreSQL
+qualification includes canonical
+provider-delimited single-column `IS NULL` and `IS NOT NULL` index predicates,
+their catalog prerequisites, replay, and same-name wrong-definition drift
+rejection. Recognition preserves authored SQL and immutable index contracts;
+it does not permit arbitrary raw index SQL.
+
+The 10.4.5 PostgreSQL adapter rejected these predicates as
+`opaque_sql_expression` with `P1002`/`doka_sm_unsupported`. All 21 previously
+failing PostgreSQL cases passed unchanged against published 10.4.8 and remain
+green with 10.4.9; no temporary prototype is needed for this qualification.
+The independent ordinary EF migration suite also passed all 49 cases. See the
+[current version and qualification matrix](support-and-qualification.md#migration-matrix).
 Pomelo is outside the supported provider contract.
+
+## Optional SQL Server SafeMigrations
+
+Install the adapter explicitly in the application or migration project:
+
+```sh
+dotnet add package Doka.EntityFrameworkCore.SafeMigrations.SqlServer --version 10.4.9
+```
+
+Keep a direct `Microsoft.EntityFrameworkCore.Design` reference in the project
+used by EF tooling. The adapter's build assets register its provider-specific
+design-time services. Enable the ordinary provider and both extensions:
+
+```csharp
+using Doka.EntityFrameworkCore.SafeMigrations.SqlServer;
+
+var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+    .UseSqlServer(connectionString)
+    .UseNestedSets()
+    .UseSqlServerSafeMigrations();
+```
+
+NestedSet does not change its entity configuration when the adapter is enabled.
+Generated structural indexes retain exact column order, directions, schema,
+and replay/drift behavior.
+
+Unqualified SQL Server safe operations require the database user's default
+schema to be `dbo`. If that default differs, map the target schema explicitly
+in the EF model, for example with `modelBuilder.HasDefaultSchema("hierarchy")`
+or `ToTable("Folders", "hierarchy")`. The adapter rejects ambiguous unqualified
+operations before mutation rather than assuming they target `dbo`.
+
+SQL Server 10.4.9 can validate NestedSet's four generated integer CHECK
+predicates over existing rows. Valid data produces `Missing`/`Apply`; a
+violated predicate produces `DataBlocked` and runtime `doka_sm_data_blocked`.
+Creation establishes a stamped, enabled, trusted constraint, which subsequently
+replays as `Matching`/`NoOp`. Disabling it or reenabling it without establishing
+trust still produces `Different` and is not silently repaired. Opaque CHECKs
+outside the supported integer-predicate grammar retain the empty-table boundary.
+
+The adapter's `RepairIfSafe` policy now approves proven built-in `int`-to-`bigint`
+coordinate widening. The actual scaffolded historical upgrade works on empty
+tables and valid populated hierarchies, preserving rows while establishing
+the target indexes, constraints, and Int64 capacity. Exact source metadata and
+dependency ordering remain required: drop dependent indexes or constraints
+before ALTER, then recreate the desired target contract. Changed default/identity
+semantics or unsupported physical layouts are not implicitly approved.
+
+Invalid existing coordinates make the new CHECK fail, and EF's migration
+transaction rolls back preceding column and index changes along with migration
+history. This is rejection, not automatic data repair. Reverse `bigint`-to-`int`
+narrowing remains refused even when every existing value fits Int32. Ordinary
+EF migrations remain independently supported without enabling SafeMigrations.
+
+See the [published SQL Server registration and behavior](https://github.com/doka-labs/Doka.EntityFrameworkCore.SafeMigrations/blob/v10.4.9/docs/sqlserver-behavior.md)
+and the [consumer regression coverage](regression-coverage.md#optional-sql-server-migrations).
 
 ## Deployment verification
 

@@ -23,9 +23,14 @@ public sealed class BulkPlanAllocationTests
         _output = output;
     }
 
-    /// <summary>A wide plan reserves heap for ranks and the active batch inside the full 512 MiB target.</summary>
-    [Fact]
-    public async Task WidePlanStaysWithinMemoryBudget()
+    /// <summary>A wide plan reserves heap even when every input needs complete structural rollback state.</summary>
+    /// <param name="prefilled">Whether inputs carry caller-owned non-sentinel structure before planning.</param>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task WidePlanStaysWithinMemoryBudget(
+        bool prefilled
+    )
     {
         // Arrange
         var options = new DbContextOptionsBuilder<TreeContext>()
@@ -42,20 +47,42 @@ public sealed class BulkPlanAllocationTests
 
         var children = Enumerable
             .Range(2, NodeCount - 1)
-            .Select(id => new NestedSetBranch<TreeNode>(new TreeNode { NodeId = id }))
+            .Select(id => new NestedSetBranch<TreeNode>(new TreeNode
+            {
+                NodeId = id,
+                Tree = prefilled ? 7 : 0,
+                TreeId = prefilled ? new Guid("11111111-1111-1111-1111-111111111111") : Guid.Empty,
+                Parent = prefilled ? 999 : null,
+                Start = prefilled ? 17L : 0L,
+                End = prefilled ? 18L : 0L,
+                Depth = prefilled ? 9 : 0,
+                Position = prefilled ? 11L : 0L,
+            }))
             .ToArray();
 
         var root = new NestedSetBranch<TreeNode>(new TreeNode { NodeId = 1 }, children);
         _ = context.Model;
 
+        // WHY: Prefilled rollback compiles additional metadata snapshot delegates lazily. Warm the same value
+        // shape before measuring per-node retained state so one-time model caches are not multiplied by node count.
         _ = new NestedSetBulkPlan<TreeNode, int, Guid, int>(
             store,
-            [new NestedSetBranch<TreeNode>(new TreeNode { NodeId = int.MaxValue })],
+            [new NestedSetBranch<TreeNode>(new TreeNode
+            {
+                NodeId = int.MaxValue,
+                Tree = prefilled ? 7 : 0,
+                TreeId = prefilled ? new Guid("11111111-1111-1111-1111-111111111111") : Guid.Empty,
+                Parent = prefilled ? 999 : null,
+                Start = prefilled ? 17L : 0L,
+                End = prefilled ? 18L : 0L,
+                Depth = prefilled ? 9 : 0,
+                Position = prefilled ? 11L : 0L,
+            })],
             new HashSet<TreeNode>(ReferenceEqualityComparer.Instance),
             CancellationToken.None);
 
         var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
-        var heapBefore = GC.GetTotalMemory(forceFullCollection: true);
+        var heapBefore = ManagedHeapObservation.CollectedBytes();
 
         // Act
         var plan = new NestedSetBulkPlan<TreeNode, int, Guid, int>(
@@ -65,7 +92,7 @@ public sealed class BulkPlanAllocationTests
             CancellationToken.None);
 
         var allocated = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
-        var retained = GC.GetTotalMemory(forceFullCollection: true) - heapBefore;
+        var retained = ManagedHeapObservation.CollectedBytes() - heapBefore;
 
         // Assert
         var budget = checked(BytesPerNodeBudget * NodeCount);

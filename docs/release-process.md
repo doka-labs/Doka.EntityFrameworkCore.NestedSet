@@ -4,6 +4,10 @@ This document defines the package and evidence contract. The operator sequence
 is in [Release publication](operations/release-publication.md), and decision
 authority is in [Release governance](release-governance.md).
 
+Version `10.0.0` is the first stable contract. Each version, including the
+earlier `10.0.0-rc.1`, retains its own exact packages and qualification evidence.
+RC archives are never renamed into stable packages.
+
 The operator entry point is `./eng/pre-tag-check.sh`, as in Doka and
 SafeMigrations. It checks readiness from the current `main` checkout before the
 untagged hosted candidate starts. The runbook uses `release_commit`,

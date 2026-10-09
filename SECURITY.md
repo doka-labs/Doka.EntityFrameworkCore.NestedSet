@@ -167,18 +167,22 @@ signal, resource boundary, or release trust boundary changes.
 
 ## Supported Versions
 
-No NestedSet package has been published. The repository is preparing the
-first release candidate, `10.0.0-rc.1`, before stable `10.0.0`. This unpublished
-prerelease is not a supported public release and has no backport promise.
+This source defines the first stable `10.0.0` contract for both packages;
+the support policy below does not itself establish public package availability.
+Security fixes target the latest stable 10.x release. Reports against the
+earlier `10.0.0-rc.1` are accepted and triaged, but the RC has no separate
+maintenance or backport promise.
 
 | Release state | Security support |
 | --- | --- |
-| Prepared, unpublished `10.0.0-rc.1` source | Reports are accepted and triaged against the exact source revision and package build |
-| Stable releases | None published |
+| Latest stable 10.x, starting with `10.0.0` | Receives security fixes; reproduce with the qualified provider and patch matrix |
+| `10.0.0-rc.1` | Reports are accepted; fixes target the stable line, with no separate RC backports |
+| Unreleased source | Reports are accepted against the exact revision and build; no public release support is implied |
 
-The first verified publication must update this table as part of release
-readback. A tag, changelog entry, workflow run, or locally built package is not
-proof that a supported package was published.
+Use the [support matrix](docs/support-and-qualification.md) for the exact
+framework, provider, engine, and optional migration-adapter versions. A local
+archive or tag alone does not establish package authenticity; follow
+[release verification](docs/security/release-verification.md).
 
 ## Reporting a Vulnerability
 

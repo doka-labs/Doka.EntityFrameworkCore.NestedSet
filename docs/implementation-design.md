@@ -304,8 +304,13 @@ An inherited property can be shared by two concrete TPC tables with different
 collations. Capturing one value on that property would conflate their physical
 identities, so capture belongs to each hierarchy owner and its resolved store.
 Registry columns and native identity rowsets use the same effective facets.
-Concrete TPT bindings normalize to their configured ancestor owner for query,
-mutation, and coordinated-save comparisons. This does not merge independent
+Concrete TPH and TPT bindings normalize to their configured ancestor owner for
+query, mutation, and coordinated-save comparisons. Managed save factories are
+cached by that exact owner, and their generic entity type is the owner's CLR
+type. Changes to sibling derived types share one lock and ordering plan;
+tracked descendants remain eligible for structural refresh. Owner resolution
+is cached with the model rather than scanning the inheritance chain for every
+changed node. This does not merge named shared mappings or independent
 concrete TPC hierarchies that merely share an inherited property object.
 Captured string facets serialize on the hierarchy owner, including an empty
 string for a genuinely unknown default. A missing owner facet requires model
@@ -323,6 +328,13 @@ collation. PAD SPACE aliases remain aliases, while NO PAD identities retain
 their distinct trailing spaces.
 
 ## Query engine
+
+Principal-key collation depends on the effective provider representation,
+including value conversion, rather than only the CLR key type. Parent joins
+apply generic `EF.Functions.Collate<TProperty>` to the model-typed dependent
+operand. EF translates that marker after applying the property mapping;
+the indexed principal column keeps its own comparison semantics. Native
+non-string keys do not gain a collation expression.
 
 Public hierarchy queries are deferred, no-tracking `IQueryable<TEntity>`
 expressions rooted in the application's entity set. `TreeContaining(nodeKey)`,
@@ -418,6 +430,40 @@ use three payload saves while still locking every identity before payload SQL.
 A failed write restores captured CLR structural values where
 the outcome is definite.
 
+Single and bulk insertion share a bounded native identity lifecycle helper.
+It owns exact introduced entries before their initial tracking transition,
+captures installed key representations, and captures generated identities at
+the existing relational persistence boundary before acceptance. Mutable key
+representations are isolated through the configured comparer snapshots so
+application callbacks cannot corrupt cleanup's hash lookup. Foreign-key
+dependent buckets retain only the exact introduced dependent handles.
+
+Ordinary detachment remains the normal lifecycle. A rejected initial
+transition additionally removes its exact surviving reference or partial key
+registration; a callback-mutated identity additionally releases its captured
+map membership. No caller-wide clear, retracking cycle, artificial state
+transition, or scan over all identity maps is used. Cached delegates retain
+framework contracts, not context instances. The internal EF seam is explicitly
+version-qualified. A separate model-free binding owner validates its required
+member signatures once at `UseNestedSets` registration; incompatibility names the loaded
+version and member before hierarchy writes. This structural check is not a
+public EF compatibility guarantee or behavioral qualification of a future
+patch. Registration checks scalar and nullable maps plus EF's actual
+`IReadOnlyList<object?>` composite shape without compiling unused operations.
+Closed map operations compile lazily when a model needs them. Unchanged scalar
+refresh, identity matching, and detach preparation compare typed current, CLR,
+and installed relationship values before allocating snapshots. There is no
+public typed relationship-snapshot getter; the native generic reader compiles
+once per property reader. Exceptional differing member/model types retain the
+public object getters for EF's sentinel conversion semantics. Typed comparer
+bodies retain both operand null guards. Dependent-bucket lists are allocated
+only when an entry actually has a native bucket membership. Mutable reference
+keys retain protective snapshots at every boundary. Failure recovery
+audits the distinct touched maps once for exact residual introduced entries.
+This read-only audit runs only after failure, requires bounded batch memory,
+and can take linear time in caller entries in those maps. An irrecoverable
+callback-corrupted hash slot requires context disposal instead of silent reuse.
+
 Quick validation uses indexed aggregate and local invariant queries. Full
 validation loads compact structural projections and traverses iteratively.
 `PlanRebuildAsync` is write-free. `RebuildAsync` locks exactly one tree, rejects
@@ -495,12 +541,15 @@ a non-runnable, non-packable library. Its common test suites are public abstract
 classes, including nested suites; they are not independently discovered tests.
 
 The four provider projects reference that library and own thin concrete
-subclasses for every common suite and engine. xUnit discovers inherited methods
+subclasses for every common suite with an applicable declaration on that engine.
+xUnit discovers inherited methods
 on those concrete classes. The MySql project contains separate same-named MySQL
 and MariaDB suites; MariaDB wrappers live under its `MariaDb` folder and namespace.
 PostgreSql, SqlServer, and Sqlite own their respective engines. A suite remains
-structurally owned even when a justified method exclusion leaves that engine
-with no executable methods. A common method and every scenario variant must
+structurally owned while at least one declared method applies. Wholly excluded
+families have no wrapper, so raw IDE metadata cannot advertise their unsupported
+methods. Partially excluded families retain their wrapper and specific exclusions.
+A common method and every scenario variant must
 span more than one executable provider project after combining method and row
 exclusions. MySQL and MariaDB share one executable for this ownership rule.
 Provider-exclusive test bodies and helpers live in that project. Models and

@@ -9,6 +9,7 @@
                       IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive; compile"/>
     <PackageReference Include="Doka.EntityFrameworkCore.SafeMigrations.MySql"/>
     <PackageReference Include="Doka.EntityFrameworkCore.SafeMigrations.PostgreSql"/>
+    <PackageReference Include="Doka.EntityFrameworkCore.SafeMigrations.SqlServer"/>
     <PackageReference Include="Doka.EntityFrameworkCore.SafeMigrations.Sqlite"/>
   </ItemGroup>
 </Project>

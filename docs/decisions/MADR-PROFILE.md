@@ -14,9 +14,11 @@ The [template](adr-template.md) provides the complete starting structure. The
 
 Records preserve their actual recording dates and initial proposal history.
 The maintainer accepted the decisions then present on 2026-09-28; later records
-preserve their own acceptance dates. Implemented records
-are confirmed against linked repository evidence; the accepted release decision
-still requires complete qualification and authorized hosted publication.
+preserve their own acceptance dates. Implemented records are confirmed against
+linked repository evidence. The release decision is implemented, with the
+immutable first RC and both public NuGet package identities confirmed; each
+subsequent release follows the same qualification and authorized publication
+process.
 Implementation existence and passing checks MUST NOT be treated as historical
 approval. Acceptance requires a recorded owner decision under
 [project governance](../../GOVERNANCE.md).

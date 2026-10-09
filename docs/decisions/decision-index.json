@@ -178,7 +178,7 @@
     {
       "id": "D-016",
       "title": "Qualify immutable candidates before operator-controlled publication",
-      "status": "accepted",
+      "status": "implemented",
       "date": "2026-09-19",
       "path": "docs/decisions/D-016-release-candidate-evidence-and-publication.md",
       "supersedes": [],

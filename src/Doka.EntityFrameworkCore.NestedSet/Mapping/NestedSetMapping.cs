@@ -176,16 +176,14 @@ internal sealed class NestedSetMapping<TEntity, TKey, TScope>
             }
         }
 
-        if (typeof(TKey) == typeof(string))
-        {
-            KeyCollation = NestedSetCollations.Resolve(context, keyProperty, EntityType);
+        // WHY: Key identity is defined by provider storage, including converters from non-string model types.
+        KeyCollation = NestedSetCollations.Resolve(context, keyProperty, EntityType);
 
-            if (KeyCollation is null
-                && NestedSetCollations.Resolve(context, parentProperty, EntityType) is not null)
-            {
-                throw new InvalidOperationException(
-                    "Configure the string key collation when the parent property has an explicit collation.");
-            }
+        if (KeyCollation is null
+            && NestedSetCollations.Resolve(context, parentProperty, EntityType) is not null)
+        {
+            throw new InvalidOperationException(
+                "Configure the string-backed key collation when the parent property has an explicit collation.");
         }
     }
 

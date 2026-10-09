@@ -75,6 +75,36 @@ internal static class NestedSetIndexes
         }
     }
 
+    /// <summary>Restricts PostgreSQL's generated tree paths to queries that constrain their required TreeId.</summary>
+    /// <param name="entity">The configured hierarchy whose indexes were reconciled in the preceding batch.</param>
+    /// <param name="mapping">The validated structural descriptor.</param>
+    /// <param name="sql">The PostgreSQL identifier-delimiting service.</param>
+    internal static void ApplyTreePredicate(
+        IConventionEntityType entity,
+        NestedSetModelDescriptor mapping,
+        ISqlGenerationHelper sql
+    )
+    {
+        if (!s_owned.TryGetValue(entity, out var indexes))
+        {
+            return;
+        }
+
+        var store = NestedSetStoreObject.Resolve(entity, mapping);
+        var tree = mapping.TreeId.Resolve(entity);
+        var column = tree.GetColumnName(store)
+            ?? throw new InvalidOperationException(
+                $"Nested-set TreeId property '{tree.Name}' on '{entity.Name}' is not mapped to its hierarchy table.");
+        var filter = sql.DelimitIdentifier(column) + " IS NOT NULL";
+
+        foreach (var index in indexes.Where(index => index.IsInModel && IsUnmodified(index)))
+        {
+            // WHY: Every required TreeId remains indexed, and tree equality proves this predicate. Principal
+            // FK checks omit TreeId, so empty committed statistics cannot select a scope-only structural scan.
+            index.SetFilter(filter);
+        }
+    }
+
     /// <summary>Builds tree-local access paths from complete structural annotations.</summary>
     /// <param name="entity">The mutable entity metadata.</param>
     /// <param name="validateModel">Whether incomplete metadata must fail instead of postponing reconciliation.</param>
@@ -203,6 +233,8 @@ internal static class NestedSetIndexes
     /// <summary>Allows cleanup only while the application has not adopted or customized an owned index.</summary>
     /// <param name="index">The convention-created index to inspect.</param>
     /// <returns>Whether the index remains owned exclusively by this convention.</returns>
+    // WHY: NestedSet itself assigns convention-level directions to these owned structural indexes. The separate
+    // parent-index adoption rule accepts only an untouched EF self-FK index and must not share this broader test.
     private static bool IsUnmodified(
         IConventionIndex index
     ) => index.GetConfigurationSource() == ConfigurationSource.Convention

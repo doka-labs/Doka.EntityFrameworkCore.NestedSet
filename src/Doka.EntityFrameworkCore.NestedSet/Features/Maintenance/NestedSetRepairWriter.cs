@@ -78,7 +78,8 @@ internal sealed class NestedSetRepairWriter<TEntity, TKey, TTreeId, TScope>
         AppendCoordinate(sql, key, _store.Map.Position, "p", count);
         sql.Append(
             CultureInfo.InvariantCulture,
-            $" WHERE {_batch.IdentityPredicate} AND {key} IN (");
+            $" WHERE {_batch.KeyBatchIdentityPredicate} AND {key} IN (");
+
         for (var index = 0; index < count; index++)
         {
             if (index != 0)

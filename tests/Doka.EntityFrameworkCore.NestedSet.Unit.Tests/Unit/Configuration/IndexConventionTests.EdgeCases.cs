@@ -135,7 +135,8 @@ public sealed partial class IndexConventionTests
             && index.Properties[2].Name == nameof(IndexNode.Left));
 
         Assert.Equal("UsefulLeft", left.Name);
-        Assert.Equal(4, entity.GetIndexes().Count());
+        Assert.Null(left.GetFilter());
+        Assert.Equal(5, entity.GetIndexes().Count());
     }
 
     /// <summary>Convention-generated names do not make a replaceable ordinary index application-owned.</summary>
@@ -268,6 +269,13 @@ public sealed partial class IndexConventionTests
     /// <summary>Gets the additional ordinary access path's physical name from the finalized design model.</summary>
     private static string FallbackName(
         ConventionContext context
-    ) => context.GetService<IDesignTimeModel>().Model.FindEntityType(typeof(IndexNode))!
-        .GetIndexes().Single(index => index.Name is not null).GetDatabaseName()!;
+    ) => context
+        .GetService<IDesignTimeModel>()
+        .Model
+        .FindEntityType(typeof(IndexNode))!
+        .GetIndexes()
+        .Single(index =>
+            index.Name is not null
+            && index.Properties.Contains(index.DeclaringEntityType.FindProperty(nameof(IndexNode.TreeId))!))
+        .GetDatabaseName()!;
 }

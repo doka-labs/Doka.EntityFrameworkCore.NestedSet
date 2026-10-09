@@ -57,6 +57,7 @@ public abstract class TpcTests : ProviderTest
     }
 
     /// <summary>Rejects a base hierarchy whose polymorphic TPC query spans multiple tables.</summary>
+    [DatabaseIndependent]
     [Fact]
     public void PolymorphicTpcHierarchyIsRejected()
     {
