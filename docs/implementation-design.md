@@ -418,6 +418,40 @@ use three payload saves while still locking every identity before payload SQL.
 A failed write restores captured CLR structural values where
 the outcome is definite.
 
+Single and bulk insertion share a bounded native identity lifecycle helper.
+It owns exact introduced entries before their initial tracking transition,
+captures installed key representations, and captures generated identities at
+the existing relational persistence boundary before acceptance. Mutable key
+representations are isolated through the configured comparer snapshots so
+application callbacks cannot corrupt cleanup's hash lookup. Foreign-key
+dependent buckets retain only the exact introduced dependent handles.
+
+Ordinary detachment remains the normal lifecycle. A rejected initial
+transition additionally removes its exact surviving reference or partial key
+registration; a callback-mutated identity additionally releases its captured
+map membership. No caller-wide clear, retracking cycle, artificial state
+transition, or scan over all identity maps is used. Cached delegates retain
+framework contracts, not context instances. The internal EF seam is explicitly
+version-qualified. A separate model-free binding owner validates its required
+member signatures once at `UseNestedSets` registration; incompatibility names the loaded
+version and member before hierarchy writes. This structural check is not a
+public EF compatibility guarantee or behavioral qualification of a future
+patch. Registration checks scalar and nullable maps plus EF's actual
+`IReadOnlyList<object?>` composite shape without compiling unused operations.
+Closed map operations compile lazily when a model needs them. Unchanged scalar
+refresh, identity matching, and detach preparation compare typed current, CLR,
+and installed relationship values before allocating snapshots. There is no
+public typed relationship-snapshot getter; the native generic reader compiles
+once per property reader. Exceptional differing member/model types retain the
+public object getters for EF's sentinel conversion semantics. Typed comparer
+bodies retain both operand null guards. Dependent-bucket lists are allocated
+only when an entry actually has a native bucket membership. Mutable reference
+keys retain protective snapshots at every boundary. Failure recovery
+audits the distinct touched maps once for exact residual introduced entries.
+This read-only audit runs only after failure, requires bounded batch memory,
+and can take linear time in caller entries in those maps. An irrecoverable
+callback-corrupted hash slot requires context disposal instead of silent reuse.
+
 Quick validation uses indexed aggregate and local invariant queries. Full
 validation loads compact structural projections and traverses iteratively.
 `PlanRebuildAsync` is write-free. `RebuildAsync` locks exactly one tree, rejects

@@ -123,66 +123,16 @@ internal sealed class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
             throw new NestedSetException(NestedSetErrorCode.InvalidContext, "The inserted node must be detached.");
         }
 
-        var tracker = _store.Context.ChangeTracker;
-        var automaticDetection = tracker.AutoDetectChangesEnabled;
-        HashSet<object> knownTracked;
+        var insertionEntries = new List<(EntityEntry Entry, NestedSetInsertionTracking.Identity? Identity)>();
+        var insertionRelationships = new List<(EntityEntry Owner, INavigationBase Navigation, object Entity)>();
+        var insertionValues = new List<NestedSetInsertionValues.Snapshot>();
+        var (knownTracked, original, stagedKey, hasAssignedKey) = PrepareDetachedInsertion(
+            entity,
+            entry,
+            insertionEntries,
+            insertionRelationships,
+            insertionValues);
 
-        try
-        {
-            // WHY: This baseline needs identity only. The executor detects pending CLR changes before any write;
-            // running it here would detect the entire tracker and wrap every unrelated application entity.
-            tracker.AutoDetectChangesEnabled = false;
-            knownTracked = NestedSetEntityAccess<TEntity>
-                .Entries(_store.Context, _store.Map.EntityType)
-                .Select(candidate => (object)candidate.Entity)
-                .ToHashSet(ReferenceEqualityComparer.Instance);
-        }
-        finally
-        {
-            tracker.AutoDetectChangesEnabled = automaticDetection;
-        }
-
-        // WHY: Owned payload belongs to the same aggregate row lifecycle. Other populated relationships could add
-        // entities whose structural coordinates were never assigned by this operation.
-        foreach (var navigation in entry.Navigations)
-        {
-            if (navigation.CurrentValue is { } value
-                && (value is not IEnumerable sequence
-                    || sequence
-                        .Cast<object>()
-                        .Any())
-                && !navigation.Metadata.TargetEntityType.IsOwned())
-            {
-                throw new NestedSetException(
-                    NestedSetErrorCode.InvalidContext,
-                    "Insert a node without populated non-owned navigation properties.");
-            }
-        }
-
-        // WHY: Database rollback does not restore caller CLR values or generated keys. These original metadata
-        // values may be null or sentinels; rollback preserves them exactly while active stage identities stay typed.
-        var structural = new List<IProperty>
-        {
-            _store.Map.KeyProperty,
-            _store.Map.LeftProperty,
-            _store.Map.RightProperty,
-            _store.Map.TreeIdProperty,
-            _store.Map.ParentProperty,
-            _store.Map.DepthProperty,
-            _store.Map.PositionProperty,
-        };
-
-        if (_store.Map.ScopeProperty is { } scopeProperty)
-        {
-            structural.Add(scopeProperty);
-        }
-
-        var originalValues = entry.CurrentValues;
-        var original = structural.ToDictionary(
-            property => property,
-            property => NestedSetStructuralValue.Snapshot(property, originalValues[property]));
-
-        EntityEntry[] insertionEntries = [];
         NestedSetTrackerSnapshot? callbackWrites = null;
 
         try
@@ -286,20 +236,31 @@ internal sealed class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
                             _store.Map.RightProperty,
                             checked(destination.Boundary + 1));
 
-                        insertionEntries = TrackInsertionGraph(entity);
+                        TrackInsertionGraph(insertionEntries);
+                        var stagedIdentity = insertionEntries[0].Identity!;
 
                         // WHY: This one insertion already owns its transaction, lock and structural assignment.
                         // The SaveChanges integration must not interpret it as an unauthorized direct tree addition.
                         using (var managedSave = NestedSetSaveChanges.EnterManagedSave(
                                    _store.Context,
-                                   insertionEntries.Select(candidate => candidate.Entity),
+                                   insertionEntries.Select(candidate => candidate.Entry.Entity),
                                    () => RequireSavedStage(
                                        entry,
                                        destination,
+                                       stagedIdentity,
+                                       hasAssignedKey,
+                                       stagedKey,
                                        stagedScope,
                                        stagedTreeId,
                                        stagedParent,
-                                       knownTracked)))
+                                       knownTracked),
+                                   persistenceCompleted: () =>
+                                   {
+                                       foreach (var candidate in insertionEntries)
+                                       {
+                                           candidate.Identity?.Refresh();
+                                       }
+                                   }))
                         {
                             var autoSavepoints = _store.Context.Database.AutoSavepointsEnabled;
 
@@ -322,7 +283,16 @@ internal sealed class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
                             managedSave.RequirePersisted();
                         }
 
-                        RequireSavedStage(entry, destination, stagedScope, stagedTreeId, stagedParent, knownTracked);
+                        RequireSavedStage(
+                            entry,
+                            destination,
+                            stagedIdentity,
+                            hasAssignedKey,
+                            stagedKey,
+                            stagedScope,
+                            stagedTreeId,
+                            stagedParent,
+                            knownTracked);
                         NestedSetTelemetry.RecordRowsAffected(1);
 
                         if (automatic
@@ -342,10 +312,14 @@ internal sealed class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
                                 .FindAsync(key, token)
                                 .ConfigureAwait(false);
 
-                            entry.Property<long>(_store.Map.LeftProperty).CurrentValue = saved.Left;
-                            entry.Property<long>(_store.Map.RightProperty).CurrentValue = saved.Right;
-                            entry.Property<int>(_store.Map.DepthProperty).CurrentValue = saved.Depth;
-                            entry.Property<long>(_store.Map.PositionProperty).CurrentValue = saved.Position;
+                            entry.Property<long>(_store.Map.LeftProperty)
+                                .CurrentValue = saved.Left;
+                            entry.Property<long>(_store.Map.RightProperty)
+                                .CurrentValue = saved.Right;
+                            entry.Property<int>(_store.Map.DepthProperty)
+                                .CurrentValue = saved.Depth;
+                            entry.Property<long>(_store.Map.PositionProperty)
+                                .CurrentValue = saved.Position;
 
                             // WHY: The move can fire update triggers or change a provider-generated version after
                             // INSERT returned its token. Returning that stale token would break a later attached save.
@@ -360,6 +334,10 @@ internal sealed class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
                                 .TouchAsync(_store.Context, _store.LockRequest(NestedSetTreeLockMode.Existing), token)
                                 .ConfigureAwait(false);
                         }
+
+                        // WHY: Application state callbacks can reject detachment. Complete this lifecycle while
+                        // the transaction or caller savepoint can still roll back the INSERT and generated values.
+                        DetachInsertionGraph(insertionEntries);
                     },
                     placement is null ? NestedSetTreeLockMode.New : NestedSetTreeLockMode.Existing,
                     cancellationToken)
@@ -371,7 +349,7 @@ internal sealed class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
 
             try
             {
-                Restore(entry, insertionEntries, original);
+                Restore(entry, insertionEntries, insertionRelationships, original, insertionValues);
             }
             catch (Exception restoreError)
             {
@@ -398,68 +376,294 @@ internal sealed class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
 
             throw;
         }
-
-        // WHY: Keeping this instance tracked would conflict with later set-based hierarchy updates.
-        // Failure cleanup performs its own protected detachment; a finally here could replace the original error.
-        DetachInsertionGraph(insertionEntries);
     }
 
-    /// <summary>Tracks the root and its owned payload while rejecting other newly discovered graph entries.</summary>
-    private EntityEntry[] TrackInsertionGraph(
-        TEntity entity
-    )
+    /// <summary>Captures the detached aggregate and releases exact references when application reads fail.</summary>
+    /// <param name="entity">The detached input root whose owned graph is bounded by its navigation metadata.</param>
+    /// <param name="entry">An input already proven detached, so caller-owned tracked entries are never cleaned.</param>
+    /// <param name="introduced">The exact newly introduced entries owned by this attempt.</param>
+    /// <param name="relationships">The caller's original owned aggregate memberships.</param>
+    /// <param name="insertionValues">Generated leaves and owned identities restored after a later rollback.</param>
+    /// <returns>The caller baseline and independent structural identity snapshots.</returns>
+    private (HashSet<object> Tracked, Dictionary<IProperty, object?> Original, TKey Key, bool Assigned)
+        PrepareDetachedInsertion(
+            TEntity entity,
+            EntityEntry entry,
+            List<(EntityEntry Entry, NestedSetInsertionTracking.Identity? Identity)> introduced,
+            List<(EntityEntry Owner, INavigationBase Navigation, object Entity)> relationships,
+            List<NestedSetInsertionValues.Snapshot> insertionValues
+        )
     {
-        var introduced = new List<EntityEntry>();
-
         try
         {
-            // WHY: TrackGraph visits only the detached aggregate. A tracker-wide before/after scan would allocate
-            // wrappers for unrelated application entities on every single insert.
-            _store.Context.ChangeTracker.TrackGraph(
-                entity,
-                graphNode =>
+            // WHY: Baseline discovery and application snapshot getters can create owned Detached references
+            // before failing. Retain the bounded graph before those reads so initialization owns every new entry.
+            CollectInsertionGraph(entity, introduced, relationships);
+            var tracker = _store.Context.ChangeTracker;
+            var automaticDetection = tracker.AutoDetectChangesEnabled;
+            HashSet<object> knownTracked;
+
+            try
+            {
+                // WHY: This baseline needs identity only. The executor detects pending CLR changes before any write;
+                // running it here would detect the entire tracker and wrap every unrelated application entity.
+                tracker.AutoDetectChangesEnabled = false;
+                knownTracked = NestedSetEntityAccess<TEntity>
+                    .Entries(_store.Context, _store.Map.EntityType)
+                    .Select(candidate => (object)candidate.Entity)
+                    .ToHashSet(ReferenceEqualityComparer.Instance);
+            }
+            finally
+            {
+                tracker.AutoDetectChangesEnabled = automaticDetection;
+            }
+
+            // WHY: Owned payload belongs to the same aggregate row lifecycle. Other populated relationships could add
+            // entities whose structural coordinates were never assigned by this operation.
+            foreach (var navigation in entry.Navigations)
+            {
+                if (navigation.CurrentValue is { } value
+                    && (value is not IEnumerable sequence
+                        || sequence
+                            .Cast<object>()
+                            .Any())
+                    && !navigation.Metadata.TargetEntityType.IsOwned())
                 {
-                    var candidate = graphNode.Entry;
+                    throw new NestedSetException(
+                        NestedSetErrorCode.InvalidContext,
+                        "Insert a node without populated non-owned navigation properties.");
+                }
+            }
 
-                    if (!ReferenceEquals(candidate.Entity, entity)
-                        && !candidate.Metadata.IsOwned())
-                    {
-                        throw new NestedSetException(
-                            NestedSetErrorCode.InvalidContext,
-                            "Insert a node without populated non-owned navigation properties.");
-                    }
+            // WHY: Database rollback does not restore caller CLR values or generated keys. These original metadata
+            // values may be null or sentinels; rollback preserves them exactly while stage identities stay typed.
+            var structural = new List<IProperty>
+            {
+                _store.Map.KeyProperty,
+                _store.Map.LeftProperty,
+                _store.Map.RightProperty,
+                _store.Map.TreeIdProperty,
+                _store.Map.ParentProperty,
+                _store.Map.DepthProperty,
+                _store.Map.PositionProperty,
+            };
 
-                    introduced.Add(candidate);
-                    candidate.State = EntityState.Added;
-                });
+            if (_store.Map.ScopeProperty is { } scopeProperty)
+            {
+                structural.Add(scopeProperty);
+            }
+
+            var originalValues = entry.CurrentValues;
+            var original = structural.ToDictionary(
+                property => property,
+                property => NestedSetStructuralValue.Snapshot(property, originalValues[property]));
+
+            // WHY: The existing rollback snapshot already isolates mutable assigned keys from caller storage.
+            // Sentinel keys may be generated by EF; only an assigned identity is immutable during the save.
+            var stagedKey = (TKey)original[_store.Map.KeyProperty]!;
+            var hasAssignedKey = _store.Map.KeyProperty.ValueGenerated == ValueGenerated.Never
+                || !_store
+                    .Map
+                    .KeyProperty
+                    .GetValueComparer()
+                    .Equals(stagedKey, _store.Map.KeyProperty.Sentinel);
+
+            var structuralProperties = original.Keys.ToHashSet();
+
+            foreach (var candidate in introduced)
+            {
+                // WHY: Generated leaves and owned identities can propagate before a late failure. Share their
+                // metadata-qualified policy with bulk rollback without copying structural roles twice.
+                if (NestedSetInsertionValues.Capture(
+                        candidate.Entry.Metadata,
+                        candidate.Entry.Entity,
+                        ReferenceEquals(candidate.Entry.Entity, entity) ? structuralProperties : null) is { } snapshot)
+                {
+                    insertionValues.Add(snapshot);
+                }
+            }
+
+            return (knownTracked, original, stagedKey, hasAssignedKey);
         }
-        catch
+        catch (Exception initializationError)
         {
-            // WHY: A graph callback can fail after some entries became tracked. Undo only this aggregate so the
-            // caller's earlier tracked work retains its original state.
-            DetachInsertionGraph(introduced);
+            List<Exception>? cleanupErrors = null;
+
+            try
+            {
+                DetachInsertionGraph(introduced);
+            }
+            catch (Exception cleanupError)
+            {
+                (cleanupErrors ??= []).Add(cleanupError);
+            }
+
+            try
+            {
+                // WHY: Root entry creation precedes traversal. Even a still-Detached failure owns its native
+                // reference if traversal failed before delivering the first callback.
+                NestedSetInsertionTracking.Detach(entry);
+            }
+            catch (Exception cleanupError)
+            {
+                (cleanupErrors ??= []).Add(cleanupError);
+            }
+
+            try
+            {
+                NestedSetInsertionTracking.VerifyFailedCleanup(introduced.Select(candidate => candidate.Entry));
+            }
+            catch (Exception cleanupError)
+            {
+                (cleanupErrors ??= []).Add(cleanupError);
+            }
+
+            if (cleanupErrors is not null)
+            {
+                throw new AggregateException(
+                    "Nested-set insertion initialization cleanup failed. Discard the context.",
+                    [initializationError, .. cleanupErrors]);
+            }
 
             throw;
         }
-
-        return introduced.ToArray();
     }
 
-    /// <summary>Detaches every entry introduced for one successful aggregate insertion.</summary>
-    private static void DetachInsertionGraph(
-        IReadOnlyList<EntityEntry> entries
+    /// <summary>Retains the complete bounded owned graph before its first tracking transition can fail.</summary>
+    /// <param name="entity">The detached root and owned payload aggregate.</param>
+    /// <param name="introduced">The exact entries retained for rollback and native identity cleanup.</param>
+    /// <param name="relationships">The owned navigation memberships restored after a failed insertion.</param>
+    private void CollectInsertionGraph(
+        TEntity entity,
+        List<(EntityEntry Entry, NestedSetInsertionTracking.Identity? Identity)> introduced,
+        List<(EntityEntry Owner, INavigationBase Navigation, object Entity)> relationships
     )
     {
+        // WHY: TrackGraph visits only the detached aggregate. A tracker-wide before/after scan would allocate
+        // wrappers for unrelated application entities on every single insert.
+        _store.Context.ChangeTracker.TrackGraph(
+            entity,
+            new HashSet<object>(ReferenceEqualityComparer.Instance),
+            graphNode =>
+            {
+                var candidate = graphNode.Entry;
+
+                if (!graphNode.NodeState.Add(candidate.Entity))
+                {
+                    return false;
+                }
+
+                if (candidate.State == EntityState.Detached)
+                {
+                    // WHY: Traversal creates a native reference before invoking this callback. Own newly
+                    // detached foreign entries before rejecting them, preserving previously tracked caller rows.
+                    introduced.Add((candidate, null));
+                }
+
+                if (!ReferenceEquals(candidate.Entity, entity)
+                    && !candidate.Metadata.IsOwned())
+                {
+                    throw new NestedSetException(
+                        NestedSetErrorCode.InvalidContext,
+                        "Insert a node without populated non-owned navigation properties.");
+                }
+
+                if (candidate.State != EntityState.Detached)
+                {
+                    throw new NestedSetException(
+                        NestedSetErrorCode.InvalidContext,
+                        "The inserted node and its owned payload must be detached.");
+                }
+
+                if (graphNode is { SourceEntry: { } owner, InboundNavigation: { } navigation })
+                {
+                    relationships.Add((owner, navigation, candidate.Entity));
+                }
+
+                return true;
+            });
+    }
+
+    /// <summary>Installs identities only after the complete detached aggregate has been retained.</summary>
+    /// <param name="introduced">The exact entries collected before any structural or tracking assignment.</param>
+    private static void TrackInsertionGraph(
+        List<(EntityEntry Entry, NestedSetInsertionTracking.Identity? Identity)> introduced
+    )
+    {
+        // WHY: A root's first transition can create native Detached references to owned payload before its
+        // traversal callback runs. Collect the full graph first, then own every partial transition and map identity.
+        for (var index = 0; index < introduced.Count; index++)
+        {
+            var candidate = introduced[index].Entry;
+            candidate.State = EntityState.Added;
+            introduced[index] = (candidate, NestedSetInsertionTracking.Capture(candidate));
+        }
+    }
+
+    /// <summary>Attempts exact lifecycle cleanup for every introduced entry without abandoning owned payload.</summary>
+    /// <param name="entries">Only the entries introduced for this bounded insertion aggregate.</param>
+    private static void DetachInsertionGraph(
+        IReadOnlyList<(EntityEntry Entry, NestedSetInsertionTracking.Identity? Identity)> entries
+    )
+    {
+        List<Exception>? failures = null;
+
+        foreach (var (_, identity) in entries)
+        {
+            try
+            {
+                // WHY: Mutable principal keys must match their installed identities before public detachment
+                // performs owned relationship fixup. Prepare the whole aggregate before detaching any entry.
+                identity?.PrepareDetach();
+            }
+            catch (Exception error)
+            {
+                (failures ??= []).Add(error);
+            }
+        }
+
         for (var index = entries.Count - 1; index >= 0; index--)
         {
-            entries[index].State = EntityState.Detached;
+            try
+            {
+                if (entries[index].Identity is { } identity)
+                {
+                    identity.Detach();
+                }
+                else
+                {
+                    NestedSetInsertionTracking.Detach(entries[index].Entry);
+                }
+            }
+            catch (Exception error)
+            {
+                // WHY: An application lifecycle callback must not prevent cleanup of the remaining aggregate.
+                (failures ??= []).Add(error);
+            }
+        }
+
+        if (failures is not null)
+        {
+            throw new AggregateException("The inserted aggregate could not be completely detached.", failures);
         }
     }
 
     /// <summary>Rejects callbacks that alter the exact staged structure or add another hierarchy entity.</summary>
+    /// <param name="entry">The introduced root whose current structural values remain staged.</param>
+    /// <param name="destination">The placement resolved under the exact tree lock.</param>
+    /// <param name="identity">The installed temporary or provider-generated identity captured before callbacks.</param>
+    /// <param name="hasAssignedKey">Whether the caller supplied an identity before insertion.</param>
+    /// <param name="key">The independent original assigned-key snapshot.</param>
+    /// <param name="scope">The exact expected scope snapshot.</param>
+    /// <param name="treeId">The exact expected tree identity snapshot.</param>
+    /// <param name="parent">The exact expected parent snapshot.</param>
+    /// <param name="knownTracked">The caller's earlier tracked hierarchy instances.</param>
     private void RequireSavedStage(
         EntityEntry<TEntity> entry,
         NestedSetPlacementResolver<TEntity, TKey, TTreeId, TScope>.Destination destination,
+        NestedSetInsertionTracking.Identity identity,
+        bool hasAssignedKey,
+        TKey key,
         TScope scope,
         TTreeId treeId,
         NestedSetParent<TKey> parent,
@@ -472,6 +676,12 @@ internal sealed class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
         // a callback's structural edit, using representation equality rather than a broader application comparer.
         if (entry.State == EntityState.Detached
             || HasUnexpectedHierarchyEntry(entry, knownTracked)
+            || !identity.Matches(_store.Map.KeyProperty)
+            || (hasAssignedKey
+                && !NestedSetTypedValue<TKey>.Matches(
+                    _store.Map.KeyProperty,
+                    NestedSetTypedValue<TKey>.Read(values, _store.Map.KeyProperty),
+                    key))
             || (_store.Map.ScopeProperty is { } scopeProperty
                 && !NestedSetTypedValue<TScope>.Matches(
                     scopeProperty,
@@ -522,10 +732,17 @@ internal sealed class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
     }
 
     /// <summary>Attempts all owned cleanup steps while retaining every application callback failure.</summary>
+    /// <param name="entry">The original detached root entry used to restore its mapped structure.</param>
+    /// <param name="insertionEntries">The exact aggregate entries owned by this insertion attempt.</param>
+    /// <param name="insertionRelationships">The caller's original owned navigation memberships.</param>
+    /// <param name="original">The independent snapshots of every caller-visible structural role.</param>
+    /// <param name="insertionValues">The independent generated-leaf and owned-identity snapshots.</param>
     private static void Restore(
         EntityEntry entry,
-        IReadOnlyList<EntityEntry> insertionEntries,
-        Dictionary<IProperty, object?> original
+        IReadOnlyList<(EntityEntry Entry, NestedSetInsertionTracking.Identity? Identity)> insertionEntries,
+        IReadOnlyList<(EntityEntry Owner, INavigationBase Navigation, object Entity)> insertionRelationships,
+        Dictionary<IProperty, object?> original,
+        IReadOnlyList<NestedSetInsertionValues.Snapshot> insertionValues
     )
     {
         List<Exception>? failures = null;
@@ -534,10 +751,22 @@ internal sealed class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
         {
             DetachInsertionGraph(insertionEntries);
 
-            if (entry.State != EntityState.Detached)
+            if (!insertionEntries.Any(candidate => ReferenceEquals(candidate.Entry.Entity, entry.Entity))
+                || entry.State != EntityState.Detached)
             {
-                entry.State = EntityState.Detached;
+                NestedSetInsertionTracking.Detach(entry);
             }
+        }
+        catch (Exception error)
+        {
+            (failures ??= []).Add(error);
+        }
+
+        try
+        {
+            // WHY: Repeated callback-owned mutable rekeys can corrupt native hash slots. A failed attempt
+            // audits only maps touched by its exact entries; any residual identity requires discarding the context.
+            NestedSetInsertionTracking.VerifyFailedCleanup(insertionEntries.Select(candidate => candidate.Entry));
         }
         catch (Exception error)
         {
@@ -559,11 +788,37 @@ internal sealed class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
             }
         }
 
+        foreach (var (owner, navigation, entity) in insertionRelationships)
+        {
+            try
+            {
+                // WHY: Detaching a mutable-key aggregate can sever its owned CLR relationships. Restore the
+                // caller's original graph after every entry is detached so retry can save the same owned payload.
+                NestedSetInsertionTracking.RestoreRelationship(owner.Entity, navigation, entity);
+            }
+            catch (Exception error)
+            {
+                (failures ??= []).Add(error);
+            }
+        }
+
+        foreach (var snapshot in insertionValues)
+        {
+            try
+            {
+                snapshot.Restore();
+            }
+            catch (Exception error)
+            {
+                (failures ??= []).Add(error);
+            }
+        }
+
         if (entry.State != EntityState.Detached)
         {
             try
             {
-                entry.State = EntityState.Detached;
+                NestedSetInsertionTracking.Detach(entry);
             }
             catch (Exception error)
             {

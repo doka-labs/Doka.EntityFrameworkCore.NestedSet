@@ -31,6 +31,8 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         }
 
         var entries = new List<EntityEntry>(count);
+        var identities = new Dictionary<IUpdateEntry, NestedSetInsertionTracking.Identity>(count);
+        var relationships = new List<(EntityEntry Owner, INavigationBase Navigation, object Entity)>();
         var roots = new EntityEntry<TEntity>[count];
 
         try
@@ -40,9 +42,7 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
                 cancellationToken.ThrowIfCancellationRequested();
                 var index = offset + relativeIndex;
                 var node = Nodes[index];
-                var entry = _store.Entry(node.Entity);
-                roots[relativeIndex] = entry;
-                node.CaptureGeneratedValues(entry, _generatedProperties);
+                node.CaptureGeneratedValues(_generatedProperties);
 
                 if (_store.Map.Order is not null)
                 {
@@ -65,43 +65,36 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
                     && (node.Parent >= 0 || destination.Parent.HasValue);
 
                 node.StagedGeometry = node.Geometry;
-                if (_store.Map.ScopeProperty is { } scope)
-                {
-                    // WHY: An input byte array must not alias the expected snapshot or the facade's Scope argument.
-                    NestedSetStructuralValue.Assign(
-                        entry,
-                        scope,
-                        NestedSetTypedValue<TScope>.Snapshot(scope, _stagedScope));
-                }
 
-                // WHY: Every import derives TreeId from its typed destination and never trusts detached input state.
-                NestedSetStructuralValue.Assign(
-                    entry,
-                    _store.Map.TreeIdProperty,
-                    NestedSetTypedValue<TTreeId>.Snapshot(_store.Map.TreeIdProperty, _stagedTreeId));
+                // WHY: An already-detached EF entry keeps a strong reference even if a CLR getter or setter
+                // fails before tracking. Finish observable CLR access first; only shadow storage requires an entry.
+                AssignStagedStructure(node, shadowEntry: null);
+                var entry = _store.Entry(node.Entity);
+                roots[relativeIndex] = entry;
 
-                NestedSetStructuralValue.Assign(
-                    entry,
-                    _store.Map.ParentProperty,
-                    node.StagedParent.Snapshot(_store.Map.ParentProperty)
-                        .BoxedValue);
+                // WHY: Shadow assignment can invoke a configured comparer before TrackGraph runs. The entry
+                // belongs to this attempt immediately, including when its first transition never completes.
+                entries.Add(entry);
+                AssignStagedStructure(node, entry);
+                TrackInsertionGraph(node, entries, identities, relationships);
+            }
 
-                NestedSetStructuralValue.Assign(entry, _store.Map.LeftProperty, node.Geometry.Left);
-                NestedSetStructuralValue.Assign(entry, _store.Map.RightProperty, node.Geometry.Right);
-                NestedSetStructuralValue.Assign(entry, _store.Map.DepthProperty, node.Geometry.Depth);
-                NestedSetStructuralValue.Assign(entry, _store.Map.PositionProperty, node.Geometry.Position);
-                TrackInsertionGraph(node, entries);
+            foreach (var identity in identities.Values)
+            {
+                identity.Refresh();
             }
 
             _activeOffset = offset;
             _activeRoots = roots;
             _activeEntries = entries.ToArray();
+            _activeIdentities = identities;
+            _activeRelationships = relationships;
         }
         catch (Exception stageError)
         {
             try
             {
-                Detach(entries);
+                Detach(entries, identities, relationships);
             }
             catch (Exception detachError)
             {
@@ -117,46 +110,176 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         }
     }
 
+    /// <summary>Assigns CLR structure before entry creation or shadow structure before normal tracking.</summary>
+    /// <param name="node">The input whose staged identities and coordinates have been resolved.</param>
+    /// <param name="shadowEntry">The detached entry for shadow assignments, or null for CLR assignments.</param>
+    private void AssignStagedStructure(
+        Node node,
+        EntityEntry<TEntity>? shadowEntry
+    )
+    {
+        if (_store.Map.ScopeProperty is { } scope)
+        {
+            AssignStagedValue(node, shadowEntry, scope, _stagedScope, snapshot: true);
+        }
+
+        // WHY: Every import derives TreeId from its typed destination and never trusts detached input state.
+        // Mutable identity representations are copied only for their actual CLR or shadow storage destination.
+        AssignStagedValue(node, shadowEntry, _store.Map.TreeIdProperty, _stagedTreeId, snapshot: true);
+
+        var parentProperty = _store.Map.ParentProperty;
+
+        if (parentProperty.IsShadowProperty() == (shadowEntry is not null))
+        {
+            var parent = node.StagedParent.Snapshot(parentProperty)
+                .BoxedValue;
+
+            if (shadowEntry is null)
+            {
+                NestedSetStructuralValue.Assign(node.Entity, parentProperty, parent);
+            }
+            else
+            {
+                NestedSetStructuralValue.Assign(shadowEntry, parentProperty, parent);
+            }
+        }
+
+        AssignStagedValue(node, shadowEntry, _store.Map.LeftProperty, node.Geometry.Left);
+        AssignStagedValue(node, shadowEntry, _store.Map.RightProperty, node.Geometry.Right);
+        AssignStagedValue(node, shadowEntry, _store.Map.DepthProperty, node.Geometry.Depth);
+        AssignStagedValue(node, shadowEntry, _store.Map.PositionProperty, node.Geometry.Position);
+    }
+
+    /// <summary>Writes one role in its CLR or shadow phase without allocating inactive snapshots.</summary>
+    /// <typeparam name="TValue">The known staged identity or coordinate type.</typeparam>
+    /// <param name="node">The caller-owned input whose CLR representation is staged.</param>
+    /// <param name="shadowEntry">The shadow storage entry, or null for CLR storage.</param>
+    /// <param name="property">The exact configured structural role.</param>
+    /// <param name="value">The independently resolved staged value.</param>
+    /// <param name="snapshot">Whether a mutable identity needs its own storage representation.</param>
+    private static void AssignStagedValue<TValue>(
+        Node node,
+        EntityEntry<TEntity>? shadowEntry,
+        IProperty property,
+        TValue value,
+        bool snapshot = false
+    )
+        where TValue : notnull
+    {
+        if (property.IsShadowProperty() != (shadowEntry is not null))
+        {
+            return;
+        }
+
+        var assigned = snapshot ? NestedSetTypedValue<TValue>.Snapshot(property, value) : value;
+
+        if (shadowEntry is null)
+        {
+            NestedSetStructuralValue.Assign(node.Entity, property, assigned);
+        }
+        else
+        {
+            NestedSetStructuralValue.Assign(shadowEntry, property, assigned);
+        }
+    }
+
     /// <summary>Tracks one imported node and appends only its owned payload to the bounded batch.</summary>
     private void TrackInsertionGraph(
         Node node,
-        List<EntityEntry> batchEntries
+        List<EntityEntry> batchEntries,
+        Dictionary<IUpdateEntry, NestedSetInsertionTracking.Identity> identities,
+        List<(EntityEntry Owner, INavigationBase Navigation, object Entity)> relationships
     )
     {
-        var introducedStart = batchEntries.Count;
-
-        try
+        if (!_hasInputNavigations)
         {
-            // WHY: Enumerating the complete ChangeTracker before and after every node makes a bulk import
-            // quadratic. TrackGraph visits only this detached aggregate and exposes its exact introduced entries.
-            _store.Context.ChangeTracker.TrackGraph(
-                node.Entity,
-                graphNode =>
-                {
-                    var entry = graphNode.Entry;
-                    if (!ReferenceEquals(entry.Entity, node.Entity)
-                        && !entry.Metadata.IsOwned())
-                    {
-                        throw new NestedSetException(
-                            NestedSetErrorCode.InvalidImport,
-                            "Import entities without populated non-owned navigation properties.");
-                    }
+            // WHY: A model without aggregate navigations owns exactly its root entry. Avoid graph iterator
+            // and cycle-set allocations for every node in large imports while preserving the same transition.
+            var root = batchEntries[^1];
+            root.State = EntityState.Added;
+            identities.Add(NestedSetInsertionTracking.EntryIdentity(root), NestedSetInsertionTracking.Capture(root));
 
-                    batchEntries.Add(entry);
-                    entry.State = EntityState.Added;
-                });
+            return;
         }
-        catch
-        {
-            // WHY: A graph callback can fail after EF has started tracking the aggregate. Detaching the exact
-            // partial graph preserves the documented reusable-input contract without scanning unrelated entries.
-            for (var index = batchEntries.Count - 1; index >= introducedStart; index--)
-            {
-                batchEntries[index].State = EntityState.Detached;
-                batchEntries.RemoveAt(index);
-            }
 
-            throw;
+        var firstEntry = batchEntries.Count - 1;
+
+        // WHY: A root Tracking callback can observe an owned entry and throw before traversal reaches it.
+        // Retain the complete detached aggregate first, then perform transitions; the generic overload also
+        // visits caller-tracked owned payload so it can be rejected before fixup changes the caller's aggregate.
+        // This visits only the supplied graph, preserving bounded ownership without a tracker-wide scan.
+        _store.Context.ChangeTracker.TrackGraph(
+            node.Entity,
+            new HashSet<IUpdateEntry>(ReferenceEqualityComparer.Instance),
+            graphNode =>
+            {
+                var entry = graphNode.Entry;
+                var update = NestedSetInsertionTracking.EntryIdentity(entry);
+
+                if (!graphNode.NodeState.Add(update))
+                {
+                    return false;
+                }
+
+                if (!ReferenceEquals(entry.Entity, node.Entity)
+                    && entry.State == EntityState.Detached)
+                {
+                    // WHY: Traversal has already created this native Detached reference. Own it before
+                    // rejecting a deep non-owned navigation, while preserving any caller-tracked foreign row.
+                    batchEntries.Add(entry);
+                }
+
+                if (!ReferenceEquals(entry.Entity, node.Entity)
+                    && !entry.Metadata.IsOwned())
+                {
+                    throw new NestedSetException(
+                        NestedSetErrorCode.InvalidImport,
+                        "Import entities without populated non-owned navigation properties.");
+                }
+
+                if (entry.State != EntityState.Detached)
+                {
+                    throw new NestedSetException(
+                        NestedSetErrorCode.InvalidImport,
+                        "Every imported node and its owned payload must be detached.");
+                }
+
+                if (graphNode is { SourceEntry: { } owner, InboundNavigation: { } navigation })
+                {
+                    relationships.Add((owner, navigation, entry.Entity));
+                }
+
+                return true;
+            });
+
+        for (var index = firstEntry; index < batchEntries.Count; index++)
+        {
+            var entry = batchEntries[index];
+
+            if (entry.Metadata.IsOwned()
+                && NestedSetInsertionValues.Capture(entry.Metadata, entry.Entity) is { } original)
+            {
+                // WHY: A later wave or final refresh can fail after this owned payload has been detached.
+                // Retain its generated and ownership CLR snapshots across waves without EF entry or context state.
+                (_ownedValues ??= []).Add(original);
+            }
+        }
+
+        for (var index = firstEntry; index < batchEntries.Count; index++)
+        {
+            var entry = batchEntries[index];
+            entry.State = EntityState.Added;
+            identities.Add(NestedSetInsertionTracking.EntryIdentity(entry), NestedSetInsertionTracking.Capture(entry));
+        }
+    }
+
+    /// <summary>Captures generated identities before EF acceptance and public SavedChanges callbacks.</summary>
+    internal void RefreshInsertionIdentities()
+    {
+        foreach (var identity in (_activeIdentities
+                     ?? throw new InvalidOperationException("No bulk insertion batch is active.")).Values)
+        {
+            identity.Refresh();
         }
     }
 
@@ -324,6 +447,13 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
             // WHY: The managed save bypasses ordinary direct-write rejection. Validate its exact staged structure
             // before subsequent SQL or refresh could conceal a callback's unauthorized hierarchy changes.
             if (entry.State == EntityState.Detached
+                || !_activeIdentities![NestedSetInsertionTracking.EntryIdentity(entry)]
+                    .Matches(_store.Map.KeyProperty)
+                || (node.HasAssignedKey
+                    && !NestedSetTypedValue<TKey>.Matches(
+                        _store.Map.KeyProperty,
+                        NestedSetTypedValue<TKey>.Read(values, _store.Map.KeyProperty),
+                        node.CurrentKey))
                 || (_store.Map.ScopeProperty is { } scope
                     && !NestedSetTypedValue<TScope>.Matches(
                         scope,
@@ -356,9 +486,15 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         for (var relativeIndex = 0; relativeIndex < roots.Length; relativeIndex++)
         {
             var node = Nodes[_activeOffset + relativeIndex];
-            node.CurrentKey = NestedSetTypedValue<TKey>.Snapshot(
-                _store.Map.KeyProperty,
-                NestedSetTypedValue<TKey>.Read(roots[relativeIndex], _store.Map.KeyProperty));
+
+            if (!node.HasAssignedKey)
+            {
+                // WHY: Assigned identities are immutable rollback snapshots. Only EF-generated identities
+                // replace the captured key after persistence, so a callback cannot redefine the requested node.
+                node.CurrentKey = NestedSetTypedValue<TKey>.Snapshot(
+                    _store.Map.KeyProperty,
+                    NestedSetTypedValue<TKey>.Read(roots[relativeIndex], _store.Map.KeyProperty));
+            }
         }
 
         if (DetachActiveBatch() is { } errors)

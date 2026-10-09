@@ -30,17 +30,38 @@ hierarchy before the one operation being assessed.
 | Native CLR type hides conversion | Finalized mapped-property eligibility | Integer-to-text keys retain scalar fallback |
 | Guard capture multiplies requests | Complete provider-equal pair hashing | Cross-pair false matches and broad domain equality |
 | Callback rollback incomplete | Audit writes can be saved again | Later insertion batch and hierarchy failure |
+| Bulk refresh retains detached inputs | Compiled mapped setters and bounded EF batches | Weak-reference checks with an unrelated tracked marker |
+| Early failure overwrites untouched inputs | Per-batch generated capture | Never-staged non-sentinel generated values stay unchanged |
+| Assigned-key callbacks replace rollback identity | Original independent key snapshots | Integer replacement and in-place binary mutation before/after save |
 | Registry lifecycle weakened | Active/new/tombstoned request contracts | Foreign metadata and unavailable identities |
 | Lock observation ineffective | Exact Scope/TreeId lock predicate | Two writers meet before acquiring their row |
 | Managed Parent plan invalid | Dependencies execute before sources | Cycles, null Parent, payload rollback |
 | Model cache leaks state | Same-model immutable metadata reuse | Different model and hierarchy separation |
 | Query UX adds hidden reads | Composed anchor query uses one command | Missing or filtered anchor returns no rows |
 | Structural work loses bounds | Existing statement/allocation limits | Wide, deep, and failed-operation regressions |
+| Framework seams resolved too late | Complete registration-time insertion contract | Incompatible member/version diagnostic before context creation |
+| Unchanged insertion keys allocate per boundary | Typed scalar/FK snapshot reuse | Sidecars, conceptual nulls, custom sentinels, mutable-key rejection |
 
 The sections below name the source methods behind the matrix. The matrix is a
 selection guide, not a replacement for the full provider suites.
 
 ## Dispatch and finalized mapping
+
+Insertion framework binding is checked separately from database behavior.
+`RequiredInsertionReflectionContractResolvesEveryMemberAndGenericShape` binds
+all required native members, metadata setters, and scalar/composite/nullable
+map specializations without populating the operation cache.
+`ClosedMapOperationsAreCompiledOnlyWhenRequestedAndCached` verifies that
+requested map operations compile lazily and are reused from that cache.
+`RelationshipReadersUseCapturedMetadataAndInstalledSnapshot` verifies that
+typed readers retain the installed composite-key snapshot independently of
+changed current values. `IncompatibleFrameworkHasARegistrationDiagnostic`
+requires the loaded version, exact missing member, and registration guidance.
+`RegistrationValidatesWithoutCreatingAContext` exercises `UseNestedSets()`
+without a provider or model. Structural compatibility does not qualify the
+behavior of a future EF patch; its insertion and rollback matrix must still run.
+
+Source: [insertion contract controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/InsertionReflectionContractTests.cs).
 
 Positive:
 
@@ -559,6 +580,55 @@ Negative and adversarial:
   rows, preserving neighboring trees, another Scope, and an empty tracker.
 - `SuppressedManagedSaveRejectsInsertion` rejects a callback that suppresses
   the persistence assumed by the insertion plan.
+- `CallbackCannotReplaceAssignedIntegerKey` and
+  `CallbackCannotMutateAssignedBinaryKeyInPlace` reject assigned-key changes
+  before and after payload save, restore exact original keys and structure,
+  and leave no persisted import or pending hierarchy entry.
+- `EarlyFailurePreservesUnstagedGeneratedInputs` checks both reservation
+  failure and a failed first payload batch. Later inputs retain their own
+  non-sentinel generated values instead of being reset to sentinels.
+- `FailedStagingReleasesItsInputAndPreservesUnrelatedTracking` injects a
+  one-shot generated getter or structural setter failure. The input is restored
+  and collectible while the context and its unrelated tracked marker stay alive.
+- `IdentityConflictReleasesInputWithoutRemovingExistingIdentity` exercises
+  failed primary and alternate key installation. Cleanup releases only the
+  introduced entry and preserves the legitimate colliding identity.
+- `SingleIdentityCollisionPreservesLegitimateTrackedRowAndReleasesInput`
+  preserves the original EF collision error, legitimate tracked row, and caller
+  transaction state without reporting a false recovery failure. Weak references
+  also verify release of the rejected input.
+- `FinalSingleDetachmentFailureRollsBackGeneratedPayload` rejects the final
+  detachment transition before commit. It restores generated root and owned
+  values and pre-fixup assigned ownership keys. The separate
+  `FinalSingleDetachmentFailureAllowsInputRetry` verifies persistence after an
+  arranged failure, including the correct new ownership keys.
+- `LateFailureRestoresOwnedDefaultsAndCollectionIdentities` fails after the
+  second payload wave of a 65-root import. Generated defaults, public collection
+  keys, and non-sentinel ownership FK/PK values restore; ordinary callback
+  labels and business FKs remain caller-owned. Separate successful-import and
+  retry cases preserve generated outputs and correct persisted ownership.
+- `TrackingCallbacksReleaseOwnedInputsAndPreserveUnrelatedTracking` and
+  `OwnedTrackingFailureReleasesTheCompletePartialGraph` reject initial root or
+  owned transitions. Weak references detect retention invisible to public
+  tracker enumeration; retry and ordinary caller payload remain usable.
+- `ScalarKeyRejectionReleasesInstalledIdentity` and
+  `MutableKeyRejectionReleasesRootAndOwnedIdentities` cover installed scalar,
+  binary, and converted mutable identities, including aliased owned Scope
+  keys. The positive `MutableIdentitiesRemainUsableAfterSuccessfulImport`
+  checks normal persistence and later identity lookup.
+- `AssignedScalarKeyMutationRollsBackSingleInsert`,
+  `AssignedBinaryKeyMutationRollsBackSingleInsert`, and
+  `AssignedCustomKeyMutationRollsBackSingleInsert` exercise before/after-save
+  key edits, caller savepoint ownership, exact restoration, and empty failed
+  identities. Separate `AssignedScalarKeyFailureAllowsSingleInsertRetry`,
+  `AssignedBinaryKeyFailureAllowsSingleInsertRetry`, and
+  `AssignedCustomKeyFailureAllowsSingleInsertRetry` arrange the rejected
+  operation before the one successful retry being tested.
+- `GeneratedSingleKeyMutationRollsBackInput` checks CLR key changes
+  hidden by a generated-value sidecar. The positive
+  `GeneratedSingleIdentitiesPersistAndCanBeFoundAfterDetach` retains ordinary
+  generated identity behavior; `GeneratedSingleKeyFailureAllowsRetry` tests
+  reuse after the arranged rejection.
 - `FailedOrderingRestoresUnchangedCallbackPayload` and
   `UnchangedMutablePayloadRetainsItsOwnedRollbackSnapshot` restore mutable
   payload snapshots after a later structural failure.
@@ -566,6 +636,15 @@ Negative and adversarial:
 Sources: [callback tests](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/SaveChanges/ManagedSaveCallbackTests.cs),
 [SQLite save-override callbacks](../tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests/SaveChanges/ManagedNestedSetDbContextCallbackTests.cs),
 [bulk saved-geometry callbacks](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/BulkImport/BulkStageGuardTests.Geometry.cs),
+[assigned-key callbacks](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/BulkImport/BulkStageGuardTests.AssignedKeys.cs),
+[detached refresh and untouched inputs](../tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests/BulkImport/BulkDetachedRefreshTests.cs),
+[early staging retention](../tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests/BulkImport/BulkStagingRetentionTests.cs),
+[installed bulk identities](../tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests/BulkImport/BulkIdentityRetentionTests.cs),
+[single assigned keys](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Insert/SingleInsertGuardTests.AssignedKeys.cs),
+[single assigned-key retries](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Insert/SingleInsertGuardTests.AssignedKeyRetry.cs),
+[single generated and owned identities](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Insert/SingleInsertGuardTests.NativeIdentity.cs),
+[single generated and owned retries](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Insert/SingleInsertGuardTests.NativeIdentityRetry.cs),
+[single input collection](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Insert/SingleInsertGuardTests.Retention.cs),
 [ordering rollback](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Ordering/Tracking/OrderingTrackerTests.SnapshotCallbacks.cs),
 and [snapshot tests](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Execution/TrackerSnapshotAllocationTests.cs).
 
@@ -618,6 +697,45 @@ writers to reach a later row-lock command would block the probe itself.
 SQLite retains its transaction, mutation, and callback regressions.
 
 ## Metadata cache, query composition, and deterministic budgets
+
+`UnchangedScalarRefreshReusesSnapshots` warms and budgets 10,000 refreshes of
+integer, Guid, compound, generated, shadow, string, field, and indexer keys.
+Ordinary immutable keys reuse native vectors without boxing current values.
+Differing member/model types keep EF's sentinel-aware object getter and a
+separate bounded allowance. Generated-sidecar, conceptual-null, custom-sentinel,
+and changed-CLR controls verify semantics alongside the allocation assertions.
+Mutable reference keys still take independent snapshots at every boundary;
+the existing adversarial lifecycle and weak-reference cases remain required.
+
+Source: [insertion refresh controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/InsertionRefreshAllocationTests.cs).
+
+`UnchangedIdentityComparisonsAvoidBoxes` budgets both `Matches` and
+`PrepareDetach`, including every composite key component and additional
+installed relationship keys. `IndependentRootCaptureHasABoundedInitialAllocation`
+separately guards the initial handle against unused dependent-bucket lists.
+The eager-list mutation control fails at 304 bytes per root against the
+280-byte ceiling; ordinary warmed comparisons allocate zero bytes. The
+property-bag allowances preserve EF's sentinel-aware object conversion.
+
+Recovery controls reject differing generated sidecar and CLR values, preserve
+accepted generated identities, reject changes to either composite component,
+and guard custom comparers against null operands. An intermediate key installed
+by `DetectChanges` is removed even when the current CLR key has returned to its
+original value. Unrelated identity slots and dependent buckets survive cleanup.
+A missing non-nullable property-bag key retains the framework getter's own
+diagnostic rather than inventing a replacement identity.
+
+The framework contract tests validate exact closed map signatures without
+populating the operation cache, then check lazy compilation and reuse for both
+map definitions and EF's actual `IReadOnlyList<object?>` composite-key shape.
+An isolated production assembly proves that the public options-registration
+call initializes its contract. Typed relationship readers retain installed
+snapshots independently of changed current values; incompatible bindings name
+the loaded framework version and required member before a context exists.
+
+Sources: [comparison budgets](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/InsertionRefreshAllocationTests.Comparisons.cs),
+[recovery semantics](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/InsertionRefreshAllocationTests.Recovery.cs),
+and [registration and binding contracts](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/InsertionReflectionContractTests.cs).
 
 - `ContextsSharingModelReuseMapping` and `DifferentModelsHaveIndependentMappings`
   check the mapping cache's model-lifetime reuse and separation. This is

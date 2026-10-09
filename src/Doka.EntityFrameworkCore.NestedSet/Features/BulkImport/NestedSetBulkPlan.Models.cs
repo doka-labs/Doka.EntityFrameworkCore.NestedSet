@@ -80,9 +80,11 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         /// <summary>Gets exact original generated values, or null when every value used its mapped sentinel.</summary>
         internal object?[]? OriginalGeneratedValues { get; private set; }
 
+        /// <summary>Gets whether generated values were captured before this input entered an insertion batch.</summary>
+        internal bool GeneratedValuesCaptured { get; private set; }
+
         /// <summary>Captures sparse rollback state before EF can propagate provider-generated CLR values.</summary>
         internal void CaptureGeneratedValues(
-            EntityEntry entry,
             IReadOnlyList<IProperty> properties
         )
         {
@@ -91,7 +93,17 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
             for (var index = 0; index < properties.Count; index++)
             {
                 var property = properties[index];
-                var value = entry.CurrentValues[property];
+
+                if (!NestedSetRefreshProperties.AppliesTo(property, Entity))
+                {
+                    // WHY: A base-facade plan combines generated leaves from its participating subtypes.
+                    // Each input owns only the leaves present in its configured CLR inheritance chain.
+                    continue;
+                }
+
+                // WHY: Creating a detached EF entry before an application getter succeeds retains the input
+                // on failure. The public containing-entity getter also resolves nested complex CLR leaves.
+                var value = property.GetGetter().GetClrValueUsingContainingEntity(Entity);
 
                 if (captured is null
                     && NestedSetStructuralValue.Matches(property, value, property.Sentinel))
@@ -115,6 +127,7 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
             }
 
             OriginalGeneratedValues = captured;
+            GeneratedValuesCaptured = true;
         }
     }
 
@@ -122,29 +135,34 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     internal sealed class OriginalStructure
     {
         private readonly byte _fields;
+        private readonly long _left;
+        private readonly long _right;
+        private readonly int _depth;
+        private readonly long _position;
 
         // WHY: Detached inputs may contain null or sentinel values that are not valid runtime identities.
         // Sparse metadata-shaped snapshots preserve exact rollback values; active Scope, TreeId and Parent stay typed.
+        // Validated coordinates are always long/int, so retaining their native values avoids four boxes per input.
         /// <summary>Creates one sparse snapshot after determining that at least one value is non-sentinel.</summary>
         private OriginalStructure(
             byte fields,
             object? scope,
             object? treeId,
             object? parent,
-            object? left,
-            object? right,
-            object? depth,
-            object? position
+            long left,
+            long right,
+            int depth,
+            long position
         )
         {
             _fields = fields;
             Scope = scope;
             TreeId = treeId;
             Parent = parent;
-            Left = left;
-            Right = right;
-            Depth = depth;
-            Position = position;
+            _left = left;
+            _right = right;
+            _depth = depth;
+            _position = position;
         }
 
         /// <summary>Gets the original non-sentinel Scope, or null when Scope used its sentinel.</summary>
@@ -155,18 +173,6 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
 
         /// <summary>Gets the original non-sentinel Parent, or null when Parent used its sentinel.</summary>
         internal object? Parent { get; }
-
-        /// <summary>Gets the original non-sentinel left boundary, or null when it used its sentinel.</summary>
-        internal object? Left { get; }
-
-        /// <summary>Gets the original non-sentinel right boundary, or null when it used its sentinel.</summary>
-        internal object? Right { get; }
-
-        /// <summary>Gets the original non-sentinel depth, or null when it used its sentinel.</summary>
-        internal object? Depth { get; }
-
-        /// <summary>Gets the original non-sentinel position, or null when it used its sentinel.</summary>
-        internal object? Position { get; }
 
         /// <summary>Returns the captured Scope representation, including null, or the mapped sentinel.</summary>
         internal object? ScopeOr(
@@ -186,22 +192,22 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         /// <summary>Returns the captured left representation, including null, or the mapped sentinel.</summary>
         internal object? LeftOr(
             object? sentinel
-        ) => ValueOr(1 << 3, Left, sentinel);
+        ) => (_fields & (1 << 3)) != 0 ? _left : sentinel;
 
         /// <summary>Returns the captured right representation, including null, or the mapped sentinel.</summary>
         internal object? RightOr(
             object? sentinel
-        ) => ValueOr(1 << 4, Right, sentinel);
+        ) => (_fields & (1 << 4)) != 0 ? _right : sentinel;
 
         /// <summary>Returns the captured depth representation, including null, or the mapped sentinel.</summary>
         internal object? DepthOr(
             object? sentinel
-        ) => ValueOr(1 << 5, Depth, sentinel);
+        ) => (_fields & (1 << 5)) != 0 ? _depth : sentinel;
 
         /// <summary>Returns the captured position representation, including null, or the mapped sentinel.</summary>
         internal object? PositionOr(
             object? sentinel
-        ) => ValueOr(1 << 6, Position, sentinel);
+        ) => (_fields & (1 << 6)) != 0 ? _position : sentinel;
 
         /// <summary>Captures exact non-sentinel structure without allocating for a conventional new entity.</summary>
         internal static OriginalStructure? Capture(
@@ -225,10 +231,10 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
                     scope,
                     treeId,
                     parent,
-                    left,
-                    right,
-                    depth,
-                    position);
+                    left is null ? 0L : (long)left,
+                    right is null ? 0L : (long)right,
+                    depth is null ? 0 : (int)depth,
+                    position is null ? 0L : (long)position);
         }
 
         /// <summary>Returns an exact snapshot only when the detached value differs from its mapped sentinel.</summary>

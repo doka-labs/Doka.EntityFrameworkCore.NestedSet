@@ -120,6 +120,11 @@ internal static class NestedSetSaveChanges
         {
             var managedCount = await saveChanges(cancellationToken).ConfigureAwait(false);
 
+            // WHY: This integration saves without acceptance so rollback can restore application writes.
+            // SavedChanges callbacks therefore still see generated sidecars; validate before acceptance can
+            // overwrite an unauthorized CLR key mutation with its provider-generated value.
+            state.ManagedValidation?.Invoke();
+
             if (acceptAllChangesOnSuccess)
             {
                 context.ChangeTracker.AcceptAllChanges();
@@ -535,12 +540,14 @@ internal static class NestedSetSaveChanges
     /// <param name="context">The context whose mutation already owns its lock and rollback boundary.</param>
     /// <param name="entities">The exact hierarchy entities planned for the insertion save.</param>
     /// <param name="validation">The structural validation executed after save callbacks and change detection.</param>
+    /// <param name="persistenceCompleted">Bounded identity bookkeeping after results and before EF acceptance.</param>
     /// <returns>A scope that restores the previous context-local managed-save plan.</returns>
     /// <exception cref="NestedSetException">The context was not configured through UseNestedSets.</exception>
     internal static ManagedSaveScope EnterManagedSave(
         DbContext context,
         IEnumerable<object> entities,
-        Action validation
+        Action validation,
+        Action? persistenceCompleted = null
     )
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -560,6 +567,7 @@ internal static class NestedSetSaveChanges
         var scope = new ManagedSaveScope(state, context.ChangeTracker);
         state.ManagedEntities = entities.ToHashSet(ReferenceEqualityComparer.Instance);
         state.ManagedValidation = validation;
+        state.ManagedPersistenceCompleted = persistenceCompleted;
         state.ManagedCallbackWrites = null;
         state.ManagedPersistenceReached = false;
         state.ManagedDepth++;
@@ -570,6 +578,15 @@ internal static class NestedSetSaveChanges
 
         return scope;
     }
+
+    /// <summary>Gets bounded insertion bookkeeping at the provider-result boundary, or no ordinary-save work.</summary>
+    /// <param name="context">The exact context whose database service is completing the save.</param>
+    /// <returns>The active callback, or null when this save does not own insertion identity snapshots.</returns>
+    internal static Action? ManagedPersistenceCompletion(
+        DbContext context
+    ) => s_contexts.TryGetValue(context, out var state) && state.ManagedDepth > 0
+        ? state.ManagedPersistenceCompleted
+        : null;
 
     /// <summary>Allows the coordinated save to reuse the exact-tree mutation engine after its payload save.</summary>
     /// <param name="context">The context whose outer save owns the complete transaction and lock plan.</param>
@@ -660,6 +677,9 @@ internal static class NestedSetSaveChanges
         /// <summary>Gets or sets the post-callback structural validation for the current insertion.</summary>
         internal Action? ManagedValidation { get; set; }
 
+        /// <summary>Gets or sets bounded identity bookkeeping before EF accepts provider-generated values.</summary>
+        internal Action? ManagedPersistenceCompleted { get; set; }
+
         /// <summary>Marks that EF passed the current plan's validated write set to its persistence step.</summary>
         internal bool ManagedPersistenceReached { get; set; }
 
@@ -747,6 +767,7 @@ internal static class NestedSetSaveChanges
         private readonly bool _autoDetectChanges;
         private readonly HashSet<object>? _previousEntities;
         private readonly Action? _previousValidation;
+        private readonly Action? _previousPersistenceCompleted;
         private readonly NestedSetTrackerSnapshot? _previousCallbackWrites;
         private readonly bool _previousPersistenceReached;
         private bool _disposed;
@@ -764,6 +785,7 @@ internal static class NestedSetSaveChanges
             _autoDetectChanges = tracker.AutoDetectChangesEnabled;
             _previousEntities = state.ManagedEntities;
             _previousValidation = state.ManagedValidation;
+            _previousPersistenceCompleted = state.ManagedPersistenceCompleted;
             _previousCallbackWrites = state.ManagedCallbackWrites;
             _previousPersistenceReached = state.ManagedPersistenceReached;
         }
@@ -811,6 +833,7 @@ internal static class NestedSetSaveChanges
             _state.ManagedDepth--;
             _state.ManagedEntities = _previousEntities;
             _state.ManagedValidation = _previousValidation;
+            _state.ManagedPersistenceCompleted = _previousPersistenceCompleted;
             _state.ManagedCallbackWrites = _previousCallbackWrites;
             _state.ManagedPersistenceReached = _previousPersistenceReached;
             _disposed = true;

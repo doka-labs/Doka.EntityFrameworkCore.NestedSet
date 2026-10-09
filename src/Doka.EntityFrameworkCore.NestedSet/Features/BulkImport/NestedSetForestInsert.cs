@@ -205,7 +205,14 @@ internal sealed class NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>
                 using (var managedSave = NestedSetSaveChanges.EnterManagedSave(
                            _context,
                            active.SelectMany(tree => tree.Plan.ManagedEntities),
-                           () => RequireSavedWave(active, knownTracked, expected)))
+                           () => RequireSavedWave(active, knownTracked, expected),
+                           () =>
+                           {
+                               foreach (var tree in active)
+                               {
+                                   tree.Plan.RefreshInsertionIdentities();
+                               }
+                           }))
                 {
                     try
                     {

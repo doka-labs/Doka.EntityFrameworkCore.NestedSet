@@ -153,13 +153,12 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
                 _store.Map.ParentProperty,
             }
             .Concat(
-                _store
-                    .Map
-                    .EntityType
-                    .GetFlattenedProperties()
+                NestedSetRefreshProperties.Generated(_store.Map.EntityType)
                     .Where(property => (property.ValueGenerated & ValueGenerated.OnUpdate) != 0))
             .Distinct()
             .ToArray();
+
+        var setters = properties.Select(CreateRefreshSetter).ToArray();
 
         // WHY: Refresh applies arbitrary provider-generated and complex scalar metadata values. This heterogeneous
         // row exists only at the materialization/metadata-assignment boundary; expected identities remain typed.
@@ -167,16 +166,14 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
         var projection = Expression.Lambda<Func<TEntity, object[]>>(
             Expression.NewArrayInit(
                 typeof(object),
-                properties.Select(property => Expression.Convert(
-                    NestedSetExpressions.Property(parameter, property),
-                    typeof(object)))),
+                properties.Select(property => NestedSetRefreshProperties.Project(parameter, property))),
             parameter);
 
         var keys = CaptureExpectedKeys(cancellationToken);
 
         if (_store.Map.Order is null)
         {
-            await RefreshIntervalAsync(boundary, properties, projection, keys, cancellationToken)
+            await RefreshIntervalAsync(boundary, setters, projection, keys, cancellationToken)
                 .ConfigureAwait(false);
 
             return;
@@ -220,7 +217,7 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
 
                 refreshed++;
 
-                RefreshEntry(_plan.Nodes[index], properties, values);
+                RefreshEntry(_plan.Nodes[index], setters, values);
             }
 
             if (refreshed != count)
@@ -254,7 +251,7 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
     /// <summary>Streams the unordered import's reserved interval and verifies every planned row exactly once.</summary>
     private async Task RefreshIntervalAsync(
         long boundary,
-        IProperty[] properties,
+        Action<TEntity, object?>?[] setters,
         Expression<Func<TEntity, object[]>> projection,
         TKey[] keys,
         CancellationToken cancellationToken
@@ -296,7 +293,7 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
                     "An imported node changed its planned geometry during insertion.");
             }
 
-            RefreshEntry(node, properties, values);
+            RefreshEntry(node, setters, values);
             refreshed++;
         }
 
@@ -329,32 +326,53 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
         }
     }
 
-    /// <summary>Applies scalar and complex values through one short-lived detached entry handle.</summary>
-    private void RefreshEntry(
+    /// <summary>Applies final CLR and complex scalar values without adding detached state to the context.</summary>
+    private static void RefreshEntry(
         NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>.Node node,
-        IProperty[] properties,
+        Action<TEntity, object?>?[] setters,
         object[] values
     )
     {
-        var entry = _store.Entry(node.Entity);
-
-        try
+        // WHY: Creating an already-detached Entry still adds it to EF's strong detached-reference map, and
+        // assigning Detached again does not remove it. Direct compiled setters preserve exact database values
+        // and complex value-copyback without retaining one EF entry for every imported node.
+        for (var index = 1; index < setters.Length; index++)
         {
-            // WHY: CurrentValues is a live public EF view, but each access creates a wrapper. Reuse one view
-            // while applying this row's heterogeneous metadata values without adding an internal EF seam.
-            var current = entry.CurrentValues;
+            setters[index]
+                ?.Invoke(node.Entity, values[index]);
+        }
+    }
 
-            for (var index = 1; index < properties.Length; index++)
+    /// <summary>Resolves mapped CLR assignment and any subtype guard once before streaming refreshed rows.</summary>
+    private static Action<TEntity, object?>? CreateRefreshSetter(
+        IProperty property
+    )
+    {
+        var setter = NestedSetDetachedValueSetter.Get(property);
+
+        if (setter is null)
+        {
+            return null;
+        }
+
+        var declaring = property.DeclaringType.ContainingEntityType.ClrType;
+
+        if (declaring.IsAssignableFrom(typeof(TEntity)))
+        {
+            // WHY: Ordinary owner properties apply to every imported row. Bind the public setter directly
+            // once so the million-node path performs neither reflection nor repeated metadata traversal.
+            return setter.SetClrValueUsingContainingEntity;
+        }
+
+        return (entity, value) =>
+        {
+            // WHY: A base facade can import sibling subtypes in one tree. Only inputs declaring the generated
+            // scalar receive its projected value; other subtypes do not have a CLR or tracking slot for it.
+            if (declaring.IsInstanceOfType(entity))
             {
-                // WHY: SQL parent/coordinate updates can change row versions after INSERT returned them. A detached
-                // root entry applies mapped CLR values, including complex leaves, without relationship fixup.
-                current[properties[index]] = values[index];
+                setter.SetClrValueUsingContainingEntity(entity, value);
             }
-        }
-        finally
-        {
-            entry.State = EntityState.Detached;
-        }
+        };
     }
 
     /// <summary>Builds bounded CASE assignments using mapped key, parent and coordinate parameters.</summary>
@@ -382,9 +400,7 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
             }
         }
 
-        sql.Append(
-            CultureInfo.InvariantCulture,
-            $" WHERE {_batch.IdentityPredicate} AND {key} IN (");
+        sql.Append(CultureInfo.InvariantCulture, $" WHERE {_batch.IdentityPredicate} AND {key} IN (");
 
         for (var index = 0; index < count; index++)
         {

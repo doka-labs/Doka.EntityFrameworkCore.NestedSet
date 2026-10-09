@@ -315,14 +315,64 @@ callback writes; queries and saves outside a managed insertion add no
 interception work beyond one weak-table lookup per save.
 
 `SingleInsertScaleTests` separately measures an explicit single-node insertion
-with 20,000 clean, unrelated tracked rows. The historical local baseline from
-two isolated .NET 10.0.12 SQLite runs on 2026-09-24 was 419 additional allocated
-bytes per tracked row, before the typed boundary refinement. The 500-byte
-regression ceiling leaves headroom for runtime noise while detecting
-substantial tracker-wide allocation growth. Requalification must run the test
-against the current source; that dated baseline is not its new result.
+with 20,000 clean, unrelated tracked rows. The current-source local .NET 10.0.12
+SQLite run on 2026-10-04 observed 427 additional allocated bytes per tracked row:
+752,192 baseline bytes and 9,300,416 bytes with the unrelated tracked set.
+The unchanged 500-byte regression ceiling detects substantial tracker-wide
+allocation growth. The earlier 2026-09-24 observation was 419 bytes per row;
+these dated observations do not establish a throughput comparison or an
+allocation reduction for the complete insertion.
 
 ## Qualification targets
+
+### Insertion snapshot allocation observation
+
+On 2026-10-04, the same warmed .NET 10.0.12 harness compared 20,000 unchanged
+identity refreshes before and after typed snapshot reuse. Thread and precise
+process allocation counters agreed:
+
+| Identity shape | Before, bytes/refresh | After, bytes/refresh |
+| --- | --- | --- |
+| Assigned integer | 112 | 0 |
+| Assigned Guid | 128 | 0 |
+| Compound integer | 176 | 0 |
+| Self-FK integer | 472 | 0 |
+| Generated integer sidecar | 112 | 0 |
+| Mutable binary | 1,064 | 1,064 |
+| Converted mutable reference | 112 | 112 |
+
+These are isolated refresh observations, excluding the initial lifecycle handle,
+first snapshot, model compilation, payload writes, and generated value changes.
+They do not assert an allocation-free insertion or import. Mutable identities
+retain independent snapshots and native reinstallation. Differing member/model
+types retain EF's sentinel-aware getter; the integer property-bag control
+observes 48 bytes per refresh at that framework boundary. The
+[refresh regression controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/InsertionRefreshAllocationTests.cs)
+protect allocation and semantic behavior together. Million-node measurements
+below independently qualify occupied heap and complete-operation traffic.
+
+On 2026-10-08, warmed controls separately measured 10,000 unchanged `Matches`
+and `PrepareDetach` calls on .NET 10.0.12. Integer, Guid, compound, generated,
+shadow, string, and backing-field keys allocated zero bytes in both paths.
+The integer property-bag control retained the native object getter: 48 bytes
+per `Matches` call and 72 bytes per `PrepareDetach` call. Regression ceilings
+allow 2,048 fixed bytes per measurement in addition to these fallback costs.
+This includes the additional installed-relationship-key comparison; current
+values alone cannot reveal an intermediate key registered by change detection.
+
+Initial lifecycle capture is a separate control: 10,000 already-tracked,
+independent integer roots allocated 2,720,000 bytes, or 272 bytes per root,
+excluding model initialization, EF tracking, and the result array. Its ceiling
+is 280 bytes per root plus 2,048 fixed bytes. A mutation control that eagerly
+created the unused dependent-bucket list allocated 304 bytes per root and
+failed this test. Bucket storage is now allocated only for a real membership.
+These measurements do not update the million-node occupied-heap observations
+or establish hosted-runner capacity headroom.
+
+Sources: [comparison and capture budgets](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/InsertionRefreshAllocationTests.Comparisons.cs)
+and [identity recovery controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/InsertionRefreshAllocationTests.Recovery.cs).
+
+### Capacity targets
 
 | Area | Target |
 | --- | --- |

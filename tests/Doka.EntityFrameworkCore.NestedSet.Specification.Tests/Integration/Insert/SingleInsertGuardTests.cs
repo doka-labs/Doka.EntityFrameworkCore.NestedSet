@@ -1,7 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Verifies that managed single insertions reject callback edits to their staged topology.</summary>
-public abstract class SingleInsertGuardTests : ProviderTest
+public abstract partial class SingleInsertGuardTests : ProviderTest
 {
     private readonly RelationalFixture _fixture;
 

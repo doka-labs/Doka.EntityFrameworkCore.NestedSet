@@ -133,7 +133,13 @@ public sealed class ProviderFixtureIsolationTests
         // Assert
         Assert.Contains("Allocation measurements", referenced);
         Assert.All(
-            new[] { typeof(TypedPropertyReadTests), typeof(TypedProviderComparerTests), typeof(KeyComparerTests) },
+            new[]
+            {
+                typeof(TypedPropertyReadTests),
+                typeof(TypedProviderComparerTests),
+                typeof(KeyComparerTests),
+                typeof(InsertionRefreshAllocationTests),
+            },
             type => Assert.Equal(
                 "Allocation measurements",
                 type.GetCustomAttribute<CollectionAttribute>()
