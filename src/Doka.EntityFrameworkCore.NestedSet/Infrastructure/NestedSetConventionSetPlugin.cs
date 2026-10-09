@@ -11,16 +11,22 @@ internal sealed class NestedSetConventionSetPlugin : IConventionSetPlugin
     /// <summary>The official registered provider identity used to interpret provider-supported metadata.</summary>
     private readonly string _providerName;
 
+    /// <summary>The provider service resolving implicit property conversions before model finalization.</summary>
+    private readonly ITypeMappingSource _typeMappings;
+
     /// <summary>Creates the convention plugin for one provider service graph.</summary>
     /// <param name="sql">The provider's SQL identifier service.</param>
     /// <param name="provider">The official registered database provider.</param>
+    /// <param name="typeMappings">The provider's effective property-mapping service.</param>
     public NestedSetConventionSetPlugin(
         ISqlGenerationHelper sql,
-        IDatabaseProvider provider
+        IDatabaseProvider provider,
+        ITypeMappingSource typeMappings
     )
     {
         _sql = sql;
         _providerName = provider.Name;
+        _typeMappings = typeMappings;
     }
 
     /// <inheritdoc />
@@ -30,10 +36,11 @@ internal sealed class NestedSetConventionSetPlugin : IConventionSetPlugin
     {
         ArgumentNullException.ThrowIfNull(conventionSet);
 
-        var indexConvention = new NestedSetIndexConvention(_sql, _providerName);
+        var indexConvention = new NestedSetIndexConvention(_sql, _providerName, _typeMappings);
 
         conventionSet.EntityTypePrimaryKeyChangedConventions.Add(indexConvention);
-        conventionSet.ModelFinalizingConventions.Add(new NestedSetInfrastructureConvention(_providerName));
+        conventionSet.ModelFinalizingConventions.Add(
+            new NestedSetInfrastructureConvention(_providerName, _typeMappings));
         conventionSet.ModelFinalizingConventions.Add(indexConvention);
 
         return conventionSet;

@@ -123,6 +123,7 @@ public sealed partial class EngineTestDiscoveryTests
     [InlineData(typeof(BroadScopeTests), nameof(BroadScopeTests.ProviderComparerSeparatesReferenceAliases))]
     [InlineData(typeof(BroadNodeKeyTests), nameof(BroadNodeKeyTests.ProviderComparerSeparatesKeyAliases))]
     [InlineData(typeof(BroadTreeIdTests), nameof(BroadTreeIdTests.ProviderComparerSeparatesTreeAliases))]
+    [InlineData(typeof(ConvertedTextCollationTests), nameof(ConvertedTextCollationTests.ImplicitIdentityCaptureMatchesRegistryAndSuppliedModel))]
     public void ConnectionFreeMethodsBypassOnlyTheDatabaseHostCheck(
         Type declaringSuite,
         string methodName

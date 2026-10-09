@@ -80,20 +80,83 @@ internal sealed class TphContext : DbContext
 
     /// <summary>Applies the structural base mapping used by the inheritance tests.</summary>
     internal static void Configure(
-        EntityTypeBuilder<InheritanceNode> node
+        EntityTypeBuilder<InheritanceNode> node,
+        bool ordered = false
     )
     {
         node
             .Property(entity => entity.Id)
             .ValueGeneratedNever();
         node.Property(entity => entity.Name);
-        node.HasNestedSet(nestedSet => nestedSet
-            .HasNodeKey(entity => entity.Id)
-            .HasTreeId(entity => entity.TreeId)
-            .HasParent(entity => entity.ParentId)
-            .HasBounds(entity => entity.Left, entity => entity.Right)
-            .HasDepth(entity => entity.Depth)
-            .HasPosition(entity => entity.Position));
+        node.HasNestedSet(nestedSet =>
+        {
+            nestedSet
+                .HasNodeKey(entity => entity.Id)
+                .HasTreeId(entity => entity.TreeId)
+                .HasParent(entity => entity.ParentId)
+                .HasBounds(entity => entity.Left, entity => entity.Right)
+                .HasDepth(entity => entity.Depth)
+                .HasPosition(entity => entity.Position);
+
+            if (ordered)
+            {
+                nestedSet.OrderBy(entity => entity.Name);
+            }
+        });
+    }
+}
+
+/// <summary>Maps one TPH hierarchy with sibling ordering declared on its base entity.</summary>
+internal sealed class OrderedTphContext : DbContext
+{
+    /// <summary>Creates an ordered TPH compatibility context.</summary>
+    internal OrderedTphContext(
+        DbContextOptions<OrderedTphContext> options
+    ) : base(options) { }
+
+    /// <inheritdoc />
+    protected override void OnModelCreating(
+        ModelBuilder modelBuilder
+    )
+    {
+        var node = modelBuilder.Entity<InheritanceNode>();
+        node.ToTable("OrderedTphNodes");
+        node
+            .HasDiscriminator<string>("NodeType")
+            .HasValue<TphFolderNode>("Folder")
+            .HasValue<TphMetricNode>("Metric");
+
+        TphContext.Configure(node, ordered: true);
+    }
+}
+
+/// <summary>Maps ordered structure to a TPT base table with separate derived payload tables.</summary>
+internal sealed class OrderedTptContext : DbContext
+{
+    /// <summary>Creates an ordered TPT compatibility context.</summary>
+    internal OrderedTptContext(
+        DbContextOptions<OrderedTptContext> options
+    ) : base(options) { }
+
+    /// <inheritdoc />
+    protected override void OnModelCreating(
+        ModelBuilder modelBuilder
+    )
+    {
+        var node = modelBuilder.Entity<InheritanceNode>();
+        node.UseTptMappingStrategy();
+        node.ToTable("OrderedTptNodes");
+        modelBuilder
+            .Entity<TptFolderNode>()
+            .ToTable("OrderedTptFolders")
+            .Property(entity => entity.FolderKind);
+
+        modelBuilder
+            .Entity<TptMetricNode>()
+            .ToTable("OrderedTptMetrics")
+            .Property(entity => entity.MetricKind);
+
+        TphContext.Configure(node, ordered: true);
     }
 }
 

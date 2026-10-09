@@ -137,27 +137,24 @@ internal sealed class NestedSetTrackedStructure<TEntity, TKey, TTreeId, TScope>
 
         // WHY: Native membership is known before constructing the capture. Empty results avoid projection
         // allocations, and affected captures cannot expose partially initialized refresh state.
-        var properties = map
-            .EntityType
-            .GetFlattenedProperties()
-            .Where(property => property == map.ScopeProperty
-                || property == map.TreeIdProperty
-                || property == map.ParentProperty
-                || property == map.LeftProperty
-                || property == map.RightProperty
-                || property == map.DepthProperty
-                || property == map.PositionProperty
-                || (property.IsConcurrencyToken && (property.ValueGenerated & ValueGenerated.OnUpdate) != 0))
-            .Distinct()
-            .ToArray();
+        var structure = new[]
+            {
+                map.TreeIdProperty,
+                map.ParentProperty,
+                map.LeftProperty,
+                map.RightProperty,
+                map.DepthProperty,
+                map.PositionProperty,
+            }
+            .Concat(map.ScopeProperty is { } scopeProperty ? [scopeProperty] : []);
+
+        var properties = NestedSetRefreshProperties.Collect(map.EntityType, structure);
 
         var parameter = Expression.Parameter(typeof(NestedSetTrackedRowset<TEntity>.Row), "row");
         var entity = Expression.Property(parameter, nameof(NestedSetTrackedRowset<>.Row.Entity));
         var ordinal = Expression.Property(parameter, nameof(NestedSetTrackedRowset<>.Row.Ordinal));
         var values = new[] { Expression.Convert(ordinal, typeof(object)) }.Concat(
-            properties.Select(property => Expression.Convert(
-                NestedSetExpressions.Property(entity, property),
-                typeof(object))));
+            properties.Select(property => NestedSetRefreshProperties.Project(entity, property)));
 
         var projection = Expression.Lambda<Func<NestedSetTrackedRowset<TEntity>.Row, object[]>>(
             Expression.NewArrayInit(typeof(object), values),
@@ -166,9 +163,7 @@ internal sealed class NestedSetTrackedStructure<TEntity, TKey, TTreeId, TScope>
         var nativeParameter = Expression.Parameter(typeof(TEntity), "node");
         var nativeValues = new[] { map.KeyProperty }
             .Concat(properties)
-            .Select(property => Expression.Convert(
-                NestedSetExpressions.Property(nativeParameter, property),
-                typeof(object)));
+            .Select(property => NestedSetRefreshProperties.Project(nativeParameter, property));
 
         var nativeProjection = Expression.Lambda<Func<TEntity, object[]>>(
             Expression.NewArrayInit(typeof(object), nativeValues),
@@ -338,24 +333,9 @@ internal sealed class NestedSetTrackedStructure<TEntity, TKey, TTreeId, TScope>
         }
     }
 
-    /// <summary>Accepts only library-managed scalar changes on one previously unchanged tracked entity.</summary>
+    /// <summary>Refreshes managed values while preserving a tracked entry's pending payload semantics.</summary>
     private void RefreshEntry(
         EntityEntry<TEntity> entry,
         object[] row
-    )
-    {
-        for (var index = 0; index < _properties.Length; index++)
-        {
-            var metadata = _properties[index];
-            var property = NestedSetTrackedProperty.Property(entry, metadata);
-            property.CurrentValue = row[index + 1];
-
-            if (NestedSetTrackedProperty.HasOriginalValue(metadata))
-            {
-                property.OriginalValue = row[index + 1];
-            }
-
-            property.IsModified = false;
-        }
-    }
+    ) => NestedSetTrackedRefresh.Apply(entry, _properties, row);
 }

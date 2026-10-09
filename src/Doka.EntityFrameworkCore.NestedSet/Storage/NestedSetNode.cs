@@ -94,24 +94,46 @@ internal readonly record struct NestedSetParent<TKey>(
         && (!HasValue || NestedSetTypedValue<TKey>.Matches(property, Value, expected.Value));
 
     /// <summary>Builds a typed parent projection for nullable value keys and nullable reference keys.</summary>
-    internal static NewExpression Property(
+    internal static MethodCallExpression Property(
         Expression entity,
         IProperty property
     )
     {
         var access = NestedSetExpressions.Property(entity, property);
-        var present = Presence(access);
-        var value = Expression.Condition(
-            present,
-            Expression.Convert(access, typeof(TKey)),
-            Expression.Default(typeof(TKey)));
 
-        // WHY: Generic TKey? does not construct Nullable<TKey>. Presence plus the typed value represents both
-        // nullable value keys and reference keys without boxing the parent once for every projected node.
-        return Expression.New(
-            typeof(NestedSetParent<TKey>).GetConstructors()[0],
-            present,
-            value);
+        // WHY: A converted value key's default can map to SQL NULL. A SQL CASE that substitutes that default
+        // then materializes a required TKey throws for roots. Project nullable storage once and unwrap in CLR.
+        return Expression.Call(typeof(NestedSetParent<TKey>), nameof(Project), [access.Type], access);
+    }
+
+    /// <summary>Creates optional parent storage after EF materializes the mapped nullable value.</summary>
+    private static NestedSetParent<TKey> Project<TParent>(
+        TParent parent
+    ) => ParentProjection<TParent>.Create(parent);
+
+    /// <summary>Retains one typed, allocation-free projection for each exact nullable model shape.</summary>
+    private static class ParentProjection<TParent>
+    {
+        /// <summary>Gets the context-free factory over the exact nullable model value.</summary>
+        internal static readonly Func<TParent, NestedSetParent<TKey>> Create = CreateFactory();
+
+        /// <summary>Compiles reference or nullable-value presence without transporting a key through object.</summary>
+        private static Func<TParent, NestedSetParent<TKey>> CreateFactory()
+        {
+            var parent = Expression.Parameter(typeof(TParent), "parent");
+            var present = Presence(parent);
+            var body = Expression.New(
+                typeof(NestedSetParent<TKey>).GetConstructors()[0],
+                present,
+                Expression.Condition(
+                    present,
+                    Expression.Convert(parent, typeof(TKey)),
+                    Expression.Default(typeof(TKey))));
+
+            return Expression
+                .Lambda<Func<TParent, NestedSetParent<TKey>>>(body, parent)
+                .Compile();
+        }
     }
 
     /// <summary>Tests nullable storage without requiring a custom value key to implement operator !=.</summary>

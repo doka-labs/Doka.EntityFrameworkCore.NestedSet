@@ -304,8 +304,13 @@ An inherited property can be shared by two concrete TPC tables with different
 collations. Capturing one value on that property would conflate their physical
 identities, so capture belongs to each hierarchy owner and its resolved store.
 Registry columns and native identity rowsets use the same effective facets.
-Concrete TPT bindings normalize to their configured ancestor owner for query,
-mutation, and coordinated-save comparisons. This does not merge independent
+Concrete TPH and TPT bindings normalize to their configured ancestor owner for
+query, mutation, and coordinated-save comparisons. Managed save factories are
+cached by that exact owner, and their generic entity type is the owner's CLR
+type. Changes to sibling derived types share one lock and ordering plan;
+tracked descendants remain eligible for structural refresh. Owner resolution
+is cached with the model rather than scanning the inheritance chain for every
+changed node. This does not merge named shared mappings or independent
 concrete TPC hierarchies that merely share an inherited property object.
 Captured string facets serialize on the hierarchy owner, including an empty
 string for a genuinely unknown default. A missing owner facet requires model
@@ -323,6 +328,13 @@ collation. PAD SPACE aliases remain aliases, while NO PAD identities retain
 their distinct trailing spaces.
 
 ## Query engine
+
+Principal-key collation depends on the effective provider representation,
+including value conversion, rather than only the CLR key type. Parent joins
+apply generic `EF.Functions.Collate<TProperty>` to the model-typed dependent
+operand. EF translates that marker after applying the property mapping;
+the indexed principal column keeps its own comparison semantics. Native
+non-string keys do not gain a collation expression.
 
 Public hierarchy queries are deferred, no-tracking `IQueryable<TEntity>`
 expressions rooted in the application's entity set. `TreeContaining(nodeKey)`,

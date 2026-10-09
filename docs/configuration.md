@@ -256,6 +256,13 @@ This policy means structure-only set updates do not change that token. The
 application remains responsible for advancing and validating it with domain
 payload changes.
 
+Generated tokens declared only on a derived entity also participate. Owner-level
+queries project each token only for the subtype that maps it; sibling rows do
+not receive that property. Coordinated saves honor both tracker acceptance
+modes. Single and bulk insertions return current generated CLR values even
+when the facade uses the configured base type. A late failure restores captured
+input values without changing generated properties of inputs not yet staged.
+
 Single, forest, and subtree insertion guard assigned and generated NodeKeys
 across save callbacks. Ordinary payload and non-hierarchy audit writes remain
 permitted; key, Scope, TreeId, and other managed structure edits are rejected.
@@ -281,12 +288,28 @@ The qualified model shapes include:
 - composite primary keys with a scalar alternate NodeKey;
 - shadow and field-only structural properties;
 - converted key, Scope, and TreeId values;
-- TPH and qualified TPT mappings;
+- TPH and qualified TPT mappings, including trees containing different derived
+  entity types;
 - table and entity splitting within the documented single-write-fragment
   contract;
 - temporal current-table mutations;
 - compiled models; and
 - pooled contexts.
+
+Configure an inherited hierarchy on its common mapped owner. Coordinated
+`SaveChangesAsync` then treats changes to different derived types as one
+hierarchy: a Parent may refer to another derived type, base-property ordering
+applies across sibling types, and structural refresh includes tracked derived
+descendants. The owner is the type with the NestedSet configuration, not
+necessarily EF's inheritance root. Named shared mappings and independently
+configured concrete TPC stores retain their separate identities.
+
+For a NodeKey converted to string storage, parent comparisons use the
+principal key's effective database collation just as native string keys do.
+The query expression retains the model key type and its converter. Different
+Parent and NodeKey column collations therefore cannot silently change which
+parent a stored alias resolves to. This does not replace an application's
+key converter or require case-insensitive keys.
 
 Regenerate a compiled model whenever the NestedSet version or hierarchy
 configuration changes. The generated metadata includes registry table names;

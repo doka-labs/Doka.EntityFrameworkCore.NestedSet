@@ -274,7 +274,7 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
         var values = new[] { _map.KeyProperty }
             .Concat(_refreshProperties)
             .Concat(_map.ScopeProperty is { } scopeProperty ? [scopeProperty] : [])
-            .Select(property => Expression.Convert(NestedSetExpressions.Property(parameter, property), typeof(object)));
+            .Select(property => NestedSetRefreshProperties.Project(parameter, property));
 
         return _nativeProjection = Expression.Lambda<Func<TEntity, object[]>>(
             Expression.NewArrayInit(typeof(object), values),
@@ -440,51 +440,7 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
     private void RefreshEntry(
         EntityEntry<TEntity> entry,
         object[] row
-    )
-    {
-        var pendingPayload = entry.State == EntityState.Modified;
-        IUpdateEntry? generated = null;
-
-        for (var index = 0; index < _refreshProperties.Length; index++)
-        {
-            var metadata = _refreshProperties[index];
-            var property = NestedSetTrackedProperty.Property(entry, metadata);
-            if (pendingPayload
-                && metadata.IsConcurrencyToken
-                && (metadata.ValueGenerated & ValueGenerated.OnUpdate) != 0)
-            {
-                // WHY: EF's normal generated-value propagation preserves the pending original in its sidecar.
-                // Passing false instead would replace that original; clearing IsModified would lose the new value.
-                // WHY: The public update adapter exposes this context's existing entry without relying on EF's
-                // internal EntityEntry implementation or changing the caller's tracking strategy.
-                var primaryKey = _map.EntityType.FindPrimaryKey()
-                    ?? throw new InvalidOperationException("The ordered hierarchy entity requires a primary key.");
-
-                generated ??= _updates.TryGetEntry(
-                        primaryKey,
-                        primaryKey
-                            .Properties
-                            .Select(property => entry.Property(property.Name).CurrentValue)
-                            .ToArray())
-                    ?? throw new InvalidOperationException("The ordered entry is no longer tracked.");
-
-                generated.SetStoreGeneratedValue(metadata, row[index + 1], setModified: true);
-            }
-            else
-            {
-                // WHY: Bulk SQL bypasses EF; accept managed structure and tokens on previously unchanged siblings
-                // without marking those siblings as caller-authored payload updates.
-                property.CurrentValue = row[index + 1];
-
-                if (NestedSetTrackedProperty.HasOriginalValue(metadata))
-                {
-                    property.OriginalValue = row[index + 1];
-                }
-
-                property.IsModified = false;
-            }
-        }
-    }
+    ) => NestedSetTrackedRefresh.Apply(entry, _refreshProperties, row);
 
     /// <summary>Returns the exact ordinary or named shared hierarchy set with application filters bypassed.</summary>
     private IQueryable<TEntity> Nodes() => NestedSetEntityAccess<TEntity>

@@ -21,6 +21,8 @@ hierarchy before the one operation being assessed.
 | Parent presence lost | Assigned default keys and absent detached roots | Direct Parent-to-null change rejected |
 | Mapped property shape lost | Field, shadow, converted, compiled, shared models | Missing named mapping or capture metadata |
 | Inheritance key misplaced | Root-owned scoped key and concrete TPC self-FK | Covered by valid-model finalization regression below |
+| Concrete subtype narrows a managed save | Mixed TPH/TPT Parent, ordering, and tracked refresh | Missing Parent, cycle, and post-payload rollback |
+| Converted key loses principal collation | Reference, value, explicit and implicit enum text mappings | Missing Parent, alias cycles, and late failure |
 | Physical comparison lost | Source/registry parity and per-table TPC capture | Native aliases rejected and stale capture regenerated |
 | Mutable identity ownership | Independent configured snapshots | Awaited mutation and callback changes |
 | Tree isolation lost | Identical local bounds in distinct trees | Duplicate root, relative cross-tree placement |
@@ -94,6 +96,45 @@ Sources: [typed store tests](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Te
 [bulk tests](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Mutations/Facade/NestedSetMutationFacadeTests.BulkAndMaintenance.cs),
 [guard tests](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Concurrency/NativeTrackedIdentityGuardTests.cs),
 and [dispatch tests](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Mutations/Facade/MutationDispatchContractTests.cs).
+
+## Mixed inheritance saves and converted Parent comparison
+
+The mixed TPH/TPT regressions change Parent across sibling derived types,
+move dependent subtrees between trees, and rename a base ordering field with
+both tracker acceptance modes. They inspect persisted and tracked descendants,
+not only the concrete type that initiated the change. Missing Parent, cycle,
+and injected post-payload failures must restore payload and pending tracker
+state. Model-only owner tests distinguish cached base owners, independent
+concrete TPC stores, and named shared mappings.
+
+SQL Server derived-rowversion cases verify subtype-only generated tokens after
+reordering, same/cross-tree Parent changes, and subsequent payload saves under
+both acceptance modes. Base-facade single/bulk inserts must return the current
+token; late faults must restore input and tracker values. The reader probe
+rejects selection of ordinary Name/Payload columns during structural refresh.
+
+Converted text-key cases use different principal and Parent collations on each
+engine. Custom reference keys, custom value keys, explicit enum conversion,
+implicit text-store conversion, and required nullable keys cover upward and
+downward queries, move, delete, coordinated save, inspection, and rebuild.
+Missing targets, alias cycles, and late faults protect rejection and rollback.
+The structural projection case checks that only structural columns are read;
+an absent nullable Parent must not materialize a converted default key from
+SQL NULL or load the domain payload.
+
+Sources:
+[mixed managed-save cases](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/ModelCompatibility/Inheritance/InheritanceTests.ManagedSave.cs),
+[owner identity cases](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/HierarchyOwnerTests.cs),
+[derived generated-token cases](../tests/Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests/Ordering/Tracking/RowVersion/DerivedRowVersionTests.cs),
+[converted principal comparisons](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/ModelCompatibility/ValueConverters/ConvertedTextCollationTests.cs),
+and [converter models](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/ModelCompatibility/ValueConverters/ConvertedTextCollationNodes.cs).
+
+The shared tracked refresh uses exact EF entry identity for generated tokens,
+including derived, named, and complex mappings. Existing SQL Server rowversion
+and callback-rollback cases verify pending payload originals, both acceptance
+modes, and successful later saves; the refactor does not establish a separate
+token policy.
+
 
 ## Parent presence and ownership
 

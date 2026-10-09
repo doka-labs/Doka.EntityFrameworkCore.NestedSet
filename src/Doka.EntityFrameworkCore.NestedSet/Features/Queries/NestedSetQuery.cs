@@ -32,9 +32,7 @@ internal sealed class NestedSetQuery<TEntity>
             .AsNoTracking();
 
         _scopeBound = _descriptor.Scope is null;
-        _keyCollation = _descriptor.NodeKey.ClrType == typeof(string)
-            ? NestedSetCollations.Resolve(context, _descriptor.NodeKey.Resolve(_entityType), _entityType)
-            : null;
+        _keyCollation = NestedSetCollations.Resolve(context, _descriptor.NodeKey.Resolve(_entityType), _entityType);
     }
 
     /// <summary>Creates a new immutable binding over an already validated public query root.</summary>
@@ -273,16 +271,23 @@ internal sealed class NestedSetQuery<TEntity>
     /// <summary>Reads parent references using the principal node key's database comparison rules.</summary>
     private Expression<Func<TEntity, object>> ParentKey()
     {
-        var parent = _descriptor.Parent.Name;
+        var node = Expression.Parameter(typeof(TEntity), "node");
+        Expression parent = NestedSetExpressions.Property(node, _descriptor.Parent.Resolve(_entityType));
 
         if (_keyCollation is { } collation)
         {
-            // WHY: Parent and principal columns may use different string collations. The referenced key defines
-            // identity, so both query directions use its native equality without loading either entity.
-            return node => EF.Functions.Collate(EF.Property<string>(node, parent), collation);
+            // WHY: Parent storage may be text behind a reference or nullable value converter. Retaining its
+            // mapped model type preserves that converter while the principal's collation defines identity.
+            parent = Expression.Call(
+                typeof(RelationalDbFunctionsExtensions),
+                nameof(RelationalDbFunctionsExtensions.Collate),
+                [parent.Type],
+                Expression.Property(null, typeof(EF), nameof(EF.Functions)),
+                parent,
+                Expression.Constant(collation));
         }
 
-        return node => EF.Property<object>(node, parent);
+        return Expression.Lambda<Func<TEntity, object>>(Expression.Convert(parent, typeof(object)), node);
     }
 
     /// <summary>Selects one visible anchor by exact mapped NodeKey type without executing the query.</summary>
