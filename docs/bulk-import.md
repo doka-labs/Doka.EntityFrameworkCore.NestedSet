@@ -216,6 +216,11 @@ use sparse rollback snapshots. Traversal is iterative, so a deep input does not
 consume the CLR call stack, but the complete immutable input topology and compact
 plan must fit in memory.
 
+Each plan validates its entity references and assigned keys once. A forest with
+several trees also checks duplicates across plans before any database work;
+those temporary cross-tree indexes end with preparation. A single-tree import
+does not allocate a second pair of per-node identity indexes.
+
 Generated CLR values use the same sparse restoration strategy: conventional
 sentinel-valued inputs allocate no per-node generated-value snapshot. An input
 with an explicit non-sentinel value for a store-generated property retains one

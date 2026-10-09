@@ -515,6 +515,16 @@ capacity assertions. For 20,000 inputs, the current plan retained approximately
 3.14 million bytes with sentinel structure and 6.18 million bytes with fully
 prefilled child structure, below the unchanged 6.7-million-byte plan budget.
 These plan measurements do not replace actual public million-node operations.
+
+The public forest path skips redundant cross-plan validation indexes when it
+contains just one tree, whose plan has already checked references and assigned
+keys. On 2026-10-09, the isolated 20,000-node preparation regression measured
+2,523,904 additional allocated bytes above standalone planning before the fix,
+and 3,448 bytes afterward. It stops before connection opening and measures
+allocation rather than occupied heap. Cross-tree rejection remains checked
+before the write boundary. These measurements do not establish the revised
+SQL Server hosted capacity result; the 512 MiB assertion remains unchanged.
+
 The [heap observer](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Observation/ManagedHeapObservation.cs)
 has [held-allocation controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Observation/ManagedHeapObservationTests.cs).
 The same controls include a captured native scalar tuple, qualified-anchor

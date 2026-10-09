@@ -53,9 +53,6 @@ internal sealed class NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>
 
         var prepared = new PreparedTree[trees.Count];
         var lockRequests = new NestedSetTreeLockRequest<TTreeId, TScope>[trees.Count];
-        var entities = new HashSet<TEntity>(ReferenceEqualityComparer.Instance);
-        var assignedKeys = new HashSet<TKey>(mapping.KeyComparer);
-
         for (var index = 0; index < trees.Count; index++)
         {
             var request = trees[index];
@@ -74,27 +71,11 @@ internal sealed class NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>
 
             var plan = insertion.Prepare([request.Root], knownTracked, cancellationToken);
 
-            foreach (var node in plan.Nodes)
-            {
-                if (!entities.Add(node.Entity))
-                {
-                    throw new NestedSetException(
-                        NestedSetErrorCode.InvalidImport,
-                        "Each imported entity must occur exactly once in the forest.");
-                }
-
-                if (node.HasAssignedKey
-                    && !assignedKeys.Add(node.Key))
-                {
-                    throw new NestedSetException(
-                        NestedSetErrorCode.InvalidImport,
-                        "Imported entities must have distinct assigned primary keys.");
-                }
-            }
-
             prepared[index] = new PreparedTree(insertion, plan, default);
             lockRequests[index] = store.LockRequest(NestedSetTreeLockMode.New);
         }
+
+        RequireDistinctInputs(prepared, mapping.KeyComparer, cancellationToken);
 
         // WHY: Callback writes from all trees share one persistence order; restoring them as one log keeps an
         // entry changed by several tree saves at its earliest pending database-relative state.
@@ -126,6 +107,50 @@ internal sealed class NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>
         }
 
         Detach(prepared);
+    }
+
+    /// <summary>Checks cross-tree uniqueness without repeating a single plan's complete identity validation.</summary>
+    /// <param name="prepared">The independently validated tree plans.</param>
+    /// <param name="keyComparer">The hierarchy's exact mapped primary-key comparer.</param>
+    /// <param name="cancellationToken">The token checked throughout potentially large forest validation.</param>
+    private static void RequireDistinctInputs(
+        PreparedTree[] prepared,
+        IEqualityComparer<TKey> keyComparer,
+        CancellationToken cancellationToken
+    )
+    {
+        // WHY: Each plan already rejects duplicate references and assigned keys. A single tree has no
+        // cross-plan invariant; duplicating its indexes increases peak heap and allocation without protection.
+        if (prepared.Length == 1)
+        {
+            return;
+        }
+
+        var entities = new HashSet<TEntity>(ReferenceEqualityComparer.Instance);
+        var assignedKeys = new HashSet<TKey>(keyComparer);
+
+        foreach (var tree in prepared)
+        {
+            foreach (var node in tree.Plan.Nodes)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (!entities.Add(node.Entity))
+                {
+                    throw new NestedSetException(
+                        NestedSetErrorCode.InvalidImport,
+                        "Each imported entity must occur exactly once in the forest.");
+                }
+
+                if (node.HasAssignedKey
+                    && !assignedKeys.Add(node.Key))
+                {
+                    throw new NestedSetException(
+                        NestedSetErrorCode.InvalidImport,
+                        "Imported entities must have distinct assigned primary keys.");
+                }
+            }
+        }
     }
 
     /// <summary>Shares bounded payload waves across trees while preserving independent structural identities.</summary>

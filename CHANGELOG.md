@@ -61,6 +61,9 @@ Both packages share the same stable version and reviewed API contract.
   signatures at registration without compiling unused probe operations.
 - Share tracked structural/token refresh through the exact EF entry identity
   without redundant key arrays or unused update adapters.
+- Avoid duplicate forest-wide identity indexes for a single imported tree.
+  Keep cross-tree reference/key rejection before database work and release its
+  validation indexes before entering the asynchronous mutation boundary.
 
 ### Changed
 

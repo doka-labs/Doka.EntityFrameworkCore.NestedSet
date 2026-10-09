@@ -257,6 +257,18 @@ actual public million-node operations.
 Sources: [heap observer](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Observation/ManagedHeapObservation.cs)
 and [measurement controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Observation/ManagedHeapObservationTests.cs).
 
+`SingleTreePreparationDoesNotRepeatPlanIdentityIndexes` compares public forest
+preparation with a standalone plan on the same inputs. Its interceptor stops at
+the first connection attempt, excluding database I/O and failure restoration
+from allocation. The former implementation fails this regression because it
+populates another pair of per-node identity indexes. The provider cases
+`DuplicateAssignedKeysAreRejectedBeforeDatabaseWork` and
+`RepeatedEntityIsRejectedBeforeDatabaseWork` each cover duplicates within one
+tree and across two trees, requiring no commands, no transaction, an empty
+tracker, and preserved input values.
+
+Source: [forest preparation allocation](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/ForestPreparationAllocationTests.cs).
+
 ## Parent presence and ownership
 
 Positive:
