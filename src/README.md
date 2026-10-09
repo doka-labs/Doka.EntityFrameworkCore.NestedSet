@@ -13,16 +13,15 @@ optional scope isolation, composable queries, and atomic structural changes.
 The EF package references the core package transitively. Neither shipping
 package depends on a specific database provider or SafeMigrations.
 
-The 10.x package line targets .NET 10 and EF Core 10. The first planned release
-is `10.0.0-rc.1`; stable `10.0.0` follows a separate release preparation. The EF
-package brings in the matching core package transitively:
+The 10.x package line targets .NET 10 and EF Core 10. This source defines the
+first stable package contract, `10.0.0`. The EF package brings in the matching core package
+transitively:
 
 ```bash
-dotnet package add Doka.EntityFrameworkCore.NestedSet --version 10.0.0-rc.1
+dotnet package add Doka.EntityFrameworkCore.NestedSet --version 10.0.0
 ```
 
-The first RC is in preparation; the command is available after its NuGet
-publication. Use the exact version from the matching
+Use the exact published version from the matching
 [GitHub release](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/releases)
 or NuGet package page. Add the application's EF Core provider separately.
 

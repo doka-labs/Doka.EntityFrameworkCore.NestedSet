@@ -8,18 +8,16 @@ FileSystem demonstrates the same public API without a required scope.
 ## Install
 
 Install the EF package and the application's database provider. These commands
-select the prepared first RC and the qualified Doka MySQL/MariaDB provider;
-the RC command becomes available after `10.0.0-rc.1` is published on NuGet:
+use this source's stable `10.0.0` package contract and the qualified Doka MySQL/MariaDB provider:
 
 ```bash
-dotnet package add Doka.EntityFrameworkCore.NestedSet --version 10.0.0-rc.1
+dotnet package add Doka.EntityFrameworkCore.NestedSet --version 10.0.0
 dotnet package add Doka.EntityFrameworkCore.MySql --version 10.4.4
 ```
 
 The core package is included transitively. Use the exact version from the
 matching [GitHub release](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/releases)
-or NuGet package page. The RC is a prerelease; stable `10.0.0` follows a
-separate release preparation.
+or NuGet package page.
 
 ## Define the entity
 

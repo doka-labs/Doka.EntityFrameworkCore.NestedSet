@@ -151,10 +151,11 @@ without expanding the support matrix.
 
 ## Version and Compatibility Lifecycle
 
-No NestedSet package has been published. The repository currently prepares the
-first release candidate, `10.0.0-rc.1`, before the later stable `10.0.0`.
-Reports against this source must identify the exact revision and package build;
-a changelog entry, tag, or local archive is not evidence of publication.
+This source defines the first stable `10.0.0` contract for both packages;
+publication is established by the release's successful public readback.
+Reports must identify the actual package version or the exact source revision
+and build for unreleased changes. The earlier `10.0.0-rc.1` has no separate
+maintenance line; fixes target the shared 10.x line.
 
 Both packages target .NET 10. The EF package declares compatibility with EF
 Core 10 beginning at the repository's minimum version and excludes EF Core 11.
@@ -167,10 +168,8 @@ establish NestedSet compatibility: EF providers generally do not work across
 major EF Core versions, and every provider or engine line requires explicit
 NestedSet qualification.
 
-The prepared RC is not evidence of prerelease or stable publication. Public API
-changes during prereleases must be documented; compatibility with a
-published stable package is promised only after that package is released and
-qualified.
+The `10.0.0` API is recorded in the shipped baselines. Subsequent public API
+changes follow the documented compatibility and SemVer review.
 
 Unsupported versions or configurations may be investigated to understand a
 regression or future compatibility need. Such investigation does not create a

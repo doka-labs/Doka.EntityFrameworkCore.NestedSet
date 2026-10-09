@@ -34,6 +34,10 @@ the reviewed stable contract and moves the public API additions from
 `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt` in the source commit before
 qualification.
 
+For the first stable `10.0.0`, the accepted Core and EF declarations are in
+their shipped files and both unshipped files contain only the nullable
+directive. The source version is `10.0.0` without a prerelease suffix.
+
 ## Entry conditions
 
 - Exact source is reviewed and current on protected `main`.

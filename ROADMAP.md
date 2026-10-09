@@ -6,16 +6,17 @@ It is not a delivery-date promise. Released packages, release notes, and the
 
 ## Direction
 
-### Qualify 10.0.0-rc.1 before the first stable 10.0.0
+### Maintain the stable 10.x contract
 
-- Exercise the complete RC qualification and publication process first with
-  `10.0.0-rc.1`; its first hosted run is still pending.
-- Keep the reviewed two-package API declarations in the unshipped baselines
-  through prereleases. Establish the stable compatibility baseline in a
-  separate reviewed `10.0.0` preparation after successful RC evidence.
+- Preserve the published `10.0.0-rc.1` and its immutable release evidence.
+  Stable `10.0.0` incorporates the subsequent correctness,
+  memory-ownership, index, and capacity regressions.
+- Keep the accepted two-package `10.0.0` API in the shipped baselines and review
+  every subsequent public API change for compatibility. Each release retains
+  its own qualified source, artifacts, and public readback.
 - Keep the EF-independent core limited to contracts useful without persistence.
-- Complete real hosted CI, security settings, RC, signed tag, NuGet trusted
-  publishing, provenance, and public readback evidence.
+- Recheck hosted CI and security settings, then retain the stable candidate,
+  signed tag, NuGet trusted publishing, provenance, and public readback evidence.
 - Qualify ordinary migrations on every supported provider and optional
   SafeMigrations integration independently.
 - Keep examples and operations documentation aligned with file systems, KPIs,

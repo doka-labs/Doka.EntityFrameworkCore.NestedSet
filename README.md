@@ -1,8 +1,8 @@
 # Doka.EntityFrameworkCore.NestedSet
 
 [![CI](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/workflows/ci.yml/badge.svg?event=pull_request)](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/workflows/ci.yml)
-[![NuGet Core](https://img.shields.io/nuget/vpre/Doka.NestedSet.svg?label=NuGet%20Core)](https://www.nuget.org/packages/Doka.NestedSet)
-[![NuGet EF Core](https://img.shields.io/nuget/vpre/Doka.EntityFrameworkCore.NestedSet.svg?label=NuGet%20EF%20Core)](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet)
+[![NuGet Core](https://img.shields.io/nuget/v/Doka.NestedSet.svg?label=NuGet%20Core)](https://www.nuget.org/packages/Doka.NestedSet)
+[![NuGet EF Core](https://img.shields.io/nuget/v/Doka.EntityFrameworkCore.NestedSet.svg?label=NuGet%20EF%20Core)](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/badge)](https://scorecard.dev/viewer/?uri=github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15143/badge)](https://www.bestpractices.dev/projects/15143)
@@ -33,11 +33,11 @@ The 10.x package line targets .NET 10 and EF Core 10. The EF package references
 
 ## Install
 
-The following command installs the first release candidate once it is
-published. `10.0.0-rc.1` is currently in preparation:
+This source defines the first stable package contract, `10.0.0`. Its changes since
+`10.0.0-rc.1` are recorded in the [changelog](CHANGELOG.md):
 
 ```bash
-dotnet package add Doka.EntityFrameworkCore.NestedSet --version 10.0.0-rc.1
+dotnet package add Doka.EntityFrameworkCore.NestedSet --version 10.0.0
 ```
 
 Add the EF Core provider used by the application separately. For Doka
@@ -61,7 +61,13 @@ The provider qualification matrix is:
 | SQL Server | `Microsoft.EntityFrameworkCore.SqlServer` |
 
 Pomelo is not a supported provider. Ordinary EF migrations are the required
-baseline. SafeMigrations is an optional additional gate.
+baseline. SafeMigrations is an optional integration. The published 10.4.9
+adapters are qualified with the current source model for MySQL, MariaDB,
+PostgreSQL, SQLite, and SQL Server, including PostgreSQL's canonical null-filter
+indexes. SQL Server's optional adapter supports proven integer widening and
+CHECK validation over existing rows, with explicit schema and repair boundaries;
+see the [adapter qualification](docs/support-and-qualification.md#migration-matrix)
+and [SQL Server registration](docs/migrations.md#optional-sql-server-safemigrations).
 
 `Doka.EntityFrameworkCore.NestedSet` 10.x does not support `PublishTrimmed` or
 `PublishAot`. Its runtime model dispatch and dynamically composed EF queries

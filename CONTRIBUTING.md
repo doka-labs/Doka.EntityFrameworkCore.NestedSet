@@ -108,7 +108,7 @@ x64:
 
 ```sh
 bash eng/release-candidate.sh \
-  --version 10.0.0-rc.1 \
+  --version 10.0.0 \
   --workspace \
   --output artifacts/qualification-local
 ```
@@ -403,11 +403,12 @@ a successful restore.
 
 ## Public API changes
 
-`PublicAPI.Shipped.txt` is the last stable release contract.
+`PublicAPI.Shipped.txt` records the reviewed stable release contract.
 `PublicAPI.Unshipped.txt` contains additions for the next stable release,
-including declarations first published in an RC. The initial `10.0.0-rc.1`
-preparation keeps all reviewed declarations there; no stable baseline has been
-published. The Public API analyzer must remain clean.
+including declarations first published in an RC. The initial `10.0.0` contract
+is recorded in both shipped baselines; the unshipped files retain only the
+nullable directive until new declarations are added. The Public API analyzer
+must remain clean.
 
 Before a stable release, move reviewed additions into the shipped file in the
 release-preparation source commit. Removals and signature changes require an

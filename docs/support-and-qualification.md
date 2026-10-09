@@ -14,8 +14,15 @@ defines what this repository has exercised.
 | Core package | `Doka.NestedSet` |
 | EF package | `Doka.EntityFrameworkCore.NestedSet` |
 
-The exact dependency graph is locked per project. Updating a package requires
-reviewing the lockfiles and rerunning the complete applicable matrix.
+The two shipping package graphs are locked. Tests, samples, and tooling use
+the centrally reviewed dependency versions without additional committed
+lockfiles. Updating a package requires reviewing affected locks and rerunning
+the complete applicable matrix.
+
+Version `10.0.0` is the first stable contract for both packages. Qualification
+always identifies its exact source and artifacts. The dated local results
+below describe their own runs; hosted release evidence belongs to the matching
+release and is not inferred from a successful local execution.
 
 `Doka.EntityFrameworkCore.NestedSet` 10.x does not support `PublishTrimmed` or
 `PublishAot`. Runtime model-based generic construction and dynamically
@@ -237,11 +244,12 @@ dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Doka.EntityFrame
 
 ### Complete repository qualification
 
-Docker must be available for the server matrix:
+Docker and supported Linux x64 execution must be available for the complete
+server matrix. Local ARM skips provide development feedback only:
 
 ```sh
 bash eng/release-candidate.sh \
-  --version 10.0.0-rc.1 \
+  --version 10.0.0 \
   --workspace \
   --output artifacts/qualification-local
 ```
