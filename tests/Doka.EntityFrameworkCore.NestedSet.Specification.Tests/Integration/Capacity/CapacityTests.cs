@@ -2,7 +2,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Qualifies persisted capacity, public bulk atomicity, and bounded repair memory on each engine.</summary>
 // WHY: Fresh case-owned databases isolate statistics and avoid deleting preceding capacity datasets during setup.
-public abstract class CapacityTests : ProviderTest
+public abstract partial class CapacityTests : ProviderTest
 {
     private const int Million = 1_000_000;
     private const long AdditionalHeapBudget = 512L * 1024 * 1024;

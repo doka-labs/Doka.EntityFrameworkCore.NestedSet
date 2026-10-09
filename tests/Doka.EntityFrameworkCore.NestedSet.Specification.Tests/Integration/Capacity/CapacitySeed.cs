@@ -86,27 +86,49 @@ internal static class CapacitySeed
         }
     }
 
-    /// <summary>Checks every persisted coordinate and adjacency link using a scalar mismatch aggregate.</summary>
-    internal static Task<long> MismatchesAsync(
+    /// <summary>Counts missing, unexpected, and structurally mismatched rows in bounded key ranges.</summary>
+    internal static async Task<long> MismatchesAsync(
         TreeContext context,
         int count,
         bool deep = false,
         bool corrupt = false
-    ) => context
-        .Set<TreeNode>()
-        .AsNoTracking()
-        .LongCountAsync(
-            node => node.Tree != 1
-                || node.TreeId != Guid.Empty
-                || node.NodeId < 1
-                || node.NodeId > count
-                || node.Parent != (node.NodeId == 1 ? null : deep ? node.NodeId - 1 : 1)
-                || node.Start != (corrupt ? 1L : deep ? node.NodeId : node.NodeId == 1 ? 1L : (2L * node.NodeId) - 2)
-                || node.End != (corrupt ? 2L : deep ? (2L * count) - node.NodeId + 1
-                    : node.NodeId == 1 ? 2L * count : (2L * node.NodeId) - 1)
-                || node.Depth != (corrupt ? 9 : deep ? node.NodeId - 1 : node.NodeId == 1 ? 0 : 1)
-                || node.Position != (deep || node.NodeId == 1 ? 0L : node.NodeId - 2L),
-            CancellationToken.None);
+    )
+    {
+        var nodes = context
+            .Set<TreeNode>()
+            .AsNoTracking();
+
+        var mismatches = await nodes.LongCountAsync(
+            node => node.NodeId < 1 || node.NodeId > count, CancellationToken.None);
+
+        // WHY: One coordinate aggregate over ten million rows can exceed the ordinary command timeout before
+        // returning any result. Primary-key ranges bound that wait without retaining entities or raising timeouts.
+        for (var first = 1L; first <= count; first += NativeBatchSize)
+        {
+            var firstKey = (int)first;
+            var lastKey = (int)Math.Min(count, first + NativeBatchSize - 1);
+            var range = nodes.Where(node => node.NodeId >= firstKey && node.NodeId <= lastKey);
+
+            // WHY: Correct coordinates on surviving rows do not prove that every expected key still exists.
+            mismatches += lastKey - firstKey + 1L - await range.LongCountAsync(CancellationToken.None);
+
+            // WHY: Explicit root/child branches preserve null-parent checks without repeated SQL CASE compensation.
+            mismatches += await range.LongCountAsync(
+                node => node.Tree != 1
+                    || node.TreeId != Guid.Empty
+                    || (node.NodeId == 1 && node.Parent != null)
+                    || (node.NodeId != 1 && (node.Parent == null || node.Parent != (deep ? node.NodeId - 1 : 1)))
+                    || node.Start != (corrupt ? 1L : deep ? node.NodeId
+                        : node.NodeId == 1 ? 1L : (2L * node.NodeId) - 2)
+                    || node.End != (corrupt ? 2L : deep ? (2L * count) - node.NodeId + 1
+                        : node.NodeId == 1 ? 2L * count : (2L * node.NodeId) - 1)
+                    || node.Depth != (corrupt ? 9 : deep ? node.NodeId - 1 : node.NodeId == 1 ? 0 : 1)
+                    || node.Position != (deep || node.NodeId == 1 ? 0L : node.NodeId - 2L),
+                CancellationToken.None);
+        }
+
+        return mismatches;
+    }
 
     /// <summary>Reads the complete mutable registry state independently of any operation context.</summary>
     internal static Task<CapacityRegistryState> RegistryAsync(

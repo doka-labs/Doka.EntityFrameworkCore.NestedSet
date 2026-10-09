@@ -27,10 +27,37 @@ verification waits for all test reports from the current run attempt. The stable
 `Repository qualification` check requires every job to succeed and rejects
 failed, canceled, or skipped gates.
 [`release-candidate.yml`](../.github/workflows/release-candidate.yml) runs
-[`release-candidate.sh`](release-candidate.sh) once from a fresh checkout. The
-release runner executes `quality`, `tests`, `packages`, `consumer`, and `sbom`
-in order, then assembles the candidate. It rebuilds and retests its selected
-commit without downloading results from CI.
+fixed [`release-candidate.sh`](release-candidate.sh) `--job` selectors from exact
+checkouts of the dispatch source. Preflight establishes one shared 7,200-second
+UTC deadline. Source quality, engineering regressions, and the canonical Release
+build run independently. The build packs each shipping package once and inspects
+all primary/symbol archives; its TAR preserves complete execution files, hidden
+mapping files, the isolated coverage collector, and executable modes. Consumers
+and SBOMs receive a separate small package artifact. Build and package downloads
+select exact nonempty producer artifact IDs.
+
+Nine test-project cells and three compiled SQLite samples execute the producer's
+compiled files on independent runners after the build. Consumers and SBOMs run
+alongside them. Test/sample matrices use `fail-fast: false` without a repository
+parallelism cap. The final `qualify` job checks all direct `needs` results with
+`jq`. Four scalar producer IDs select source-quality, engineering, consumer,
+and SBOM evidence; the test/sample artifact prefix selects only the current run
+and attempt, with merged downloads. All six evidence-upload declarations retain
+hidden files. The pinned artifact action checks download digests, so no new
+job-receipt schema, role/file inventory, or artifact-index API is needed.
+
+Existing source/run/attempt, lock, runtime, and package guards remain required.
+The final job rejects missing test results, incomplete coverage, missing query
+plans or samples, unsuccessful or mismatched consumers, and invalid SBOMs.
+It uses the existing offline SBOM verifier and requires neither .NET setup nor
+GitHub API credentials. It assembles the existing candidate
+without another build or pack, then passes its artifact ID to the unchanged
+attestation/publication flow. See the
+[job graph](../docs/release-process.md#qualification-stages).
+
+The local entry point runs `quality`, `tests`, `packages`, `consumer`, and `sbom`
+serially by default, then assembles the candidate. Both paths require the same
+complete set of checks from the selected commit without downloading PR-CI results.
 
 Benchmarks are deliberately absent from this stage inventory. GitHub-hosted
 runner timing, CPU, working-set, and process-wide allocation results are not
@@ -42,9 +69,15 @@ affected rows. See [performance and capacity](../docs/performance.md).
 bash eng/release-candidate.sh --version 10.0.0 --workspace --output artifacts/qualification-local
 ```
 
-The default two-hour deadline terminates the owned process group and retains failed logs. Use `--timeout-seconds`
-for a reviewed workload deadline between 60 and 14400 seconds. Every run requires a fresh output directory; a
-failed run cannot be resumed. `identity.json`, stage directories, and `logs/` preserve the source and failure
+The default local two-hour deadline terminates the owned process group and retains failed logs. Use `--timeout-seconds`
+for a reviewed local workload deadline between 60 and 14400 seconds. Each local run requires a fresh output directory;
+a failed run cannot be resumed. Hosted jobs derive their remaining budget from the shared `--deadline-utc`, not a
+fresh two-hour budget. Before sealing, use **Re-run all jobs** or a new dispatch to refresh all checks and preflight.
+Partial reruns may retain successful source-quality/engineering logs from the same run and commit. Build identity
+and test/sample selection still require the current attempt; consumers and SBOMs must match the sealed package
+bytes. A retained preflight keeps its original deadline. See [rerun boundaries](../docs/release-process.md#recovery).
+Existing recovery after sealing retains the original candidate IDs and bytes.
+`identity.json`, stage directories, and `logs/` preserve the source and failure
 context. GitHub retains these files even when qualification fails.
 The `candidate/` directory contains the four packages, two SBOMs, manifests, notes, and portable qualification evidence.
 `operator-summary.md` routes review to the exact source and candidate hashes. Build outputs and candidate lockfile
@@ -74,6 +107,10 @@ consumer proves the core has no EF dependency; the EF consumer executes the runn
 that the restored archive hashes equal the supplied files. Temporary runtime/cache directories are cleaned; sources,
 project/configuration files, locked restore graphs, logs, and `result.json` remain for inspection, including on failure.
 Network access to nuget.org is required; Docker is not required for these two consumers.
+
+Hosted final qualification compares `candidateSha256` in the existing consumer result
+with the inspected primary-package hashes before sealing. This binds the small
+package artifact used by consumers to the package copies in the build artifact.
 
 The no-argument developer convenience still packs before verification. RC uses explicit consumer mode after its
 single qualified pack; PR CI does not run package consumers. Both CI and RC use
@@ -155,8 +192,10 @@ lines. An empty report fails even when another report contains valid coverage; n
 
 Each CI test lane requires a Cobertura report before uploading its artifacts.
 The separate coverage job downloads the reports from every lane of the current
-run attempt and runs this verifier. RC verifies its reports within the test
-stage before assembling a candidate. A canceled coverage run can
+run attempt and runs this verifier. Hosted RC requires coverage from every
+executable test project, then verifies all reports together in `qualify` before
+assembling a candidate. Local serial RC performs the same verification in its
+test stage. A canceled coverage run can
 leave instrumented DLL/PDB copies in a test output directory and cause a later
 collection to produce an empty report. Rebuild the Release configuration and
 rerun the complete test stage; the verifier reports an empty artifact instead

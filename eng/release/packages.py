@@ -169,13 +169,10 @@ def run_inspector(primary, symbols, package_id, expected_version=None):
     require(record.findtext("{*}id") == package_id, "Inspector package identity mismatch")
     version = record.findtext("{*}version") if expected_version is None else expected_version
     require(isinstance(version, str) and bool(version), "Inspector requires a package version")
-    command = ["dotnet", "run", "--project", str(HELPER), "--configuration", "Release",
-               "--no-build", "--no-restore"]
-
-    if artifacts := os.environ.get("DOKA_NESTEDSET_RELEASE_ARTIFACTS"):
-        command.append(f"-p:ArtifactsPath={artifacts}")
-
-    command.extend(["--", str(primary), str(symbols), package_id, version])
+    artifacts = Path(os.environ.get("DOKA_NESTEDSET_RELEASE_ARTIFACTS", ROOT / "artifacts"))
+    binary = artifacts / "bin" / HELPER.stem / "release" / f"{HELPER.stem}.dll"
+    # WHY: Direct execution uses exactly the inspected build and needs no producer-local MSBuild intermediates.
+    command = ["dotnet", str(binary), str(primary), str(symbols), package_id, version]
     return subprocess.run(command, cwd=ROOT, capture_output=True, text=True, check=False, timeout=60)
 
 

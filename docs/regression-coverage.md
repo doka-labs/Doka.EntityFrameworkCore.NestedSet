@@ -269,6 +269,34 @@ tracker, and preserved input values.
 
 Source: [forest preparation allocation](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/ForestPreparationAllocationTests.cs).
 
+## Capacity coordinate oracle
+
+The independent capacity oracle checks the full persisted fixture in
+primary-key ranges of at most 100,000 rows. Scalar counts detect every damaged
+structural field, missing expected keys, and unexpected keys outside the
+fixture's expected range without tracking or materializing entity rows.
+These tests protect the test oracle; they do not establish production throughput.
+
+- `CoordinateOracleRecognizesCompleteFixtures` covers root-only, wide, deep,
+  deliberately unrepaired, and multi-range fixtures.
+- `CoordinateOracleDetectsMissingRows` covers the root, an ordinary child,
+  and expected keys at and after the first range boundary.
+- `CoordinateOracleDetectsUnexpectedRows` covers keys below and above the
+  expected range, including an extra row replacing a missing expected row.
+- `CoordinateOracleDetectsStructuralDamage` covers Scope, TreeId, Parent,
+  Left/Right, Depth, and Position independently, with both nullable-parent
+  directions and root/child geometry.
+- `CoordinateOracleDetectsWrongNonNullParent` rejects an existing but incorrect
+  parent in wide and deep fixtures.
+- `CoordinateOracleDetectsDamageAcrossRangeBoundary` requires detection in
+  the last row of the first range and the first row of the next range.
+- `CoordinateOracleBoundsCoordinateAggregates` checks each structural-count
+  statement's bounds and confirms the ordinary command timeout is unchanged.
+
+Sources: [bounded oracle](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Capacity/CapacitySeed.cs),
+[positive and negative oracle cases](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Capacity/CapacityTests.Oracle.cs),
+and [real capacity cases](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Capacity/CapacityTests.cs).
+
 ## Parent presence and ownership
 
 Positive:

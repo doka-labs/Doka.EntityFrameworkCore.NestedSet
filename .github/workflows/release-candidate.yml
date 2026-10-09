@@ -23,6 +23,8 @@ jobs:
     name: Verify source and unused version
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    outputs:
+      deadline-utc: ${{ steps.preflight.outputs.deadline-utc }}
     permissions:
       contents: read
       actions: read
@@ -37,18 +39,19 @@ jobs:
           persist-credentials: false
 
       - name: Reject stale source, existing tag, and used package version
-        run: >-
-          python3 -m eng.release.publication preflight
-          --version "$CANDIDATE_VERSION"
-          --output artifacts/preflight.json
+        id: preflight
+        run: |
+          python3 -m eng.release.publication preflight \
+            --version "$CANDIDATE_VERSION" --output artifacts/preflight.json
+          echo "deadline-utc=$(( $(date +%s) + 7200 ))" >> "$GITHUB_OUTPUT"
 
-  qualify:
-    name: Qualify exact release candidate
+  source-quality:
+    name: C# style and unused imports
     needs: preflight
     runs-on: ubuntu-24.04
-    timeout-minutes: 130
     outputs:
-      artifact-id: ${{ steps.candidate.outputs.artifact-id }}
+      artifact-id: ${{ steps.evidence.outputs.artifact-id }}
+    timeout-minutes: 30
 
     steps:
       - name: Checkout exact candidate source
@@ -64,11 +67,526 @@ jobs:
           cache: true
           cache-dependency-path: "**/packages.lock.json"
 
-      - name: Qualify source, tests, packages, consumers, and SBOMs
+      - name: C# style and unused imports
         run: >-
-          bash eng/release-candidate.sh
-          --version "$CANDIDATE_VERSION"
-          --output artifacts/qualification
+          bash eng/release-candidate.sh --job source-quality
+          --version "$CANDIDATE_VERSION" --output artifacts/qualification
+          --deadline-utc "${{ needs.preflight.outputs.deadline-utc }}"
+
+      - name: Retain verified job evidence
+        id: evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rc-evidence-source-quality-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/qualification/evidence
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Retain failure logs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rc-diagnostics-source-quality-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/qualification/logs
+          if-no-files-found: warn
+          retention-days: 30
+
+  engineering-tests:
+    name: Release engineering regression tests
+    needs: preflight
+    runs-on: ubuntu-24.04
+    outputs:
+      artifact-id: ${{ steps.evidence.outputs.artifact-id }}
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout exact candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Release engineering regression tests
+        run: >-
+          bash eng/release-candidate.sh --job engineering-tests
+          --version "$CANDIDATE_VERSION" --output artifacts/qualification
+          --deadline-utc "${{ needs.preflight.outputs.deadline-utc }}"
+
+      - name: Retain verified job evidence
+        id: evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rc-evidence-engineering-tests-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/qualification/evidence
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Retain failure logs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rc-diagnostics-engineering-tests-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/qualification/logs
+          if-no-files-found: warn
+          retention-days: 30
+
+  build:
+    name: Build exact candidate and inspect packages
+    needs: preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      build-id: ${{ steps.build.outputs.artifact-id }}
+      package-id: ${{ steps.packages.outputs.artifact-id }}
+
+    steps:
+      - name: Checkout exact candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Build once, pack once, and inspect primary and symbol packages
+        run: >-
+          bash eng/release-candidate.sh --job build
+          --version "$CANDIDATE_VERSION" --output artifacts/qualification
+          --deadline-utc "${{ needs.preflight.outputs.deadline-utc }}"
+
+      - name: Preserve complete execution files and modes
+        run: >-
+          tar -czf artifacts/rc-build.tar.gz -C artifacts/qualification
+          identity.json quality locks build/bin packages logs
+
+      - name: Retain exact producer build
+        id: build
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rc-build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/rc-build.tar.gz
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Retain exact package inputs
+        id: packages
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rc-packages-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/qualification/identity.json
+            artifacts/qualification/quality
+            artifacts/qualification/locks
+            artifacts/qualification/packages
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Retain build failure evidence
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rc-diagnostics-build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/qualification/logs
+          if-no-files-found: warn
+          retention-days: 30
+
+  tests:
+    name: RC / ${{ matrix.name }}
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 130
+    env:
+      RC_BUILD_ARTIFACT_ID: ${{ needs.build.outputs.build-id }}
+
+    # WHY: Independent runners isolate Docker and coverage while testing the same producer-built bytes.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: core
+            name: Core unit tests
+            project: tests/Doka.NestedSet.Tests/Doka.NestedSet.Tests.csproj
+            assembly: Doka.NestedSet.Tests
+            docker: false
+          - id: ef-unit
+            name: EF Core unit tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests.csproj
+            assembly: Doka.EntityFrameworkCore.NestedSet.Unit.Tests
+            docker: false
+          - id: benchmark-contracts
+            name: Benchmark contract tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests.csproj
+            assembly: Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests
+            docker: false
+          - id: mysql
+            name: MySQL and MariaDB integration tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
+            assembly: Doka.EntityFrameworkCore.NestedSet.MySql.Tests
+            docker: true
+          - id: postgresql
+            name: PostgreSQL integration tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests.csproj
+            assembly: Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests
+            docker: true
+          - id: sqlserver
+            name: SQL Server integration tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests/Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests.csproj
+            assembly: Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests
+            docker: true
+          - id: sqlite
+            name: SQLite integration tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests.csproj
+            assembly: Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests
+            docker: false
+          - id: migrations
+            name: EF migration integration tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests.csproj
+            assembly: Doka.EntityFrameworkCore.NestedSet.Migrations.Tests
+            docker: true
+          - id: safe-migrations
+            name: SafeMigrations integration tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests.csproj
+            assembly: Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests
+            docker: true
+
+    steps:
+      - name: Checkout exact candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Validate exact build artifact ID
+        run: '[[ "$RC_BUILD_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]'
+
+      - name: Download exact producer build
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.build.outputs.build-id }}
+          path: artifacts/transport
+
+      - name: Restore execution files and modes
+        run: |
+          mkdir -p artifacts/qualification
+          tar -xzf artifacts/transport/rc-build.tar.gz -C artifacts/qualification
+
+      - name: Check Docker availability
+        if: matrix.docker
+        run: docker info
+
+      - name: Test exact producer assembly with coverage
+        run: >-
+          bash eng/release-candidate.sh --job test --project "${{ matrix.project }}"
+          --version "$CANDIDATE_VERSION" --output artifacts/qualification
+
+      - name: Retain verified job evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rc-evidence-test-${{ matrix.assembly }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/qualification/evidence
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Retain failure evidence
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rc-diagnostics-test-${{ matrix.assembly }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/qualification/logs
+            artifacts/qualification/tests
+            artifacts/qualification/consumer
+            artifacts/qualification/sbom
+          if-no-files-found: warn
+          retention-days: 30
+
+  samples:
+    name: RC / SQLite sample / ${{ matrix.sample }}
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      RC_BUILD_ARTIFACT_ID: ${{ needs.build.outputs.build-id }}
+    strategy:
+      fail-fast: false
+      matrix:
+        sample: [FileSystem, Kpis, UserGroups]
+
+    steps:
+      - name: Checkout exact candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Validate exact build artifact ID
+        run: '[[ "$RC_BUILD_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]'
+
+      - name: Download exact producer build
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.build.outputs.build-id }}
+          path: artifacts/transport
+
+      - name: Restore execution files and modes
+        run: |
+          mkdir -p artifacts/qualification
+          tar -xzf artifacts/transport/rc-build.tar.gz -C artifacts/qualification
+
+      - name: Run exact producer sample
+        run: >-
+          bash eng/release-candidate.sh --job sample --sample "${{ matrix.sample }}"
+          --version "$CANDIDATE_VERSION" --output artifacts/qualification
+
+      - name: Retain verified job evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rc-evidence-sample-${{ matrix.sample }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/qualification/evidence
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Retain failure evidence
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rc-diagnostics-sample-${{ matrix.sample }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/qualification/logs
+            artifacts/qualification/tests
+            artifacts/qualification/consumer
+            artifacts/qualification/sbom
+          if-no-files-found: warn
+          retention-days: 30
+
+  consumer:
+    name: Verify exact package consumers
+    needs: build
+    runs-on: ubuntu-24.04
+    outputs:
+      artifact-id: ${{ steps.evidence.outputs.artifact-id }}
+    timeout-minutes: 30
+    env:
+      RC_PACKAGE_ARTIFACT_ID: ${{ needs.build.outputs.package-id }}
+
+    steps:
+      - name: Checkout exact candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Validate exact package artifact ID
+        run: '[[ "$RC_PACKAGE_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]'
+
+      - name: Download exact package inputs
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.build.outputs.package-id }}
+          path: artifacts/qualification
+
+      - name: Verify exact package consumers
+        run: >-
+          bash eng/release-candidate.sh --job consumer
+          --version "$CANDIDATE_VERSION" --output artifacts/qualification
+
+      - name: Retain verified job evidence
+        id: evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rc-evidence-consumer-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/qualification/evidence
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Retain failure evidence
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rc-diagnostics-consumer-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/qualification/logs
+            artifacts/qualification/tests
+            artifacts/qualification/consumer
+            artifacts/qualification/sbom
+          if-no-files-found: warn
+          retention-days: 30
+
+  sbom:
+    name: Generate and verify both SBOMs
+    needs: build
+    runs-on: ubuntu-24.04
+    outputs:
+      artifact-id: ${{ steps.evidence.outputs.artifact-id }}
+    timeout-minutes: 30
+    env:
+      RC_PACKAGE_ARTIFACT_ID: ${{ needs.build.outputs.package-id }}
+
+    steps:
+      - name: Checkout exact candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Validate exact package artifact ID
+        run: '[[ "$RC_PACKAGE_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]'
+
+      - name: Download exact package inputs
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.build.outputs.package-id }}
+          path: artifacts/qualification
+
+      - name: Generate and verify both SBOMs
+        run: >-
+          bash eng/release-candidate.sh --job sbom
+          --version "$CANDIDATE_VERSION" --output artifacts/qualification
+
+      - name: Retain verified job evidence
+        id: evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rc-evidence-sbom-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/qualification/evidence
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Retain failure evidence
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rc-diagnostics-sbom-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/qualification/logs
+            artifacts/qualification/tests
+            artifacts/qualification/consumer
+            artifacts/qualification/sbom
+          if-no-files-found: warn
+          retention-days: 30
+
+  qualify:
+    name: Qualify exact release candidate
+    needs: [preflight, source-quality, engineering-tests, build, tests, samples, consumer, sbom]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      RC_BUILD_ARTIFACT_ID: ${{ needs.build.outputs.build-id }}
+    outputs:
+      artifact-id: ${{ steps.candidate.outputs.artifact-id }}
+
+    steps:
+      - name: Require every qualification job to pass
+        env:
+          JOB_RESULTS: ${{ toJSON(needs) }}
+        run: >-
+          jq -e 'length == 8 and all(.[]; .result == "success")' <<< "$JOB_RESULTS"
+
+      - name: Checkout exact candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate exact producer artifact IDs
+        env:
+          SOURCE_EVIDENCE_ID: ${{ needs.source-quality.outputs.artifact-id }}
+          ENGINEERING_EVIDENCE_ID: ${{ needs.engineering-tests.outputs.artifact-id }}
+          CONSUMER_EVIDENCE_ID: ${{ needs.consumer.outputs.artifact-id }}
+          SBOM_EVIDENCE_ID: ${{ needs.sbom.outputs.artifact-id }}
+        run: |
+          for artifact_id in "$RC_BUILD_ARTIFACT_ID" "$SOURCE_EVIDENCE_ID" "$ENGINEERING_EVIDENCE_ID" \
+            "$CONSUMER_EVIDENCE_ID" "$SBOM_EVIDENCE_ID"; do
+            [[ "$artifact_id" =~ ^[1-9][0-9]*$ ]]
+          done
+
+      - name: Download exact producer build
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.build.outputs.build-id }}
+          path: artifacts/transport
+
+      - name: Restore execution files and modes
+        run: |
+          mkdir -p artifacts/qualification
+          tar -xzf artifacts/transport/rc-build.tar.gz -C artifacts/qualification
+
+      - name: Download source-quality evidence from its successful job
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.source-quality.outputs.artifact-id }}
+          path: artifacts/qualification
+
+      - name: Download engineering-tests evidence from its successful job
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.engineering-tests.outputs.artifact-id }}
+          path: artifacts/qualification
+
+      - name: Download consumer evidence from its successful job
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.consumer.outputs.artifact-id }}
+          path: artifacts/qualification
+
+      - name: Download sbom evidence from its successful job
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.sbom.outputs.artifact-id }}
+          path: artifacts/qualification
+
+      - name: Download current-attempt test results
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: rc-evidence-test-*-${{ github.run_id }}-${{ github.run_attempt }}
+          merge-multiple: true
+          path: artifacts/qualification
+
+      - name: Download current-attempt sample results
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: rc-evidence-sample-*-${{ github.run_id }}-${{ github.run_attempt }}
+          merge-multiple: true
+          path: artifacts/qualification
+
+      - name: Verify complete evidence and seal exact candidate
+        run: >-
+          bash eng/release-candidate.sh --job aggregate
+          --version "$CANDIDATE_VERSION" --output artifacts/qualification
 
       - name: Retain qualification and failure evidence
         if: always()
