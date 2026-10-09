@@ -44,6 +44,7 @@ hierarchy before the one operation being assessed.
 | SQLite keyed writes scan whole trees | Actual unanalyzed repair UPDATE plans | Excluded scope/tree keys and membership-alias collisions |
 | Framework seams resolved too late | Complete registration-time insertion contract | Incompatible member/version diagnostic before context creation |
 | Unchanged insertion keys allocate per boundary | Typed scalar/FK snapshot reuse | Sidecars, conceptual nulls, custom sentinels, mutable-key rejection |
+| PostgreSQL generic plan differs | Native PREPARE counters and partial-index selection | Principal-only exclusion, SQL error, cancellation/session cleanup |
 
 The sections below name the source methods behind the matrix. The matrix is a
 selection guide, not a replacement for the full provider suites.
@@ -135,6 +136,15 @@ including derived, named, and complex mappings. Existing SQL Server rowversion
 and callback-rollback cases verify pending payload originals, both acceptance
 modes, and successful later saves; the refactor does not establish a separate
 token policy.
+
+PostgreSQL prepared-plan cases prove generic planning with `generic_plans=1`,
+`custom_plans=0`, `from_sql=true`, and parameter symbols in the native plan.
+They check Parent, root, and principal-only queries in scoped and unscoped
+models. SQL-error and cancellation cases require restored session settings,
+no surviving owned statement, and preservation of an unrelated prepared query.
+
+Sources: [prepared generic-plan cases](../tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests/Indexes/NullableParentIndexTests.GenericPlans.cs)
+and [prepared session cleanup](../tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests/Indexes/NullableParentIndexTests.PreparedPlan.cs).
 
 
 ## Parent presence and ownership

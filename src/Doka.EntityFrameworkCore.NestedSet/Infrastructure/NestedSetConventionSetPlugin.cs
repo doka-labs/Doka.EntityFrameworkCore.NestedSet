@@ -43,6 +43,13 @@ internal sealed class NestedSetConventionSetPlugin : IConventionSetPlugin
             new NestedSetInfrastructureConvention(_providerName, _typeMappings));
         conventionSet.ModelFinalizingConventions.Add(indexConvention);
 
+        if (_providerName == NestedSetProviderCapabilities.PostgreSqlProviderName)
+        {
+            // WHY: EF drains relationship conventions after each finalizer. The parent index exists only
+            // after the preceding nested-set finalizer's new self-FK has completed that batch.
+            conventionSet.ModelFinalizingConventions.Add(new NestedSetParentIndexes(_sql));
+        }
+
         return conventionSet;
     }
 }

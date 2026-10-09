@@ -28,6 +28,7 @@ and MariaDB use the Doka provider; PostgreSQL, SQLite, and SQL Server have their
 - Avoid unique structural constraints that conflict with interval-shift update sequences.
 - Qualify ordinary migrations independently from optional adapter behavior.
 - Keep exact tested provider and adapter versions visible in the support matrix.
+- Keep PostgreSQL FK principal checks independent of generated tree-local access paths during atomic imports.
 
 ## Considered Options
 
@@ -41,10 +42,50 @@ Chosen option: "Provider-neutral model indexes with optional adapter qualificati
 the entity model, while SafeMigrations is an optional application migration policy. A provider dependency does not
 belong in the shipping NestedSet packages.
 
+PostgreSQL specializes index eligibility without changing the structural key
+sequences. An untouched library-created structural index receives a mapped
+`TreeId IS NOT NULL` predicate. TreeId is required, so this indexes every
+hierarchy row. Tree-local equality implies the predicate, whereas self-FK
+principal checks constrain only Scope/NodeKey. An untouched conventional
+nullable self-FK index receives `Parent IS NOT NULL`; a companion root index
+on the principal columns followed by Parent receives `Parent IS NULL`. PK/alternate-key
+uniqueness and the FK itself are unchanged. Explicit application metadata is
+preserved; no application index is removed to influence a plan.
+
+The trailing Parent keeps the root index physically co-located with its filter
+column. EF maps inherited TPT indexes using their key columns, without checking
+raw filter references. A principal-only root index would also be emitted on a
+payload table without Parent and fail database creation. Including Parent
+preserves the leading Scope/NodeKey lookup and excludes such tables; every
+indexed root has a null Parent. It also retains the distinct dependent-FK
+prefix, so EF's filter-unaware coverage convention does not remove that path.
+
+The PostgreSQL finalizer runs after structural index reconciliation. EF Core
+10.0.12 completes each finalizing convention's delayed batch before invoking
+the next convention. This makes the conventional self-FK index available for
+the subsequent parent specialization. Structural filtering acts only on exact
+indexes owned by the current mutable model and still carrying unmodified
+convention metadata. Root companion names derive from physical identifiers
+and check model and database-name collisions. Other providers keep their
+existing definitions.
+
+The reason is observed, rather than a hypothetical optimizer preference.
+During a million-child atomic import, default automatic analysis saw no
+committed rows and invalidated a cached RI plan. The importing transaction
+still saw its growing rowset. A scope-only scan then replaced the composite
+principal-key lookup for each new child. Filtering only the dependent Parent
+index still allowed a structural Scope/TreeId/Right index to be selected.
+TreeId predicates exclude those generated paths from the principal check.
+Regression plans cover both native and converted TreeIds and public tree
+queries. Actual post-maintenance RI evidence remains a separate capacity
+qualification; a synthetic EXPLAIN alone does not establish import capacity.
+
 ### Consequences
 
 - Good, because Doka and PostgreSQL work with normal migrations, and optional SQLite adapter behavior is tested without changing package prerequisites.
 - Bad, because a supporting index is not a universal optimal query plan; real payload filters and workload distributions may need application indexes.
+- Good, because PostgreSQL tree queries retain complete row coverage while FK checks cannot select generated tree paths as scope-only scans.
+- Bad, because PostgreSQL upgrades can rebuild affected indexes, and an application-owned unfiltered index can reintroduce the measured bad plan.
 
 ### Confirmation
 
@@ -52,7 +93,8 @@ Run live-provider cases on each provider project present in this revision; a
 filtered run does not establish coverage for a provider introduced later.
 
 - Run `dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests.csproj -c Release` and expect generated migration lifecycle and physical index tests to pass without SafeMigrations references.
-- Run `dotnet test tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests.csproj -c Release` and expect optional adapter tests to pass. Require SQLite script rejection, foreign database qualifier rejection, safe replay, and same-name wrong-definition drift rejection.
+- Run the PostgreSQL nullable-parent index tests: actual catalog predicates and public tree-query plans must match for native and converted TreeIds, while principal checks exclude generated structural paths.
+- Require positive convention-ownership and negative explicit/adopted-index tests, including custom filters, names, uniqueness, provider facets, and physical-name collisions.
 
 ## Pros and Cons of the Options
 
@@ -82,6 +124,8 @@ optional SQL Server SafeMigrations adapter.
 
 - A new provider version changes index metadata, key mapping, SQL generation, or physical catalog behavior.
 - Query-plan evidence shows a missing structural access path or a harmful redundant index.
+- PostgreSQL changes predicate implication, FK RI planning, or statistics-driven cached-plan invalidation.
+- An EF convention change alters finalizer batching or nullable self-FK index coverage.
 - The application requests a migration policy unavailable through the current optional adapters.
 
 ### Decision History
@@ -93,11 +137,15 @@ optional SQL Server SafeMigrations adapter.
 - 2026-09-28: The maintainer accepted the current decision and designated the core-maintainers audience.
 - 2026-09-28: Status changed from accepted to implemented.
 - 2026-09-28: Confirmed deterministic model indexes, ordinary EF migration support, and optional SafeMigrations regression specifications against the linked repository evidence.
+- 2026-10-04: Specialized untouched PostgreSQL indexes after actual atomic-import RI scans; retained application metadata and added ordinary/optional migration and query-plan regressions.
 
 ### Implementation References
 
 - [Index roles](../../src/Doka.EntityFrameworkCore.NestedSet/Configuration/NestedSetIndexes.cs)
 - [Model index convention](../../src/Doka.EntityFrameworkCore.NestedSet/Configuration/NestedSetIndexConvention.cs)
+- [PostgreSQL parent convention](../../src/Doka.EntityFrameworkCore.NestedSet/Configuration/NestedSetParentIndexes.cs)
+- [PostgreSQL eligibility tests](../../tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests/Indexes/NullableParentIndexTests.Eligibility.cs)
+- [Index ownership tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/IndexConventionTests.PostgreSqlParents.cs)
 - [Provider capabilities](../../src/Doka.EntityFrameworkCore.NestedSet/Providers)
 - [Ordinary migration tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests)
 - [Optional adapter tests](../../tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests)
@@ -107,4 +155,11 @@ optional SQL Server SafeMigrations adapter.
 
 ### Sources
 
-- No external sources; repository evidence only.
+- [EF Core 10.0.12 physical index table mapping](https://github.com/dotnet/efcore/blob/v10.0.12/src/EFCore.Relational/Metadata/Internal/RelationalModel.cs) (primary source; retrieved 2026-10-04)
+- [EF Core 10.0.12 FK index prefix coverage](https://github.com/dotnet/efcore/blob/v10.0.12/src/EFCore/Metadata/Conventions/ForeignKeyIndexConvention.cs) (primary source; retrieved 2026-10-04)
+- [PostgreSQL 17 multicolumn index prefixes](https://www.postgresql.org/docs/17/indexes-multicolumn.html) (primary source; retrieved 2026-10-04)
+
+- [PostgreSQL 17 partial indexes](https://www.postgresql.org/docs/17/indexes-partial.html) (primary source; retrieved 2026-10-04)
+- [PostgreSQL 17 prepared statements and plan invalidation](https://www.postgresql.org/docs/17/sql-prepare.html) (primary source; retrieved 2026-10-04)
+- [PostgreSQL 17 routine maintenance and planner statistics](https://www.postgresql.org/docs/17/routine-vacuuming.html) (primary source; retrieved 2026-10-04)
+- [EF Core 10.0.12 finalizing convention batches](https://github.com/dotnet/efcore/blob/v10.0.12/src/EFCore/Metadata/Conventions/Internal/ConventionDispatcher.ImmediateConventionScope.cs) (primary source; retrieved 2026-10-04)

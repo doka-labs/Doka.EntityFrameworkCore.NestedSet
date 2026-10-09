@@ -6,14 +6,17 @@ internal sealed class NestedSetProviderCapabilities
     /// <summary>Identifies the registered Doka provider supporting canonical table collation metadata.</summary>
     internal const string MySqlProviderName = "Doka.EntityFrameworkCore.MySql";
 
+    /// <summary>Identifies the registered Npgsql PostgreSQL provider.</summary>
+    internal const string PostgreSqlProviderName = "Npgsql.EntityFrameworkCore.PostgreSQL";
+
     /// <summary>The immutable capabilities shared by contexts using the same provider.</summary>
     private static readonly Dictionary<string, NestedSetProviderCapabilities> s_providers =
-        new Dictionary<string, NestedSetProviderCapabilities>(StringComparer.Ordinal)
+        new(StringComparer.Ordinal)
         {
-            ["Microsoft.EntityFrameworkCore.Sqlite"] = new(NestedSetProviderKind.Sqlite),
-            [MySqlProviderName] = new(NestedSetProviderKind.MySql),
-            ["Npgsql.EntityFrameworkCore.PostgreSQL"] = new(NestedSetProviderKind.PostgreSql),
-            ["Microsoft.EntityFrameworkCore.SqlServer"] = new(NestedSetProviderKind.SqlServer),
+            ["Microsoft.EntityFrameworkCore.Sqlite"] = new NestedSetProviderCapabilities(NestedSetProviderKind.Sqlite),
+            [MySqlProviderName] = new NestedSetProviderCapabilities(NestedSetProviderKind.MySql),
+            [PostgreSqlProviderName] = new NestedSetProviderCapabilities(NestedSetProviderKind.PostgreSql),
+            ["Microsoft.EntityFrameworkCore.SqlServer"] = new NestedSetProviderCapabilities(NestedSetProviderKind.SqlServer),
         };
 
     /// <summary>Creates immutable capabilities for one verified provider dialect.</summary>

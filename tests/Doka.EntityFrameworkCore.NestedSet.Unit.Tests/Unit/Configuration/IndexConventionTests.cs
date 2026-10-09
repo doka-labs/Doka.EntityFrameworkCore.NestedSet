@@ -227,14 +227,15 @@ public sealed partial class IndexConventionTests
 
         // Assert
         Assert.Equal(
-            4,
+            engine == "PostgreSql" ? 5 : 4,
             entity
                 .GetIndexes()
                 .Count());
         Assert.All(
             entity
                 .GetIndexes()
-                .Where(index => index.Properties.Count > 2),
+                .Where(index => index.Properties.Count > 2
+                    && index.GetFilter()?.EndsWith(" IS NULL", StringComparison.Ordinal) != true),
             index => Assert.Contains(index.Properties, property => property.Name == nameof(IndexNode.TreeId)));
         Assert.All(entity.GetIndexes(), index => Assert.False(index.IsUnique));
     }
@@ -422,17 +423,18 @@ public sealed partial class IndexConventionTests
 
         // Assert
         Assert.Equal(
-            4,
+            engine == "PostgreSql" ? 5 : 4,
             entity
                 .GetIndexes()
                 .Count());
+
         var names = entity
             .GetIndexes()
             .Select(index => index.GetDatabaseName()!)
             .ToArray();
         Assert.All(names, name => Assert.InRange(name.Length, 1, limit));
         Assert.Equal(
-            4,
+            engine == "PostgreSql" ? 5 : 4,
             names
                 .Distinct(StringComparer.Ordinal)
                 .Count());

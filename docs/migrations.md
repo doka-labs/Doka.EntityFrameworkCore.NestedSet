@@ -140,6 +140,58 @@ Convention-owned names use a deterministic hash of final entity, table,
 schema, column, and direction identity. An application-customized index remains
 application-owned and is not removed when the hierarchy configuration changes.
 
+### PostgreSQL index predicates
+
+PostgreSQL keeps the same structural key sequences, but adds
+`"TreeId" IS NOT NULL` to untouched library-created structural indexes. TreeId
+is required, so every hierarchy row remains indexed. Tree-local equality
+queries imply this predicate, including parameterized queries with converted
+TreeIds. A self-FK principal check constrains only `(Scope?, NodeKey)` and does
+not imply the TreeId predicate.
+
+This distinction prevents a principal check from choosing a scope-only scan
+of a structural index during a large atomic import. In qualification, automatic
+statistics collection saw no committed rows while hundreds of thousands of
+new rows were visible to the importing transaction. A replanned FK lookup
+then scanned the growing scope for every child. A nullable-Parent predicate
+on the dependent index alone was insufficient: another structural index
+remained eligible. The TreeId predicates exclude those generated paths from
+that principal lookup without disabling automatic maintenance or changing
+the FK. See PostgreSQL's [partial-index rules][pg-partial] and
+[statistics-driven prepared-plan invalidation][pg-prepare].
+
+An untouched convention-created nullable self-FK index is also partitioned:
+
+```text
+(Scope?, ParentId) WHERE ParentId IS NOT NULL
+(Scope?, NodeKey, ParentId) WHERE ParentId IS NULL
+```
+
+The first path indexes dependents; the second retains a root access path.
+The trailing Parent column keeps the root index on tables that actually map
+the filter column. EF's TPT table mapping uses index keys rather than filter
+references; a key-only root index could otherwise reach a payload table without
+Parent. The leading Scope/NodeKey prefix remains available, and Parent is null
+on every indexed row.
+The root index name derives from physical schema, table, Parent, and principal
+columns, rather than the CLR entity name. These predicates use the actual
+mapped and delimited column names. PK and alternate-key uniqueness, FK
+definition, and the required structural key sequences remain unchanged.
+
+Explicit or adopted application indexes are preserved, including names,
+filters, uniqueness, directions, and provider facets. Other providers retain
+their existing index definitions. An application-owned unfiltered scope-leading
+index can still make the expensive FK plan eligible; inspect the application's
+actual plans after adding such an index. No model convention can promise an
+optimal plan for arbitrary application indexes or statistics.
+
+When upgrading from a model with unfiltered PostgreSQL indexes, scaffold a
+normal migration. Review its index drop/create operations and filters against
+the model snapshot; hierarchy rows and registry lifecycle data must remain
+intact. Account for index-build locks and extra disk space in the application's
+deployment policy.[pg-partial]: https://www.postgresql.org/docs/17/indexes-partial.html
+[pg-prepare]: https://www.postgresql.org/docs/17/sql-prepare.html
+
 ## Existing tables
 
 Adopting NestedSet on populated data requires an explicit transition:

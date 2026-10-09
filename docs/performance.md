@@ -43,6 +43,34 @@ an adversarial physical table name that could shadow the membership alias.
 See [SQLite query planning](https://sqlite.org/optoverview.html) and
 [EXPLAIN QUERY PLAN](https://sqlite.org/eqp.html).
 
+PostgreSQL's generated tree paths use `TreeId IS NOT NULL`; the conventional
+nullable self-FK path uses `Parent IS NOT NULL` and has a root companion.
+The required TreeId keeps every row in the structural indexes. Tree equality
+queries can use them, while FK principal checks cannot substitute a scope-only
+structural scan for their Scope/NodeKey lookup. During a large uncommitted
+import, automatic analysis can observe no committed rows and invalidate the
+cached RI plan, even though the importing transaction sees its growing rows.
+The measured failure scanned over 400,000 rows per new child. Filtering only
+the Parent index left a second structural scan eligible. The final model
+excludes these generated paths from that principal check without an FK,
+planner-setting, or maintenance bypass.
+
+The local diagnostic on 2026-10-04 observed actual post-autoanalyze RI statements
+with 500,032 and 965,376 rows visible to the importing transaction. Both used
+the composite alternate key with both index conditions, one returned row,
+five total buffer hits, and no filter scan. Public tree-query plans also use
+the filtered structural path for native and converted TreeIds. These are
+observations of the qualified fixture, not a universal optimizer or latency
+guarantee. An application-owned unfiltered index can change plan eligibility.
+Separate native `PREPARE` tests force a generic plan and verify the server's
+generic/custom counters. Parent equality uses the dependent partial index,
+root selection uses its companion, and principal-only lookup excludes both.
+Error and cancellation controls restore the session mode and remove only the
+test-owned prepared statement. These plan controls do not replace the actual
+million-node import or change runtime planner settings.
+Review the [migration and index ownership contract](migrations.md#postgresql-index-predicates)
+and PostgreSQL's [partial-index rules](https://www.postgresql.org/docs/17/indexes-partial.html)
+and [plan invalidation](https://www.postgresql.org/docs/17/sql-prepare.html).
 
 ## Scope and TreeId design
 
