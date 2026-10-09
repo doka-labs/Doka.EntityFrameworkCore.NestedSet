@@ -73,17 +73,33 @@ The release operator must be able to inspect candidate hashes and retained
 evidence before creating the tag or approving the protected environment.
 Environment approval authorizes the exact waiting run only.
 
+Hosted qualification has independent source/tooling checks, one canonical build
+and pack, nine test-project cells, three compiled SQLite samples, consumers,
+and SBOMs. The final `qualify` job directly requires every prerequisite and
+validates the complete matching evidence before sealing. Parallel job success
+does not authorize publication; the operator still reviews the sealed candidate
+and provenance before the signed tag and protected approval.
+
+GitHub's job dependencies and artifact transport supply job completion and
+download integrity. Producer IDs pass through job outputs; matrix evidence
+names include the current run and attempt. Qualification verifies the retained
+test, coverage, query-plan, sample, consumer, and SBOM results without a second
+job-receipt or role-inventory protocol.
+
 ## Required evidence
 
 The release record includes:
 
 - source commit, tree, and content fingerprint;
 - workflow run and attempt;
+- canonical build identity;
 - candidate and package manifests;
 - primary and symbol package SHA-256 hashes;
 - locked dependency evidence;
 - full test and provider results;
-- package-only consumer results;
+- coverage for every executable test project, executed lines in both shipping
+  modules across the reports, every required query plan, and all three samples;
+- package-only consumer results with matching primary-package hashes;
 - per-package SPDX 2.2 SBOMs;
 - portable provenance and SBOM attestation bundles;
 - signed annotated tag verification;
@@ -91,15 +107,30 @@ The release record includes:
 - NuGet repository signature and canonical-content readback; and
 - symbol/Portable PDB readback.
 
+Producer artifact IDs are transport references in GitHub job outputs and action
+logs. They are not additional fields or files in the portable qualification
+evidence; the retained source identity, runtime inventory, and package manifests
+bind that evidence to the inspected candidate bytes.
+
 Local benchmark timings are not release evidence. GitHub runner hardware is not
 a deterministic performance baseline.
 
 ## Failure policy
 
-Any missing, stale, duplicate, extra, malformed, or conflicting identity
-artifact fails closed. Do not rebuild selected files, copy evidence from
+Any missing required result or stale, malformed, or conflicting candidate
+identity fails closed. Do not rebuild selected files, copy evidence from
 another run, move a tag, delete and reuse a published version, disable package
 signature checks, or approve a different run as a substitute.
+
+All qualification jobs share the preflight's 7,200-second UTC deadline. Before
+sealing, use **Re-run all jobs** or a new dispatch to refresh all checks and the
+deadline. Successful source-quality/engineering logs from the same run and
+commit may survive a partial rerun. Downloaded build identity and test/sample
+selection remain bound to the current attempt; consumers and SBOMs remain bound
+to the selected package bytes. A retained preflight keeps its original deadline.
+See [rerun boundaries](release-process.md#recovery). Recovery after sealing
+retains the original candidate artifact IDs, bytes, and attestation/publication
+controls.
 
 NuGet publication across two package IDs is not atomic. Recovery uses only the
 same failed publish job and candidate. Already visible matching packages may be

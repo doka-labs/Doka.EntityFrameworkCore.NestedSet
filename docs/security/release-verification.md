@@ -154,6 +154,33 @@ checks the copied candidate bytes against the copied manifest. Use only those
 copies for subsequent provenance and SBOM checks. The manifest alone is not
 authenticated; the attestation checks below provide that identity layer.
 
+Inspect `qualification-evidence.zip` against the
+[qualification contract](../release-process.md#qualification-stages). Hosted
+parallel qualification retains the source/tooling results, canonical build and
+package inventory, nine executable test-project results with per-project
+coverage, all required query plans, three compiled SQLite samples, consumers,
+and both SBOM checks. GitHub's direct job dependencies require success, scalar
+producer artifact IDs select non-matrix outputs, and test/sample artifact names
+select the current run and attempt. Evidence uploads retain hidden files, and
+the pinned download action checks artifact digests. Existing source, version,
+run, attempt, runtime, dependency-lock, and package guards remain in place;
+qualification does not add a separate job-receipt or file-inventory protocol.
+The consumer result's primary-package hashes must equal the inspected package
+manifest for the archives being sealed, in addition to successful core and EF
+execution at the selected version.
+
+Downloaded build identity and test/sample selection must match the current run
+and attempt. Successful source-quality/engineering logs may originate from an
+earlier attempt of the same run and commit; their scalar artifact IDs select the
+successful checks. They do not supply compiled runtime or package bytes. A
+retained preflight keeps its original deadline. Follow the
+[rerun boundaries](../release-process.md#recovery); arbitrary evidence from
+another run cannot fill missing or conflicting results.
+
+The final `qualify` job seals the existing candidate only after checking this
+complete set. Publication recovery continues to verify the original sealed
+candidate and provenance artifact IDs.
+
 ## Verify build provenance
 
 Verify every primary and symbol package with the portable provenance bundle and

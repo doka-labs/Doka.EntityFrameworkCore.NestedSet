@@ -34,10 +34,11 @@ Before starting the candidate:
    source evidence. The achieved Passing badge does not replace stable qualification.
 4. Inspect the matching PR CI provider-lane durations and occupied-heap output
    for the capacity cases before starting RC. Local import observations approach
-   the 512 MiB ceiling and do not establish hosted GC headroom. The serial RC
-   run includes coverage and all five engines; successful parallel PR lanes do
-   not by themselves prove its two-hour deadline. Retain the actual RC result
-   as qualification evidence without relaxing these correctness or memory checks.
+   the 512 MiB ceiling and do not establish hosted GC headroom. RC qualification
+   includes coverage and all five engines under one shared two-hour deadline;
+   successful parallel PR lanes do not by themselves prove that deadline. Retain
+   the actual RC result as qualification evidence without relaxing these
+   correctness or memory checks.
 
 Prepare the versioned root/package READMEs, Getting Started, Support, and
 Security policy in the release PR before starting the candidate. They describe
@@ -154,13 +155,32 @@ Use `10.0.0` for this stable release. Other release versions use
 `X.Y.Z-rc.N` or `X.Y.Z`, without a leading `v`. Wait for:
 
 1. `Verify source and unused version`;
-2. `Qualify exact release candidate`; and
-3. `Sign and verify candidate provenance`.
+2. independent `C# style and unused imports`, `Release engineering regression
+   tests`, and `Build exact candidate and inspect packages` jobs;
+3. all nine `RC / ...` test cells, three `RC / SQLite sample / ...` cells,
+   `Verify exact package consumers`, and `Generate and verify both SBOMs`;
+4. `Qualify exact release candidate`; and
+5. `Sign and verify candidate provenance`.
 
 Qualification runs the complete source, test, package, consumer, and SBOM
-checks from this selected commit. Benchmarks and ADR profile validation are
+checks from this selected commit. The build compiles once, packs each shipping
+package once, and inspects all primary/symbol archives. Subsequent jobs execute
+its compiled test/sample files or verify its exact packages. The final
+`qualify` job requires every prerequisite and complete matching evidence before
+sealing; its candidate artifact ID then flows to attestation and publication.
+See [Qualification stages](../release-process.md#qualification-stages) for the
+fixed graph and artifact contract. Benchmarks and ADR profile validation are
 separate maintainer activities. No earlier CI artifact or local rehearsal is
 required for the release candidate.
+
+Preflight establishes one 7,200-second UTC deadline shared by all qualification
+jobs. The budget does not restart for each cell. Follow each job's live steps,
+retained logs, results, and artifact IDs; failed cells retain diagnosis evidence.
+The final job checks GitHub's direct dependency results, downloads non-matrix
+evidence by producer artifact ID, and selects test/sample evidence only for the
+current run and attempt. It verifies all required retained results before sealing.
+There is no separate job-receipt registry or artifact-index API to configure.
+The final summary identifies the candidate and retained qualification evidence.
 
 The final `Publish approved candidate` job must show **Waiting** for approval
 on environment `nuget`. Do not approve it yet. Confirm that the run SHA equals
@@ -251,8 +271,16 @@ publicly available.
 
 ## Failure and recovery
 
-- Before a tag exists, correct failures through review and start a new
-  candidate run. No release identity has been consumed.
+- Before the candidate is sealed, use **Re-run all jobs** or a new dispatch.
+  This refreshes every check and the preflight deadline. A partial rerun can
+  retain successful source-quality/engineering logs from the same run and
+  commit, but cannot reuse an earlier build for new test/sample jobs. Retaining
+  preflight also retains its deadline. See the exact
+  [rerun boundaries](../release-process.md#recovery). Correct source failures
+  through review and start a new candidate run.
+- Once a candidate is sealed, its original artifact IDs and bytes remain the
+  inputs for existing attestation/publication recovery. Do not requalify
+  selected parts or replace the candidate to repair a later failure.
 - After the tag exists, never move or delete it to hide a failure. Rerun only
   the failed publication job in the same workflow run.
 - A failed draft staging step requests no NuGet credential and pushes no

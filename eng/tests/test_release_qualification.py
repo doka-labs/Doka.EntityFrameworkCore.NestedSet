@@ -89,6 +89,10 @@ class QualificationFixture(unittest.TestCase):
         self.addCleanup(environment_patch.stop)
         self.runner = qualification.Qualification(self.repo, self.root / "output", VERSION)
 
+    def mock_compile(self):
+        """Exclude artifact production when a regression only examines source/tooling commands."""
+        return patch.object(self.runner, "compile")
+
     def complete_fixture(self):
         """Seal a complete tiny candidate using the real assembly implementation."""
         stage_fixture(self.runner)
@@ -120,7 +124,7 @@ class BuildVersionTests(QualificationFixture):
 
         # Act
         with patch.object(self.runner, "command") as command, patch.object(qualification, "prepare_locks"), \
-                patch.object(qualification, "verify_locks"), patch.object(qualification, "runtime_inventory", return_value={}):
+                patch.object(qualification, "verify_locks"), patch.object(qualification, "runtime_inventory", return_value={}), self.mock_compile():
             self.runner.quality()
 
         # Assert
@@ -220,7 +224,7 @@ class StagePrerequisiteTests(QualificationFixture):
         """Invalid ADR content must not make package qualification fail."""
         # Arrange
         with patch.object(self.runner, "command") as command, patch.object(qualification, "prepare_locks"), \
-                patch.object(qualification, "verify_locks"), patch.object(qualification, "runtime_inventory", return_value={}):
+                patch.object(qualification, "verify_locks"), patch.object(qualification, "runtime_inventory", return_value={}), self.mock_compile():
             # Act
             self.runner.quality()
 
@@ -232,7 +236,7 @@ class StagePrerequisiteTests(QualificationFixture):
         """Local style and build feedback must remain usable without a running daemon."""
         # Arrange
         with patch.object(self.runner, "command") as command, patch.object(qualification, "prepare_locks"), \
-                patch.object(qualification, "verify_locks"), patch.object(qualification, "runtime_inventory", return_value={}):
+                patch.object(qualification, "verify_locks"), patch.object(qualification, "runtime_inventory", return_value={}), self.mock_compile():
             # Act
             self.runner.quality()
 
@@ -243,7 +247,7 @@ class StagePrerequisiteTests(QualificationFixture):
         """The RC checks its release code but does not depend on Dependabot-only tests."""
         # Arrange
         with patch.object(self.runner, "command") as command, patch.object(qualification, "prepare_locks"), \
-                patch.object(qualification, "verify_locks"), patch.object(qualification, "runtime_inventory", return_value={}):
+                patch.object(qualification, "verify_locks"), patch.object(qualification, "runtime_inventory", return_value={}), self.mock_compile():
             # Act
             self.runner.quality()
 

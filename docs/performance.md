@@ -448,7 +448,9 @@ executes through the existing provider projects. Its fixture contains actual
 persisted rows, rather than an in-memory plan extrapolated to a larger size:
 
 - Ten million nodes are streamed through the public tree query and checked by
-  Full validation. A scalar mismatch aggregate independently checks geometry.
+  Full validation. An independent oracle checks every structural field through
+  scalar aggregates over primary-key ranges of at most 100,000 rows. It also
+  counts missing expected keys and unexpected keys outside the fixture range.
 - One root and one million direct children pass through public atomic forest
   import. The original caller inputs have non-sentinel structural values,
   which also exercises retained rollback snapshots.
@@ -466,6 +468,14 @@ import throughput. Import and rebuild cases use their production paths and
 aggregate-only observers; the observer never retains a list of SQL commands
 or parameters. Small 129-node cases verify wide/deep seeding and the same late
 failure boundaries before a full-size run.
+
+The oracle does not materialize entities or increase command timeouts. Its
+root/child branches explicitly check nullable Parent values, avoiding nullable
+inequality compensation inside a table-wide predicate. The range limit bounds
+each statement rather than reducing the total fixture checked. Oracle
+[regressions](regression-coverage.md#capacity-coordinate-oracle) cover wide and
+deep fixtures, every structural field, missing/replacement keys, and damage on
+both sides of the 100,000-row boundary.
 
 Ordering-refresh arrangements also use native `INSERT SELECT` batches, with
 at most 10,000 children inserted per statement and only the root tracked by EF.
