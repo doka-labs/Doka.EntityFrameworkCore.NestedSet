@@ -1,7 +1,8 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Sqlite;
 
 /// <summary>Verifies SQLite native query plans using the owning provider's isolated databases.</summary>
-public sealed class SqliteQueryPlanTests : ProviderTest, IClassFixture<ProviderFixture<RelationalFixture, SqliteEngine>>
+public sealed partial class SqliteQueryPlanTests : ProviderTest,
+    IClassFixture<ProviderFixture<RelationalFixture, SqliteEngine>>
 {
     private readonly RelationalFixture _fixture;
 
@@ -25,10 +26,9 @@ public sealed class SqliteQueryPlanTests : ProviderTest, IClassFixture<ProviderF
         await using var database = await TestDatabase.CreateAsync(Engine);
         await using var setup = database.CreateContext();
 
-        // WHY: A 64-row repair batch must be selective within its tree; tiny trees can be cheaper to scan in full.
-        // Real statistics let SQLite compare the keyed lookup with the exact-tree index on representative data.
+        // WHY: Fresh databases have no ANALYZE statistics. Repair must still seek its 64 keys instead of
+        // traversing the entire tree for every batch, as it would during a large first-time rebuild.
         await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(4097), true);
-        await setup.Database.ExecuteSqlRawAsync("ANALYZE", CancellationToken.None);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
         var tree = context
@@ -47,18 +47,9 @@ public sealed class SqliteQueryPlanTests : ProviderTest, IClassFixture<ProviderF
         Assert.InRange(commandIndex, 0, probe.Commands.Count - 1);
         var plan = await ExplainAsync(setup, probe, commandIndex);
         await QueryPlanTestSupport.WriteEvidenceAsync("Sqlite-typed-repair-plan", plan);
-        var predicate = $"{nameof(TreeNode.Tree)}=? AND {nameof(TreeNode.NodeId)}=?";
-
-        // WHY: SQLite backs the required alternate key with an implementation-named auto-index. The access
-        // predicate is the stable contract; asserting an EF constraint name would not describe the physical plan.
-        Assert.Contains(
-            plan,
-            detail =>
-                (detail.Contains("USING INDEX", StringComparison.Ordinal)
-                    && detail.Contains(predicate, StringComparison.Ordinal))
-                || (detail.Contains("USING INTEGER PRIMARY KEY", StringComparison.Ordinal)
-                    && detail.Contains("rowid=?", StringComparison.Ordinal)));
-        Assert.DoesNotContain(plan, detail => detail.StartsWith("SCAN ", StringComparison.Ordinal));
+        await QueryPlanTestSupport.WriteEvidenceAsync("Sqlite-typed-repair-update", [probe.Commands[commandIndex]]);
+        AssertPointKeyPlan(plan, setup.Model.FindEntityType(typeof(TreeNode))!,
+            nameof(TreeNode.NodeId), nameof(TreeNode.Tree));
     }
 
     /// <summary>SQLite resolves the parent by its primary key and descendants through a bounded left index.</summary>
@@ -133,7 +124,7 @@ public sealed class SqliteQueryPlanTests : ProviderTest, IClassFixture<ProviderF
 
     /// <summary>Explains an observed SQLite command without executing its writes a second time.</summary>
     private static async Task<List<string>> ExplainAsync(
-        TreeContext context,
+        DbContext context,
         EnterpriseProbe probe,
         int commandIndex
     )

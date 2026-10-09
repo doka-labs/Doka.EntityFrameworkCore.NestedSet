@@ -41,6 +41,7 @@ hierarchy before the one operation being assessed.
 | Model cache leaks state | Same-model immutable metadata reuse | Different model and hierarchy separation |
 | Query UX adds hidden reads | Composed anchor query uses one command | Missing or filtered anchor returns no rows |
 | Structural work loses bounds | Existing statement/allocation limits | Wide, deep, and failed-operation regressions |
+| SQLite keyed writes scan whole trees | Actual unanalyzed repair UPDATE plans | Excluded scope/tree keys and membership-alias collisions |
 | Framework seams resolved too late | Complete registration-time insertion contract | Incompatible member/version diagnostic before context creation |
 | Unchanged insertion keys allocate per boundary | Typed scalar/FK snapshot reuse | Sidecars, conceptual nulls, custom sentinels, mutable-key rejection |
 

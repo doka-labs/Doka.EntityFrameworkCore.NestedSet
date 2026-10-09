@@ -400,7 +400,7 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
             }
         }
 
-        sql.Append(CultureInfo.InvariantCulture, $" WHERE {_batch.IdentityPredicate} AND {key} IN (");
+        sql.Append(CultureInfo.InvariantCulture, $" WHERE {_batch.KeyBatchIdentityPredicate} AND {key} IN (");
 
         for (var index = 0; index < count; index++)
         {

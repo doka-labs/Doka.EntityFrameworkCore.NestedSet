@@ -32,6 +32,18 @@ principal of that table.
 Depth alone does not determine read cost, and a shallow wide tree can still
 have expensive early inserts. Inspect the actual data shape and provider plan.
 
+SQLite repair and bulk-finalization writes expose each bounded key batch to
+the unique NodeKey or `(Scope, NodeKey)` index. A correlated unique-key lookup
+checks exact TreeId membership inside the same UPDATE. Without collected statistics,
+combining TreeId and key predicates directly had selected a complete-tree
+range scan for every batch in the million-row qualification. The current
+shape requires neither `ANALYZE` nor an implementation-named index hint.
+Regression plans cover scoped composite keys, converted unscoped keys, and
+an adversarial physical table name that could shadow the membership alias.
+See [SQLite query planning](https://sqlite.org/optoverview.html) and
+[EXPLAIN QUERY PLAN](https://sqlite.org/eqp.html).
+
+
 ## Scope and TreeId design
 
 Scope is an optional application partition such as tenant or volume. TreeId is
