@@ -8,6 +8,7 @@
   <ItemGroup>
     <!-- WHY: Provider fixtures own their image data directly so qualification does not depend on optional tools. -->
     <Compile Include="../Shared/DatabaseTestTargets.cs" Link="Infrastructure/DatabaseTestTargets.cs"/>
+    <Compile Include="../Shared/SqlServerTestPlatform.cs" Link="Infrastructure/SqlServerTestPlatform.cs"/>
     <EmbeddedResource Include="../../docker/database-images.Dockerfile" LogicalName="NestedSet.TestImages" Visible="false"/>
   </ItemGroup>
 

@@ -663,6 +663,23 @@ and [move budgets](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tes
 
 ## Execution and evidence limits
 
+SQL Server database cases remain discoverable on local ARM and report a runtime
+skip before container startup. The standard xUnit before-test hook reads the
+concrete provider fixture or the migration row's named engine argument; SQL-only
+SafeMigrations theories declare their fixed engine. Explicit database-independent
+metadata classes and methods continue to execute, including compiled-model and
+fixture-ownership checks. Unit regressions distinguish metadata from engine-only
+fixtures, verify method-level opt-outs, and protect mixed-row selection from
+engine-looking payload values. Native x64 follows the execution path; an
+unsupported CI host fails rather than skipping. Container startup exceptions on
+eligible hosts are never converted into skips.
+
+Sources: [shared platform contract](../tests/Shared/SqlServerTestPlatform.cs),
+[platform positive and negative tests](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/SqlServerTestPlatformTests.cs),
+[fixture and metadata selection tests](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/EngineTestDiscoveryTests.Platform.cs),
+[migration row selection tests](../tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests/Infrastructure/DatabasePlatformTests.cs),
+and [qualification limits](support-and-qualification.md#provider-and-engine-matrix).
+
 Four provider projects reference the non-runnable specification library and
 own concrete subclasses of every abstract common suite for every engine. The
 MySql project has separate same-named MySQL and MariaDB suites with distinct

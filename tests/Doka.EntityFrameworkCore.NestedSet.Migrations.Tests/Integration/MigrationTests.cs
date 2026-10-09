@@ -1,6 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Migrations.Tests;
 
 /// <summary>Verifies generated migrations independently of the optional SafeMigrations integration.</summary>
+[DatabasePlatform]
 public sealed class MigrationTests : IClassFixture<MigrationFixture>
 {
     private readonly MigrationFixture _fixture;

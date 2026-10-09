@@ -30,6 +30,26 @@ Arm emulation, including Docker Desktop on Apple Silicon, is unqualified and uns
 local startup does not establish support. Compose imposes no CPU or memory limits. Allocate enough Docker memory for
 the engines you start, especially SQL Server.
 
+The shared SQL Server baseline is 2022 CU27 on Ubuntu 22.04, selected on
+2026-10-09. Testcontainers, benchmarks, and Compose consume the same digest-pinned
+reference. Local ARM test runs keep SQL Server database cases visible as runtime
+skips before container startup; metadata and unit tests continue to run. Native
+Linux x64 CI must run every applicable SQL Server case, and unsupported CI
+platforms fail. See the
+[qualification contract](../docs/support-and-qualification.md#provider-and-engine-matrix).
+The optional Compose SQL Server profile is a manual operation and still selects
+`linux/amd64`; it does not acquire support on an ARM host.
+
+The earlier SQL Server 2025 CU9 Rider runs showed intermittent SQLPAL/LSASS
+startup crashes on Ubuntu 24.04 and Ubuntu 22.04. Microsoft issue #974 also
+reports crashes on native GitHub-hosted Linux x64, so ARM emulation is not an
+established sole cause. The earlier comparison completed 36 starts per base,
+but a subsequent Rider failure disproved the proposed Ubuntu-base correction.
+The 2022 selection is an approved baseline change, not a confirmed vendor fix
+for CU9. Native x64 qualification of the new baseline remains required.
+[D-014](../docs/decisions/D-014-shared-database-images-and-developer-compose.md)
+records the source reports, dated evidence, and re-evaluation triggers.
+
 ## Start one engine
 
 Run these commands from the repository root. Each command starts only its named profile; multiple `--profile` options
@@ -49,6 +69,12 @@ docker compose -f docker/compose.yml --profile sqlserver up --build --wait --wai
 
 Keep `--build` when starting again after a manifest update so Compose rebuilds the selected image. Named volumes survive
 image replacement; follow the database vendor's upgrade rules when reusing data across versions.
+
+The SQL Server 2025-to-2022 baseline change does not migrate existing developer
+data. Preserve needed data before changing the image; use a fresh SQL Server
+volume for 2022 rather than assuming a 2025 volume is compatible. The explicit
+reset documented below deletes every database volume owned by that Compose
+project, so use it only for disposable developer data.
 
 ## Connect from Rider
 
@@ -168,4 +194,4 @@ Use the same project override for subsequent commands, including an intentional 
 
 [build-target]: https://docs.docker.com/reference/compose-file/build/#target
 [buildkit]: https://docs.docker.com/build/building/multi-stage/#differences-between-legacy-builder-and-buildkit
-[sql-hosts]: https://learn.microsoft.com/en-us/sql/linux/sql-server-linux-release-notes-2025?view=sql-server-ver17
+[sql-hosts]: https://learn.microsoft.com/en-us/sql/linux/containers/deploy?view=sql-server-ver17

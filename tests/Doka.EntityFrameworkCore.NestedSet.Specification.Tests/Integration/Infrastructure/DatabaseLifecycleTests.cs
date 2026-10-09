@@ -10,6 +10,7 @@ public abstract class DatabaseLifecycleTests : ProviderTest
     ) : base(fixture) { }
 
     /// <summary>Resolves the executable assembly's server owner from a method in the shared library.</summary>
+    [DatabaseIndependent]
     [Fact]
     public async Task SharedLibraryResolvesExecutingAssemblyFixture()
     {
@@ -27,6 +28,7 @@ public abstract class DatabaseLifecycleTests : ProviderTest
     }
 
     /// <summary>Rejects a foreign engine before the shared fixture can start its container.</summary>
+    [DatabaseIndependent]
     [Fact]
     public async Task AssemblyFixtureRejectsForeignServer()
     {

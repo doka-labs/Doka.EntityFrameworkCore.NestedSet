@@ -3,6 +3,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public abstract partial class NestedSetFacadeTests
 {
     /// <summary>A scoped hierarchy rejects query creation before Scope is bound.</summary>
+    [DatabaseIndependent]
     [Fact]
     public void ScopedHierarchyRequiresForScope()
     {
@@ -18,6 +19,7 @@ public abstract partial class NestedSetFacadeTests
     }
 
     /// <summary>A Scope argument whose type differs from the finalized model is rejected immediately.</summary>
+    [DatabaseIndependent]
     [Fact]
     public void ScopeTypeMustMatchFinalizedModel()
     {
@@ -33,6 +35,7 @@ public abstract partial class NestedSetFacadeTests
     }
 
     /// <summary>A scopeless hierarchy rejects an unnecessary Scope binding.</summary>
+    [DatabaseIndependent]
     [Fact]
     public void ScopelessHierarchyRejectsForScope()
     {
@@ -48,6 +51,7 @@ public abstract partial class NestedSetFacadeTests
     }
 
     /// <summary>An entity that is not configured as a hierarchy is rejected at the standard entry point.</summary>
+    [DatabaseIndependent]
     [Fact]
     public void NonHierarchyEntityIsRejectedImmediately()
     {
@@ -62,6 +66,7 @@ public abstract partial class NestedSetFacadeTests
     }
 
     /// <summary>A TreeId argument whose type differs from the finalized model is rejected immediately.</summary>
+    [DatabaseIndependent]
     [Fact]
     public void TreeIdTypeMustMatchFinalizedModel()
     {
@@ -79,6 +84,7 @@ public abstract partial class NestedSetFacadeTests
     }
 
     /// <summary>A NodeKey argument whose type differs from the finalized model is rejected immediately.</summary>
+    [DatabaseIndependent]
     [Fact]
     public void NodeKeyTypeMustMatchFinalizedModel()
     {
@@ -96,6 +102,7 @@ public abstract partial class NestedSetFacadeTests
     }
 
     /// <summary>A mutation cannot begin before a configured Scope is bound.</summary>
+    [DatabaseIndependent]
     [Fact]
     public async Task MutationRequiresConfiguredScopeBinding()
     {
@@ -114,6 +121,7 @@ public abstract partial class NestedSetFacadeTests
     }
 
     /// <summary>A mutation TreeId must have the exact finalized model type.</summary>
+    [DatabaseIndependent]
     [Fact]
     public async Task MutationTreeIdTypeMustMatchFinalizedModel()
     {
@@ -134,6 +142,7 @@ public abstract partial class NestedSetFacadeTests
     }
 
     /// <summary>A mutation NodeKey must have the exact finalized model type.</summary>
+    [DatabaseIndependent]
     [Fact]
     public async Task MutationNodeKeyTypeMustMatchFinalizedModel()
     {

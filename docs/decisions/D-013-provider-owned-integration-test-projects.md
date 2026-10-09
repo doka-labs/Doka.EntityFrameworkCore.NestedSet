@@ -58,6 +58,12 @@ engine does not validate a separately supplied audit assembly. The refinement
 standardizes navigation and closes metadata gaps without changing fixture scope
 or database behavior.
 
+Local ARM development adds an execution-environment boundary: Microsoft does
+not support SQL Server container emulation, while the native Linux x64 CI matrix
+must still execute every applicable database case. The test list must retain
+those local cases with visible runtime skips before container startup, and
+metadata-only suites must remain runnable.
+
 ## Decision Drivers
 
 - Make unit and provider ownership visible as separate projects in Rider.
@@ -67,7 +73,7 @@ or database behavior.
 - Show common sources once in Rider and keep provider-only sources with their
   executable owner.
 - Make provider selection explicit and reject unknown test project identities.
-- Keep the qualification gate's zero-skipped-test contract intact.
+- Keep native Linux x64 CI qualification's zero-skipped-test contract intact.
 - Make common cases run on every concrete engine by default while preserving
   justified method and variant exclusions.
 - Audit every local declared row and the concrete constructor's actual xUnit
@@ -154,6 +160,12 @@ it to the shared base. The fixture exposes immutable `Engine` and `Value`, creat
 the existing resource once, and forwards its asynchronous initialization and
 disposal. Shared tests use that engine without engine arguments in theory rows.
 Metadata-only suites use `ProviderResources` rather than a database resource.
+That fixture alone is not an independence marker: temporal and lifecycle cases
+can create databases from their bodies. Explicit `[DatabaseIndependent]`
+metadata identifies suites such as `ProviderAnnotationTests` that require no
+database and must still execute on local ARM. Method-level markers also preserve
+connection-free binding, compiled-model, comparer, and fixture-ownership checks
+inside suites that otherwise create databases.
 
 MySQL and MariaDB share the MySql executable but have separate same-named
 concrete suites. MariaDB wrappers live in its `MariaDb` folder and namespace.
@@ -282,6 +294,29 @@ collection registrations when the collection has an eligible case, even if
 no test constructor requests a fixture; wholly statically skipped collections
 do not force that construction.
 
+SQL Server database eligibility is a separate runtime check. On local ARM,
+applicable cases stay discoverable and report a reasoned xUnit dynamic skip
+through the standard xUnit `BeforeAfterTestAttribute` inherited from
+`ProviderTest`, before any container or database work. The hook
+selects only database cases for the fixture-owned engine or current migration
+engine row; it does not skip an entire executable, engine-looking payloads,
+metadata audits, or pure model checks. Fixture construction and initialization
+must retain lazy resource acquisition so the hook precedes SQL Server startup.
+Other engines retain their execution and existing isolation.
+
+Mixed ordinary migration and SafeMigrations hooks select the named engine row;
+SQL-only SafeMigrations theories use explicit `[DatabasePlatform("SqlServer")]`
+metadata when scenario data has no engine selector. If code reaches SQL Server
+startup on a non-x64 host, the shared guard fails visibly. There is no bypass
+variable or startup retry.
+
+On native Linux x64 CI, every applicable SQL Server provider, ordinary migration,
+and SafeMigrations case remains required. An unsupported CI platform fails
+instead of reporting a skip, and qualification continues to reject skipped
+cases. Runtime skip handling must never turn a container startup or database
+failure on an eligible platform into a passing or skipped result. The local ARM
+policy supplies development feedback; it cannot satisfy complete qualification.
+
 Each provider's `Allocation measurements` collection retains disabled
 parallelization. The unit project
 owns its local measurement definition as well. A unit metadata guard requires
@@ -308,6 +343,8 @@ the database helper's contextual fixture lookup.
   compatible with the pinned xUnit version.
 - Bad, because explicit exclusions and constructor guards require separate
   positive and negative qualification for shared and local fixture-owned cases.
+- Bad, because local ARM SQL Server database skips leave native x64 CI responsible
+  for that part of qualification; metadata and unit success cannot replace it.
 
 ### Confirmation
 
@@ -332,9 +369,17 @@ filtered run does not establish coverage for a provider introduced later.
   each eligible variant, and intentionally empty or unexpectedly over-filtered
   data must fail. Instrument member factories to reject an extra enumeration
   performed solely for ownership filtering.
-- Run the five EF test projects and expect every discovered case to pass with
-  zero skipped tests. A provider-only case must not appear in another project's
-  test list.
+- Run the five EF test projects on native Linux x64 and expect every discovered
+  case to pass with zero skipped tests. A provider-only case must not appear
+  in another project's test list.
+- Run SQL Server provider and mixed migration projects on local ARM; expect
+  every applicable SQL Server database case to remain visible and skip before
+  starting a container, while metadata, unit, and other-engine cases execute.
+  Probe unsupported CI, native x64 CI, SQL-only method eligibility, migration
+  engine rows, and engine-looking payloads. Unsupported CI must fail; native
+  x64 CI must never skip SQL Server. A startup failure on an eligible platform
+  must remain a failure. Inspect fixture laziness and container ownership to
+  verify the before-startup boundary, rather than inferring it from skip counts.
 - Run positive and negative engine and annotation guards. Ordinary shared cases
   must run by default on each engine; missing exclusion reasons, unknown engine
   names, contradictory fixtures, and foreign fixture owners must fail. Local
@@ -466,6 +511,10 @@ optional SafeMigrations adapter retain their own existing test projects.
   or measured cache warmups; qualify the mapping rather than assuming namespace
   and short-name changes are interchangeable.
 
+- Microsoft changes the SQL Server container platform boundary, or xUnit changes
+  dynamic skip and before-test hook ordering; requalify platform checks and lazy
+  fixtures before changing the local ARM execution policy.
+
 ### Decision History
 
 - 2026-09-25: Decision recorded with status proposed.
@@ -483,9 +532,17 @@ optional SafeMigrations adapter retain their own existing test projects.
 - 2026-09-28: The maintainer accepted the current decision and designated the core-maintainers audience.
 - 2026-09-28: Status changed from accepted to implemented.
 - 2026-09-28: Confirmed the referenced specification library, fixture-owned engine suites, provider-local source ownership, and registration and discovery regression specifications against the linked repository evidence.
+- 2026-10-09: The owner approved visible runtime skips for SQL Server database cases on local ARM before container startup, while retaining metadata and unit execution. Native Linux x64 CI retains mandatory provider, ordinary migration, and SafeMigrations cases with zero skips; unsupported CI must fail. The policy uses xUnit's runtime skip hook with lazy resources and records no new native CI qualification result or vendor startup correction.
 
 ### Implementation References
 
+- [Shared SQL Server platform contract](../../tests/Shared/SqlServerTestPlatform.cs)
+- [Provider execution hook](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Providers/ProviderDatabasePlatformAttribute.cs)
+- [Database-independent metadata markers](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Providers/DatabaseIndependentAttribute.cs)
+- [Platform positive and negative regressions](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/SqlServerTestPlatformTests.cs)
+- [Fixture and method applicability regressions](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/EngineTestDiscoveryTests.Platform.cs)
+- [Migration execution hook](../../tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests/Infrastructure/DatabasePlatformAttribute.cs)
+- [Migration row applicability regressions](../../tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests/Infrastructure/DatabasePlatformTests.cs)
 - [Engine and executable ownership](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Providers/ProviderEngineOwnership.cs)
 - [Shared and local ownership guard](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Providers/ProviderTestContract.cs)
 - [Ownership guard regressions](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/ProviderTestContractTests.cs)
@@ -527,6 +584,12 @@ optional SafeMigrations adapter retain their own existing test projects.
 
 ### Sources
 
+- [OS architecture under emulation](https://learn.microsoft.com/en-us/dotnet/api/system.runtime.interopservices.runtimeinformation.osarchitecture?view=net-10.0) (primary source; retrieved 2026-10-09)
+- [Installed xUnit before-test invocation](https://github.com/xunit/xunit/blob/8ed8aa354c7298e157a0fc2dcd61b95df345256a/src/xunit.v3.core/Runners/Core/CoreTestRunner.cs) (primary source; retrieved 2026-10-09)
+- [Installed xUnit class and hook execution order](https://github.com/xunit/xunit/blob/8ed8aa354c7298e157a0fc2dcd61b95df345256a/src/xunit.v3.core/Runners/Base/TestRunner.cs) (primary source; retrieved 2026-10-09)
+- [Installed xUnit dynamic skip recognition](https://github.com/xunit/xunit/blob/8ed8aa354c7298e157a0fc2dcd61b95df345256a/src/xunit.v3.core/Runners/Core/CoreTestRunnerContext.cs) (primary source; retrieved 2026-10-09)
+- [SQL Server container platform boundary](https://learn.microsoft.com/en-us/sql/linux/containers/deploy?view=sql-server-ver17) (primary source; retrieved 2026-10-09)
+- [xUnit v3 dynamic skips and before-test hooks](https://xunit.net/docs/getting-started/v3/whats-new) (primary source; retrieved 2026-10-09)
 - [xUnit 4.0.1 test constructor resolution](https://github.com/xunit/xunit/blob/8ed8aa354c7298e157a0fc2dcd61b95df345256a/src/xunit.v3.core/Runners/Reflection/XunitTestClassRunnerBase_reflection.cs) (primary source; retrieved 2026-09-27)
 - [xUnit 4.0.1 fixture parent mapping](https://github.com/xunit/xunit/blob/8ed8aa354c7298e157a0fc2dcd61b95df345256a/src/xunit.v3.core/Runners/Reflection/XunitTestCollectionRunnerBaseContext_reflection.cs) (primary source; retrieved 2026-09-27)
 - [xUnit 4.0.1 public collection factory](https://github.com/xunit/xunit/blob/8ed8aa354c7298e157a0fc2dcd61b95df345256a/src/xunit.v3.core/Framework/TestCollectionFactoryBase_reflection.cs) (primary source; retrieved 2026-09-27)

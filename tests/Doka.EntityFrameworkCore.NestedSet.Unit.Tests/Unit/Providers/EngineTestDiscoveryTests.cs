@@ -3,7 +3,7 @@ using Xunit.Runner.Common;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Verifies fixture-owned shared discovery, explicit exclusions, and normal xUnit enumeration.</summary>
-public sealed class EngineTestDiscoveryTests
+public sealed partial class EngineTestDiscoveryTests
 {
     /// <summary>Every ordinary shared variant is inherited by all five engines without provider opt-in.</summary>
     [Theory]
@@ -574,7 +574,8 @@ public sealed class EngineTestDiscoveryTests
     private static XunitTestMethod CreateTestMethod(
         string engine,
         string methodName,
-        Type[]? fixtureTypes = null
+        Type[]? fixtureTypes = null,
+        bool databaseIndependent = false
     )
     {
         var project = engine == "MariaDb" ? "MySql" : engine;
@@ -582,6 +583,13 @@ public sealed class EngineTestDiscoveryTests
         var assembly = AssemblyBuilder.DefineDynamicAssembly(name, AssemblyBuilderAccess.RunAndCollect);
         var module = assembly.DefineDynamicModule(name.Name!);
         var builder = module.DefineType("InheritedEngineProbe", TypeAttributes.Public, typeof(DiscoveryProbe));
+
+        if (databaseIndependent)
+        {
+            builder.SetCustomAttribute(new CustomAttributeBuilder(
+                typeof(DatabaseIndependentAttribute).GetConstructor(Type.EmptyTypes)!, []));
+        }
+
         fixtureTypes ??= [GetFixtureType(engine)];
 
         foreach (var fixture in fixtureTypes)

@@ -14,6 +14,14 @@ suspected vulnerabilities through [Security](SECURITY.md).
 The SQLite suites run in process. Tests own their server containers and do not
 require a developer-managed database.
 
+SQL Server database cases remain visible but skip at runtime on a local ARM
+machine before starting a SQL Server container. Metadata and unit tests still
+run. Native Linux x64 CI must execute every applicable SQL Server provider,
+ordinary migration, and SafeMigrations case with zero skips; an unsupported CI
+platform fails. A local ARM run supplies development feedback and cannot
+complete repository qualification. See the
+[platform and qualification contract](docs/support-and-qualification.md#provider-and-engine-matrix).
+
 For manual debugging and Rider database access, use the optional
 [developer Compose environment](docker/README.md). Its profiles build from the
 same pinned images as Testcontainers. It owns separate persistent volumes and
@@ -66,7 +74,8 @@ dotnet run --project samples/UserGroups -c Release -- --provider sqlite --reset
 See the [sample catalog](samples/README.md) for Doka MySQL/MariaDB setup,
 scenario selection, and the meaning of `--reset`.
 
-For a complete local qualification of the current workspace:
+For complete local qualification of the current workspace on supported Linux
+x64:
 
 ```sh
 bash eng/release-candidate.sh \
@@ -89,7 +98,9 @@ bash eng/verify-package-consumer.sh
 ```
 
 A filtered or focused run is development feedback, not complete qualification.
-Never replace a failing live provider test with a skip.
+The local ARM platform skips are an explicit environment policy, applied before
+database work; never convert a container startup or live provider failure to a
+skip. Unsupported SQL Server CI hosts fail; RC qualification rejects skipped cases.
 
 ## Secure development
 
@@ -196,6 +207,14 @@ the exact registered `ProviderFixture<TResource, TEngine>` and forwards it to th
 base. Use its immutable `Engine` instead of passing an engine argument in every
 test row. The provider fixture owns the existing resource and forwards its
 asynchronous initialization and disposal; individual tests must not dispose it.
+
+The shared `ProviderTest` base supplies the xUnit before-test platform hook.
+Mark a metadata-only suite with `[DatabaseIndependent]` explicitly; a
+`ProviderResources` fixture alone does not prove independence because a body
+may still create a database. Mixed migration hooks select the named engine row.
+SQL-only SafeMigrations theories use `[DatabasePlatform("SqlServer")]` to record
+their engine even when it is absent from scenario data. Keep resource acquisition
+lazy until after this hook; startup reached on a non-x64 host fails visibly.
 
 Use ordinary `Fact`, `Theory`, `InlineData`, and `MemberData` for common cases.
 Their data contains only scenario arguments, and every concrete engine runs them

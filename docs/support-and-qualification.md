@@ -31,13 +31,13 @@ This statement does not assert the same limitation for the separate
 
 ## Provider and engine matrix
 
-| Database | EF provider baseline | Qualified engine image |
+| Database | EF provider baseline | Engine image baseline |
 | --- | --- | --- |
 | MySQL | `Doka.EntityFrameworkCore.MySql` 10.4.4 | MySQL 8.4.11 |
 | MariaDB | `Doka.EntityFrameworkCore.MySql` 10.4.4 | MariaDB 11.8.9 |
 | PostgreSQL | `Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.3 | PostgreSQL 17.11 |
 | SQLite | `Microsoft.EntityFrameworkCore.Sqlite` 10.0.12 | In-process native runtime from the locked package graph |
-| SQL Server | `Microsoft.EntityFrameworkCore.SqlServer` 10.0.12 | SQL Server 2025 CU9 |
+| SQL Server | `Microsoft.EntityFrameworkCore.SqlServer` 10.0.12 | SQL Server 2022 CU27 on Ubuntu 22.04 |
 
 Container image tags and SHA-256 digests are pinned in
 [the shared Dockerfile](../docker/database-images.Dockerfile). Digest pinning identifies exact test
@@ -51,9 +51,33 @@ engine line requires an explicit qualification decision and an updated matrix.
 
 SQL Server container images are supported by Microsoft only on Linux x86-64
 hosts. Emulation or translation on Arm hosts is not a qualified substitute for
-the SQL Server integration matrix, even if a local run succeeds. Run that
-matrix on a supported host when collecting release evidence. See Microsoft's
+the SQL Server integration matrix, even if a local run succeeds. See Microsoft's
 [SQL Server container support note](https://learn.microsoft.com/en-us/sql/linux/containers/deploy?view=sql-server-ver17).
+
+The 2026-10-09 policy keeps SQL Server database cases visible on local ARM
+machines and skips them at runtime before container startup. It applies to the
+SQL Server provider project and SQL Server cases in the ordinary migration and
+SafeMigrations projects. Metadata and unit cases, including SQL Server model
+and platform-policy checks, remain runnable; other engines retain their cases.
+The environment decision does not catch or suppress container startup or SQL
+failures on an eligible platform.
+
+Native Linux x64 CI is the required SQL Server qualification environment. All
+applicable SQL Server cases remain mandatory with zero skips; unsupported CI
+platforms fail instead of skipping. The SQL Server CI guard fails on unsupported hosts; release-candidate
+qualification rejects skipped cases. A local ARM run therefore cannot qualify the complete
+matrix. The approved 2022 CU27 baseline still requires native x64 CI evidence;
+the image change does not itself establish successful qualification or a vendor
+correction for the earlier 2025 CU9 startup failures.
+
+The private candidate assessment preceding this policy recorded 1,072 SQL
+Server provider cases, 10 ordinary SQL Server migration cases, 51 SQL Server
+SafeMigrations cases, and 30 startup attempts passing under macOS ARM x86-64
+emulation. Those results support only that candidate and local environment;
+they do not qualify native CI or establish Microsoft support for emulation.
+[D-014](decisions/D-014-shared-database-images-and-developer-compose.md)
+retains the image decision and the unresolved CU9 crash history, including the
+native GitHub-hosted x64 report.
 
 Pomelo is not a supported provider. MySQL and MariaDB support is qualified only
 with Doka.

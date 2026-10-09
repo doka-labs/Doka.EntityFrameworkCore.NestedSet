@@ -14,6 +14,7 @@ public abstract class BulkInputTests : ProviderTest
     }
 
     /// <summary>Later mutation of a caller-owned child array cannot alter a branch's copied topology.</summary>
+    [DatabaseIndependent]
     [Fact]
     public void BranchCopiesItsChildCollection()
     {

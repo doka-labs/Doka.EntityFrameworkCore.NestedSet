@@ -15,6 +15,7 @@ public abstract class TableMappingTests : ProviderTest
     }
 
     /// <summary>Places convention-derived access paths on the fragment containing the hierarchy columns.</summary>
+    [DatabaseIndependent]
     [Fact]
     public void EntitySplittingPlacesIndexesOnStructureFragment()
     {

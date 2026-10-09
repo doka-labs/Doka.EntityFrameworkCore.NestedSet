@@ -16,6 +16,7 @@ public abstract class CompiledModelTests : ProviderTest
     }
 
     /// <summary>Captures one typed registry per hierarchy in every provider-specific generated model.</summary>
+    [DatabaseIndependent]
     [Fact]
     public void DesignModelUsesTypedTreeRegistries()
     {
@@ -54,6 +55,7 @@ public abstract class CompiledModelTests : ProviderTest
     }
 
     /// <summary>Keeps checked-in provider models synchronized with the current registry naming convention.</summary>
+    [DatabaseIndependent]
     [Fact]
     public void CompiledRegistryNamesMatchDesignModel()
     {
@@ -90,6 +92,7 @@ public abstract class CompiledModelTests : ProviderTest
     }
 
     /// <summary>Checks each generated hierarchy retains effective string facets, including table defaults.</summary>
+    [DatabaseIndependent]
     [Fact]
     public void CompiledStringIdentityCapturesMatchDesignModel()
     {

@@ -15,6 +15,7 @@ public abstract class BroadNodeKeyTests : ProviderTest
     }
 
     /// <summary>Compares node and parent keys by stored value despite broad domain equality.</summary>
+    [DatabaseIndependent]
     [Fact]
     public void ProviderComparerSeparatesKeyAliases()
     {

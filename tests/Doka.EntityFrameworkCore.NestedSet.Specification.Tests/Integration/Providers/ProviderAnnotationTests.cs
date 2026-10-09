@@ -1,6 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Prevents shared integration cases from silently bypassing fixture-owned provider coverage.</summary>
+[DatabaseIndependent]
 public abstract class ProviderAnnotationTests : ProviderTest
 {
     /// <summary>Uses the concrete provider fixture as the immutable engine owner.</summary>

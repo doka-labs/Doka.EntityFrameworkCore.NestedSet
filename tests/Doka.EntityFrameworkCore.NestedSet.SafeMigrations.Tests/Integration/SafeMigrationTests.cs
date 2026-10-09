@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 namespace Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests;
 
 /// <summary>Exercises optional SafeMigrations adapters against real generated nested-set migration code.</summary>
+[DatabasePlatform]
 public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
 {
     private readonly MigrationFixture _fixture;
