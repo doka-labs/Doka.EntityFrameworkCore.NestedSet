@@ -89,15 +89,68 @@ They must work without SafeMigrations.
 
 Optional adapter qualification uses:
 
-| Database | SafeMigrations adapter baseline |
-| --- | --- |
-| MySQL/MariaDB | `Doka.EntityFrameworkCore.SafeMigrations.MySql` 10.4.5 |
-| PostgreSQL | `Doka.EntityFrameworkCore.SafeMigrations.PostgreSql` 10.4.5 |
-| SQLite | `Doka.EntityFrameworkCore.SafeMigrations.Sqlite` 10.4.5 |
+| Database | SafeMigrations adapter baseline | Qualification boundary |
+| --- | --- | --- |
+| MySQL/MariaDB | `Doka.EntityFrameworkCore.SafeMigrations.MySql` 10.4.9 | Optional adapter regression suite |
+| PostgreSQL | `Doka.EntityFrameworkCore.SafeMigrations.PostgreSql` 10.4.9 | Canonical null-filter indexes, replay, and drift qualified |
+| SQL Server | `Doka.EntityFrameworkCore.SafeMigrations.SqlServer` 10.4.9 | `dbo`/explicit schemas, integer widening, indexes and CHECKs |
+| SQLite | `Doka.EntityFrameworkCore.SafeMigrations.Sqlite` 10.4.9 | Optional adapter regression suite |
 
 SafeMigrations tests are additive. A failure there must not be described as a
-runtime requirement for Doka, Npgsql, or SQLite. SQL Server has no optional
-SafeMigrations adapter in this repository.
+runtime requirement for Doka, Npgsql, SQLite, or SQL Server. Adapter packages
+are referenced only by the optional test project; neither shipping package
+depends on SafeMigrations.
+
+The PostgreSQL 10.4.9 adapter retains recognition of EF-generated canonical
+provider-delimited single-column `IS NULL` and `IS NOT NULL` index predicates.
+The authored raw SQL and immutable definition remain intact; generation,
+preflight, catalog comparison, replay, and drift rejection are exercised by the
+consumer regressions. See the [migration contract](migrations.md#provider-matrix).
+
+SQL Server coverage includes the default `dbo` and explicit schemas, package tooling
+registration, absent-index application, replay, wrong columns and directions,
+and pending-upgrade drift without advancing history. Unqualified safe operations
+require the database user's default schema to be `dbo`; otherwise configure an
+explicit schema in the EF model. Generated integer CHECKs can validate existing
+rows; valid predicates are `Missing`/`Apply`, while a violating row is
+`DataBlocked`. Stamped, enabled, trusted checks replay on populated tables;
+disabled or enabled-but-untrusted checks are rejected without repair.
+The adapter's `RepairIfSafe` contract admits proven historical `int`-to-`bigint`
+coordinate widening, including the preceding dependency drops in the real
+scaffolded upgrade. Empty and valid populated fixtures retain their data and
+gain Int64 capacity. A new CHECK rejected for invalid legacy coordinates rolls
+back the full upgrade, preserving original column types, rows, indexes,
+constraints, and migration history. Narrowing back to Int32 remains refused
+for both fitting and oversized values. The SQL Server cases in the dated local
+runs below executed under x86-64 emulation on ARM; they do not replace native
+x86-64 hosted qualification. Current local ARM execution follows the visible
+platform-skip policy above.
+
+The local 2026-10-08 run passed all 112 cases against the published 10.4.9
+adapters, with zero failures or skips: 13 MySQL, 13 MariaDB, 22 PostgreSQL,
+10 SQLite, 50 SQL Server, and four package/design-service controls. The SQL
+Server cases include complete empty/populated integer upgrades, CHECK proof
+and stamped replay, each invalid predicate's full-upgrade rollback, and
+narrowing rejection with fitting or oversized coordinates. The separate
+ordinary EF migration suite passed all 49 cases without enabling SafeMigrations.
+The full solution Release build completed with zero warnings or errors;
+read-only Roslyn style and unused-import checks also passed. These are local
+results for the recorded provider baselines, not hosted publication evidence.
+
+For historical comparison, the local 2026-10-06 run passed all 92 cases against the
+published 10.4.8 adapters, with zero failures or skips: 13 MySQL, 13 MariaDB,
+22 PostgreSQL, 10 SQLite, 30 SQL Server, and four package/design-service
+controls. The 61 previously qualified cases retained their identities and
+expectations; SQL Server contributes 31 additional cases. The separate ordinary EF migration
+suite passed all 49 cases without enabling SafeMigrations.
+
+For historical comparison, the 2026-10-04 run against published 10.4.5 passed
+40 of 61 cases. All 21 failures were PostgreSQL: 19 reported
+`P1002:doka_sm_unsupported`; two preflight assertions observed ten unsupported
+objects instead of four and `Unsupported` index drift instead of `Different`.
+The same six canonical null filters caused those failures. All 21 case
+identities passed against published 10.4.8 and in the dated 10.4.9 run; the
+original failure evidence remains historical evidence for the adapter fix.
 
 ## Test ownership
 

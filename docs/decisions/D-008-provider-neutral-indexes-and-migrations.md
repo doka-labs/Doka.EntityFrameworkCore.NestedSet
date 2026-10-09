@@ -93,6 +93,7 @@ Run live-provider cases on each provider project present in this revision; a
 filtered run does not establish coverage for a provider introduced later.
 
 - Run `dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests.csproj -c Release` and expect generated migration lifecycle and physical index tests to pass without SafeMigrations references.
+- Run `dotnet test tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests.csproj -c Release` and require optional adapter tests to pass before claiming compatibility with the published adapter. Include SQLite script rejection, foreign database qualifier rejection, safe replay, and same-name wrong-definition drift rejection. SQL Server additionally verifies directions, stamped CHECK enforcement/trust, valid populated predicates, rejected invalid rows, complete integer-upgrade rollback, and refused narrowing.
 - Run the PostgreSQL nullable-parent index tests: actual catalog predicates and public tree-query plans must match for native and converted TreeIds, while principal checks exclude generated structural paths.
 - Require positive convention-ownership and negative explicit/adopted-index tests, including custom filters, names, uniqueness, provider facets, and physical-name collisions.
 
@@ -117,10 +118,23 @@ filtered run does not establish coverage for a provider introduced later.
 
 The support matrix is the canonical version inventory; this record does not claim support for an unqualified future
 provider release. The current optional adapter baseline is recorded in the support matrix. SQLite runtime safe migrations
-and unsupported SQL-script generation are distinct contracts. SQL Server ordinary support does not imply an
-optional SQL Server SafeMigrations adapter.
+and unsupported SQL-script generation are distinct contracts. SQL Server's optional 10.4.9 adapter is additive to
+ordinary migration support. It admits proven built-in Int32-to-Int64 widening with exact source/storage and prior
+dependency-drop proofs, and validates the four generated integer CHECKs over existing rows. Invalid coordinates
+remain DataBlocked; disabled or untrusted checks remain Different. Consumer tests cover the full empty/populated
+upgrade, post-upgrade Int64 capacity, each invalid CHECK's complete rollback, and refused narrowing even with fitting
+values. Opaque predicates and other unproven conversions do not inherit those approvals.
 
 ### Re-evaluation Triggers
+
+- A published SafeMigrations adapter changes recognition, prerequisite
+  projection, catalog comparison, or immutable fingerprint handling for EF's
+  canonical raw single-column null predicates. Requalify actual scaffolding,
+  preflight, replay, catalog prerequisites, and drift against that published
+  package before claiming optional adapter compatibility. A passing temporary
+  prototype is feature evidence, not published-package qualification.
+- SQL Server SafeMigrations changes integer-width admission, layout/dependency proofs, or CHECK stamping/trust/data proof.
+  Requalify actual generated operations and complete-upgrade rollback before widening the documented adapter contract.
 
 - A new provider version changes index metadata, key mapping, SQL generation, or physical catalog behavior.
 - Query-plan evidence shows a missing structural access path or a harmful redundant index.
@@ -138,6 +152,9 @@ optional SQL Server SafeMigrations adapter.
 - 2026-09-28: Status changed from accepted to implemented.
 - 2026-09-28: Confirmed deterministic model indexes, ordinary EF migration support, and optional SafeMigrations regression specifications against the linked repository evidence.
 - 2026-10-04: Specialized untouched PostgreSQL indexes after actual atomic-import RI scans; retained application metadata and added ordinary/optional migration and query-plan regressions.
+- 2026-10-06: Qualified the published SafeMigrations 10.4.8 adapters with all 61 unchanged consumer cases, including the 21 PostgreSQL failures from 10.4.5; preserved ordinary migrations and the historical adapter finding evidence.
+- 2026-10-06: Added the owner-approved optional SQL Server 10.4.8 adapter consumer and dbo/explicit-schema regressions; distinguished raw CHECK proof and stamped replay from unsupported historical integer-width upgrades. The local full optional suite passed 92/92 cases (including 30 SQL Server relational cases and its tooling control), while ordinary migrations passed 49/49. SQL Server ran under x86-64 emulation on ARM; this is not native hosted qualification.
+- 2026-10-08: Qualified the published SafeMigrations 10.4.9 adapters with 112/112 optional cases and 49/49 ordinary migration cases, without failures or skips. Replaced the superseded SQL Server rejection expectations with full generated Int32-to-Int64 upgrades on empty/valid populated tables, populated integer CHECK proof and stamped trusted replay, all four invalid predicates with complete upgrade rollback, and refused narrowing for fitting/oversized values. The full Release build and read-only style/import checks passed. Local SQL Server remains x86-64 emulation on ARM; native hosted qualification is separate.
 
 ### Implementation References
 
@@ -149,6 +166,7 @@ optional SQL Server SafeMigrations adapter.
 - [Provider capabilities](../../src/Doka.EntityFrameworkCore.NestedSet/Providers)
 - [Ordinary migration tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests)
 - [Optional adapter tests](../../tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests)
+- [SQL Server integer-upgrade regressions](../../tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests/Integration/Lifecycle/SafeMigrationTests.SqlServerIntegerUpgrades.cs)
 - [Migration contract](../../docs/migrations.md)
 - [Pinned support matrix](../../docs/support-and-qualification.md)
 - [Central package versions](../../Directory.Packages.props)
@@ -163,3 +181,14 @@ optional SQL Server SafeMigrations adapter.
 - [PostgreSQL 17 prepared statements and plan invalidation](https://www.postgresql.org/docs/17/sql-prepare.html) (primary source; retrieved 2026-10-04)
 - [PostgreSQL 17 routine maintenance and planner statistics](https://www.postgresql.org/docs/17/routine-vacuuming.html) (primary source; retrieved 2026-10-04)
 - [EF Core 10.0.12 finalizing convention batches](https://github.com/dotnet/efcore/blob/v10.0.12/src/EFCore/Metadata/Conventions/Internal/ConventionDispatcher.ImmediateConventionScope.cs) (primary source; retrieved 2026-10-04)
+- [SafeMigrations PostgreSQL 10.4.8 published package metadata](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.safemigrations.postgresql/10.4.8/doka.entityframeworkcore.safemigrations.postgresql.nuspec) (primary source; retrieved 2026-10-06)
+- [SafeMigrations 10.4.8 canonical null-filter recognition and prerequisites](https://github.com/doka-labs/Doka.EntityFrameworkCore.SafeMigrations/blob/b9fccd20db5d72a8cb554ae162ba05c4994b5c3b/src/Doka.EntityFrameworkCore.SafeMigrations.PostgreSql/Features/Indexes/PostgreSqlSafeMigrationCatalogSqlBuilder.Filters.cs) (primary source; retrieved 2026-10-06)
+- [SafeMigrations SQL Server 10.4.8 published package metadata](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.safemigrations.sqlserver/10.4.8/doka.entityframeworkcore.safemigrations.sqlserver.nuspec) (primary source; retrieved 2026-10-06)
+- [SafeMigrations SQL Server 10.4.8 CHECK proof and stamps](https://github.com/doka-labs/Doka.EntityFrameworkCore.SafeMigrations/blob/b9fccd20db5d72a8cb554ae162ba05c4994b5c3b/src/Doka.EntityFrameworkCore.SafeMigrations.SqlServer/Features/Constraints/CheckConstraints/SqlServerSafeMigrationCatalogSqlBuilder.CheckConstraints.cs) (primary source; retrieved 2026-10-06)
+- [SafeMigrations SQL Server 10.4.8 alteration contracts](https://github.com/doka-labs/Doka.EntityFrameworkCore.SafeMigrations/blob/b9fccd20db5d72a8cb554ae162ba05c4994b5c3b/src/Doka.EntityFrameworkCore.SafeMigrations.SqlServer/Features/Columns/SqlServerSafeMigrationCatalogSqlBuilder.Columns.cs) (primary source; retrieved 2026-10-06)
+- [SafeMigrations SQL Server 10.4.8 schema resolution](https://github.com/doka-labs/Doka.EntityFrameworkCore.SafeMigrations/blob/b9fccd20db5d72a8cb554ae162ba05c4994b5c3b/docs/sqlserver-behavior.md) (primary source; retrieved 2026-10-06)
+- [SafeMigrations SQL Server 10.4.9 published package metadata](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.safemigrations.sqlserver/10.4.9/doka.entityframeworkcore.safemigrations.sqlserver.nuspec) (primary source; retrieved 2026-10-08)
+- [SafeMigrations 10.4.9 published release](https://github.com/doka-labs/Doka.EntityFrameworkCore.SafeMigrations/releases/tag/v10.4.9) (primary source; retrieved 2026-10-08)
+- [SafeMigrations SQL Server 10.4.9 integer-widening proof](https://github.com/doka-labs/Doka.EntityFrameworkCore.SafeMigrations/blob/71a2004d499658fb9bade18439bda7c0685184b0/src/Doka.EntityFrameworkCore.SafeMigrations.SqlServer/Features/Columns/SqlServerSafeMigrationCatalogSqlBuilder.IntegerWidening.cs) (primary source; retrieved 2026-10-08)
+- [SafeMigrations SQL Server 10.4.9 populated integer CHECK proof and stamps](https://github.com/doka-labs/Doka.EntityFrameworkCore.SafeMigrations/blob/71a2004d499658fb9bade18439bda7c0685184b0/src/Doka.EntityFrameworkCore.SafeMigrations.SqlServer/Features/Constraints/CheckConstraints/SqlServerSafeMigrationCatalogSqlBuilder.CheckConstraints.cs) (primary source; retrieved 2026-10-08)
+- [SafeMigrations SQL Server 10.4.9 schema and registration contract](https://github.com/doka-labs/Doka.EntityFrameworkCore.SafeMigrations/blob/71a2004d499658fb9bade18439bda7c0685184b0/docs/sqlserver-behavior.md) (primary source; retrieved 2026-10-08)

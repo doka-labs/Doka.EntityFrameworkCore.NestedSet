@@ -9,6 +9,8 @@ public sealed partial class SafeMigrationTests
     [Theory]
     [InlineData("Sqlite", false)]
     [InlineData("PostgreSql", true)]
+    [InlineData("SqlServer", false)]
+    [InlineData("SqlServer", true)]
     [InlineData("MySql", false)]
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
@@ -92,7 +94,7 @@ public sealed partial class SafeMigrationTests
         Assert.Equal(
             (beyondInt32, beyondInt32 + 1, beyondInt32),
             (largeNode.Left, largeNode.Right, largeNode.Position));
-        AssertFreshIndexOperations(operations);
+        AssertFreshIndexOperations(engine, operations);
         Assert.All(
             operations,
             operation => Assert.Equal(database.Schema, ((EnsureIndexIntent)operation.Intent).Definition.Schema));
@@ -137,12 +139,12 @@ public sealed partial class SafeMigrationTests
         var indexes = await database.ReadIndexesAsync();
 
         // Assert
-        AssertUpgradeIndexOperations(operations);
+        AssertUpgradeIndexOperations("Sqlite", operations);
         Assert.All(
             operations,
             operation => Assert.Equal(database.Schema, ((EnsureIndexIntent)operation.Intent).Definition.Schema));
         Assert.Equal(before, after);
-        AssertCurrentIndexes(indexes);
+        AssertCurrentIndexes("Sqlite", indexes);
     }
 
     /// <summary>Verifies server preflight rejects opaque generated checks before any upgrade mutation.</summary>
@@ -186,7 +188,7 @@ public sealed partial class SafeMigrationTests
         var historyAfter = await context.Database.GetAppliedMigrationsAsync(CancellationToken.None);
 
         // Assert
-        AssertUpgradeIndexOperations(indexOperations);
+        AssertUpgradeIndexOperations(engine, indexOperations);
         Assert.All(
             indexOperations,
             operation => Assert.Equal(database.Schema, ((EnsureIndexIntent)operation.Intent).Definition.Schema));
@@ -244,7 +246,7 @@ public sealed partial class SafeMigrationTests
         var after = await database.ReadNodesAsync();
 
         // Assert
-        AssertCurrentIndexes(indexes);
+        AssertCurrentIndexes("Sqlite", indexes);
         Assert.Equal(before, after);
     }
 }

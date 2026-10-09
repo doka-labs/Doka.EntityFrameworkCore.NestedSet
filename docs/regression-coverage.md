@@ -45,9 +45,73 @@ hierarchy before the one operation being assessed.
 | Framework seams resolved too late | Complete registration-time insertion contract | Incompatible member/version diagnostic before context creation |
 | Unchanged insertion keys allocate per boundary | Typed scalar/FK snapshot reuse | Sidecars, conceptual nulls, custom sentinels, mutable-key rejection |
 | PostgreSQL generic plan differs | Native PREPARE counters and partial-index selection | Principal-only exclusion, SQL error, cancellation/session cleanup |
+| Optional SQL Server adapter loses physical contracts | Generated schemas, absent indexes, integer widening, and populated CHECK proof/replay | Index columns/directions, disabled/untrusted CHECKs, invalid coordinates, narrowing, and complete rollback |
 
 The sections below name the source methods behind the matrix. The matrix is a
 selection guide, not a replacement for the full provider suites.
+
+## Optional SQL Server migrations
+
+The optional suite consumes published SafeMigrations 10.4.9 with ordinary
+EF SQL Server 10.0.12. Every relational case runs with the default `dbo` schema
+and an explicitly configured schema; package discovery is checked
+separately. Neither NestedSet package nor the ordinary migration test project
+references the adapter.
+
+Unqualified safe operations require `dbo` as the database user's default schema;
+other defaults require explicit schema mapping. SQL Server runs locally under
+x86-64 emulation on ARM; native hosted qualification remains a separate
+requirement. Exact dated totals are in the support and qualification guide.
+
+Positive coverage:
+
+- `FreshMigrationCreatesEveryIndex` checks the full generated schema, physical
+  key order, directions, restrictive self-FK, checks, and Int64 coordinates.
+- `SqlServerMissingIndexPreflightAppliesGeneratedAccessPath` requires
+  `Missing`/`Apply` and restores the exact absent structural index.
+- `GeneratedIndexOperationsReplayWithoutCatalogOrDataChanges` checks replay
+  against the complete ordered-key and direction fingerprint.
+- `SqlServerEmptyTableAcceptsGeneratedChecks` verifies all four real
+  scaffolded CHECK operations are `Missing`/`Apply` on empty current tables.
+- `SqlServerApprovedChecksReplayOnPopulatedHierarchy` protects the stamped,
+  enabled, trusted CHECK contract after rows arrive.
+- `SqlServerNewChecksValidatePopulatedRows` verifies new generated checks inspect
+  existing valid rows and then replay as stamped, enabled, trusted `Matching`/`NoOp`.
+- `SqlServerPopulatedUpgradePreflightApprovesIntegerContracts` checks read-only
+  approval of the real generated integer upgrade without catalog/data/history writes.
+- `SqlServerCoordinateUpgradePreservesHierarchyAndExpandsCapacity` applies the
+  complete historical upgrade to empty and populated schemas, verifies the full
+  target contract, and stores coordinates beyond Int32 afterward.
+
+Negative coverage:
+
+- `SameNameWrongColumnIndexFailsClosedAndPreservesData` and
+  `SqlServerWrongIndexDirectionFailsClosedAndPreservesData` independently
+  reject column and direction drift while preserving rows and the exact catalog.
+- `PendingUpgradeRejectsIndexDriftWithoutAdvancingHistory` reads the actual
+  historical Int32 model and proves analysis cannot advance migration history.
+- `SqlServerInvalidRowsRejectGeneratedChecksWithoutMutation` isolates all four
+  generated predicates and requires exactly one `DataBlocked`/`RejectDataBlocked`
+  assessment, with unchanged physical schema, data, and history after runtime rejection.
+- `SqlServerUnenforcedCheckFailsClosedWithoutRepair` independently checks
+  disabled and enabled-but-untrusted constraints, retaining the exact native
+  enforcement flags after `Different`/`RejectDifferent` and runtime rejection.
+- `SqlServerInvalidCoordinateUpgradeRollsBackSchemaAndHistory` verifies each
+  violated CHECK rolls back the complete generated upgrade, including earlier
+  widening, index changes, foreign keys, rows, and history.
+- `SqlServerCoordinateNarrowingPreservesSchemaAndData` checks that a generated
+  reverse `bigint`-to-`int` transition is refused with both fitting and oversized
+  values; the Int64 schema, constraints, data, and history remain intact.
+
+The CHECK tests execute the real generated CHECK operations against current
+coordinate types. Complete historical upgrades and their failure rollback are
+tested independently; widening approval is not a general numeric-conversion contract.
+
+Sources: [generated index and drift cases](../tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests/Integration/Indexes/SafeMigrationTests.Indexes.cs),
+[SQL Server index and enforcement drift](../tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests/Integration/Indexes/SafeMigrationTests.SqlServerDrift.cs),
+[SQL Server CHECK and upgrade boundaries](../tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests/Integration/Lifecycle/SafeMigrationTests.SqlServerChecks.cs),
+[SQL Server integer upgrade and rollback cases](../tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests/Integration/Lifecycle/SafeMigrationTests.SqlServerIntegerUpgrades.cs),
+and [package discovery](../tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests/Integration/Design/SafeMigrationTests.Design.cs).
 
 ## Dispatch and finalized mapping
 

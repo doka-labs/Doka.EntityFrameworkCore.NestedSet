@@ -17,6 +17,9 @@ internal static class SafeMigrationTestServices
             case "PostgreSql":
                 options.UsePostgreSqlSafeMigrations();
                 break;
+            case "SqlServer":
+                options.UseSqlServerSafeMigrations();
+                break;
             case "MySql":
             case "MariaDb":
                 options.UseMySqlSafeMigrations();
@@ -91,6 +94,7 @@ internal static class SafeMigrationTestServices
             "Npgsql.EntityFrameworkCore.PostgreSQL" =>
                 "DROP INDEX " + sql.DelimitIdentifier(definition.Name, definition.Schema),
             "Doka.EntityFrameworkCore.MySql" => "DROP INDEX " + index + " ON " + table,
+            "Microsoft.EntityFrameworkCore.SqlServer" => "DROP INDEX " + index + " ON " + table,
             _ => throw new InvalidOperationException("No index drift syntax is configured for this provider."),
         };
 

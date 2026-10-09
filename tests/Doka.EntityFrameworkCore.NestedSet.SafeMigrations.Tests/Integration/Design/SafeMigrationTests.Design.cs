@@ -9,6 +9,8 @@ public sealed partial class SafeMigrationTests
     [Theory]
     [InlineData("Sqlite", false)]
     [InlineData("PostgreSql", true)]
+    [InlineData("SqlServer", false)]
+    [InlineData("SqlServer", true)]
     [InlineData("MySql", false)]
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
@@ -39,6 +41,7 @@ public sealed partial class SafeMigrationTests
     [Theory]
     [InlineData("Microsoft.EntityFrameworkCore.Sqlite")]
     [InlineData("Npgsql.EntityFrameworkCore.PostgreSQL")]
+    [InlineData("Microsoft.EntityFrameworkCore.SqlServer")]
     [InlineData("Doka.EntityFrameworkCore.MySql")]
     public void PackageBuildAssetsRegisterProviderDesignServices(
         string provider
