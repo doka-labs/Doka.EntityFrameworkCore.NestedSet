@@ -416,6 +416,15 @@ dotnet restore Doka.EntityFrameworkCore.NestedSet.slnx --locked-mode
 
 Requalify the affected provider and migration contracts.
 
+Dependency Review retains the SPDX allowlist and vulnerability gate. Its only
+package-specific license exceptions are `Microsoft.Data.SqlClient.SNI.runtime`
+6.0.2 and `Microsoft.Identity.Client.NativeInterop` 0.20.6, which ship Microsoft
+license files. The workflow checks the action's complete dependency delta to
+enforce those exact versions; a new version requires review of its license file
+and an explicit exception update. Do not allow `LicenseRef-scancode-unknown`
+globally or disable license checking. SafeMigrations' missing GitHub license
+metadata is reported separately and is not resolved by its Scorecard result.
+
 Keep the shipping package graphs locked in CI and RC qualification. SDK and
 image pins require the affected full provider and migration matrix, not only
 a successful restore.

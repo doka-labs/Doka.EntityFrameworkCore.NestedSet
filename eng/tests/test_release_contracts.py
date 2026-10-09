@@ -1,5 +1,6 @@
 """Offline candidate, documented verifier, and workflow authorization contracts."""
 
+import json
 import os
 import re
 import shutil
@@ -326,6 +327,209 @@ def workflow_jobs(path):
 
     return {match.group(1): body[match.end():matches[index + 1].start() if index + 1 < len(matches) else len(body)]
             for index, match in enumerate(matches)}
+
+
+class DependencyLicenseExceptionTests(unittest.TestCase):
+    """Exercise the actual inline version guard while preserving the standard license and vulnerability gates."""
+
+    @staticmethod
+    def dependency(name, version, change_type="added"):
+        """Create a public, synthetic dependency comparison entry."""
+        return {"name": name, "version": version, "change_type": change_type,
+                "ecosystem": "nuget", "package_url": f"pkg:nuget/{name}@{version}"}
+
+    @staticmethod
+    def run_guard(payload):
+        """Run the exact workflow command with synthetic action output and no GitHub access."""
+        workflow = (ROOT / ".github/workflows/dependency-review.yml").read_text(encoding="ascii")
+        step = workflow.split("- name: Require exact license-exception versions", 1)[1]
+        command = textwrap.dedent(step.split("        run: |\n", 1)[1])
+
+        return subprocess.run(["bash", "-eo", "pipefail", "-c", command],
+                              env={**os.environ, "DEPENDENCY_CHANGES": json.dumps(payload)},
+                              capture_output=True, text=True, check=False)
+
+    def test_accepts_reviewed_versions_across_manifests(self):
+        """The two approved packages retain narrow exceptions even when several manifests use them."""
+        # Arrange
+        entries = [self.dependency("Microsoft.Data.SqlClient.SNI.runtime", "6.0.2"),
+                   self.dependency("Microsoft.Identity.Client.NativeInterop", "0.20.6")]
+
+        # Act
+        result = self.run_guard(entries + entries)
+
+        # Assert
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_unrelated_packages_need_no_exception(self):
+        """Ordinary dependency changes are still owned by the official license and vulnerability action."""
+        # Arrange
+        entries = [self.dependency("FsCheck.Xunit.v3", "3.4.0")]
+
+        # Act
+        result = self.run_guard(entries)
+
+        # Assert
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_empty_delta_is_accepted(self):
+        """An empty comparison is a valid action output."""
+        # Arrange
+        entries = []
+
+        # Act
+        result = self.run_guard(entries)
+
+        # Assert
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_rejects_sni_version_change(self):
+        """An exception cannot silently approve a newer SNI license file."""
+        # Arrange
+        entries = [self.dependency("Microsoft.Data.SqlClient.SNI.runtime", "6.0.3")]
+
+        # Act
+        result = self.run_guard(entries)
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Review license files", result.stderr)
+
+    def test_rejects_nativeinterop_version_change_after_approved_entries(self):
+        """All changes are checked, including a second version after an approved occurrence."""
+        # Arrange
+        entries = [self.dependency("Microsoft.Identity.Client.NativeInterop", "0.20.6"),
+                   self.dependency("Microsoft.Identity.Client.NativeInterop", "0.20.7")]
+
+        # Act
+        result = self.run_guard(entries)
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+
+    def test_removing_unapproved_version_is_accepted(self):
+        """Removing a dependency does not grant a new license exception."""
+        # Arrange
+        entries = [self.dependency("Microsoft.Identity.Client.NativeInterop", "99.0.0", "removed")]
+
+        # Act
+        result = self.run_guard(entries)
+
+        # Assert
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_rejects_inconsistent_package_url(self):
+        """Matching display metadata cannot hide a different exempted PURL version."""
+        # Arrange
+        entry = self.dependency("Microsoft.Data.SqlClient.SNI.runtime", "6.0.2")
+        entry["package_url"] = "pkg:nuget/Microsoft.Data.SqlClient.SNI.runtime@6.0.3"
+
+        # Act
+        result = self.run_guard([entry])
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+
+    def test_rejects_inconsistent_package_name(self):
+        """The action-exempted PURL must agree with the reported package identity."""
+        # Arrange
+        entry = self.dependency("Microsoft.Data.SqlClient.SNI.runtime", "6.0.2")
+        entry["name"] = "Different.Package"
+
+        # Act
+        result = self.run_guard([entry])
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+
+    def test_rejects_missing_version(self):
+        """An incomplete excepted package cannot establish the reviewed license version."""
+        # Arrange
+        entry = self.dependency("Microsoft.Identity.Client.NativeInterop", "0.20.6")
+        entry.pop("version")
+
+        # Act
+        result = self.run_guard([entry])
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+
+    def test_rejects_nonarray_output(self):
+        """Malformed action output cannot turn the all-entry guard into an empty success."""
+        # Arrange
+        payload = {"changes": []}
+
+        # Act
+        result = self.run_guard(payload)
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+
+    def test_rejects_encoded_purl_with_foreign_display_identity(self):
+        """Percent encoding cannot hide a package exempted by the action's decoded identity."""
+        # Arrange
+        entry = self.dependency("Different.Package", "99.0.0")
+        entry["package_url"] = "pkg:nuget/%4Dicrosoft.Identity.Client.NativeInterop@99.0.0"
+
+        # Act
+        result = self.run_guard([entry])
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+
+    def test_accepts_encoded_identity_for_the_reviewed_version(self):
+        """Equivalent package encoding retains the same reviewed license identity."""
+        # Arrange
+        entry = self.dependency("Microsoft.Identity.Client.NativeInterop", "0.20.6")
+        entry["package_url"] = "pkg:nuget/%4Dicrosoft.Identity.Client.NativeInterop@0.20.6"
+
+        # Act
+        result = self.run_guard([entry])
+
+        # Assert
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_unrelated_containing_name_is_not_an_exception(self):
+        """A substring collision must not extend the two exceptions to a different NuGet package."""
+        # Arrange
+        entries = [self.dependency("Contoso.Microsoft.Identity.Client.NativeInterop.Adapter", "1.0.0")]
+
+        # Act
+        result = self.run_guard(entries)
+
+        # Assert
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_rejects_namespace_only_fallback_with_foreign_metadata(self):
+        """The permissive action namespace fallback cannot bypass exact package validation."""
+        # Arrange
+        entry = self.dependency("Different.Package", "99.0.0")
+        entry["package_url"] = "pkg:nuget/Microsoft.Data.SqlClient.SNI.runtime/"
+
+        # Act
+        result = self.run_guard([entry])
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+
+    def test_workflow_preserves_general_gates_and_uses_complete_action_output(self):
+        """Exceptions are package-specific, version-checked, and do not suppress unrelated license findings."""
+        # Arrange
+        workflow = (ROOT / ".github/workflows/dependency-review.yml").read_text(encoding="ascii")
+
+        # Act
+        exceptions = workflow.split("allow-dependencies-licenses: >-", 1)[1].split("comment-summary-in-pr:", 1)[0]
+
+        # Assert
+        self.assertEqual(["pkg:nuget/Microsoft.Data.SqlClient.SNI.runtime@6.0.2",
+                          "pkg:nuget/Microsoft.Identity.Client.NativeInterop@0.20.6"],
+                         [line.strip().rstrip(",") for line in exceptions.splitlines() if line.strip()])
+        self.assertIn("${{ steps.review.outputs.dependency-changes }}", workflow)
+        self.assertIn("fail-on-severity: high", workflow)
+        self.assertIn("allow-licenses:", workflow)
+        self.assertNotIn("LicenseRef-scancode-unknown", workflow)
+        self.assertNotIn("license-check: false", workflow)
+        self.assertNotIn("warn-only: true", workflow)
 
 
 class WorkflowBoundaryTests(unittest.TestCase):

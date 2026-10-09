@@ -63,6 +63,17 @@ Dependency Review checks proposed dependency changes. Secret scanning and push
 protection complement review; their enabled state is not proof of an empty
 alert history. Triage alerts rather than treating a green build as a substitute.
 
+Two reviewed Microsoft native-package licenses need targeted exceptions:
+[SNI.runtime 6.0.2](https://www.nuget.org/packages/Microsoft.Data.SqlClient.SNI.runtime/6.0.2/License)
+and [NativeInterop 0.20.6](https://www.nuget.org/packages/Microsoft.Identity.Client.NativeInterop/0.20.6/License).
+These are license files, not MIT expressions. The exceptions apply to the test
+dependency graph; neither shipping NestedSet package gains these dependencies.
+The existing action continues checking other licenses and vulnerabilities. Since
+its pinned v5.0.0 PURL exclusion compares identities without enforcing versions,
+the following workflow step verifies the exact reviewed versions against the
+action's complete comparison output. A package update requires a new license
+review. Null license metadata and Scorecard results are separate inputs.
+
 Before a major production release, retain the actual static-analysis results
 for the proposed revision and fix confirmed exploitable medium-or-higher
 findings promptly. Do not count Scorecard configuration/process warnings as
@@ -162,3 +173,5 @@ Retrieved 2026-10-09:
 - [FsCheck property testing and shrinking](https://fscheck.github.io/FsCheck/).
 - [Scorecard 5.5.0 C# detection](https://github.com/ossf/scorecard/blob/v5.5.0/checks/raw/fuzzing.go).
 - [Pinned Scorecard action version](https://github.com/ossf/scorecard-action/blob/2d1146689b8cda280b9bc96326124645441f03bc/go.mod).
+- [Dependency Review v5.0.0 license handling](https://github.com/actions/dependency-review-action/blob/v5.0.0/src/licenses.ts).
+- [Dependency Review v5.0.0 PURL comparison](https://github.com/actions/dependency-review-action/blob/v5.0.0/src/purl.ts).

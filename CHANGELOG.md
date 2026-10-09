@@ -76,6 +76,9 @@ Both packages share the same stable version and reviewed API contract.
 - Add FsCheck properties for Int64 bounds, complete tree identity, generated
   bulk geometry and sibling ordering, and malformed-import rejection. Keep
   shrinkable input and replay evidence in the existing unit test projects.
+- Review the two native Microsoft license files used by optional SQL Server
+  qualification through targeted Dependency Review exceptions, restricted to
+  SNI.runtime 6.0.2 and NativeInterop 0.20.6 by the inline version check.
 
 - Add optional SQL Server SafeMigrations 10.4.9 consumer integration for `dbo`
   and explicit schemas, generated tooling registration, index apply/replay and

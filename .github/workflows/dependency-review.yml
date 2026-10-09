@@ -34,6 +34,7 @@ jobs:
       # whose license metadata is absent are reported separately rather than
       # blocked, so a missing SPDX field cannot masquerade as a policy breach.
       - name: Review dependency changes
+        id: review
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: high
@@ -46,9 +47,75 @@ jobs:
             MIT,
             MIT-0,
             Unlicense
+          # WHY: These native Microsoft packages ship reviewed license files rather than SPDX expressions.
+          # v5.0.0 ignores PURL versions; the following step enforces the exact reviewed versions.
+          allow-dependencies-licenses: >-
+            pkg:nuget/Microsoft.Data.SqlClient.SNI.runtime@6.0.2,
+            pkg:nuget/Microsoft.Identity.Client.NativeInterop@0.20.6
           comment-summary-in-pr: never
           show-openssf-scorecard: true
-          # A warning remains fail-closed after the official bounded retry;
+          # The official action owns the bounded wait for submitted snapshots;
           # this workflow does not implement a second snapshot state machine.
           retry-on-snapshot-warnings: true
           retry-on-snapshot-warnings-timeout: 180
+
+      - name: Require exact license-exception versions
+        env:
+          DEPENDENCY_CHANGES: ${{ steps.review.outputs.dependency-changes }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # WHY: Read the action's full comparison, including every manifest and page, instead of querying it again.
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          from urllib.parse import unquote
+
+          approved = {"microsoft.data.sqlclient.sni.runtime": "6.0.2",
+                      "microsoft.identity.client.nativeinterop": "0.20.6"}
+
+          def action_name(purl):
+              """Match v5.0.0's decoded NuGet identity, including its namespace-only fallback."""
+              kind = re.search(r"pkg:([a-zA-Z0-9_-]+)/.*", purl)
+              if not purl.startswith("pkg:") or kind is None or kind[1].lower() != "nuget":
+                  return None
+
+              parts = purl.split("/")
+              if len(parts) < 2 or not parts[1]:
+                  return None
+
+              namespace = unquote(parts[1], errors="strict") if len(parts) > 2 else None
+              name = re.search(r"([^@#?]+)[@#?]?.*", "/".join(parts[2:]) if namespace else parts[1])
+              name = unquote(name[1], errors="strict") if name else None
+              identity = f"{namespace}/{name}" if namespace and name else name or namespace
+
+              return identity.lower() if identity else None
+
+          changes = json.loads(os.environ["DEPENDENCY_CHANGES"])
+          if not isinstance(changes, list):
+              raise SystemExit("::error::Expected the complete dependency comparison array.")
+
+          for change in changes:
+              if not isinstance(change, dict) or change.get("change_type") not in ("added", "removed"):
+                  raise SystemExit("::error::Invalid dependency comparison entry.")
+
+              if change["change_type"] == "removed":
+                  continue
+
+              name = (change.get("name") or "").lower()
+              ecosystem = (change.get("ecosystem") or "").lower()
+              raw_purl = change.get("package_url") or ""
+              identity = name if ecosystem == "nuget" and name in approved else action_name(raw_purl)
+              if identity not in approved:
+                  continue
+
+              version = approved[identity]
+              if (ecosystem != "nuget" or name != identity or change.get("version") != version
+                      or unquote(raw_purl, errors="strict").lower() != f"pkg:nuget/{identity}@{version}"):
+                  raise SystemExit(f"::error::License exception requires consistent NuGet {identity} {version} metadata. "
+                                   "Review license files before approving another version.")
+
+          print("License exceptions are restricted to SNI.runtime 6.0.2 and NativeInterop 0.20.6.")
+          PY
