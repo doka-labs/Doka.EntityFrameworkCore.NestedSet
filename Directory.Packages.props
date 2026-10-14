@@ -31,8 +31,8 @@
     <PackageVersion Include="FsCheck.Xunit.v3" Version="3.4.0"/>
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12"/>
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1"/>
-    <PackageVersion Include="xunit.v3.mtp-off" Version="4.0.1"/>
-    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0"/>
+    <PackageVersion Include="xunit.v3.mtp-off" Version="4.0.2"/>
+    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1"/>
   </ItemGroup>
 
   <ItemGroup Label="Container-backed tests and benchmarks">
@@ -45,8 +45,8 @@
   <ItemGroup Label="Shared test specifications"
              Condition="'$(MSBuildProjectName)' == 'Doka.EntityFrameworkCore.NestedSet.Specification.Tests'">
     <!-- WHY: The shared library uses existing framework components without changing other test lockfiles. -->
-    <PackageVersion Include="xunit.v3.extensibility.core" Version="4.0.1"/>
-    <PackageVersion Include="xunit.v3.assert" Version="4.0.1"/>
+    <PackageVersion Include="xunit.v3.extensibility.core" Version="4.0.2"/>
+    <PackageVersion Include="xunit.v3.assert" Version="4.0.2"/>
   </ItemGroup>
 
   <ItemGroup Label="Production EF Core compatibility"
