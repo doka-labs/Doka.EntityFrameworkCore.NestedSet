@@ -15,8 +15,8 @@
   <!-- The provider suites and benchmarks use all four providers; samples use Doka and optional SQLite. -->
   <ItemGroup Label="Provider qualification">
     <PackageVersion Include="Doka.EntityFrameworkCore.MySql" Version="10.4.4"/>
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12"/>
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12"/>
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.13"/>
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.13"/>
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3"/>
   </ItemGroup>
 
@@ -29,7 +29,7 @@
 
   <ItemGroup Label="Test tooling">
     <PackageVersion Include="FsCheck.Xunit.v3" Version="3.4.0"/>
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12"/>
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13"/>
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1"/>
     <PackageVersion Include="xunit.v3.mtp-off" Version="4.0.1"/>
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0"/>
