@@ -64,7 +64,7 @@ protection complement review; their enabled state is not proof of an empty
 alert history. Triage alerts rather than treating a green build as a substitute.
 
 Two reviewed Microsoft native-package licenses need targeted exceptions:
-[SNI.runtime 6.0.2](https://www.nuget.org/packages/Microsoft.Data.SqlClient.SNI.runtime/6.0.2/License)
+[SNI.runtime 6.0.3](https://www.nuget.org/packages/Microsoft.Data.SqlClient.SNI.runtime/6.0.3/License)
 and [NativeInterop 0.20.6](https://www.nuget.org/packages/Microsoft.Identity.Client.NativeInterop/0.20.6/License).
 These are license files, not MIT expressions. The exceptions apply to the test
 dependency graph; neither shipping NestedSet package gains these dependencies.
@@ -73,6 +73,12 @@ its pinned v5.0.0 PURL exclusion compares identities without enforcing versions,
 the following workflow step verifies the exact reviewed versions against the
 action's complete comparison output. A package update requires a new license
 review. Null license metadata and Scorecard results are separate inputs.
+
+The 2026-10-15 update rechecked the published SNI.runtime 6.0.3 license against
+6.0.2. The files are byte-identical, with SHA-256
+`9335e8bad875dd7be4eebd55d2335eb6433d1cea61aadb3817af7807bef8932a`.
+The exception and its positive/negative controls now require exactly 6.0.3;
+NativeInterop remains restricted to 0.20.6.
 
 Before a major production release, retain the actual static-analysis results
 for the proposed revision and fix confirmed exploitable medium-or-higher

@@ -44,7 +44,7 @@ Add the EF Core provider used by the application separately. For Doka
 MySQL/MariaDB:
 
 ```bash
-dotnet package add Doka.EntityFrameworkCore.MySql --version 10.4.4
+dotnet package add Doka.EntityFrameworkCore.MySql --version 10.5.0
 ```
 
 Use the exact version from the matching
@@ -61,8 +61,8 @@ The provider qualification matrix is:
 | SQL Server | `Microsoft.EntityFrameworkCore.SqlServer` |
 
 Pomelo is not a supported provider. Ordinary EF migrations are the required
-baseline. SafeMigrations is an optional integration. The published 10.4.9
-adapters are qualified with the current source model for MySQL, MariaDB,
+baseline. SafeMigrations is an optional integration. The repository uses the published 10.5.0
+adapters for MySQL, MariaDB,
 PostgreSQL, SQLite, and SQL Server, including PostgreSQL's canonical null-filter
 indexes. SQL Server's optional adapter supports proven integer widening and
 CHECK validation over existing rows, with explicit schema and repair boundaries;

@@ -3,9 +3,16 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
 
+  <PropertyGroup Label="Qualification transitive security floor"
+                 Condition="'$(MSBuildProjectName)' != 'Doka.NestedSet' and '$(MSBuildProjectName)' != 'Doka.EntityFrameworkCore.NestedSet'">
+    <!-- WHY: SQL Client still requests vulnerable PKCS 9.0.11. Pin its existing dependency without
+         promoting qualification-only packages into either shipping package's dependency contract. -->
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
   <ItemGroup Label="Production">
-    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.12"/>
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12"/>
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.13"/>
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.13"/>
   </ItemGroup>
 
   <ItemGroup Label="Production analyzers">
@@ -14,39 +21,43 @@
 
   <!-- The provider suites and benchmarks use all four providers; samples use Doka and optional SQLite. -->
   <ItemGroup Label="Provider qualification">
-    <PackageVersion Include="Doka.EntityFrameworkCore.MySql" Version="10.4.4"/>
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12"/>
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12"/>
+    <PackageVersion Include="Doka.EntityFrameworkCore.MySql" Version="10.5.0"/>
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.13"/>
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.13"/>
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3"/>
   </ItemGroup>
 
   <ItemGroup Label="Optional SafeMigrations qualification">
-    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.MySql" Version="10.4.9"/>
-    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.PostgreSql" Version="10.4.9"/>
-    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.SqlServer" Version="10.4.9"/>
-    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.Sqlite" Version="10.4.9"/>
+    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.MySql" Version="10.5.0"/>
+    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.PostgreSql" Version="10.5.0"/>
+    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.SqlServer" Version="10.5.0"/>
+    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.Sqlite" Version="10.5.0"/>
   </ItemGroup>
 
   <ItemGroup Label="Test tooling">
     <PackageVersion Include="FsCheck.Xunit.v3" Version="3.4.0"/>
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12"/>
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13"/>
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1"/>
-    <PackageVersion Include="xunit.v3.mtp-off" Version="4.0.1"/>
-    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0"/>
+    <PackageVersion Include="xunit.v3.mtp-off" Version="4.0.2"/>
+    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1"/>
+  </ItemGroup>
+
+  <ItemGroup Label="SQL Server qualification security">
+    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="9.0.21"/>
   </ItemGroup>
 
   <ItemGroup Label="Container-backed tests and benchmarks">
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8"/>
-    <PackageVersion Include="Testcontainers.MsSql" Version="4.15.0"/>
-    <PackageVersion Include="Testcontainers.MySql" Version="4.15.0"/>
-    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.15.0"/>
+    <PackageVersion Include="Testcontainers.MsSql" Version="4.16.0"/>
+    <PackageVersion Include="Testcontainers.MySql" Version="4.16.0"/>
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0"/>
   </ItemGroup>
 
   <ItemGroup Label="Shared test specifications"
              Condition="'$(MSBuildProjectName)' == 'Doka.EntityFrameworkCore.NestedSet.Specification.Tests'">
     <!-- WHY: The shared library uses existing framework components without changing other test lockfiles. -->
-    <PackageVersion Include="xunit.v3.extensibility.core" Version="4.0.1"/>
-    <PackageVersion Include="xunit.v3.assert" Version="4.0.1"/>
+    <PackageVersion Include="xunit.v3.extensibility.core" Version="4.0.2"/>
+    <PackageVersion Include="xunit.v3.assert" Version="4.0.2"/>
   </ItemGroup>
 
   <ItemGroup Label="Production EF Core compatibility"

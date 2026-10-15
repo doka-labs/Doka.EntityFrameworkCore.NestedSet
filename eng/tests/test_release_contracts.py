@@ -352,7 +352,7 @@ class DependencyLicenseExceptionTests(unittest.TestCase):
     def test_accepts_reviewed_versions_across_manifests(self):
         """The two approved packages retain narrow exceptions even when several manifests use them."""
         # Arrange
-        entries = [self.dependency("Microsoft.Data.SqlClient.SNI.runtime", "6.0.2"),
+        entries = [self.dependency("Microsoft.Data.SqlClient.SNI.runtime", "6.0.3"),
                    self.dependency("Microsoft.Identity.Client.NativeInterop", "0.20.6")]
 
         # Act
@@ -386,7 +386,7 @@ class DependencyLicenseExceptionTests(unittest.TestCase):
     def test_rejects_sni_version_change(self):
         """An exception cannot silently approve a newer SNI license file."""
         # Arrange
-        entries = [self.dependency("Microsoft.Data.SqlClient.SNI.runtime", "6.0.3")]
+        entries = [self.dependency("Microsoft.Data.SqlClient.SNI.runtime", "6.0.4")]
 
         # Act
         result = self.run_guard(entries)
@@ -421,8 +421,8 @@ class DependencyLicenseExceptionTests(unittest.TestCase):
     def test_rejects_inconsistent_package_url(self):
         """Matching display metadata cannot hide a different exempted PURL version."""
         # Arrange
-        entry = self.dependency("Microsoft.Data.SqlClient.SNI.runtime", "6.0.2")
-        entry["package_url"] = "pkg:nuget/Microsoft.Data.SqlClient.SNI.runtime@6.0.3"
+        entry = self.dependency("Microsoft.Data.SqlClient.SNI.runtime", "6.0.3")
+        entry["package_url"] = "pkg:nuget/Microsoft.Data.SqlClient.SNI.runtime@6.0.4"
 
         # Act
         result = self.run_guard([entry])
@@ -433,7 +433,7 @@ class DependencyLicenseExceptionTests(unittest.TestCase):
     def test_rejects_inconsistent_package_name(self):
         """The action-exempted PURL must agree with the reported package identity."""
         # Arrange
-        entry = self.dependency("Microsoft.Data.SqlClient.SNI.runtime", "6.0.2")
+        entry = self.dependency("Microsoft.Data.SqlClient.SNI.runtime", "6.0.3")
         entry["name"] = "Different.Package"
 
         # Act
@@ -521,7 +521,7 @@ class DependencyLicenseExceptionTests(unittest.TestCase):
         exceptions = workflow.split("allow-dependencies-licenses: >-", 1)[1].split("comment-summary-in-pr:", 1)[0]
 
         # Assert
-        self.assertEqual(["pkg:nuget/Microsoft.Data.SqlClient.SNI.runtime@6.0.2",
+        self.assertEqual(["pkg:nuget/Microsoft.Data.SqlClient.SNI.runtime@6.0.3",
                           "pkg:nuget/Microsoft.Identity.Client.NativeInterop@0.20.6"],
                          [line.strip().rstrip(",") for line in exceptions.splitlines() if line.strip()])
         self.assertIn("${{ steps.review.outputs.dependency-changes }}", workflow)

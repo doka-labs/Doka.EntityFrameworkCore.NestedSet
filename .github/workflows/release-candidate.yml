@@ -75,7 +75,7 @@ jobs:
 
       - name: Retain verified job evidence
         id: evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-evidence-source-quality-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/qualification/evidence
@@ -85,7 +85,7 @@ jobs:
 
       - name: Retain failure logs
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-diagnostics-source-quality-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/qualification/logs
@@ -115,7 +115,7 @@ jobs:
 
       - name: Retain verified job evidence
         id: evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-evidence-engineering-tests-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/qualification/evidence
@@ -125,7 +125,7 @@ jobs:
 
       - name: Retain failure logs
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-diagnostics-engineering-tests-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/qualification/logs
@@ -168,7 +168,7 @@ jobs:
 
       - name: Retain exact producer build
         id: build
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-build-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/rc-build.tar.gz
@@ -177,7 +177,7 @@ jobs:
 
       - name: Retain exact package inputs
         id: packages
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-packages-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -190,7 +190,7 @@ jobs:
 
       - name: Retain build failure evidence
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-diagnostics-build-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/qualification/logs
@@ -272,7 +272,7 @@ jobs:
         run: '[[ "$RC_BUILD_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]'
 
       - name: Download exact producer build
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.build.outputs.build-id }}
           path: artifacts/transport
@@ -292,7 +292,7 @@ jobs:
           --version "$CANDIDATE_VERSION" --output artifacts/qualification
 
       - name: Retain verified job evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-evidence-test-${{ matrix.assembly }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/qualification/evidence
@@ -302,7 +302,7 @@ jobs:
 
       - name: Retain failure evidence
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-diagnostics-test-${{ matrix.assembly }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -341,7 +341,7 @@ jobs:
         run: '[[ "$RC_BUILD_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]'
 
       - name: Download exact producer build
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.build.outputs.build-id }}
           path: artifacts/transport
@@ -357,7 +357,7 @@ jobs:
           --version "$CANDIDATE_VERSION" --output artifacts/qualification
 
       - name: Retain verified job evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-evidence-sample-${{ matrix.sample }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/qualification/evidence
@@ -367,7 +367,7 @@ jobs:
 
       - name: Retain failure evidence
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-diagnostics-sample-${{ matrix.sample }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -404,7 +404,7 @@ jobs:
         run: '[[ "$RC_PACKAGE_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]'
 
       - name: Download exact package inputs
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.build.outputs.package-id }}
           path: artifacts/qualification
@@ -416,7 +416,7 @@ jobs:
 
       - name: Retain verified job evidence
         id: evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-evidence-consumer-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/qualification/evidence
@@ -426,7 +426,7 @@ jobs:
 
       - name: Retain failure evidence
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-diagnostics-consumer-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -463,7 +463,7 @@ jobs:
         run: '[[ "$RC_PACKAGE_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]'
 
       - name: Download exact package inputs
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.build.outputs.package-id }}
           path: artifacts/qualification
@@ -475,7 +475,7 @@ jobs:
 
       - name: Retain verified job evidence
         id: evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-evidence-sbom-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/qualification/evidence
@@ -485,7 +485,7 @@ jobs:
 
       - name: Retain failure evidence
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-diagnostics-sbom-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -535,7 +535,7 @@ jobs:
           done
 
       - name: Download exact producer build
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.build.outputs.build-id }}
           path: artifacts/transport
@@ -546,38 +546,38 @@ jobs:
           tar -xzf artifacts/transport/rc-build.tar.gz -C artifacts/qualification
 
       - name: Download source-quality evidence from its successful job
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.source-quality.outputs.artifact-id }}
           path: artifacts/qualification
 
       - name: Download engineering-tests evidence from its successful job
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.engineering-tests.outputs.artifact-id }}
           path: artifacts/qualification
 
       - name: Download consumer evidence from its successful job
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.consumer.outputs.artifact-id }}
           path: artifacts/qualification
 
       - name: Download sbom evidence from its successful job
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.sbom.outputs.artifact-id }}
           path: artifacts/qualification
 
       - name: Download current-attempt test results
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: rc-evidence-test-*-${{ github.run_id }}-${{ github.run_attempt }}
           merge-multiple: true
           path: artifacts/qualification
 
       - name: Download current-attempt sample results
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: rc-evidence-sample-*-${{ github.run_id }}-${{ github.run_attempt }}
           merge-multiple: true
@@ -590,7 +590,7 @@ jobs:
 
       - name: Retain qualification and failure evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-qualification-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -607,7 +607,7 @@ jobs:
 
       - name: Retain exact complete candidate
         id: candidate
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-candidate-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/qualification/candidate
@@ -635,7 +635,7 @@ jobs:
           persist-credentials: false
 
       - name: Download this run's exact qualified candidate
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.qualify.outputs.artifact-id }}
           merge-multiple: true
@@ -684,7 +684,7 @@ jobs:
 
       - name: Retain exact provenance artifact
         id: upload
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-provenance-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/provenance
@@ -719,14 +719,14 @@ jobs:
           global-json-file: global.json
 
       - name: Download original candidate by immutable artifact ID
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.qualify.outputs.artifact-id }}
           merge-multiple: true
           path: artifacts/candidate
 
       - name: Download original provenance by immutable artifact ID
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.attest.outputs.artifact-id }}
           merge-multiple: true
@@ -833,7 +833,7 @@ jobs:
 
       - name: Retain completion or interrupted publication evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: publication-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/publication

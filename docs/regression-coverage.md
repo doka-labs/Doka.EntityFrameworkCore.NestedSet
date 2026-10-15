@@ -88,16 +88,16 @@ and [generated-test guidance](../CONTRIBUTING.md#generated-invariant-tests).
 
 ## Optional SQL Server migrations
 
-The optional suite consumes published SafeMigrations 10.4.9 with ordinary
-EF SQL Server 10.0.12. Every relational case runs with the default `dbo` schema
+The optional suite consumes published SafeMigrations 10.5.0 with ordinary
+EF SQL Server 10.0.13. Every relational case runs with the default `dbo` schema
 and an explicitly configured schema; package discovery is checked
 separately. Neither NestedSet package nor the ordinary migration test project
 references the adapter.
 
 Unqualified safe operations require `dbo` as the database user's default schema;
-other defaults require explicit schema mapping. SQL Server runs locally under
-x86-64 emulation on ARM; native hosted qualification remains a separate
-requirement. Exact dated totals are in the support and qualification guide.
+other defaults require explicit schema mapping. SQL Server database cases
+are visibly skipped on local ARM; native Linux x64 CI is required for their
+qualification. Exact dated totals are in the support and qualification guide.
 
 Positive coverage:
 

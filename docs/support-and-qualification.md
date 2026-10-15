@@ -11,6 +11,7 @@ defines what this repository has exercised.
 | Target framework | .NET 10 |
 | SDK | `10.0.401`, pinned by `global.json` |
 | EF Core runtime range | `10.0.12` through, but excluding, `11.0.0` |
+| EF Core qualification patch | `10.0.13` |
 | Core package | `Doka.NestedSet` |
 | EF package | `Doka.EntityFrameworkCore.NestedSet` |
 
@@ -18,6 +19,13 @@ The two shipping package graphs are locked. Tests, samples, and tooling use
 the centrally reviewed dependency versions without additional committed
 lockfiles. Updating a package requires reviewing affected locks and rerunning
 the complete applicable matrix.
+
+Non-shipping projects use NuGet's
+[transitive pinning](https://learn.microsoft.com/en-us/nuget/consume-packages/central-package-management#transitive-pinning)
+to raise the existing SQL Client PKCS dependency to 9.0.21. Its requested 9.0.11
+version triggers the active vulnerability audit. Neither shipping project
+enables this qualification policy or acquires a PKCS dependency. The existing
+shipping lockfiles retain the supported EF Core minimum.
 
 Version `10.0.0` is the first stable contract for both packages. Qualification
 always identifies its exact source and artifacts. The dated local results
@@ -40,11 +48,11 @@ This statement does not assert the same limitation for the separate
 
 | Database | EF provider baseline | Engine image baseline |
 | --- | --- | --- |
-| MySQL | `Doka.EntityFrameworkCore.MySql` 10.4.4 | MySQL 8.4.11 |
-| MariaDB | `Doka.EntityFrameworkCore.MySql` 10.4.4 | MariaDB 11.8.9 |
+| MySQL | `Doka.EntityFrameworkCore.MySql` 10.5.0 | MySQL 8.4.11 |
+| MariaDB | `Doka.EntityFrameworkCore.MySql` 10.5.0 | MariaDB 11.8.9 |
 | PostgreSQL | `Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.3 | PostgreSQL 17.11 |
-| SQLite | `Microsoft.EntityFrameworkCore.Sqlite` 10.0.12 | In-process native runtime from the locked package graph |
-| SQL Server | `Microsoft.EntityFrameworkCore.SqlServer` 10.0.12 | SQL Server 2022 CU27 on Ubuntu 22.04 |
+| SQLite | `Microsoft.EntityFrameworkCore.Sqlite` 10.0.13 | In-process native runtime from the resolved package graph |
+| SQL Server | `Microsoft.EntityFrameworkCore.SqlServer` 10.0.13 | SQL Server 2022 CU27 on Ubuntu 22.04 |
 
 Container image tags and SHA-256 digests are pinned in
 [the shared Dockerfile](../docker/database-images.Dockerfile). Digest pinning identifies exact test
@@ -55,6 +63,12 @@ qualified MySQL 8.4, MariaDB 11.8, and PostgreSQL 17 lines. MySQL and MariaDB
 major and minor changes are excluded; PostgreSQL major changes are excluded
 while its minor maintenance releases remain eligible. Adding or replacing an
 engine line requires an explicit qualification decision and an updated matrix.
+
+Coupled Doka provider/adapter releases share one Dependabot group. The EF Core
+group includes the root package and its provider/tooling packages. Existing
+runtime compatibility ranges and engine lines are separate contracts; updating
+qualification packages does not expand them. Doka 10.5.0's opt-in native
+MariaDB UUID mode is not newly qualified by this dependency refresh.
 
 SQL Server container images are supported by Microsoft only on Linux x86-64
 hosts. Emulation or translation on Arm hosts is not a qualified substitute for
@@ -98,17 +112,17 @@ Optional adapter qualification uses:
 
 | Database | SafeMigrations adapter baseline | Qualification boundary |
 | --- | --- | --- |
-| MySQL/MariaDB | `Doka.EntityFrameworkCore.SafeMigrations.MySql` 10.4.9 | Optional adapter regression suite |
-| PostgreSQL | `Doka.EntityFrameworkCore.SafeMigrations.PostgreSql` 10.4.9 | Canonical null-filter indexes, replay, and drift qualified |
-| SQL Server | `Doka.EntityFrameworkCore.SafeMigrations.SqlServer` 10.4.9 | `dbo`/explicit schemas, integer widening, indexes and CHECKs |
-| SQLite | `Doka.EntityFrameworkCore.SafeMigrations.Sqlite` 10.4.9 | Optional adapter regression suite |
+| MySQL/MariaDB | `Doka.EntityFrameworkCore.SafeMigrations.MySql` 10.5.0 | Optional adapter regression suite |
+| PostgreSQL | `Doka.EntityFrameworkCore.SafeMigrations.PostgreSql` 10.5.0 | Canonical null-filter indexes, replay, and drift |
+| SQL Server | `Doka.EntityFrameworkCore.SafeMigrations.SqlServer` 10.5.0 | `dbo`/explicit schemas, integer widening, indexes and CHECKs |
+| SQLite | `Doka.EntityFrameworkCore.SafeMigrations.Sqlite` 10.5.0 | Optional adapter regression suite |
 
 SafeMigrations tests are additive. A failure there must not be described as a
 runtime requirement for Doka, Npgsql, SQLite, or SQL Server. Adapter packages
 are referenced only by the optional test project; neither shipping package
 depends on SafeMigrations.
 
-The PostgreSQL 10.4.9 adapter retains recognition of EF-generated canonical
+The PostgreSQL 10.5.0 adapter retains recognition of EF-generated canonical
 provider-delimited single-column `IS NULL` and `IS NOT NULL` index predicates.
 The authored raw SQL and immutable definition remain intact; generation,
 preflight, catalog comparison, replay, and drift rejection are exercised by the
@@ -133,7 +147,35 @@ runs below executed under x86-64 emulation on ARM; they do not replace native
 x86-64 hosted qualification. Current local ARM execution follows the visible
 platform-skip policy above.
 
-The local 2026-10-08 run passed all 112 cases against the published 10.4.9
+The local 2026-10-15 dependency-refresh run used Doka and all four optional
+SafeMigrations adapters 10.5.0, EF Core qualification patch 10.0.13, xUnit
+4.0.2 with its VSTest adapter 4.0.1, and Testcontainers 4.16.0. All nine
+executable test projects ran with `--filter 'Category!=Capacity'`:
+
+| Suite | Passed | Skipped on local ARM | Failed |
+| --- | ---: | ---: | ---: |
+| Core | 54 | 0 | 0 |
+| EF Core unit | 828 | 0 | 0 |
+| MySQL/MariaDB | 2,139 | 0 | 0 |
+| PostgreSQL | 1,057 | 0 | 0 |
+| SQLite | 1,099 | 0 | 0 |
+| SQL Server | 29 | 1,032 | 0 |
+| Ordinary migrations | 47 | 10 | 0 |
+| Optional SafeMigrations | 62 | 50 | 0 |
+| Benchmark contracts | 228 | 0 | 0 |
+
+The total is 5,543 passed and 1,092 visibly skipped SQL Server database cases,
+with no failures. The SafeMigrations results include the new typed
+MySQL/MariaDB rejection assertions, retaining native errors and unchanged
+catalog/data checks. Locked restore with active NuGet audit, the complete
+Release build, read-only Roslyn style/import checks, all 275 existing
+engineering regressions, local package inspection and both fresh-cache exact
+package consumers passed. All three samples completed their SQLite scenarios.
+The two tracked shipping lockfiles remained unchanged. Native Linux x64
+SQL Server cases and capacity qualification were not executed in this run;
+these local results are not hosted CI or release evidence.
+
+For historical comparison, the local 2026-10-08 run passed all 112 cases against the published 10.4.9
 adapters, with zero failures or skips: 13 MySQL, 13 MariaDB, 22 PostgreSQL,
 10 SQLite, 50 SQL Server, and four package/design-service controls. The SQL
 Server cases include complete empty/populated integer upgrades, CHECK proof

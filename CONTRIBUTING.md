@@ -418,7 +418,7 @@ Requalify the affected provider and migration contracts.
 
 Dependency Review retains the SPDX allowlist and vulnerability gate. Its only
 package-specific license exceptions are `Microsoft.Data.SqlClient.SNI.runtime`
-6.0.2 and `Microsoft.Identity.Client.NativeInterop` 0.20.6, which ship Microsoft
+6.0.3 and `Microsoft.Identity.Client.NativeInterop` 0.20.6, which ship Microsoft
 license files. The workflow checks the action's complete dependency delta to
 enforce those exact versions; a new version requires review of its license file
 and an explicit exception update. Do not allow `LicenseRef-scancode-unknown`

@@ -232,6 +232,15 @@ public sealed partial class SafeMigrationTests
             Assert.Contains("analysis=classified_different", runtimeException.Message, StringComparison.Ordinal);
             Assert.Contains("decision=different_reject", runtimeException.Message, StringComparison.Ordinal);
         }
+        else if (engine is "MySql" or "MariaDb")
+        {
+            // WHY: SafeMigrations 10.5 correlates owned runtime guards while retaining the native rejection.
+            var runtimeException = Assert.IsType<SafeMigrationExecutionException>(exception);
+            Assert.Equal("doka_sm_different", runtimeException.GuardCode);
+
+            var databaseException = Assert.IsType<DbException>(runtimeException.InnerException, exactMatch: false);
+            Assert.Contains("doka_sm_different", databaseException.Message, StringComparison.OrdinalIgnoreCase);
+        }
         else
         {
             var databaseException = Assert.IsAssignableFrom<DbException>(exception);

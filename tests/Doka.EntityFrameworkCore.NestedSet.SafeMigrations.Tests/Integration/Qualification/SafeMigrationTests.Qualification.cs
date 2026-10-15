@@ -63,7 +63,12 @@ public sealed partial class SafeMigrationTests
         Assert.Equal(SafeMigrationObservedState.Unsupported, assessment.ObservedState);
         Assert.Equal(SafeMigrationAction.RejectUnsupported, assessment.Action);
         Assert.Equal("database_qualifier_mismatch", assessment.AnalysisCode);
-        var databaseException = Assert.IsAssignableFrom<DbException>(exception);
+
+        // WHY: Correlated MySQL guards expose their code separately and preserve the original native failure.
+        var runtimeException = Assert.IsType<SafeMigrationExecutionException>(exception);
+        Assert.Equal("doka_sm_unsupported", runtimeException.GuardCode);
+
+        var databaseException = Assert.IsType<DbException>(runtimeException.InnerException, exactMatch: false);
         Assert.Contains("doka_sm_unsupported", databaseException.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(selectedIndexesBefore, IndexSignatures(await selected.ReadIndexesAsync()));
         Assert.Equal(foreignIndexesBefore, IndexSignatures(await foreign.ReadIndexesAsync()));

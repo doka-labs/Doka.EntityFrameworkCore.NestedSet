@@ -6,6 +6,29 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### Changed
+
+- Refresh Doka MySQL and all four optional SafeMigrations adapters to 10.5.0,
+  EF Core qualification packages to 10.0.13, xUnit v3 to 4.0.2 with its 4.0.1
+  VSTest adapter, and Testcontainers to 4.16.0. Preserve the shipping EF Core
+  compatibility range and existing database LTS lines.
+- Update the existing artifact upload/download, Scorecard, and SARIF upload
+  Actions to their reviewed immutable release commits.
+- Group coupled Doka packages and all EF Core references in Dependabot so
+  provider/adapter updates and EF patches are proposed together.
+
+### Fixed
+
+- Raise the existing transitive PKCS dependency to 9.0.21 in qualification
+  projects, resolving SQL Client's vulnerable 9.0.11 request without adding
+  a dependency to either shipping package or disabling NuGet audit.
+- Verify SafeMigrations 10.5.0's structured MySQL/MariaDB runtime rejection
+  and preserved native failure in the existing index-drift and foreign-database
+  qualifier regressions.
+- Review SNI.runtime 6.0.3's unchanged license file and advance its existing
+  exact-version exception and rejection controls; other license and
+  vulnerability checks remain active.
+
 ## 10.0.0 (2026-10-09)
 
 First stable contract for `Doka.NestedSet` and

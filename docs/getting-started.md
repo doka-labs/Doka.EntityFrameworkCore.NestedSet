@@ -12,7 +12,7 @@ use this source's stable `10.0.0` package contract and the qualified Doka MySQL/
 
 ```bash
 dotnet package add Doka.EntityFrameworkCore.NestedSet --version 10.0.0
-dotnet package add Doka.EntityFrameworkCore.MySql --version 10.4.4
+dotnet package add Doka.EntityFrameworkCore.MySql --version 10.5.0
 ```
 
 The core package is included transitively. Use the exact version from the

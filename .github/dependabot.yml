@@ -29,8 +29,14 @@ updates:
     schedule:
       interval: weekly
     groups:
+      doka:
+        # WHY: The MySQL adapter requires a matching provider release; qualify the Doka packages together.
+        patterns:
+          - Doka.EntityFrameworkCore.MySql
+          - Doka.EntityFrameworkCore.SafeMigrations.*
       entity-framework:
         patterns:
+          - Microsoft.EntityFrameworkCore
           - Microsoft.EntityFrameworkCore.*
       xunit:
         patterns:
