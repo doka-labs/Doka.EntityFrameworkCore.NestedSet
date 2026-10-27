@@ -20,6 +20,7 @@ public sealed partial class SafeMigrationTests
         var operations = GetIndexOperations(chain, context)
             .Where(operation => ((EnsureIndexIntent)operation.Intent).Definition.Filter
                 is "parent_entry IS NULL" or "parent_entry IS NOT NULL").ToArray();
+
         var filtersBefore = await ReadPostgreSqlParentFiltersAsync(context);
         var nodesBefore = await database.ReadNodesAsync();
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
@@ -64,6 +65,7 @@ public sealed partial class SafeMigrationTests
         var operations = GetIndexOperations(chain, context)
             .Where(operation => ((EnsureIndexIntent)operation.Intent).Definition.Filter
                 is "parent_entry IS NULL" or "parent_entry IS NOT NULL").ToArray();
+
         var filtersBefore = await ReadPostgreSqlParentFiltersAsync(context);
         var nodesBefore = await database.ReadNodesAsync();
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
@@ -117,20 +119,24 @@ public sealed partial class SafeMigrationTests
         {
             "roots" => "parent_entry IS NULL", "dependent" => "parent_entry IS NOT NULL", _ => "tree_id IS NOT NULL",
         };
+
         var operation = GetIndexOperations(chain, context)
             .Single(candidate => ((EnsureIndexIntent)candidate.Intent).Definition.Filter == filter
                 && (role != "tree" || ((EnsureIndexIntent)candidate.Intent).Definition.Keys
                     .Select(key => key.Column).SequenceEqual(["tree_scope", "tree_id", "left_bound"])));
+
         var definition = ((EnsureIndexIntent)operation.Intent).Definition;
         var sql = context.GetService<ISqlGenerationHelper>();
         var name = sql.DelimitIdentifier(definition.Name, definition.Schema);
         var table = sql.DelimitIdentifier(definition.Table, definition.Schema);
         var columns = string.Join(", ", definition.Keys.Select(key => sql.DelimitIdentifier(
             key.Column ?? throw new InvalidOperationException("Parent index keys must use physical columns."))));
+
         var wrongFilter = role switch
         {
             "roots" => "parent_entry IS NOT NULL", "dependent" => "parent_entry IS NULL", _ => "tree_id IS NULL",
         };
+
         var drop = "DROP INDEX " + name;
         var create = "CREATE INDEX " + sql.DelimitIdentifier(definition.Name) + " ON " + table
             + " (" + columns + ") WHERE " + wrongFilter;
@@ -184,20 +190,24 @@ public sealed partial class SafeMigrationTests
         {
             "roots" => "parent_entry IS NULL", "dependent" => "parent_entry IS NOT NULL", _ => "tree_id IS NOT NULL",
         };
+
         var operation = GetIndexOperations(chain, context)
             .Single(candidate => ((EnsureIndexIntent)candidate.Intent).Definition.Filter == filter
                 && (role != "tree" || ((EnsureIndexIntent)candidate.Intent).Definition.Keys
                     .Select(key => key.Column).SequenceEqual(["tree_scope", "tree_id", "left_bound"])));
+
         var definition = ((EnsureIndexIntent)operation.Intent).Definition;
         var sql = context.GetService<ISqlGenerationHelper>();
         var name = sql.DelimitIdentifier(definition.Name, definition.Schema);
         var table = sql.DelimitIdentifier(definition.Table, definition.Schema);
         var columns = string.Join(", ", definition.Keys.Select(key => sql.DelimitIdentifier(
             key.Column ?? throw new InvalidOperationException("Parent index keys must use physical columns."))));
+
         var wrongFilter = role switch
         {
             "roots" => "parent_entry IS NOT NULL", "dependent" => "parent_entry IS NULL", _ => "tree_id IS NULL",
         };
+
         var drop = "DROP INDEX " + name;
         var create = "CREATE INDEX " + sql.DelimitIdentifier(definition.Name) + " ON " + table
             + " (" + columns + ") WHERE " + wrongFilter;

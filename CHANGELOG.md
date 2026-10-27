@@ -8,26 +8,16 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- Refresh Doka MySQL and all four optional SafeMigrations adapters to 10.5.0,
-  EF Core qualification packages to 10.0.13, xUnit v3 to 4.0.2 with its 4.0.1
-  VSTest adapter, and Testcontainers to 4.16.0. Preserve the shipping EF Core
-  compatibility range and existing database LTS lines.
-- Update the existing artifact upload/download, Scorecard, and SARIF upload
-  Actions to their reviewed immutable release commits.
-- Group coupled Doka packages and all EF Core references in Dependabot so
-  provider/adapter updates and EF patches are proposed together.
-
-### Fixed
-
-- Raise the existing transitive PKCS dependency to 9.0.21 in qualification
-  projects, resolving SQL Client's vulnerable 9.0.11 request without adding
-  a dependency to either shipping package or disabling NuGet audit.
-- Verify SafeMigrations 10.5.0's structured MySQL/MariaDB runtime rejection
-  and preserved native failure in the existing index-drift and foreign-database
-  qualifier regressions.
-- Review SNI.runtime 6.0.3's unchanged license file and advance its existing
-  exact-version exception and rejection controls; other license and
-  vulnerability checks remain active.
+- Refresh the qualification graph to published Doka 10.6.2 and SafeMigrations
+  10.6.0 and EF Core 10.0.14. Preserve shipping
+  EF compatibility ranges and database LTS lines. The newer local adapter
+  contract, dated local evidence and fresh published-graph qualification are explicit in the
+  [qualification boundary](docs/qualification/provider-migrations.md).
+- Update property testing to FsCheck 3.6.0, Test SDK and Code Coverage to
+  18.11.0, and the qualification-only PKCS dependency to 10.0.14 for .NET 10.
+- Refresh MySQL to 8.4.13 and SQL Server 2022 to CU27-GDR1; refresh the existing
+  MariaDB 11.8.9 and PostgreSQL 17.11 image digests. Keep the supported engine
+  lines and update the CodeQL SARIF uploader to 4.39.1.
 
 ## 10.0.0 (2026-10-09)
 

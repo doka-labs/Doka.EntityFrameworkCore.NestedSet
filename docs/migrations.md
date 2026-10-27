@@ -191,9 +191,12 @@ the model snapshot; hierarchy rows and registry lifecycle data must remain
 intact. Account for index-build locks and extra disk space in the application's
 deployment policy. The optional SafeMigrations regression cases require replay
 and drift support for both Parent predicates and the TreeId predicates. Their
-creation, preflight, replay, and drift outcomes are exercised with the
-published 10.5.0 adapters; dated evidence for earlier versions remains below.
-SafeMigrations remains optional.
+creation, preflight, replay and drift outcomes belong to the updated adapter
+contract. Repository qualification now declares published Doka 10.6.2 and
+SafeMigrations 10.6.0. No legacy test contract or compatibility skip is retained.
+See the [provider qualification](qualification/provider-migrations.md) for the
+declared public graph, its executed 2026-10-25 local scope and the separate dated
+local evidence. SafeMigrations remains optional.
 
 [pg-partial]: https://www.postgresql.org/docs/17/indexes-partial.html
 [pg-prepare]: https://www.postgresql.org/docs/17/sql-prepare.html
@@ -225,23 +228,19 @@ coordinates.
 | SQLite | `Microsoft.EntityFrameworkCore.Sqlite` | Optional SQLite adapter |
 | SQL Server | `Microsoft.EntityFrameworkCore.SqlServer` | Optional SQL Server adapter |
 
-Doka, Npgsql, SQLite, and SQL Server work through ordinary EF migrations without
-SafeMigrations. The repository now consumes the published 10.5.0 adapters.
-The complete optional integration suite historically passed all 112 cases
-against the published 10.4.9 adapters on 2026-10-08 for MySQL, MariaDB,
-PostgreSQL, SQLite, and SQL Server, without failures or skips. PostgreSQL
-qualification includes canonical
-provider-delimited single-column `IS NULL` and `IS NOT NULL` index predicates,
-their catalog prerequisites, replay, and same-name wrong-definition drift
-rejection. Recognition preserves authored SQL and immutable index contracts;
-it does not permit arbitrary raw index SQL.
+Doka, Npgsql, SQLite and SQL Server work through ordinary EF migrations without
+SafeMigrations. The [support matrix](support-and-qualification.md#migration-matrix)
+owns repository pins and the separate published/local qualification boundaries.
+Neither shipping package depends on an adapter.
 
-The 10.4.5 PostgreSQL adapter rejected these predicates as
-`opaque_sql_expression` with `P1002`/`doka_sm_unsupported`. All 21 previously
-failing PostgreSQL cases passed unchanged against published 10.4.8 and remain
-green in the dated 10.4.9 run; no temporary prototype is used by the suite.
-The independent ordinary EF migration suite also passed all 49 cases. See the
-[current version and qualification matrix](support-and-qualification.md#migration-matrix).
+PostgreSQL qualification includes canonical provider-delimited single-column
+`IS NULL` and `IS NOT NULL` index predicates, catalog prerequisites, replay and
+same-name wrong-definition drift rejection. Recognition preserves authored SQL
+and immutable index contracts; it does not permit arbitrary raw index SQL.
+These forms were rejected by older adapters as `opaque_sql_expression`; the
+accepted contract requires actual migration/schema/data/history/replay evidence,
+not a history-only second migration. See the
+[provider/migration summary](qualification/provider-migrations.md).
 Pomelo is outside the supported provider contract.
 
 ## Optional SQL Server SafeMigrations
@@ -249,7 +248,7 @@ Pomelo is outside the supported provider contract.
 Install the adapter explicitly in the application or migration project:
 
 ```sh
-dotnet add package Doka.EntityFrameworkCore.SafeMigrations.SqlServer --version 10.5.0
+dotnet add package Doka.EntityFrameworkCore.SafeMigrations.SqlServer --version 10.6.0
 ```
 
 Keep a direct `Microsoft.EntityFrameworkCore.Design` reference in the project
@@ -297,12 +296,12 @@ history. This is rejection, not automatic data repair. Reverse `bigint`-to-`int`
 narrowing remains refused even when every existing value fits Int32. Ordinary
 EF migrations remain independently supported without enabling SafeMigrations.
 
-See the [published SQL Server registration and behavior](https://github.com/doka-labs/Doka.EntityFrameworkCore.SafeMigrations/blob/v10.5.0/docs/sqlserver-behavior.md)
+See the [10.6.0 SQL Server registration and behavior](https://github.com/doka-labs/Doka.EntityFrameworkCore.SafeMigrations/blob/e81b850480dcbff4d479e71edf60d3651b8ddf8d/docs/sqlserver-behavior.md)
 and the [consumer regression coverage](regression-coverage.md#optional-sql-server-migrations).
 
 ## MySQL and MariaDB runtime rejection diagnostics
 
-SafeMigrations 10.5.0 represents positively attributed MySQL/MariaDB runtime
+SafeMigrations 10.6.0 represents positively attributed MySQL/MariaDB runtime
 guards with `SafeMigrationExecutionException`. Consumers can inspect its
 `GuardCode`, for example `doka_sm_different` or `doka_sm_unsupported`,
 and retain the original native database exception through `InnerException`.
@@ -312,7 +311,7 @@ guard identity, and preserved native failure together with unchanged catalogs,
 hierarchy rows, and migration history. PostgreSQL and SQL Server retain their
 existing native rejection assertions; SQLite retains its own runtime contract.
 
-See the [published diagnostic exception](https://github.com/doka-labs/Doka.EntityFrameworkCore.SafeMigrations/blob/v10.5.0/src/Doka.EntityFrameworkCore.SafeMigrations/Diagnostics/SafeMigrationExecutionException.cs).
+See the [10.6.0 diagnostic exception](https://github.com/doka-labs/Doka.EntityFrameworkCore.SafeMigrations/blob/e81b850480dcbff4d479e71edf60d3651b8ddf8d/src/Doka.EntityFrameworkCore.SafeMigrations/Diagnostics/SafeMigrationExecutionException.cs).
 
 ## Deployment verification
 

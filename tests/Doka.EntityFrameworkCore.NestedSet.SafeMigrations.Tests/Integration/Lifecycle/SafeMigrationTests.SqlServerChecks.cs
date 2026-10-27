@@ -241,7 +241,7 @@ public sealed partial class SafeMigrationTests
         await using var context = database.CreateContext(MigrationStage.Current, chain.Assembly);
         var operations = ScaffoldSqlServerCheckOperations(database);
         await DropSqlServerChecksAsync(context, operations);
-        await database.InsertNodeDirectlyAsync(CreateInvalidSqlServerNode(checkName));
+        await database.InsertNodeDirectlyAsync(CreateInvalidCoordinateNode(checkName));
         var operation = operations.Single(candidate => candidate.Intent is EnsureCheckConstraintIntent check
             && check.Definition.Name.Contains(checkName, StringComparison.Ordinal));
 
@@ -324,7 +324,7 @@ public sealed partial class SafeMigrationTests
         }
     }
 
-    /// <summary>Asserts SQL Server approves all four generated integer checks after inspecting valid rows.</summary>
+    /// <summary>Asserts the server adapter approves all four generated integer checks after inspecting valid rows.</summary>
     private static void AssertApplicableIntegerChecks(
         SafeMigrationRunReport report
     )
@@ -343,7 +343,7 @@ public sealed partial class SafeMigrationTests
     }
 
     /// <summary>Creates a physical row that violates exactly one of the four generated integer predicates.</summary>
-    private static MigrationNode CreateInvalidSqlServerNode(
+    private static MigrationNode CreateInvalidCoordinateNode(
         string checkName
     ) => new()
     {

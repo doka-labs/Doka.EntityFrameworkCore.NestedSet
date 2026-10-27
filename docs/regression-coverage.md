@@ -86,10 +86,46 @@ Sources: [core properties](../tests/Doka.NestedSet.Tests/Unit/NestedSetPropertyT
 [bulk-plan properties](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/BulkPlanPropertyTests.cs),
 and [generated-test guidance](../CONTRIBUTING.md#generated-invariant-tests).
 
+## Current-source optional migration contracts
+
+The suite now declares published Doka 10.6.2 and same-version SafeMigrations
+Core/all four adapters 10.6.0. The fresh 2026-10-25 public-graph run passed all
+96 locally executable adapter cases; 54 native SQL Server cases remain excluded
+on ARM. Earlier local overlay results keep their exact source/package identities
+in the [provider qualification](qualification/provider-migrations.md).
+
+- `ServerUpgradePreflightApprovesSupportedChecksWithoutMutation` requires
+  approval of all three integer widenings and four CHECK predicates, with
+  unchanged columns, indexes, checks, foreign keys, rows, and history.
+- `ServerCoordinateUpgradePreservesDataHistoryAndReplays` actually applies the
+  populated historical migration, verifies the full target physical contract
+  and coordinates beyond Int32, then directly replays safe intents and checks
+  exact schema/data/history preservation and `Matching`/`NoOp` decisions.
+- `FreshComputedTableMigrationPreservesFacetsHistoryAndReplay` and
+  `PopulatedAncestorUpgradePreservesRowsWithOptionalAdapter` exercise real
+  generated migrations, physical type/nullability/storage/expression, generated
+  values, ordered index keys, exact history, and full operation replay.
+- `InvalidLegacyCoordinatesRejectSupportedChecksWithoutMutation` independently
+  violates each generated CHECK on MySQL, MariaDB, and PostgreSQL. Preflight
+  and execution of that rejected operation must preserve schema, rows, and
+  history. It does not promise rollback of earlier implicitly committed MySQL DDL.
+- `PendingUpgradeRejectsIndexDriftWithoutAdvancingHistory`,
+  `SameNameWrongColumnIndexFailsClosedAndPreservesData`, and
+  `AncestorIndexDriftFailsClosedAndPreservesData` retain real drift rejection.
+- `OrdinarySqliteComputedFacetsRejectGuardedTableReplayWithoutMutation`
+  rejects missing declared type/nullability facets in ordinary EF-created
+  SQLite schema, preserving its generated expression, rows, indexes, and history.
+
+The 17 previously failing expectations belonged to the older optional adapter
+contract. Their replacement accepts specifically supported migrations while
+retaining independent rejection tests; it does not accept arbitrary raw SQL.
+SQL Server cases still require the native x64 lane.
+
 ## Optional SQL Server migrations
 
-The optional suite consumes published SafeMigrations 10.5.0 with ordinary
-EF SQL Server 10.0.13. Every relational case runs with the default `dbo` schema
+The repository's published baseline pins SafeMigrations 10.6.0 with ordinary
+EF SQL Server 10.0.13. Its new public-graph qualification is separate from the
+recorded local overlay described above. Every relational case runs with the default `dbo` schema
 and an explicitly configured schema; package discovery is checked
 separately. Neither NestedSet package nor the ordinary migration test project
 references the adapter.

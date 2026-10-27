@@ -48,10 +48,17 @@ dotnet test Doka.EntityFrameworkCore.NestedSet.slnx \
 | `Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests` | SQL Server behavior |
 | `Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests` | SQLite behavior |
 | `Doka.EntityFrameworkCore.NestedSet.Migrations.Tests` | Ordinary EF migrations and physical catalogs |
-| `Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests` | Optional published SafeMigrations adapters |
+| `Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests` | Optional SafeMigrations adapter contracts |
 
 The ordinary migration project must have no SafeMigrations reference.
 SafeMigrations tests extend the contract; they do not define runtime support.
+The current optional suite retains the adapter contract now declared with
+published Doka 10.6.2 and SafeMigrations Core/adapters 10.6.0. Use the central
+package graph; do not add legacy expectations, compatibility skips or weaker
+assertions to make it green. The
+[provider qualification](docs/qualification/provider-migrations.md) separates
+fresh published-package verification from the earlier same-source local
+Core/adapter measurements. A package update alone does not rerun those tests.
 
 All test projects appear directly under the solution's `tests` folder. The
 specification project is a non-packable library, not a test runner. Unit and

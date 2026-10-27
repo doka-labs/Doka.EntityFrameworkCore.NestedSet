@@ -175,9 +175,12 @@ Retrieved 2026-10-01:
 
 Retrieved 2026-10-09:
 
-- [FsCheck xUnit v3 3.4.0 package and dependencies](https://www.nuget.org/packages/FsCheck.Xunit.v3/3.4.0).
 - [FsCheck property testing and shrinking](https://fscheck.github.io/FsCheck/).
 - [Scorecard 5.5.0 C# detection](https://github.com/ossf/scorecard/blob/v5.5.0/checks/raw/fuzzing.go).
 - [Pinned Scorecard action version](https://github.com/ossf/scorecard-action/blob/2d1146689b8cda280b9bc96326124645441f03bc/go.mod).
 - [Dependency Review v5.0.0 license handling](https://github.com/actions/dependency-review-action/blob/v5.0.0/src/licenses.ts).
 - [Dependency Review v5.0.0 PURL comparison](https://github.com/actions/dependency-review-action/blob/v5.0.0/src/purl.ts).
+
+Retrieved 2026-10-26:
+
+- [FsCheck xUnit v3 3.6.0 package and dependencies](https://www.nuget.org/packages/FsCheck.Xunit.v3/3.6.0).

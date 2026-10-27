@@ -1,0 +1,207 @@
+# Provider and migration qualification
+
+The [support matrix](../support-and-qualification.md) owns package declarations
+and supported engines. This page separates the current published-package
+declarations from dated local Doka and optional SafeMigrations evidence. Private
+source-build results do not establish behavior of another published version.
+
+## Current published inputs
+
+The owner-approved 2026-10-25 pin update declares the following NuGet packages.
+Their published nuspecs identify Doka commit
+`6e2618140d821bd6befdf46181fcb82dca323c4f` and SafeMigrations commit
+`e81b850480dcbff4d479e71edf60d3651b8ddf8d`:
+
+| Component | Published version | Primary package metadata |
+| --- | --- | --- |
+| Doka MySQL/MariaDB | 10.6.2 | [NuGet nuspec](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.mysql/10.6.2/doka.entityframeworkcore.mysql.nuspec) |
+| SafeMigrations Core | 10.6.0 | [NuGet nuspec](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.safemigrations/10.6.0/doka.entityframeworkcore.safemigrations.nuspec) |
+| SafeMigrations MySQL/MariaDB | 10.6.0 | [NuGet nuspec](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.safemigrations.mysql/10.6.0/doka.entityframeworkcore.safemigrations.mysql.nuspec) |
+| SafeMigrations PostgreSQL | 10.6.0 | [NuGet nuspec](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.safemigrations.postgresql/10.6.0/doka.entityframeworkcore.safemigrations.postgresql.nuspec) |
+| SafeMigrations SQL Server | 10.6.0 | [NuGet nuspec](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.safemigrations.sqlserver/10.6.0/doka.entityframeworkcore.safemigrations.sqlserver.nuspec) |
+| SafeMigrations SQLite | 10.6.0 | [NuGet nuspec](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.safemigrations.sqlite/10.6.0/doka.entityframeworkcore.safemigrations.sqlite.nuspec) |
+
+The MySQL adapter requires Doka `[10.6.2,10.7.0)`; its Core dependency is
+10.6.0. SafeMigrations requires EF Relational `[10.0.13,10.1.0)`, compatible
+with the declared EF 10.0.13. This resolves the package-selection decision;
+the fresh published-package results below are separate from the older local
+results. No private run is silently relabeled as a pass for these packages.
+
+## Published runtime qualification: 2026-10-25
+
+The fresh Release build completed with warnings as errors. All nine executable
+projects completed against published Doka 10.6.2 and SafeMigrations 10.6.0:
+
+| Project | Passed | Failed | Native SQL Server cases excluded on ARM |
+| --- | ---: | ---: | ---: |
+| Core | 54 | 0 | 0 |
+| Unit | 2,649 | 0 | 0 |
+| MySQL/MariaDB | 4,289 | 0 | 0 |
+| PostgreSQL | 1,998 | 0 | 0 |
+| SQLite | 2,030 | 0 | 0 |
+| Ordinary migrations | 203 | 0 | 43 |
+| Optional SafeMigrations | 96 | 0 | 54 |
+| SQL Server metadata/platform contracts | 29 | 0 | 1,975 |
+| Total | 11,726 | 0 | 2,072 |
+
+The exclusions are the existing native-x64 policy, not passed database cases.
+SQL Server execution still requires native Linux x64 CI. Specification remains
+a library, not a tenth executable suite. The former MySQL mixed-direction
+timeouts and Unit lifecycle failure have separate historical receipts; the
+final published runs above pass their retained regression cases.
+
+## Exact local inputs
+
+The recorded 2026-10-24/25 local qualification used these identities:
+
+| Component | Qualified input |
+| --- | --- |
+| NestedSet | HEAD `cb7d4d7d57c6bca94850e9b152cdb8d6ba6817a3` plus working source; measured product DLL `0ec700e6161dad546de85a970ace310b54bfba43aa51898fe5873ab4ca73c498` |
+| Doka | Source HEAD `42b2a4ba889d5821ea80ab48dd73ab54bc59781e`; package `10.6.2-local.20261024.8b35fd8f95` |
+| SafeMigrations Core/all four adapters | Source HEAD `ac4b75a28f922544b6ad19479812e2d0eb663746`; package `10.6.0-local.20261024.bf56836c40` |
+| EF/runtime and consumer SDK | 10.0.13 and 10.0.401 |
+| Native engines | MySQL 8.4.11, MariaDB 11.8.9, PostgreSQL 17.11 and resolved SQLite runtime |
+
+The Doka DLL SHA-256 is
+`33b58ac334bb2c627e294f6d58e9461df7e2f963c5ec5084426db321c593ab2d`;
+the SafeMigrations Core DLL is
+`fc57ce0ba5fda96540bd9d86e65122e87ba72bd67755d9d61c0ed0bc34ff7d77`.
+The same owner packages are used on both sides of the new consumer comparison.
+These private versions identify local-source builds, not downloadable public
+packages. Their results cannot qualify a different declared package graph.
+Earlier dated source/build comparisons remain historical observations.
+
+## Doka mapping compatibility
+
+Published Doka 10.6.1 and the earlier local source had a reproduced model
+finalization failure for GUID properties mapped only to a secondary entity-split
+table. The corrected source resolves generation through actual property-table
+mappings while preserving shared defaults and explicit generation strategies.
+
+The corrected local owner graph passed the recorded ordinary MySQL/MariaDB
+regression cohort. Its broader current scope and the later targeted final-product
+checks are distinguished below. The earlier 2026-10-23 cohort passed all 3,843
+ordinary cases, including the 114 formerly failing split-mapping identities.
+This establishes the owner correction, not a NestedSet workaround, a published
+package qualification or a rerun of every upstream provider/capacity suite.
+
+## Current local adapter contract
+
+Five actual historical server upgrades cover PostgreSQL explicit schema and
+MySQL/MariaDB with and without explicit database qualification. Accepted index
+drops preserve independent column evidence, so all three integer widenings
+are `Different`/`Repair` rather than `projected_structure_state_unknown`.
+Four missing CHECKs are `Missing`/`Apply`. Read-only analysis preserves the full
+catalog, rows and history. Actual application preserves both historical rows,
+creates the exact target schema, stores coordinates beyond Int32 and records
+exact migration IDs.
+
+Replay executes the actual safe operation stream outside EF's history short
+circuit. Three old indexes are `Missing`/`NoOp`; retained objects must be
+`Matching`/`NoOp`, with exact assessment counts and satisfied postconditions.
+Schema, data and history remain unchanged. Fresh/populated generated-column
+cases additionally inspect type, nullability, expression, virtual/stored form,
+ordered index keys and computed values.
+
+Twelve negative cases independently violate LeftMin, RightAfterLeft, DepthMin
+or PositionMin across MySQL, MariaDB and PostgreSQL. Exactly one predicate
+rejects; executing that isolated rejected CHECK leaves schema, data and history
+unchanged. Wrong-index definitions still reject. Ordinary EF-created SQLite
+schema with missing generated type/NOT NULL facets also remains `Different`;
+the fix does not silently repair external drift. These isolated guards do not
+promise rollback of earlier implicitly committed MySQL DDL.
+
+| Recorded scope on 2026-10-24/25 | Passed | Failed | Explicit exclusions |
+| --- | ---: | ---: | ---: |
+| Optional SafeMigrations | 96 | 0 | 54 |
+| Ordinary migrations | 203 | 0 | 43 |
+| Final-product MySQL/MariaDB ordinary cohort | 3857 | 0 | 0 |
+| Final-product PostgreSQL ordinary cohort | 1852 | 0 | 0 |
+| Final-product SQLite ordinary cohort | 1902 | 0 | 1 unsupported-transaction case |
+| Final-product Unit | 2611 | 0 | 0 |
+| Final-product MySQL/MariaDB native-work controls | 156 | 0 | 0 |
+| Final-product generated compiled-model query/write controls | 4 | 0 | 1 SQL Server on ARM |
+
+The ordinary provider projects have been rerun against the final product:
+MySQL/MariaDB, PostgreSQL and SQLite use the same final producer identity.
+Their `Category!=Capacity` scope remains distinct from the focused native-work
+and generated-model checks and from the earlier migration-suite executions. The benchmark contract project passes 378/378 against
+the same final product after exact hash-preserving repository-context relocation. A later targeted rerun is not a claim that every
+broader project was rerun after every subsequent query change. Native-work
+controls include strict/inclusive fact selections, dense paths and unchanged
+work/result oracles; they do not replace the complete capacity matrix.
+
+## Publication and native SQL Server boundary
+
+Repository qualification now declares published Doka 10.6.2 and SafeMigrations
+10.6.0. The updated tests retain only the new adapter contract. There is no
+legacy test mode, capability skip or relaxed assertion to make that contract
+pass against the historical 10.5.0 graph. The earlier pending pin update is
+complete; the fresh local public-binary runtime scope is recorded above.
+Native SQL Server and hosted release evidence remain separate requirements.
+
+The local graph uses Core and all adapters from the same source. Mixing a new
+Core with older adapters produced invalid MissingMethod diagnostics and is
+not product-failure evidence. Actual version selection, not version labels
+alone, must identify every test DLL.
+
+Native SQL Server database execution remains open on Linux x64. The ARM run
+explicitly skipped 54 optional and 43 ordinary migration cases. Compilation,
+package discovery and another engine's success do not establish their outcome.
+The exact frozen x64 rerun must select and execute those cases with no platform
+skips, preserving package/source identities and raw test results.
+
+## Reproduce the repository checks
+
+Once matching packages are selected, run the actual projects with an isolated
+package graph and fresh Release outputs:
+
+```sh
+dotnet test tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj \
+  -c Release --filter 'Category!=Capacity' --logger 'trx;LogFileName=mysql-ordinary.trx'
+
+dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests.csproj \
+  -c Release --logger 'trx;LogFileName=ordinary-migrations.trx'
+
+dotnet test tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests.csproj \
+  -c Release --logger 'trx;LogFileName=optional-adapters.trx'
+```
+
+A local-source investigation must build the real owner sources, select unique
+local package versions through an explicit central-package override, and isolate
+feed, cache, lock files and build output. Record SHA-256s before testing. The
+private packages above are not on NuGet; a normal published-package restore
+does not reproduce those frozen private binaries. No historical negative probe or
+history-only second `MigrateAsync` call substitutes for actual fix acceptance.
+
+## Six-package local qualification: 2026-10-26
+
+This owner-requested local run qualifies the uncommitted `10.1.0` provider-split
+working tree based on HEAD `cb7d4d7d57c6bca94850e9b152cdb8d6ba6817a3`, using
+published Doka 10.6.2, SafeMigrations 10.6.0, EF 10.0.13, and the pinned engine
+baselines in the [support matrix](../support-and-qualification.md#provider-and-engine-matrix).
+The runtime/configuration/test manifest contains 1,837 files, excludes
+documentation, and has SHA-256
+`4ece249b71100e39fb24e4c72312c387f89e90ee9e51dea40f36562ba5fb2d3b`.
+All recorded file hashes match the final working source; HEAD alone does not
+identify those uncommitted changes.
+
+| Project | Passed | Failed | Native SQL Server cases skipped on ARM |
+| --- | ---: | ---: | ---: |
+| Core | 54 | 0 | 0 |
+| Unit | 2,676 | 0 | 0 |
+| MySQL/MariaDB | 4,307 | 0 | 0 |
+| PostgreSQL | 2,007 | 0 | 0 |
+| SQLite | 2,039 | 0 | 0 |
+| Ordinary migrations | 203 | 0 | 43 |
+| Optional SafeMigrations | 96 | 0 | 54 |
+| SQL Server metadata/platform contracts | 29 | 0 | 1,984 |
+| Total across nine unique suites | 11,789 | 0 | 2,081 |
+
+All five checked-in compiled-model sets were regenerated through EF's actual
+C# generator. The 21-project Release build completed with zero warnings and
+errors. All six shipping graphs passed locked restore; all twelve primary/
+symbol archives passed inspection. All seven fresh package consumers passed;
+all six SBOMs passed vendor validation and independent verification. The three SQLite sample
+applications completed all scenarios; all 282 engineering contract tests and
+verify-only Roslyn style/IDE0005 checks passed.

@@ -78,6 +78,15 @@ and Compose retain this one canonical pin; no per-consumer override is added.
 Existing developer volumes are not migrated by the pin change. Use a fresh
 SQL Server 2022 volume and preserve needed 2025 data before any explicit reset.
 
+The 2026-10-26 maintenance amendment selects SQL Server 2022 CU27-GDR1 on the
+same Ubuntu 22.04 base. The current tag is
+`mcr.microsoft.com/mssql/server:2022-CU27-GDR1-ubuntu-22.04`; its exact digest
+remains in the canonical manifest. MySQL advances within 8.4 LTS to 8.4.13;
+MariaDB 11.8.9 and PostgreSQL 17.11 retain their tags with refreshed digests.
+This update preserves the supported engine lines and the native x64
+qualification requirement. The earlier CU27 results below do not qualify
+the newer GDR1 image or resolve the CU9 vendor failure.
+
 Earlier SQL Server 2025 CU9 Rider runs lost containers during startup with exit
 code 1, Reason 0x00000002, parameter 0x10010, and an LSASS stack on both Ubuntu
 bases. The open vendor-repository report also reproduces crashes on native
@@ -144,7 +153,7 @@ while a Rider UI readback remains a separate presentation check.
   password and expect authenticated readiness and the original data to survive.
 - Run selected live provider and ordinary migration tests plus benchmark contract
   tests; expect the existing independent resource lifetimes to work.
-- Verify the SQL Server 2022 CU27 tag and digest in the shared manifest and fresh
+- Verify the SQL Server 2022 CU27-GDR1 tag and digest in the shared manifest and fresh
   embedded consumers. On native Linux x64 CI, run every applicable SQL Server
   provider, ordinary migration, and SafeMigrations case with zero skips. Local
   ARM execution must keep database cases visible as skips before SQL Server
@@ -208,6 +217,7 @@ workflow and no benchmark acceptance criterion.
 - 2026-10-08: A subsequent Rider report reproduced the identical startup crash on Ubuntu 22.04. The vendor report's follow-up comment confirms that base is also affected. Reverted the unproven image switch, retained the original Ubuntu 24.04 pin, and kept the unresolved startup failure explicit.
 - 2026-10-09: The owner approved replacing the shared SQL Server 2025 CU9 pin with 2022 CU27 on Ubuntu 22.04 at the digest recorded above. The prior private candidate passed 1,072 provider, 10 ordinary migration, and 51 SafeMigrations SQL Server cases plus 30 starts under macOS ARM emulation. This is limited local candidate evidence, not native CI qualification or a confirmed CU9 fix.
 - 2026-10-09: The owner also approved visible local ARM database skips before container startup under D-013. Metadata and unit cases remain runnable; native Linux x64 CI must execute all applicable SQL Server cases, and unsupported CI must fail. No new host, project, dependency, timeout increase, or global concurrency cap is introduced. Native CI evidence remains required.
+- 2026-10-26: The owner approved current version and digest refreshes within the existing engine lines. The manifest selects MySQL 8.4.13 and SQL Server 2022 CU27-GDR1, plus rebuilt MariaDB 11.8.9 and PostgreSQL 17.11 images. Historical evidence remains tied to its original inputs; native SQL Server x64 qualification is still required.
 
 ### Implementation References
 
@@ -238,6 +248,10 @@ workflow and no benchmark acceptance criterion.
 - [SQL Server container support](https://learn.microsoft.com/en-us/sql/linux/containers/deploy?view=sql-server-ver17) (primary source; retrieved 2026-09-29)
 - [SQL Server container platform boundary](https://learn.microsoft.com/en-us/sql/linux/containers/deploy?view=sql-server-ver17) (primary source; retrieved 2026-10-09)
 - [SQL Server 2022 CU27 build inventory](https://support.microsoft.com/en-us/servicing/sql/sql-server-2022/kb5023451-build-versions) (primary source; retrieved 2026-10-09)
+- [SQL Server 2022 CU27-GDR1 vendor manifest](https://mcr.microsoft.com/v2/mssql/server/manifests/2022-CU27-GDR1-ubuntu-22.04) (primary source; retrieved 2026-10-26)
+- [MySQL 8.4 official image tags](https://hub.docker.com/_/mysql/tags?name=8.4) (primary source; retrieved 2026-10-26)
+- [MariaDB 11.8 official image tags](https://hub.docker.com/_/mariadb/tags?name=11.8) (primary source; retrieved 2026-10-26)
+- [PostgreSQL 17 official image tags](https://hub.docker.com/_/postgres/tags?name=17.) (primary source; retrieved 2026-10-26)
 - [CU9 native GitHub-hosted startup crash report; vendor diagnosis remains open](https://github.com/microsoft/mssql-docker/issues/974) (primary source; retrieved 2026-10-09)
 - [CU9 intermittent startup crash report; vendor diagnosis remains open](https://github.com/microsoft/mssql-docker/issues/974) (primary source; retrieved 2026-10-08)
 - [Reporter confirmation on Ubuntu 22.04; no vendor correction is claimed](https://github.com/microsoft/mssql-docker/issues/974#issuecomment-6036254848) (primary source; retrieved 2026-10-08)
