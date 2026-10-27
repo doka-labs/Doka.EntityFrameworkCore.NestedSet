@@ -155,6 +155,25 @@ inside the anchor predicate do not duplicate the anchor source. An application
 that needs repeated request rows joins those rows back to the projected pairs.
 The library never inserts a global `Distinct` or chooses an aggregation grain.
 
+Choose the selected endpoint to match the application's selective input. With
+few payload owners under broad requested ancestors, select those unique owners
+and use `SelectAncestorsOrSelf`, filter the requested ancestors, then join the
+original payload back. This preserves repeated facts and overlapping ancestor
+contributions without first constructing every unneeded descendant pair.
+The [SignalLab query pipeline](../samples/SignalLab/Reporting/SignalReportBuilder.Query.cs)
+shows that form; the [execution entry point](../samples/SignalLab/Reporting/SignalReportBuilder.cs)
+owns its read snapshot and asynchronous terminal. Inspect native plans for the
+actual data and provider; a later payload join does not guarantee early
+predicate pushdown through an internal structural set operation.
+
+SignalLab uses a fictional station/array/module/sensor network with freely
+nested device classifications. Its pulse, sweep and burst inputs have distinct
+physical fields and individual event identities; explicit projections normalize
+them for aggregation. Equal-valued events still contribute independently. The
+sample's channels, acquisition tags, connection windows and output matrix are
+consumer code. NestedSet neither interprets those concepts nor requires their
+tables or the sample's classification names.
+
 ## Prune complete branches
 
 ```csharp

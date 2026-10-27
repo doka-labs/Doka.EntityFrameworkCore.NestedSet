@@ -17,6 +17,8 @@
     <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet.Postgres/Doka.EntityFrameworkCore.NestedSet.Postgres.csproj"/>
     <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet.Sqlite/Doka.EntityFrameworkCore.NestedSet.Sqlite.csproj"/>
     <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet.SqlServer/Doka.EntityFrameworkCore.NestedSet.SqlServer.csproj"/>
+    <!-- WHY: Provider tests invoke the actual sample query builders rather than maintaining test-only copies. -->
+    <ProjectReference Include="../../samples/SignalLab/SignalLab.csproj"/>
     <!-- WHY: These existing xUnit components support a library without the executable runner targets. -->
     <PackageReference Include="xunit.v3.extensibility.core"/>
     <PackageReference Include="xunit.v3.assert"/>

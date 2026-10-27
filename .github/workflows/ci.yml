@@ -225,7 +225,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sample: [FileSystem, Kpis, UserGroups]
+        sample: [FileSystem, SignalLab, UserGroups]
 
     steps:
       - name: Checkout

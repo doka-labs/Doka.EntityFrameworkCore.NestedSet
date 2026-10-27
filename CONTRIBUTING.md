@@ -103,7 +103,7 @@ its previous sample results without requiring a developer server:
 
 ```sh
 dotnet run --project samples/FileSystem -c Release -- --provider sqlite --reset
-dotnet run --project samples/Kpis -c Release -- --provider sqlite --reset
+dotnet run --project samples/SignalLab -c Release -- --provider sqlite --reset
 dotnet run --project samples/UserGroups -c Release -- --provider sqlite --reset
 ```
 
@@ -411,6 +411,14 @@ constructors and initialization callbacks must not acquire database resources;
 defer that work until after the platform hook.
 
 Additional test rules:
+
+Consumer samples, fixtures, migrations and benchmark datasets must be
+independently synthetic. Preserve the query shape, multiplicity, boundary and
+failure properties needed by a regression without importing an application's
+schema, personal attributes or business calculation recipe. Use fixed invented
+identities and values. An exact application integration belongs with that
+application's private tests; historical benchmark numbers retain their frozen
+source scope when the public fixture model changes.
 
 - name one observable behavior per test;
 - use theories for the same behavior across inputs or providers;

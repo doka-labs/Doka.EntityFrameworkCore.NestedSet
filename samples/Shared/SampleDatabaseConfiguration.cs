@@ -34,7 +34,7 @@ internal sealed class SampleDatabaseConfiguration
     public string Description { get; }
 
     /// <summary>Creates a connection configuration for exactly one of the three known projects.</summary>
-    /// <param name="sampleName">filesystem, kpis or usergroups.</param>
+    /// <param name="sampleName">filesystem, signal-lab or usergroups.</param>
     /// <param name="provider">The selected documented provider route.</param>
     /// <param name="connectionString">An optional server endpoint override, or null to read the environment.</param>
     /// <param name="sqliteDirectory">An optional directory for the fixed SQLite filename.</param>
@@ -50,9 +50,9 @@ internal sealed class SampleDatabaseConfiguration
         var databaseName = sampleName switch
         {
             "filesystem" => "nestedset_sample_filesystem",
-            "kpis" => "nestedset_sample_kpis",
+            "signal-lab" => "nestedset_sample_signal_lab",
             "usergroups" => "nestedset_sample_usergroups",
-            _ => throw new ArgumentException("Sample must be filesystem, kpis or usergroups.", nameof(sampleName)),
+            _ => throw new ArgumentException("Sample must be filesystem, signal-lab or usergroups.", nameof(sampleName)),
         };
 
         if (provider == SampleProvider.Sqlite)

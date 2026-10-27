@@ -12,13 +12,13 @@ hierarchies to ordinary Entity Framework Core entities. It keeps `TreeId`,
 `Parent`, `Left`, `Right`, `Depth`, and sibling `Position` consistent while
 nodes are inserted, moved, sorted, deleted, imported, validated, or rebuilt.
 
-Typical uses include file systems, project KPIs, organizational units, user
+Typical uses include file systems, instrument networks, organizational units, user
 groups, and permission groups. Domain data and relationships remain ordinary
 EF Core data. The hierarchy does not implement authorization or domain-specific
 aggregation rules.
 
 The [runnable samples](samples/README.md) demonstrate these uses in independent
-FileSystem, Kpis, and UserGroups console projects. They use Doka and MariaDB by
+FileSystem, SignalLab, and UserGroups console projects. They use Doka and MariaDB by
 default, with optional MySQL and SQLite routes and persistent, inspectable results.
 
 ## Packages

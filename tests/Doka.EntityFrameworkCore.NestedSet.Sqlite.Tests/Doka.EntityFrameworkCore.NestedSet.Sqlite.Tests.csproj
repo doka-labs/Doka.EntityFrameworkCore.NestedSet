@@ -3,6 +3,8 @@
 
   <ItemGroup>
     <ProjectReference Include="../Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests.csproj"/>
+    <!-- WHY: SQLite snapshot tests call the actual shared sample helper without copying its implementation. -->
+    <ProjectReference Include="../../samples/UserGroups/UserGroups.csproj" Aliases="global,SnapshotSample"/>
   </ItemGroup>
   <ItemGroup Label="IDE file nesting">
     <Compile Update="BulkImport/BulkIdentityRetentionTests.*.cs">

@@ -96,24 +96,26 @@ The core interfaces provide conventional names:
 - `INestedSetNode<TNodeKey, TTreeId>` for an unscoped entity;
 - `IScopedNestedSetNode<TNodeKey, TTreeId, TScope>` for a scoped entity.
 
-Interfaces are optional. Existing entities can map every role explicitly:
+Interfaces are optional. Existing entities can map every role explicitly. This
+illustrative `ExistingNode` has a surrogate primary key and a separate
+partition-local structural key:
 
 ```csharp
-internal sealed class KpiConfiguration : IEntityTypeConfiguration<Kpi>
+internal sealed class ExistingNodeConfiguration : IEntityTypeConfiguration<ExistingNode>
 {
-    public void Configure(EntityTypeBuilder<Kpi> builder)
+    public void Configure(EntityTypeBuilder<ExistingNode> builder)
     {
-        builder.HasKey(kpi => kpi.RecordId);
-        builder.HasAlternateKey(kpi => new { kpi.ProjectId, kpi.NodeId });
+        builder.HasKey(node => node.RecordId);
+        builder.HasAlternateKey(node => new { node.PartitionId, node.NodeId });
 
         builder.HasNestedSet(nestedSet => nestedSet
-            .HasNodeKey(kpi => kpi.NodeId)
-            .HasScope(kpi => kpi.ProjectId)
-            .HasTreeId(kpi => kpi.TreeId)
-            .HasParent(kpi => kpi.ParentMetricId)
-            .HasBounds(kpi => kpi.Start, kpi => kpi.End)
-            .HasDepth(kpi => kpi.Level)
-            .HasPosition(kpi => kpi.SiblingPosition));
+            .HasNodeKey(node => node.NodeId)
+            .HasScope(node => node.PartitionId)
+            .HasTreeId(node => node.TreeId)
+            .HasParent(node => node.ParentNodeId)
+            .HasBounds(node => node.Start, node => node.End)
+            .HasDepth(node => node.Level)
+            .HasPosition(node => node.SiblingPosition));
     }
 }
 ```

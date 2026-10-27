@@ -713,7 +713,7 @@ class WorkflowBoundaryTests(unittest.TestCase):
 
         # Assert
         self.assertEqual({name: ["build"] for name in names}, needs)
-        self.assertIn("sample: [FileSystem, Kpis, UserGroups]", self.release["samples"])
+        self.assertIn("sample: [FileSystem, SignalLab, UserGroups]", self.release["samples"])
         self.assertIn("fail-fast: false", self.release["samples"])
         for name in ("consumer", "sbom"):
             with self.subTest(job=name):

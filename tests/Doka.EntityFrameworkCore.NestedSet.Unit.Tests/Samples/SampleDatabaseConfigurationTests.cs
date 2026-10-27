@@ -12,8 +12,8 @@ public sealed class SampleDatabaseConfigurationTests
     [Theory]
     [InlineData("filesystem", "MariaDb", "nestedset_sample_filesystem")]
     [InlineData("filesystem", "MySql", "nestedset_sample_filesystem")]
-    [InlineData("kpis", "MariaDb", "nestedset_sample_kpis")]
-    [InlineData("kpis", "MySql", "nestedset_sample_kpis")]
+    [InlineData("signal-lab", "MariaDb", "nestedset_sample_signal_lab")]
+    [InlineData("signal-lab", "MySql", "nestedset_sample_signal_lab")]
     [InlineData("usergroups", "MariaDb", "nestedset_sample_usergroups")]
     [InlineData("usergroups", "MySql", "nestedset_sample_usergroups")]
     public async Task ServerEndpointReceivesOnlyTheOwnedDatabase(
@@ -27,12 +27,15 @@ public sealed class SampleDatabaseConfigurationTests
 
         // Act
         var configuration = SampleDatabaseConfiguration.Create(sample, route, ServerEndpoint);
+        var options = configuration.CreateOptions<SampleLifecycleContext>();
+        await using var services = SampleTestServices.Create(options);
+        await using var context = new SampleLifecycleContext(
+            new DbContextOptionsBuilder<SampleLifecycleContext>(options).UseInternalServiceProvider(services).Options);
 
-        // Assert
-        await using var context = new SampleLifecycleContext(configuration.CreateOptions<SampleLifecycleContext>());
         var connection = new MySqlConnectionStringBuilder(
             context.Database.GetDbConnection().ConnectionString);
 
+        // Assert
         Assert.Equal(database, configuration.DatabaseName);
         Assert.Equal(database, connection.Database);
         Assert.Equal("127.0.0.1", connection.Server);
@@ -67,7 +70,7 @@ public sealed class SampleDatabaseConfigurationTests
     /// <param name="database">The database supplied by an adversarial endpoint.</param>
     [Theory]
     [InlineData("application")]
-    [InlineData("nestedset_sample_kpis")]
+    [InlineData("nestedset_sample_signal_lab")]
     [InlineData("NESTEDSET_SAMPLE_FILESYSTEM")]
     public void ForeignDatabaseOverrideIsRejected(
         string database
@@ -90,7 +93,7 @@ public sealed class SampleDatabaseConfigurationTests
     /// <param name="database">The independently expected owned database.</param>
     [Theory]
     [InlineData("filesystem", "nestedset_sample_filesystem")]
-    [InlineData("kpis", "nestedset_sample_kpis")]
+    [InlineData("signal-lab", "nestedset_sample_signal_lab")]
     [InlineData("usergroups", "nestedset_sample_usergroups")]
     public async Task SqliteUsesOnlyTheOwnedFilename(
         string sample,
@@ -108,11 +111,15 @@ public sealed class SampleDatabaseConfigurationTests
             ServerEndpoint,
             directory);
 
-        // Assert
-        await using var context = new SampleLifecycleContext(configuration.CreateOptions<SampleLifecycleContext>());
+        var options = configuration.CreateOptions<SampleLifecycleContext>();
+        await using var services = SampleTestServices.Create(options);
+        await using var context = new SampleLifecycleContext(
+            new DbContextOptionsBuilder<SampleLifecycleContext>(options).UseInternalServiceProvider(services).Options);
+
         var connection = new SqliteConnectionStringBuilder(
             context.Database.GetDbConnection().ConnectionString);
 
+        // Assert
         Assert.Equal(database, configuration.DatabaseName);
         Assert.Equal(expectedPath, configuration.SqlitePath);
         Assert.Equal(expectedPath, connection.DataSource);
@@ -135,11 +142,14 @@ public sealed class SampleDatabaseConfigurationTests
         // Act
         var options = configuration.CreateOptions<SampleLifecycleContext>(readOnly: true);
 
-        // Assert
-        await using var context = new SampleLifecycleContext(options);
+        await using var services = SampleTestServices.Create(options);
+        await using var context = new SampleLifecycleContext(
+            new DbContextOptionsBuilder<SampleLifecycleContext>(options).UseInternalServiceProvider(services).Options);
+
         var connection = new SqliteConnectionStringBuilder(
             context.Database.GetDbConnection().ConnectionString);
 
+        // Assert
         Assert.Equal(SqliteOpenMode.ReadOnly, connection.Mode);
         Assert.Equal(configuration.SqlitePath, connection.DataSource);
     }

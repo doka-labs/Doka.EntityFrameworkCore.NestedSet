@@ -402,7 +402,7 @@ class Qualification:
         write_json(directory / "results.json", verify_results(self.repo, directory))
         verify_query_plans(directory / "query-plans")
         self.command("tests", "coverage", ["python3", "eng/verify-coverage.py", str(directory)])
-        for sample in ("FileSystem", "Kpis", "UserGroups"):
+        for sample in ("FileSystem", "SignalLab", "UserGroups"):
             self.command("tests", "sample-" + sample.lower(), ["dotnet", "run", "--project",
                          "samples/" + sample, "-c", "Release", "--no-build", "--no-restore",
                          *self.properties(), "--", "--provider", "sqlite", "--reset"],

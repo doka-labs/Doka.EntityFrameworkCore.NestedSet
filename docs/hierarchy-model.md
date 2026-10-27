@@ -141,7 +141,7 @@ no longer represents a tree traversal.
 NestedSet owns only configured structure. Application-owned examples include:
 
 - folder names, sizes, and permissions;
-- KPI values and aggregation rules;
+- observation values and aggregation rules;
 - users and group membership;
 - roles and privileges assigned to groups; and
 - authorization and audit policy.

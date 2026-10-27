@@ -523,6 +523,15 @@ queries. Upward projection substitutes the caller's original parameters once;
 one-, two- and three-argument expression visitors avoid temporary argument arrays
 while retaining the general path's exact simultaneous substitution semantics.
 
+The SignalLab sample consumes its catalog and aggregate readers into concrete scalar
+accumulators. Each reader reaches successful EOF and asynchronous disposal before
+catalog validation or aggregate-duplicate rejection. A later reader, cancellation
+or disposal failure therefore still precedes a previously observed invalid row.
+Catalog rejection remains authorization, then common unit, then exact metadata.
+Cancellation is checked again before aggregate construction. The synchronous
+collection adapter shares the accumulators but retains its existing immediate
+duplicate rejection.
+
 Catalog evidence uses exact identity and ordinal tuple sets. Aggregate state
 stores selected scalar sums by representable cell offsets and foreign identities for
 duplicate detection; larger selections build identity lookup maps lazily. It
@@ -1046,6 +1055,7 @@ query construction from asynchronous execution and result reconstruction:
 
 | Consumer responsibility | Source entry points |
 | --- | --- |
+| SignalLab snapshot and report query | [Read entry point](../samples/SignalLab/Reporting/SignalReportBuilder.cs), [query pipeline](../samples/SignalLab/Reporting/SignalReportBuilder.Query.cs), [domain predicates](../samples/SignalLab/Reporting/SignalReportBuilder.Predicates.cs), [intermediate scalar models](../samples/SignalLab/Reporting/SignalReportBuilder.Models.cs) |
 
 ## Test project ownership
 

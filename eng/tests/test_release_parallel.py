@@ -25,7 +25,7 @@ from eng.tests.test_release_qualification import (
 )
 
 PROJECTS = ("First.Tests", "Second.Tests")
-SAMPLES = ("FileSystem", "Kpis", "UserGroups")
+SAMPLES = ("FileSystem", "SignalLab", "UserGroups")
 
 
 class ParallelFixture(QualificationFixture):
@@ -361,8 +361,8 @@ class AggregationTests(ParallelFixture):
     def test_missing_or_failed_sample_rejects_partial_artifacts(self):
         """A passing matrix cannot replace its promised retained sample result."""
         # Arrange
-        path = self.runner.output / "tests/samples/Kpis/result.json"
-        cases = (None, {"sample": "Kpis", "passed": False})
+        path = self.runner.output / "tests/samples/SignalLab/result.json"
+        cases = (None, {"sample": "SignalLab", "passed": False})
         for value in cases:
             if value is None:
                 path.unlink()

@@ -30,6 +30,11 @@ explicitly breaking.
 
 ### Changed
 
+- Use a self-contained fictional acquisition model in SignalLab, its tests,
+  benchmarks and migrations. Normalize distinct pulse, sweep and burst event
+  formats through explicit projections; retain independent event identity,
+  path/owner semantics, streaming results and fixed allocation/work contracts.
+  Historical measurements remain labeled with their original source scope.
 - Split native integration into `.MySql`, `.Postgres`, `.Sqlite`, and `.SqlServer`
   shipping packages while retaining one common EF hierarchy engine. Each adapter
   owns its native SQL, model/index conventions, registry transport, and query
@@ -214,7 +219,7 @@ published yet.
   PostgreSQL, SQLite, and SQL Server.
 - Add optional SafeMigrations 10.4.5 integration tests for MySQL/MariaDB,
   PostgreSQL, and SQLite without making SafeMigrations a runtime prerequisite.
-- Add runnable folder, KPI, and tenant user-group samples, including role and
+- Add runnable hierarchy, aggregation, and tenant user-group samples, including role and
   privilege relationships owned by the application.
 
 ### Performance and reliability

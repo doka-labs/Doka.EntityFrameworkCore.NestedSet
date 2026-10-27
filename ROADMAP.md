@@ -24,7 +24,7 @@ It is not a delivery-date promise. Released packages, release notes, and the
   signed tag, NuGet trusted publishing, provenance, and public readback evidence.
 - Qualify ordinary migrations on every supported provider and optional
   SafeMigrations integration independently.
-- Keep examples and operations documentation aligned with file systems, KPIs,
+- Keep examples and operations documentation aligned with file systems, instrument networks,
   organization/user groups, roles, and privileges.
 
 ### Preserve correctness at scale

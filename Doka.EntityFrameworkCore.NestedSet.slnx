@@ -42,7 +42,7 @@
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/FileSystem/FileSystem.csproj" />
-    <Project Path="samples/Kpis/Kpis.csproj" />
+    <Project Path="samples/SignalLab/SignalLab.csproj" />
     <Project Path="samples/UserGroups/UserGroups.csproj" />
   </Folder>
   <Folder Name="/src/" />

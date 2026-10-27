@@ -3,7 +3,7 @@ using System.Linq.Expressions;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Inspects collection membership before EF's span-to-enumerable normalization.</summary>
-internal sealed class CollectionMembershipProbe : ExpressionVisitor
+internal class CollectionMembershipProbe : ExpressionVisitor
 {
     /// <summary>Gets collection membership calls while excluding unrelated string operations.</summary>
     internal List<MethodCallExpression> Memberships { get; } = [];

@@ -267,7 +267,7 @@ of every optional adapter.
 | `Doka.EntityFrameworkCore.NestedSet.Migrations.Tests` | Ordinary migration lifecycle and physical catalog |
 | `Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests` | Optional adapter generation, execution, rejection, replay, and drift behavior |
 | Package consumers | Restores and executes exact produced archives without project references |
-| Sample | File-system, KPI, and user-group domain composition |
+| Sample | File-system, SignalLab, and user-group domain composition |
 
 Integration tests use Testcontainers for server engines and isolated SQLite
 databases. Each eligible provider assembly starts at most one container per engine;

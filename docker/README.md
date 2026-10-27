@@ -108,7 +108,7 @@ CREATE DATABASE nestedset;
 
 MySQL and MariaDB also provide three fixed databases for the
 [independent console samples](../samples/README.md): `nestedset_sample_filesystem`,
-`nestedset_sample_kpis`, and `nestedset_sample_usergroups`. They use the configured
+`nestedset_sample_signal_lab`, and `nestedset_sample_usergroups`. They use the configured
 application account with database-specific grants. Sample databases use
 `utf8mb4_bin` to keep the small ASCII demonstration datasets' comparison rules
 explicit on both engines.

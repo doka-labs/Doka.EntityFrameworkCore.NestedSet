@@ -1,3 +1,5 @@
+extern alias UserGroupsSample;
+
 global using System;
 global using System.Collections.Generic;
 global using System.Data;
@@ -14,7 +16,6 @@ global using Doka.EntityFrameworkCore.NestedSet.Execution;
 global using Doka.EntityFrameworkCore.NestedSet.Features.BulkImport;
 global using Doka.EntityFrameworkCore.NestedSet.Features.Maintenance;
 global using Doka.EntityFrameworkCore.NestedSet.Mapping;
-global using Doka.EntityFrameworkCore.NestedSet.Samples;
 global using Doka.EntityFrameworkCore.NestedSet.Samples.UserGroups;
 global using Doka.EntityFrameworkCore.NestedSet.Shared.Structural;
 global using Doka.EntityFrameworkCore.NestedSet.Storage;
@@ -32,3 +33,10 @@ global using MySqlConnector;
 global using Xunit;
 global using Xunit.Sdk;
 global using Xunit.v3;
+// WHY: Each standalone sample links the same internal setup source. Select one actual sample assembly
+// explicitly so tests exercise its binary without copying setup code or introducing ambiguous types.
+global using SampleCommand = UserGroupsSample::Doka.EntityFrameworkCore.NestedSet.Samples.SampleCommand;
+global using SampleDatabase = UserGroupsSample::Doka.EntityFrameworkCore.NestedSet.Samples.SampleDatabase;
+global using SampleDatabaseConfiguration =
+    UserGroupsSample::Doka.EntityFrameworkCore.NestedSet.Samples.SampleDatabaseConfiguration;
+global using SampleProvider = UserGroupsSample::Doka.EntityFrameworkCore.NestedSet.Samples.SampleProvider;

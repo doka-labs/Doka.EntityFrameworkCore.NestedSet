@@ -10,13 +10,10 @@
   <ItemGroup>
     <PackageReference Include="FsCheck.Xunit.v3"/>
     <ProjectReference Include="../Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests.csproj"/>
-    <ProjectReference Include="../../samples/UserGroups/UserGroups.csproj"/>
+    <ProjectReference Include="../../samples/UserGroups/UserGroups.csproj" Aliases="global,UserGroupsSample"/>
+    <ProjectReference Include="../../samples/SignalLab/SignalLab.csproj"/>
   </ItemGroup>
 
-  <ItemGroup Label="Sample infrastructure regressions">
-    <!-- WHY: Compile the actual shared sample boundary so lifecycle and reset regressions test production sample code. -->
-    <Compile Include="../../samples/Shared/*.cs" Link="Samples/Shared/%(Filename)%(Extension)"/>
-  </ItemGroup>
   <ItemGroup Label="IDE file nesting">
     <Compile Update="Unit/Providers/ProviderCapabilitiesTests.*.cs">
       <DependentUpon>ProviderCapabilitiesTests.cs</DependentUpon>

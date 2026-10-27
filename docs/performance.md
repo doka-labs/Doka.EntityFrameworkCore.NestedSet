@@ -4,6 +4,20 @@ Nested sets exchange write amplification for fast ordered hierarchy reads. The
 package keeps client work iterative and bounded, while database range updates
 remain proportional to the affected coordinate suffix in the worst case.
 
+Consumer observations dated 2026-10-25 or earlier also predate the independent
+SignalLab instrument model and its heterogeneous acquisition events. Retained
+numbers describe the frozen predecessor source and workload. Current sample or
+regression links preserve the technical contract; they do not turn those
+numbers into measurements of the redesigned model.
+
+The 2026-10-26/27 SignalLab comparison (planned documentation: `qualification/query-performance.md#synthetic-signal-lab-2026-10-26`)
+records completed native complete-read, SQLite construction and isolated
+materializer cohorts, three MariaDB 1,000-node pairs and one prespecified
+construction repeat for the redesigned acquisition model. Timings are mixed;
+original adverse observations and additional allocations remain visible. The
+four original-before deep-work controls and their current-source counterparts
+pass with unchanged work and allocation budgets.
+
 ## Allocation measurement and Unicode counting
 
 ### Unicode counting contract
@@ -895,6 +909,7 @@ owns no result, context or application query cache.
 | Nearest owner | Candidate selection before value rejection; no farther fallback |
 | Complete path | Visible stored direct edges over the selected upper-to-lower interval |
 | Mixed-direction walk | Every intermediate occurrence and each leg's independent conditions |
+| SignalLab report | Actual metadata predicates, three fact sources, catalog and grouped scalar results |
 
 Combining overlapping anchors intentionally repeats occurrences. If there are
 `a` anchors with `r` matching rows each, an unreduced projection can contain
@@ -1093,9 +1108,13 @@ adding one criterion must not copy a stored hierarchy or build a new compiler.
 
 | Boundary | Fixed contract |
 | --- | --- |
+| SignalLab fixed four-criterion builder | At most 128 KiB for Any; 160 KiB for Nearest; 232 KiB for Doka MySQL/MariaDB Nearest |
 | Added signal scalar criterion of the same pattern | At most 4 KiB additional allocation |
+| SignalLab request snapshot fixture | At most 24 KiB for 20 types, 80 unique criteria and 160 requested criteria |
+| SignalLab empty-total grid fixture | At most 76 bytes per cell plus 2,048 bytes for 6,144 selected cells |
 | Scalar hierarchy/report projection | No hierarchy entity materialization or tracker growth |
 | Scalar or aggregate composed query terminal | One async reader command, with its caller token |
+| SignalLab validated report | One catalog read and one grouped report read in the same snapshot |
 | Chain frontier | Bounded batch, transport, path-copy and cycle budgets before allocation |
 
 The sample builder tests use the actual sample assemblies. A generic query
@@ -1231,6 +1250,20 @@ measurements. SQLite EQP describes access shape, not actual operator row counts.
 
 ### Optional paired measurements
 
+`SignalReportingBenchmarks.Api` measures the actual `ReadAsync`, including request
+snapshot and validation, its shared read snapshot, one catalog reader, ordinal
+catalog validation, one aggregate reader and scalar grid creation. `Reference`
+snapshots the request inside each measured invocation and retains the same
+catalog, transaction and result semantics around its explicit-LINQ aggregate.
+The current API consumes both readers incrementally; the reference still calls
+`ToArrayAsync` before the shared synchronous validation adapters. Their SQL and
+result contracts remain comparable, but the end-to-end timings include different
+consumption and buffering costs. They do not isolate the query-composition cost.
+Preparation and final equivalence checks are outside both measurements. The
+complete signal read qualification (planned documentation: `qualification/query-performance.md#historical-report-construction-and-materialization`)
+records ReadAsync profiling, paired measurements and native-work boundaries;
+optional observers are absent from timed consumer contexts.
+
 The chain reference compares bounded application orchestration while sharing
 the structural candidate primitive. It is not an independent reimplementation
 of the entire SQL translation stack. Report that boundary with the result;
@@ -1277,6 +1310,12 @@ This older subtree fast path and the optional indexed-ancestor path have
 independent prerequisites. Neither an index option nor the public
 `WithMaterializedSource` API alone supplies configured-engine detection.
 
+The SignalLab consumer selects unique owners of filtered facts before projecting
+their ancestors and joining the original facts back. Expanding a broad anchor
+first materialized ten million structural pairs before its sparse measurement
+join. The upward formulation preserves overlapping anchors and every physical
+source, metric and day without that unnecessary expansion.
+
 Within that upward formulation, distinct measured Node/Day pairs share their
 day-specific path and metadata proof before facts rejoin. A scalar distinct
 Anchor/Node/Day boundary prevents merging that proof into each metric/source
@@ -1285,6 +1324,16 @@ its own measurement-type rule before aggregation. Equal-valued facts are never
 deduplicated, overlapping anchors remain independent, and Nearest still selects
 its owner before rejecting its value. The additional query-construction work
 is reported separately from complete EF allocation and native database work.
+
+The SignalLab builder reuses immutable, request-free fact projections and fixed
+owner/member/operator expressions. Its privately owned measurement and period
+query roots are bound to each construction; requests, contexts, completed
+queries and parameter values are never stored in a global cache. The library's
+provenance guard remains intact. Metadata filters run before the temporal
+filter because both are pure AND conditions on the same Anchor/Node/Day row.
+Nearest still selects its owner from the unchanged tree before testing its
+values, so this physical ordering cannot introduce fallback to a farther owner.
+Both DISTINCT proof boundaries and restoration of the original fact bag remain.
 
 The catalog reader filters requested `(type, field)` and `(type, field, value)`
 bindings together, rather than reading every field and choice of each selected

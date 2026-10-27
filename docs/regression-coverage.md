@@ -1,5 +1,22 @@
 # Typed runtime regression coverage
 
+The historical construction/read qualification (planned documentation: `qualification/query-performance.md#historical-report-construction-and-materialization`)
+adds matched warmup, scalar-binding and exact-bound reuse evidence to that
+composition map. Its positive and rejection tests cover deferred snapshot
+ownership and warmed parameter shapes; performance measurements remain
+separate from semantic coverage and do not become release gates.
+Its retained numbers describe predecessor sources. Current SignalLab test links
+identify the corresponding technical contracts, not new measurement evidence.
+
+The subsequent query-template reuse qualification (planned documentation: `qualification/query-performance.md#historical-report-construction-and-materialization`)
+adds `CompositionAnyConstructionTests`, projection/capture and collection-policy
+cases in `SignalReportConstructionTests`, and actual warmed SQLite template-reuse
+and missing/foreign selection rejection controls. `CompositionPlanWorkTests`
+checks summed executed iterator outputs and overflow rejection. Deep and broad
+MySQL consumer fixtures retain their existing maximum-work checks and now also
+bound summed work; the retained rejected JSON-policy runtime fails those guards.
+These work counts describe pinned fixtures, not physical I/O or timing gates.
+
 This document maps the typed runtime's important failure mechanisms to
 concrete tests. It helps maintainers select relevant regressions when changing
 dispatch, identity, Parent, staging, locking, or tracker restoration. Feature
