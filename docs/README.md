@@ -45,6 +45,8 @@ to `10.0.0`. See the [changelog](../CHANGELOG.md) for changes and the
   activities, metrics, logging boundaries, and incident evidence.
 - [Performance](performance.md) explains read/write cost, memory ownership,
   mutation budgets, and how to measure an application workload.
+- [Query Composition Qualification](qualification/query-composition.md)
+  summarizes semantic/native-work controls and the optional ancestor-index trade-offs.
 - Query and Consumer Performance (planned documentation: `qualification/query-performance.md`)
   separates construction, complete-reader, materializer and framework observations.
 - [Provider and Migration Qualification](qualification/provider-migrations.md)

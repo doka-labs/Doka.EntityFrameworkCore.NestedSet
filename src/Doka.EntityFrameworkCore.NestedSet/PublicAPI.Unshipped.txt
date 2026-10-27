@@ -1,4 +1,5 @@
 #nullable enable
+Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity>.HasAncestorIndex(string! nonLeafPropertyName = "NestedSetIsNonLeaf") -> Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity!>!
 Doka.EntityFrameworkCore.NestedSet.NestedSet<TEntity>.SelectAncestors<TResult>(System.Linq.Expressions.Expression<System.Func<TEntity!, bool>!>! nodes, System.Linq.Expressions.Expression<System.Func<TEntity!, TEntity!, int, TResult>!>! projection) -> System.Linq.IQueryable<TResult>!
 Doka.EntityFrameworkCore.NestedSet.NestedSet<TEntity>.SelectAncestorsOrSelf<TResult>(System.Linq.Expressions.Expression<System.Func<TEntity!, bool>!>! nodes, System.Linq.Expressions.Expression<System.Func<TEntity!, TEntity!, int, TResult>!>! projection) -> System.Linq.IQueryable<TResult>!
 Doka.EntityFrameworkCore.NestedSet.NestedSet<TEntity>.SelectSubtrees<TResult>(System.Linq.Expressions.Expression<System.Func<TEntity!, bool>!>! anchors, System.Linq.Expressions.Expression<System.Func<TEntity!, TEntity!, int, TResult>!>! projection) -> System.Linq.IQueryable<TResult>!

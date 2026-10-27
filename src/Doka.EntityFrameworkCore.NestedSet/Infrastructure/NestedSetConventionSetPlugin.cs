@@ -38,6 +38,7 @@ internal sealed class NestedSetConventionSetPlugin : IConventionSetPlugin
 
         var indexConvention = new NestedSetIndexConvention(_sql, _provider, _typeMappings);
 
+        conventionSet.ModelFinalizingConventions.Insert(0, new NestedSetAncestorIndexConvention(_provider));
         conventionSet.EntityTypePrimaryKeyChangedConventions.Add(indexConvention);
         conventionSet.ModelFinalizingConventions.Add(new NestedSetInfrastructureConvention(_provider, _typeMappings));
         conventionSet.ModelFinalizingConventions.Add(indexConvention);

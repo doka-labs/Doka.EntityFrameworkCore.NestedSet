@@ -40,6 +40,7 @@ builder supports these structural roles:
 | `HasBounds(...)` | Inclusive `long` left and right boundaries |
 | `HasDepth(...)` | Zero-based `int` depth |
 | `HasPosition(...)` | Dense zero-based `long` sibling position |
+| `HasAncestorIndex(string nonLeafPropertyName = "NestedSetIsNonLeaf")` | Opt into a generated Boolean nonleaf property and additive ancestor access index; requires a migration |
 | `OrderBy(...)`, `ThenBy(...)` | Ascending sibling criteria |
 | `OrderByDescending(...)`, `ThenByDescending(...)` | Descending sibling criteria |
 | `HasOrderMode(...)` | Strict or manual-override placement |
@@ -48,6 +49,20 @@ builder supports these structural roles:
 Every structural role has a property-selector form. String forms support
 field-only, indexer, and shadow properties. Nullable order criteria require an
 explicit `NullSortOrder.First` or `NullSortOrder.Last`.
+
+The ancestor-index option uses a property name rather than a selector because
+its default creates a shadow property during model finalization. Property-bag
+entities receive an indexer property with EF's natural missing-key sentinel;
+callers do not initialize the generated dictionary entry. The option can adopt
+compatible existing metadata, but does not make that generated value a
+writable structural role.
+It retains all existing structural and ordering indexes. See the
+[configuration contract](configuration.md#optional-ancestor-index) and
+[migration contract](migrations.md#optional-ancestor-index).
+Schema availability does not activate a provider read optimization. Strict
+indexed selection uses the MySQL adapter's directly bound Doka source binder;
+inclusive selection also uses its ordered join. Other adapters retain their
+portable query strategies and report schema-only ancestor-index use. See the [measured option trade-offs](qualification/query-composition.md#optional-ancestor-access).
 
 Without configured criteria, sibling order is manual. With criteria,
 `NestedSetOrderMode.Strict` makes automatic insert and move placement follow

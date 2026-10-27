@@ -32,7 +32,7 @@ Validate with `eng/validate-adrs.sh`; regenerate with `eng/validate-adrs.sh --wr
 | [D-016](D-016-release-candidate-evidence-and-publication.md) | implemented | 2026-09-19 | Qualify immutable candidates before operator-controlled publication | None |
 | [D-017](D-017-madr-profile-and-decision-validation.md) | implemented | 2026-09-19 | Validate decision records independently of release qualification | None |
 | [D-018](D-018-generic-hierarchy-query-composition.md) | accepted | 2026-10-16 | Compose generic hierarchy queries through ordinary EF expressions | None |
-| [D-019](D-019-optional-ancestor-index-and-source-binding.md) | accepted | 2026-10-19 | Opt into generated ancestor indexes and statement-local source binding | amended-by D-020 |
+| [D-019](D-019-optional-ancestor-index-and-source-binding.md) | implemented | 2026-10-19 | Opt into generated ancestor indexes and statement-local source binding | amended-by D-020 |
 | [D-020](D-020-provider-owned-runtime-packages.md) | implemented | 2026-10-26 | Own native integration in four provider packages | supersedes D-002; amends D-019 |
 
 ## Relationships

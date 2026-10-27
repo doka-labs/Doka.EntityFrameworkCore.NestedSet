@@ -6,6 +6,15 @@ APIs directly under [D-020](../decisions/D-020-provider-owned-runtime-packages.m
 That ownership change does not replace the recorded native evidence or establish
 new timing, allocation, or optimizer results by itself.
 
+This page summarizes the structural and native-work evidence for generic
+query composition and the optional ancestor access path. It records dated
+local observations, not a release qualification or a universal latency claim.
+The [configuration matrix](../configuration.md#current-query-capabilities)
+owns current eligibility; the [query guide](../query-composition.md) owns API
+semantics. [D-018](../decisions/D-018-generic-hierarchy-query-composition.md) and
+[D-019](../decisions/D-019-optional-ancestor-index-and-source-binding.md)
+record the architectural decisions.
+
 ## Semantic and native-work evidence
 
 The public operations preserve source occurrences, exact Scope/TreeId and
@@ -33,6 +42,17 @@ and [coverage map](../query-composition-regression-coverage.md).
 
 ## Optional ancestor access
 
+The additive nonleaf index uses completed physical roles:
+
+```text
+(Scope?, IsNonLeaf, TreeId, Right, Left, NodeKey)
+```
+
+Schema availability, strict source binding and inclusive ordered-edge access
+are independent capabilities. The optimized path requires the configured
+option, the required public Doka APIs and an eligible source. Other providers
+or ineligible sources retain the existing query strategy; configuring an
+index alone does not establish a read benefit.
 
 The 2026-10-19 frozen experiment used private Doka
 `10.5.1-orderedjoin.20261019.1`, EF 10.0.13, MySQL 8.4.11 and MariaDB 11.8.9.
@@ -118,6 +138,14 @@ previous strategy. The index reader still needs opt-in schema and Doka APIs.
 Compilation-local root sharing does not admit application callbacks or a global
 query/context cache.
 
+The inclusive indexed strategy directs both structural candidate matching and
+final mapped-owner hydration through the existing ordered-join API, while
+source hydration remains ordinary. A prior owner-first native plan preserved
+all results but exceeded the unchanged work allowance; the fix constrains that
+specific alias dependency rather than increasing the budget or adding a spool.
+The final native cohort passes independently of the historical timing tables.
+No quiet-host complete-reader latency claim follows from those work controls.
+
 ## Reproduce the repository checks
 
 Use the SDK and dependency graph declared for the source under test. For
@@ -126,6 +154,13 @@ actually contain those features; a published legacy package cannot reproduce
 a private-build observation. See the
 [provider qualification boundary](provider-migrations.md).
 
+```sh
+dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests.csproj \
+  -c Release --filter 'FullyQualifiedName~Composition'
+
+dotnet test tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj \
+  -c Release --filter 'FullyQualifiedName~HierarchyCompositionWork|FullyQualifiedName~AncestorIndexWork|FullyQualifiedName~DensePathWork'
+```
 
 The native cases own disposable databases and retain independent result
 oracles and executed work counters. MySQL/MariaDB work metrics are not an

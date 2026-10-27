@@ -119,6 +119,245 @@ var hierarchy = context.NestedSet<Folder>()
 An unbound scoped facade and `ForScope(...)` on an unscoped mapping fail before
 query execution. NestedSet does not infer Scope from a global query filter.
 
+## Optional ancestor index
+
+Selected ancestor queries can opt into an additional generated property and
+index. This is a schema choice, separate from the required hierarchy roles:
+
+```csharp
+builder.HasNestedSet(nestedSet => nestedSet
+    .HasTreeId(folder => folder.TreeId)
+    .HasScope(folder => folder.TenantId)
+    .HasParent(folder => folder.ParentId)
+    .HasAncestorIndex());
+```
+
+`HasAncestorIndex(string nonLeafPropertyName = "NestedSetIsNonLeaf")` creates a
+required Boolean shadow property during model finalization when the named
+property does not exist. The configuration callback records the option rather
+than immediately creating that property. If application configuration refers
+to the property earlier, for example in a custom index, declare it explicitly
+with `builder.Property<bool>("NestedSetIsNonLeaf")` first. Its database-generated
+value expresses `Right > Left + 1` with a scalar CASE guarding
+`Left == long.MaxValue`, where adding one would overflow and no signed Right
+can satisfy the nonleaf predicate. The expression uses final mapped boundary
+columns; see the [exact generated SQL](migrations.md#optional-ancestor-index).
+A compatible existing Boolean property may be used instead. It cannot
+also be a structural role, order criterion, key, foreign key, converted value,
+or concurrency token. Conflicting defaults, generation, and save behavior fail
+model finalization rather than silently changing application metadata.
+
+The additional ascending index is:
+
+```text
+(Scope?, NestedSetIsNonLeaf, TreeId, Right, Left, NodeKey)
+```
+
+The optional Scope is omitted for an unscoped hierarchy; a repeated mapped
+property appears only once. Existing bounds, sibling-position, and configured
+ordering indexes remain. The flag and all index columns must share the physical
+structural table. Inherited and split mappings are supported only when this
+co-location can be established from their completed EF mapping.
+
+### Current query capabilities
+
+This table is the canonical current capability matrix. Dated qualifications
+and ADR history describe their own frozen source and provider builds.
+The MySql adapter directly calls the required public
+`DatabaseFacade.IsMariaDb()` API to identify the configured Doka engine without
+database I/O. It selects MySQL/MariaDB-specific physical strategies; it does
+not activate the ancestor index. Its declared Doka minimum is 10.6.2, which
+supplies engine identification, source binding, and ordered joins. Older
+missing-feature discovery and legacy API-availability paths are not part of
+this adapter contract. Historical package comparisons remain in the
+[dated qualification](qualification/provider-migrations.md#doka-mapping-compatibility).
+The generated property and index are model features on every supported
+provider. Both indexed readers require the explicit model option, Doka's
+independent-owner capability, its verified public `WithMaterializedSource` API,
+and an eligible selection. `SelectAncestorsOrSelf` additionally requires the
+verified public `StraightJoin` API.
+
+| Selected NestedSet adapter | Strict ancestors without `HasAncestorIndex()` | Strict ancestors with `HasAncestorIndex()` | Ancestors or self |
+| --- | --- | --- | --- |
+| `.MySql` with its required Doka version | Source-bounded ordinary path for eligible selections | Indexed strict path when its prerequisites hold | Existing strategy without the schema option; indexed inclusive path with two directed join edges when its prerequisites hold |
+| `.Postgres`, `.Sqlite`, `.SqlServer` | Existing strategy | Existing strategy; generated schema only | Existing strategy; generated schema only |
+
+The source-bounded ordinary strict path reuses the existing public source binder,
+ordered-join API, and structural indexes; it adds no generated property, index,
+migration, or public option. It completes selected NodeKey, TreeId, Left, Right,
+and optional Scope coordinates once, derives source envelopes per tree and Scope, and checks
+visible nonleaf candidates against those necessary ranges. All four original
+containment comparisons and final mapped-alias checks remain required. Global
+model filters stay on the owner root; only library Scope/Tree restrictions come
+from the completed source. Only a provider positively identified as MySQL by
+the existing public engine API receives an additional nested binding over
+matched source/owner keys. It preserves their occurrences before mapped payload
+hydration and separates repeated direction changes from one merged
+payload/EXISTS join search. MariaDB keeps source binding without that additional
+matched-key boundary. On both routes,
+source hydration is ordinary and only final owner hydration receives a directed
+edge. Source completion is once per binding,
+not a promise of one source evaluation across all independent composition calls.
+A selection that needs hierarchy decorrelation retains the existing
+independent-coordinate strategy. Other adapters retain their own portable
+strategies; the MySql adapter's public Doka calls are compile-time dependencies.
+Broad source envelopes can still cover a large owner population; the generated
+nonleaf index remains a separate read/write tradeoff. The generated-index and
+inclusive strategies keep their own qualification. MySQL's additional matched-pair
+completion may limit downstream predicate pushdown and adds a physical
+intermediate; its cost requires qualification for the actual workload. The same
+extra boundary was rejected for MariaDB after a branched-chain sample exhausted
+its recorded container memory. No additional provider API is required.
+
+Plain scalar selections remain eligible. Query-bearing selections also qualify
+when inspection proves non-hierarchy EF roots from the compiling context's
+actual model, including inherited and named query filters. Ordinary
+`node => facts.Any(...)`, `node => context.Facts.Any(...)` and
+`node => context.Set<Fact>().Any(...)` can reach this path; hand-built expression
+roots are not required.
+
+The provider-callback `UseNestedSets()` registration installs a stateless
+public EF query-expression interceptor. Source-sensitive ancestor composition
+on every options-registered provider can emit an exact private marker without reading captured fields or application
+getters. This normalization boundary is separate from Doka-only physical read
+strategies.
+At a terminal operation, EF performs its normal capture/parameter processing;
+when compilation is needed, the interceptor expands the marker before relational
+translation and inspects those actual normalized roots. EF still owns capture
+values, cache selection and execution. Rebinding a captured query affects its
+next terminal operation rather than freezing its construction-time source.
+
+Hierarchy roots, EF reference/collection or skip-navigation expansion, raw-SQL
+roots, opaque/query-valued parameters and unknown operators retain the existing
+strategy. An EF-normalized root is not permission to ignore its mapping or
+filters. NestedSet never evaluates an application getter to guess eligibility;
+EF can evaluate ordinary captures at terminal execution under its own rules.
+Model-only registration installs no interceptor and uses its non-deferred
+construction path without emitting unexpandable markers. Without
+`HasAncestorIndex()` the generated-index reader is unavailable; eligible Doka
+strict queries can still use the source-bounded ordinary path above. Other
+combinations keep their corresponding existing strategy. Normalization itself
+is provider-independent; these bounded and indexed readers require the Doka
+capabilities shown in the table.
+
+`WherePathEdges`, `WhereAnyAncestorOrSelf` and `WhereNearestAncestorOrSelf`
+defer their proof construction only when their input already contains an exact
+owned marker. Their existing source, scope, null and endpoint guards still run
+immediately. After EF normalization they reuse the same path/existence/nearest
+cores; ordinary unmarked filters retain their existing construction path.
+Compilation-local sharing is limited to admitted equivalent owned visible and
+unbound roots. Exact metadata, scalar parameter identities and allowed literals
+remain part of that comparison; arbitrary application query trees are not
+interned, evaluated or retained globally.
+
+Independently inspected fact selections retain a narrow structural query block
+before source completion. Its complete unique node identity preserves source
+rows and later fact/consumer occurrences; it is not a `Distinct` over report
+results. Plain scalar selections retain their existing shape. See
+[implementation design](implementation-design.md#optional-ancestor-index-and-statement-local-source-binding)
+for the MariaDB merge boundary and its qualification requirements.
+
+The inclusive path uses the same public ordered-join API twice: source modes
+precede completed narrow candidates, and the candidate-bearing selected relation
+precedes final mapped-owner hydration. Source-entity hydration and other
+consumer/payload-source joins stay ordinary joins. The two local edges do not
+order the entire SELECT, add a result ordering or introduce another capability.
+Missing ordered-join capability does not disable the strict indexed path. PostgreSQL,
+SQLite, SQL Server, and ineligible selections retain the existing read strategy
+and its shared overflow-safe nonleaf predicate. Configuring the index alone
+does not select a different query or establish a performance benefit. The
+required Doka APIs are published in 10.6.1. Their
+[historical index qualification](qualification/query-composition.md#optional-ancestor-access)
+records read/write costs. The
+[2026-10-20 correction qualification](qualification/query-composition.md#fact-selections-and-consumer-filters)
+adds fact-source and downstream-consumer evidence, including higher allocation
+costs and case-matched timing limits. Select the option for the actual workload.
+The [provider qualification](qualification/provider-migrations.md#doka-mapping-compatibility)
+distinguishes the published Doka 10.6.1 entity-split GUID failure from the
+corrected local source. That dated local graph passed the recorded ordinary
+MySQL/MariaDB regressions, including the formerly failing split mappings.
+Repository qualification now declares published Doka 10.6.2 and SafeMigrations
+10.6.0; the optional MySQL adapter requires Doka [10.6.2,10.7.0). Only the new
+adapter contract is retained in tests. The earlier pending pin update is
+complete. The [2026-10-25 public-binary run](qualification/provider-migrations.md#published-runtime-qualification-2026-10-25)
+passed all 4,289 MySQL/MariaDB and 2,649 Unit cases, with ordinary and optional
+migration scope recorded separately. Local ARM exclusions remain native SQL
+Server work for x64 CI; neither private packages nor these exclusions count as
+a native SQL Server pass.
+
+A configured ancestor index read on an adapter without an optimized reader
+emits `Doka.EntityFrameworkCore.NestedSet.Query.AncestorIndexWithoutReader`
+(70004), at Information level and at most once per actual `DbContext`. Observe
+it through EF logging, `LogTo`, or `DiagnosticSource`; configured warning levels
+and filters still apply. The generated column/index remains valid while the
+query uses that adapter's portable reader. This diagnostic neither rejects the
+model nor changes query semantics, and emits no application identity, SQL, or
+request values.
+
+The former missing-engine/source-binding/ordered-join diagnostics are removed:
+the MySql adapter's declared Doka minimum provides all three public APIs and
+the compiler binds them directly. Missing or wrong adapter registration is an
+explicit configuration error rather than an optional feature notification.
+
+Historical published Doka 10.5.0 also had a separately reproduced implicit-string
+index-budgeting defect for this schema. The corrected private provider passed
+the actual implicit-length model on both engines; those recorded results are
+not relabeled as qualification of the new published 10.6.2 pin. Neither provider
+version selection nor an index option authorizes arbitrary identity truncation; see
+[physical mapping and provider budgeting](implementation-design.md#optional-ancestor-index-and-statement-local-source-binding)
+and the [combined-provider acceptance](qualification/query-composition.md#optional-ancestor-access)
+for the exact boundary.
+
+### Choose for the workload
+
+| Workload | Decision and evidence to require |
+| --- | --- |
+| Selective upward reads over large trees with the required Doka features | Candidate for opt-in. Compare the actual selection, complete results, native work, and construction allocation; the index does not make every range selective. |
+| Fact-selected sources or downstream `Any`/`Contains`/negated-existence filters | Qualify application-owned fact indexes for the actual equality/filter/join columns. A bounded hierarchy plan does not bound scans of unrelated application rows. |
+| Broad selections or long selected chains | Measure before opting in. Candidate matching and temporary work can dominate even when hydration is bounded. |
+| Frequent imports, moves, or repair | Include write amplification and index storage. Every coordinate update maintains the extra access path. |
+| A provider or source shape using the existing reader | Keep the default unless the application has an independently measured use for the generated column/index. The library provides no optimized reader for a schema-only path. |
+| Portable EF model shared across providers | The option remains valid on every supported provider. Review migrations and qualify each database separately; portability does not imply equivalent plans. |
+
+The [2026-10-19 frozen qualification](qualification/query-composition.md#optional-ancestor-access)
+measured 23%/36% more index pages and 6%/121% longer imports on MariaDB/MySQL
+respectively in that fixture. Its indexed read medians were lower in only
+24/42 and 21/42 comparable cases; this is not a statistical significance test.
+Construction and read allocations also rose in many cases. These are observed
+costs and opportunities, not universal
+budgets or a promise that opting in is always beneficial. The
+[performance guide](performance.md#optional-ancestor-index-and-shared-source-boundaries)
+keeps those measurements separate from later source qualification.
+
+The flag is generated on insert and structural updates. The library refreshes
+its tracked value through the normal bounded structural refresh; applications
+must not supply or modify it as hierarchy structure. Read it, when needed, with
+`EF.Property<bool>(folder, "NestedSetIsNonLeaf")` inside an EF query. The option
+does not add a required property to an entity's public CLR contract.
+
+For an EF property-bag entity, the generated value is a required Boolean
+indexer property instead of a shadow property. Leave the generated dictionary
+entry uninitialized: EF's natural missing-key sentinel supplies its default
+until the database generates the value. An explicit non-null indexer sentinel
+is incompatible and rejected; applications do not need a workaround that adds
+the flag to each dictionary before insertion.
+
+Scaffold and apply a migration before using the changed model, and regenerate
+application-owned compiled models. The extra index consumes storage and adds
+maintenance to coordinate writes, so it is deliberately opt-in. It exposes an
+access path, not a guarantee that the optimizer will select it or avoid every
+population scan. See the [migration contract](migrations.md#optional-ancestor-index)
+and [query strategy](query-composition.md#optional-selected-ancestor-access-path).
+
+Compiled models preserve the schema/mapping descriptor; the current adapter is
+selected separately through its native options callback. Regenerate the model
+after configuration changes, then qualify it against that actual adapter and
+provider. The [generated-model regression](query-composition-regression-coverage.md#optional-ancestor-index-and-source-binding)
+retains query and value-lifecycle checks for the selected adapter. Earlier
+optional-feature build cohorts remain dated historical evidence; metadata
+success alone does not prove current query eligibility or native x64 SQL Server
+execution.
+
 ## Parent relationship
 
 The final convention creates or validates a restrictive self-FK when the EF
@@ -347,4 +586,5 @@ and is included in ordinary EF migrations. Applications do not add or delete
 registry rows directly.
 
 SafeMigrations is optional. See [Migrations and indexes](migrations.md) for the
-exact paths and adoption procedure.
+exact paths and adoption procedure, including the
+[generated-column adapter contracts and historical limits](migrations.md#optional-safemigrations-generated-column-contracts).

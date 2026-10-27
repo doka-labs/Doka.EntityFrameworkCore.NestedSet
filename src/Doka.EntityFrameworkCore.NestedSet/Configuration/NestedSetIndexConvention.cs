@@ -52,7 +52,9 @@ internal sealed class NestedSetIndexConvention : IEntityTypePrimaryKeyChangedCon
 
             // WHY: Late application indexes can replace equivalent convention-owned paths without duplicate DDL.
             var mapping = NestedSetModelValidator.Validate(entity, true)!;
+            NestedSetAncestorIndex.Reconcile(entity, mapping, _sql, _provider, _typeMappings);
             NestedSetIndexes.Reconcile(entity, provider: _provider);
+            NestedSetAncestorIndex.RemoveObsoleteProperties(entity);
             NestedSetConstraints.Reconcile(entity, mapping, _sql);
         }
 

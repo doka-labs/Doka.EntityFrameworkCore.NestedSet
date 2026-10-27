@@ -213,7 +213,7 @@
     {
       "id": "D-019",
       "title": "Opt into generated ancestor indexes and statement-local source binding",
-      "status": "accepted",
+      "status": "implemented",
       "date": "2026-10-19",
       "path": "docs/decisions/D-019-optional-ancestor-index-and-source-binding.md",
       "supersedes": [],

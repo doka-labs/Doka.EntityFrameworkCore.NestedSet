@@ -10,13 +10,23 @@ internal static class NestedSetRefreshProperties
     internal static IProperty[] Collect(
         IEntityType owner,
         IEnumerable<IProperty> structure
-    ) => structure
-        .Concat(
-            Generated(owner)
-                .Where(property =>
-                    property.IsConcurrencyToken && (property.ValueGenerated & ValueGenerated.OnUpdate) != 0))
-        .Distinct()
-        .ToArray();
+    )
+    {
+        if (NestedSetModelMapping.For(owner.Model).Descriptor(owner).AncestorIndexProperty is { } flag)
+        {
+            // WHY: The generated nonleaf value follows bounds changes but must never enter writable structure.
+            // Appending only for opted-in models avoids another iterator and small array on existing refresh paths.
+            structure = structure.Append(flag.Resolve(owner));
+        }
+
+        return structure
+            .Concat(
+                Generated(owner)
+                    .Where(property =>
+                        property.IsConcurrencyToken && (property.ValueGenerated & ValueGenerated.OnUpdate) != 0))
+            .Distinct()
+            .ToArray();
+    }
 
     /// <summary>Finds generated scalars shared by tracked refresh and detached input capture or rollback.</summary>
     /// <param name="owner">The configured owner defining one exact hierarchy boundary.</param>

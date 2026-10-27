@@ -1,6 +1,6 @@
 ---
 id: D-019
-status: accepted
+status: implemented
 date: 2026-10-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
@@ -381,9 +381,9 @@ records historical native read/write/storage controls, binary provenance,
 negative outcomes and mixed costs. The
 [provider/migration qualification](../qualification/provider-migrations.md)
 separates corrected local owner packages, actual schema/data/history/replay
-and the remaining native x64 SQL Server boundary. Accepted status records
-the selected design; the implementation and its final verification accompany
-the ancestor-index feature commit.
+and the remaining native x64 SQL Server boundary. Implemented
+status refers to this NestedSet contract, not provider publication or a hosted
+release pass.
 
 The [regression map](../query-composition-regression-coverage.md#optional-ancestor-index-and-source-binding)
 owns the exact test inventory. Required controls cover exact public capability

@@ -45,6 +45,16 @@ NodeKeys need not be globally unique across scopes.
 
 ## Selected ancestor access paths
 
+Eligible strict `SelectAncestors` queries on Doka can bind their selected
+structural source once and bound independent owners using the existing Right
+index. This ordinary-model path uses the MySql adapter's directly bound public
+source-binding and ordered-join APIs, but does not require `HasAncestorIndex()`
+or a migration. Scalar selections and inspected independent fact selections can
+qualify; correlated hierarchy selections and other adapters retain their
+established paths.
+Necessary source envelopes never replace exact Scope/TreeId, model visibility,
+or the complete original containment checks on the final mapped aliases.
+
 A second binding completes matched source/owner keys only on positively identified
 MySQL, without removing repeated walk occurrences. MariaDB retains source-only
 binding. Source payload uses an ordinary join
@@ -53,6 +63,17 @@ boundary separates optimizer search across repeated direction changes, but can
 limit downstream predicate pushdown. Each binding
 completes its own input once; distinct composition calls are not one globally
 shared evaluation. The actual work and allocation cost still need measurement.
+
+The model's [`HasAncestorIndex()` option](configuration.md#optional-ancestor-index)
+adds a generated nonleaf flag and a deterministic additive index. It changes
+the schema and requires a migration; the six composition APIs themselves do
+not require it.
+
+Use the [current capability and workload tables](configuration.md#optional-ancestor-index)
+to decide whether the configured provider and source selection can use it.
+The schema option alone does not activate an optimized read. Missing optional
+provider capabilities retain the corresponding existing strategy; malformed
+required API metadata fails clearly. No Doka runtime dependency is introduced.
 
 The bounded and indexed strategies share selected structural input within one SQL statement attempt.
 It preserves source occurrences, exact mapped endpoints, application/global
@@ -90,6 +111,18 @@ immediate guards. They apply the existing proofs to the normalized source.
 Some expression work therefore moves from `Build` into cold compilation.
 A shorter builder does not establish lower complete-read cost or a warm-cache
 speedup; measure both separately.
+
+Read [implementation design](implementation-design.md#optional-ancestor-index-and-statement-local-source-binding)
+for structural source boundaries, narrow candidate matching, and the two
+local directed joins in the inclusive indexed path. Those mechanics do not provide result ordering, stronger
+isolation, or a universal optimizer guarantee. In particular, consumer
+`Any`/`Contains`/negated-existence predicates need their own native plans.
+Use the [performance evidence](performance.md#optional-ancestor-index-and-shared-source-boundaries)
+to compare complete reads against construction, write, and storage costs.
+Application-owned fact and payload indexes remain part of that qualification.
+The ancestor index does not index arbitrary domain filters, and efficient
+hierarchy matching cannot prevent an unindexed consumer subquery from scanning
+its own table.
 
 ## Project several subtrees in one query
 

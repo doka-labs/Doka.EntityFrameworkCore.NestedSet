@@ -21,6 +21,12 @@ explicitly breaking.
 - Filter complete visible paths, any visible ancestor or the nearest candidate
   before its value/path checks, without preliminary entity loads or fallback to
   a farther matching owner.
+- Opt into a generated nonleaf property and additive ancestor index with
+  `HasAncestorIndex()`. Use eligible directly bound public Doka source-binding
+  and ordered-join APIs through the `.MySql` adapter. See the
+  [capability and workload table](docs/configuration.md#optional-ancestor-index).
+- Report schema-only ancestor-index reads on adapters without an optimized
+  reader through filterable EF diagnostics, once per actual context.
 
 ### Changed
 
@@ -49,6 +55,18 @@ explicitly breaking.
 - Declare the SQL Server adapter's PKCS security floor as `9.0.21` without an
   arbitrary upper bound, allowing applications to use newer compatible framework
   packages. The common libraries retain no SQL Client dependency.
+
+### Fixed
+
+- Bound eligible strict ancestor owners by a shared selected source and the
+  existing structural index, without requiring generated ancestor schema.
+  Complete matched identities before payload hydration on known MySQL for
+  repeated direction changes; retain source-only binding on MariaDB.
+  Preserve the complete walk bag through the required public provider APIs.
+  Preserve portable strategies for ineligible sources, model filters, exact identities,
+  containment, and mapped endpoint checks.
+- Preserve overflow-safe nonleaf classification at `Int64.MaxValue`, including
+  representable malformed split intervals, without changing mutation arithmetic.
 
 ## 10.0.0 (2026-10-09)
 

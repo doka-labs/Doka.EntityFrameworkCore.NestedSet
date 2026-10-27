@@ -3,7 +3,7 @@ namespace Doka.EntityFrameworkCore.NestedSet;
 /// <summary>Maps an entity's persisted nested-set structure.</summary>
 /// <typeparam name="TEntity">The mapped entity type.</typeparam>
 /// <remarks>Configuration is applied after the callback succeeds. Builder instances are not thread-safe.</remarks>
-public sealed class NestedSetBuilder<TEntity>
+public sealed partial class NestedSetBuilder<TEntity>
     where TEntity : class
 {
     /// <summary>The EF builder that receives configuration after the callback completes.</summary>
@@ -474,8 +474,11 @@ public sealed class NestedSetBuilder<TEntity>
             entity.SetAnnotation(NestedSetAnnotationNames.OrderMode, (int)orderMode);
         }
 
+        CompleteAncestorIndex();
+
         // WHY: Add indexes before provider finalizers budget column lengths, even without opt-in conventions.
         NestedSetIndexes.Reconcile((IConventionEntityType)entity);
+        NestedSetAncestorIndex.RemoveObsoleteProperties((IConventionEntityType)entity);
     }
 
     /// <summary>Starts or extends an order without changing the EF model during the configuration callback.</summary>
@@ -528,8 +531,10 @@ public sealed class NestedSetBuilder<TEntity>
     {
         var namesValue = _builder.Metadata.FindAnnotation(NestedSetAnnotationNames.OrderProperties)
             ?.Value;
+
         var descendingValue = _builder.Metadata.FindAnnotation(NestedSetAnnotationNames.OrderDescending)
             ?.Value;
+
         var nullSortValue = _builder.Metadata.FindAnnotation(NestedSetAnnotationNames.OrderNullSort)
             ?.Value;
 

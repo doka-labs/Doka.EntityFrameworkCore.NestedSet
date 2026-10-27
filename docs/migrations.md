@@ -201,6 +201,176 @@ local evidence. SafeMigrations remains optional.
 [pg-partial]: https://www.postgresql.org/docs/17/indexes-partial.html
 [pg-prepare]: https://www.postgresql.org/docs/17/sql-prepare.html
 
+## Optional ancestor index
+
+`HasAncestorIndex()` adds a generated required Boolean, named
+`NestedSetIsNonLeaf` by default, and one non-unique ascending index:
+
+```text
+(Scope?, NestedSetIsNonLeaf, TreeId, Right, Left, NodeKey)
+```
+
+The expression is derived from the final physical `Right` and `Left` columns.
+It contains no application visibility, metadata, or payload field. Scope is
+omitted when absent, repeated property identities are removed, and the existing
+three structural indexes and optional ordering index remain. The ordinary
+index ownership, exact adoption, naming, and collision rules apply to this
+additional path as well.
+
+For published Doka 10.5.0 models with implicit `utf8mb4` lengths on Scope, TreeId, and
+NodeKey together, native qualification reproduced error 1071 on both MySQL and
+MariaDB: three automatically assigned 255-character keys consume 3,060 bytes;
+the Boolean and two Int64 bounds bring this index to 3,077 bytes, above the
+3,072-byte InnoDB limit. Doka's automatic length assignment becomes explicit
+metadata before the complete later index can be rebudgeted. NestedSet's early
+index finalizer does not correct this independent provider defect, and the
+library does not silently shorten identities. Explicit application-domain
+lengths have their own qualification; that older published cohort did not
+qualify the affected implicit multi-string model.
+
+The [corrected private provider acceptance](qualification/query-composition.md#optional-ancestor-access)
+created the complete implicit-string schema on both engines without index
+prefixes. Its lengths remain convention-owned and parent-key compatible.
+That dated local result is separate from fresh qualification of the currently
+declared published Doka 10.6.2; review new column-length operations when adopting
+the provider correction.
+
+| Provider | Generated value | Storage |
+| --- | --- | --- |
+| Doka MySQL/MariaDB | Delimited guarded nonleaf predicate below | Virtual |
+| PostgreSQL 17 | Delimited guarded nonleaf predicate below | Stored |
+| SQLite | Delimited guarded nonleaf predicate below | Virtual |
+| SQL Server | `CONVERT(bit, CASE WHEN predicate THEN 1 ELSE 0 END)`, using the guarded predicate below | Non-persisted |
+
+In role notation, before substituting provider-delimited mapped column names,
+the guarded predicate is:
+
+```sql
+Right > CASE
+    WHEN Left = 9223372036854775807 THEN Left
+    ELSE Left + 1
+END
+```
+
+A split table can represent zero-width or reversed intervals without a
+cross-fragment width CHECK. Guarding the addition inside scalar CASE preserves
+classification of every signed Int64 pair, including Left at its maximum,
+without depending on the optimizer's evaluation order for Boolean AND. Normal
+invariant checks, validation, and repair remain separate contracts.
+
+These choices use each provider's computed-column support. PostgreSQL 17
+requires stored generated columns. SQLite permits adding a virtual generated
+column to a populated table but does not permit adding a stored one with
+`ALTER TABLE ADD COLUMN`. MySQL and MariaDB can index virtual generated columns;
+SQL Server can index an eligible deterministic non-persisted expression. See
+[PostgreSQL generated columns][pg-generated], [SQLite generated columns][sqlite-generated],
+[MySQL generated indexes][mysql-generated], [MariaDB generated columns][mariadb-generated],
+and [SQL Server computed indexes][sqlserver-generated].
+
+SQL Server's indexed-computed-column connection contract also applies to
+deployment and subsequent writers: `ANSI_NULLS`, `ANSI_PADDING`, `ANSI_WARNINGS`,
+`ARITHABORT`, `CONCAT_NULL_YIELDS_NULL`, and `QUOTED_IDENTIFIER` must be on, while
+`NUMERIC_ROUNDABORT` must be off. A read connection with incompatible settings
+can make the optimizer ignore the index. NestedSet does not silently change
+application session settings; qualify the application's actual connections
+alongside its migration runner.
+
+Enabling, renaming, or removing the option changes the EF model. Scaffold and
+review a normal migration, including the generated expression, physical table,
+index column order, upgrade data, and `Down` operations. Apply it before the
+new application model is deployed. Regenerate any compiled model after the
+configuration changes. Existing models that omit the option retain their
+current schema and query strategy; the library does not probe the database
+catalog at query time to guess whether an index has been installed.
+
+The [2026-10-19 qualification](qualification/query-composition.md#optional-ancestor-access)
+records generated-model writes and queries independently for released Doka,
+source binding only, and both prepared public APIs. These query-capability
+checks do not relabel earlier complete migration/lifecycle cohorts or establish
+native SQL Server execution on ARM. Storage and write-maintenance observations
+also remain separate from migration correctness.
+
+An existing compatible property can be adopted; conflicting application
+metadata is rejected. Reconfiguration removes only unused convention-owned
+properties and untouched library-owned indexes. It does not drop an
+application-created property or customized index to force an optimization.
+
+Ordinary EF migrations remain the independent schema path. Enabling an
+optional SafeMigrations adapter adds its own generated-column and index
+approval, replay, and drift contract; it does not make this option or ordinary
+hierarchy operations depend on SafeMigrations. The generated-column limitations
+below must be considered separately from index-only compatibility.
+
+<a id="optional-safemigrations-limits-for-the-ancestor-flag"></a>
+
+### Optional SafeMigrations generated-column contracts
+
+The current SafeMigrations contract covers the canonical generated nonleaf
+expression and the four generated integer CHECK predicates. The tests require
+actual fresh creation and populated upgrades,
+physical generated-column facets and values, exact migration history, and
+direct safe-operation replay. A second `MigrateAsync` call alone would stop at
+migration history and would not exercise the guards.
+
+SQLite safe-owned table creation declares the generated column's `INTEGER`
+type and `NOT NULL` facet. Ordinary EF-created SQLite tables retain their own
+DDL facets. A missing declared type or required facet in such an existing
+table must still be rejected; accepting the expression is not permission to
+repair externally different schema. Index drift and invalid existing
+coordinate rows remain independent rejection contracts.
+
+Use the declared published Doka 10.6.2 and SafeMigrations Core/adapters 10.6.0
+graph. Do not mix a new Core with older adapters or infer published-package
+qualification from an earlier local run. See
+[provider qualification](qualification/provider-migrations.md) for the executed
+2026-10-25 public scope and exact dated local inputs, commands, and results.
+Neither shipping NestedSet package
+requires SafeMigrations.
+
+#### Historical published 10.5.0 boundary
+
+The published 10.5.0 adapters did not support every generated-column path used
+by the option. Ordinary EF migrations remain the supported independent route
+for creating and upgrading this schema.
+
+| Adapter 10.5.0 | Fresh generated hierarchy table | Populated generated-column upgrade |
+| --- | --- | --- |
+| MySQL/MariaDB | Fails closed with `opaque_sql_expression` | Fails closed with `opaque_sql_expression`; data and migration history remain unchanged |
+| PostgreSQL | Fails closed with `opaque_sql_expression` | Fails closed with `opaque_sql_expression`; data and migration history remain unchanged |
+| SQLite | Creation is accepted, but its own table postcondition rejects the catalog facets and the batch rolls back | Generated `ADD COLUMN` path succeeds and preserves rows |
+| SQL Server | Native adapter qualification requires the x64 test lane | Native adapter qualification requires the x64 test lane |
+
+The MySQL/MariaDB and PostgreSQL cases are an explicit adapter policy boundary:
+the scaffolded `ComputedColumnSql` is classified as opaque SQL rather than a
+structured computed expression. This is not evidence of a Doka DDL defect and
+is not permission to bypass adapter SQL checks. Supporting automatic generated
+columns requires a separately qualified structured-expression route or narrow
+canonical recognizer in SafeMigrations.
+
+The SQLite fresh-table case is a distinct reproduced adapter inconsistency.
+EF's generated table DDL declares the computed column without a store type or
+`NOT NULL`. `pragma_table_xinfo` consequently reports an empty declared type
+and `notnull = 0`, while the model specifies required `INTEGER`. The adapter
+compares those facets and rejects its own newly created table with
+`doka_sm_postcondition`. The transaction removes the new table and records no
+migration. The adapter does read generated columns through `table_xinfo`; this
+is not a missing-column discovery issue. Its standalone generated-column ADD
+path emits explicit type/nullability facets, explaining the different upgrade
+outcome.
+
+Index-only replay and wrong-definition drift checks are independently covered
+on an ordinary EF-created generated-column schema. A passing safe index
+operation does not establish support for fresh safe table creation or generated
+column upgrades. See the
+[explicit adapter regression cases](../tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests/Integration/Indexes/AncestorIndexSafeMigrationTests.cs).
+No SafeMigrations package is required by either shipping NestedSet package.
+
+[pg-generated]: https://www.postgresql.org/docs/17/ddl-generated-columns.html
+[sqlite-generated]: https://www.sqlite.org/gencol.html
+[mysql-generated]: https://dev.mysql.com/doc/refman/8.4/en/generated-column-index-optimizations.html
+[mariadb-generated]: https://mariadb.com/docs/server/reference/sql-statements/data-definition/create/generated-columns
+[sqlserver-generated]: https://learn.microsoft.com/en-us/sql/relational-databases/indexes/indexes-on-computed-columns
+
 ## Existing tables
 
 Adopting NestedSet on populated data requires an explicit transition:

@@ -876,6 +876,30 @@ range fits the documented
 [PostgreSQL multicolumn B-tree rules](https://www.postgresql.org/docs/17/indexes-multicolumn.html).
 Actual plans still qualify whether the optimizer uses that access path.
 
+Doka's legacy strict ancestor route uses an independent relation of distinct
+NodeKey, TreeId, Left and Right coordinates for visible nonleaf owners. Mapped
+owners rejoin by identity after containment. The relation carries no application
+payload and cannot deduplicate caller occurrences, but adds a population pass
+and temporary structural storage. It remains available when a selection needs
+hierarchy decorrelation or either required public provider capability is absent.
+
+Eligible independent selections with the verified source binder instead share
+selected structural coordinates across their source envelope and exact pairs.
+Source-derived Scope/Tree points expose the existing Right index without a
+generated ancestor property. The ordinary strict route also requires the existing
+verified ordered-join capability. Only positively identified MySQL receives a
+second binding over matched identity pairs without deduplicating occurrences.
+MariaDB and unknown engine identification keep source-only binding. Both routes
+use ordinary source hydration and directed owner hydration. MySQL's recursive
+matched-pair completion fence separates repeated direction changes from one
+merged payload/EXISTS optimizer search. Each binding
+completes its own source; distinct logical operations are not one global source
+evaluation. This boundary can limit downstream predicate pushdown and adds
+intermediate work. Necessary envelope limits never replace exact containment,
+visibility, or final mapped endpoints. See the
+[ordinary strict-source qualification](#ordinary-strict-source-bounds-and-membership-witnesses)
+for its observed work and additional construction cost.
+
 An additional MySQL LATERAL experiment did not meet the selective-work target:
 one selected row still caused 100,001 owner index tuples to be visited. It was
 not adopted. A public configured-engine API is sufficient to select a supported
@@ -886,12 +910,30 @@ route have separate qualification; neither is inferred from the engine name.
 
 ### Ordinary strict source bounds and membership witnesses
 
+The frozen 2026-10-25 native work cohorts below precede the later matched-pair
+completion boundary. They qualify their recorded source-bounded strategy,
+not automatically that subsequent query shape. They use a wide tree with
+10,000,000 stored nodes and no generated ancestor index. Strict upward/downward
+composition retains one query command, four parameters, the expected scalar occurrence bag, zero
+materialized entities, and an empty tracker. Each of its two owner-coordinate
+range iterators reports the following actual rows per invocation:
+
 | Selected sources | MySQL owner rows | MariaDB owner rows | Scalar result rows |
 | ---: | ---: | ---: | ---: |
 | 1 | 1 | 1 | 1 |
 | 10 | 10 | 10 | 10 |
 | 100 | 100 | 100 | 100 |
 | 1,000 | 1,000 | 1,000 | 1,000 |
+
+These counts describe iterator output before the remaining nonleaf filtering,
+not distinct physical pages, bytes, or total query work. MariaDB's dynamic
+range-check wrappers report zero full scans and use the existing Right index;
+the nested estimated `access_type=ALL` label alone is not a measured full scan.
+MySQL's replanned range iterators likewise have actual bounded counts despite
+broad estimated row counts. The earlier MariaDB cohort read 10,000,000 rows in
+each owner materialization. The failed earlier MySQL ten-million run has only
+estimated EXPLAIN evidence, so it supplies no actual before/after latency ratio.
+The successful older MySQL million-node balanced case is a different workload.
 
 The corrected route adds matched-pair completion only for positively identified
 MySQL, using the existing public engine API. MariaDB and unknown identification
@@ -904,6 +946,55 @@ semantic and sample checks, not final full-suite, ten-million-node plan, or pair
 construction/read/materialization evidence for the changed query. MySQL's
 intermediate-key materialization and possible lost predicate pushdown remain
 part of that separate cost qualification.
+
+### Optional ancestor index and shared-source boundaries
+
+[`HasAncestorIndex()`](configuration.md#optional-ancestor-index) adds a generated
+nonleaf flag and an ascending `(Scope?, flag, TreeId, Right, Left, NodeKey)`
+index. Existing bounds/ordering indexes remain. It is opt-in because coordinate
+writes maintain another index and the index occupies database storage.
+The [capability table](configuration.md#current-query-capabilities) defines
+read eligibility; [implementation design](implementation-design.md#optional-ancestor-index-and-statement-local-source-binding)
+defines source sharing, narrow coordinates and late mapped hydration.
+A schema option or provider feature alone proves no workload benefit.
+
+Compare the exact source selection and downstream predicates, complete reads,
+construction/read allocations, coordinate writes and allocated index pages on
+both native engines. Attribute application-table work separately from hierarchy
+work and keep application indexes identical. `Any`, `Contains` and negated
+existence need their own plans: local directed edges can change semijoin eligibility.
+The indexed inclusive strategy directs structural matching and final owner
+hydration separately while leaving source hydration ordinary. Both native
+engines must retain the complete bag and unchanged work budget; identical SQL
+or correct result counts alone cannot establish a stable efficient plan.
+Do not merge source occurrences or discard collection identifiers to make a
+plan faster.
+
+The [ancestor-access summary](qualification/query-composition.md#optional-ancestor-access)
+retains higher storage/write costs, slower indexed chain/balanced reads, failed
+controls and substantial repeated temporary candidate CPU despite reduced
+physical base access. Its `64 * (S + P)` fixture allowance is not a universal
+B-tree complexity bound or proof of output-proportional CPU. Requested source
+occurrences, distinct selected nodes and completed structural cardinality are
+separate quantities. Missing counters remain unknown, never zero.
+
+#### Endpoint provenance construction
+
+Endpoint inspection uses operation-local lexical scopes and memoized stable
+paths; it never caches a context, caller capture or completed query globally.
+Named mappings, independent paths and mutable query carriers cannot borrow a
+visibility proof. Opaque object-typed query carriers do not gain provenance by
+casts, `as` or `AsQueryable`, and no application getter runs to recover it.
+
+The [endpoint allocation controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/CompositionSourceBindingEndpointTests.Scaling.cs)
+retain fixed 64/128/256 KiB limits at shared-source depths 12/24/48 and a 256 KiB
+ceiling for alternating depth-24 paths. The historical lexical-memo repair
+reduced that accepted/rejected depth-24 fixture from approximately 19.6 GB to
+99,888/97,056 bytes. Later steady-state controls warm CLR metadata once but
+create a fresh operation-local proof for measurement: accepted 90,176 bytes;
+foreign-mapping rejection 87,440-87,480 bytes. Those are different measurement
+boundaries, not another before/after ratio. All require zero construction I/O
+and retain adversarial mapping/capture rejection.
 
 ### Deterministic construction and transport budgets
 
@@ -1059,6 +1150,13 @@ do not attribute every difference to NestedSet's six compositors.
 
 ### Provider plan boundaries
 
+Provider-specific expressions must preserve the same structural contracts.
+Self-first owner decisions, selected-anchor key boundaries and separate self
+or non-leaf expansion are physical strategies to qualify against the actual
+profile. Query-bearing predicates and direction changes need their own plans:
+an early boundary can prevent a later selective predicate from reaching a
+broad intermediate relation.
+
 An internal UNION can retain EF row identifiers for owned and ordinary
 collection projections, but deduplication can also materialize a large
 structural relation before an outer payload filter. That is a strategy
@@ -1076,6 +1174,20 @@ structural pairs. Dated qualification distinguishes the portable-provider
 results from that feature-enabled strategy. The current published Doka 10.6.2
 declaration does not transfer an earlier private build's performance to the
 shipping package; fresh public-binary qualification remains separate.
+
+The subtree-pair work test,
+[`ConfiguredProviderPairsPreserveSemanticsAndQualifyAvailableNativeWork`](../tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Querying/Composition/Performance/HierarchyCompositionWorkTests.cs),
+executes the same result, command, materialization and native-work observations
+for the actual provider installation. Its fixture does not configure
+`HasAncestorIndex`, and the test does not require source binding. The public
+configured-engine capability determines its assertions: available MySQL support
+must satisfy the optimized strategy and unchanged proportional-work budgets;
+an unavailable capability must retain the portable strategy and full semantics
+with explicit unqualified work observations. The selected strategy cannot choose
+the weaker assertion branch, and neither installation creates a skipped test.
+This older subtree fast path and the optional indexed-ancestor path have
+independent prerequisites. Neither an index option nor the public
+`WithMaterializedSource` API alone supplies configured-engine detection.
 
 Within that upward formulation, distinct measured Node/Day pairs share their
 day-specific path and metadata proof before facts rejoin. A scalar distinct

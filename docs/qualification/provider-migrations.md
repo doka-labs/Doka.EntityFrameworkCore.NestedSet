@@ -94,6 +94,12 @@ package qualification or a rerun of every upstream provider/capacity suite.
 
 ## Current local adapter contract
 
+The current same-source adapters support the canonical generated nonleaf CASE
+expression, four generated integer CHECKs and safe-owned SQLite generated
+column facets. The 17 old rejection assertions were stale for this selected
+graph; they were not 17 new provider bugs. Updated tests retain genuine drift
+and data-rejection controls.
+
 Five actual historical server upgrades cover PostgreSQL explicit schema and
 MySQL/MariaDB with and without explicit database qualification. Accepted index
 drops preserve independent column evidence, so all three integer widenings

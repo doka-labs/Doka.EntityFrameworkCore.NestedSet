@@ -154,6 +154,24 @@ internal static class NestedSetIndexes
             desired.Add(new DesiredIndex(properties, descending));
         }
 
+        if (mapping.AncestorIndexProperty is { } flag)
+        {
+            // WHY: These are the consumed nonleaf, tree, interval, and rehydration roles. Depth and application
+            // visibility are not index requirements; deduplication keeps scalar identity aliases legal.
+            var ancestor = new List<IConventionProperty>(6);
+            if (mapping.Scope is { } scope)
+            {
+                ancestor.Add(scope.Resolve(entity));
+            }
+
+            ancestor.Add(flag.Resolve(entity));
+            ancestor.Add(mapping.TreeId.Resolve(entity));
+            ancestor.Add(right);
+            ancestor.Add(left);
+            ancestor.Add(mapping.NodeKey.Resolve(entity));
+            desired.Add(Ascending(ancestor.Distinct()));
+        }
+
         return desired;
     }
 
