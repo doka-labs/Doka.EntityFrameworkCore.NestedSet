@@ -132,6 +132,21 @@ Queries respect EF query filters and are no-tracking by default. Whole trees
 are returned in `Left` preorder. A global business `OrderBy` would reorder
 different levels together; configure sibling ordering on the model instead.
 
+## Compose directions and paths
+
+`SelectSubtrees`, `SelectAncestors`, and `SelectAncestorsOrSelf` project several
+sources and their related nodes with mapped structural distance.
+`WherePathEdges` requires a complete visible direct path;
+`WhereAnyAncestorOrSelf` tests visible existence;
+`WhereNearestAncestorOrSelf` chooses the nearest candidate before testing its
+value and complete path. Rejection never falls back to a farther candidate.
+
+These synchronous methods build ordinary deferred EF queries. Complete them
+with application joins, filters, scalar aggregates, and an async terminal such
+as `ToListAsync(cancellationToken)`. They preserve Scope, TreeId, query filters,
+and row multiplicity without loading anchors or a tree. Domain rules for
+effective dates, metadata, roles, and reporting remain application-owned.
+
 ## Writes and recovery
 
 Use explicit facade operations for insert, move, detach, delete, bulk import,

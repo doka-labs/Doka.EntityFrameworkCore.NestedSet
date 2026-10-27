@@ -91,6 +91,38 @@ internal static class NestedSetKeyFilter<TEntity>
         return Expression.Lambda<Func<TEntity, bool>>(Equal(parameter, property, value), parameter);
     }
 
+    /// <summary>Builds a query comparison using the finalized member or its shadow-storage marker.</summary>
+    /// <typeparam name="TValue">The exact mapped scalar type.</typeparam>
+    /// <param name="property">The finalized key or scope metadata.</param>
+    /// <param name="value">The captured scalar value compared in the database.</param>
+    /// <returns>A parameterized scalar equality without a redundant EF method marker for CLR members.</returns>
+    internal static Expression<Func<TEntity, bool>> Equal<TValue>(
+        IProperty property,
+        TValue value
+    )
+    {
+        var parameter = Expression.Parameter(typeof(TEntity), "node");
+
+        return Expression.Lambda<Func<TEntity, bool>>(Equal(parameter, property, value), parameter);
+    }
+
+    /// <summary>Builds metadata-aware scalar equality over an existing exact query alias.</summary>
+    /// <typeparam name="TValue">The mapped scalar type, including nullable parent references.</typeparam>
+    /// <param name="entity">The alias already owned by the surrounding predicate.</param>
+    /// <param name="property">The exact finalized scalar metadata.</param>
+    /// <param name="value">The captured scalar value compared in the database.</param>
+    /// <returns>A typed parameterized comparison retaining the mapped member, converter and store semantics.</returns>
+    internal static Expression Equal<TValue>(
+        Expression entity,
+        IProperty property,
+        TValue value
+    )
+    {
+        RequireMappedType<TValue>(property);
+
+        return EqualValue(NestedSetExpressions.QueryProperty(entity, property), value);
+    }
+
     /// <summary>Builds scalar equality sharing the surrounding lambda's entity expression.</summary>
     /// <typeparam name="TValue">The mapped scalar value type.</typeparam>
     /// <param name="entity">The caller-owned entity expression.</param>

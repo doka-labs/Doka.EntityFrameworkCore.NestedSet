@@ -15,6 +15,11 @@ It is not a delivery-date promise. Released packages, release notes, and the
   every subsequent public API change for compatibility. Each release retains
   its own qualified source, artifacts, and public readback.
 - Keep the EF-independent core limited to contracts useful without persistence.
+- Keep 10.1.0 query composition generic while applying the explicitly approved
+  provider-package/registration break in [D-020](docs/decisions/D-020-provider-owned-runtime-packages.md).
+  One shared EF engine serves the MySql, Postgres, Sqlite and SqlServer adapters.
+  SignalLab reporting, supervisor selection and finite chains remain consumer examples;
+  their business rules do not become structural library APIs.
 - Recheck hosted CI and security settings, then retain the stable candidate,
   signed tag, NuGet trusted publishing, provenance, and public readback evidence.
 - Qualify ordinary migrations on every supported provider and optional
@@ -63,7 +68,7 @@ Through September 2027 the project does not intend to:
 - add another ORM adapter without a concrete maintained consumer and full
   support decision;
 - implement authentication, group membership, role assignment, privilege
-  conflict rules, or application authorization;
+  conflict rules, or application authorization in the shipping library;
 - represent graphs with multiple parents or cycles;
 - promise a universal maximum tree size, latency, or throughput;
 - make GitHub benchmark timing a release gate;

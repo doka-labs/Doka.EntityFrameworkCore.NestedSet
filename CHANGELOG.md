@@ -13,6 +13,15 @@ The source version is `10.1.0`. The historical `10.0.0` shipped declarations
 remain recorded; the provider-package and registration transition below is
 explicitly breaking.
 
+### Added
+
+- Compose multiple subtrees, strict ancestors and ancestors-or-self through the
+  existing scoped, unscoped and exact-tree bindings. Preserve source occurrences,
+  mapped distances, application filters and mixed-direction composition.
+- Filter complete visible paths, any visible ancestor or the nearest candidate
+  before its value/path checks, without preliminary entity loads or fallback to
+  a farther matching owner.
+
 ### Changed
 
 - Split native integration into `.MySql`, `.Postgres`, `.Sqlite`, and `.SqlServer`

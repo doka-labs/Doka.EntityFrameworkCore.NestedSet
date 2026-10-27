@@ -51,6 +51,53 @@ hierarchy before the one operation being assessed.
 | Native discovery loses mixed-source variants | Copied official runner configuration | Genuinely empty and over-filtered theories still fail |
 | Optional SQL Server adapter loses physical contracts | Generated schemas, absent indexes, integer widening, and populated CHECK proof/replay | Index columns/directions, disabled/untrusted CHECKs, invalid coordinates, narrowing, and complete rollback |
 
+## Independent comparison and plan scenarios
+
+`ComparisonSeedIsReusedAcrossContexts` verifies the same immutable seed with
+fresh contexts, and `ResettingSiblingRowsPreservesComparisonSeed` verifies that
+the native-type and collection-mode database can reset without destroying it.
+
+`ScopedHierarchyQueriesHaveServerPlanEvidence` discovers 18 combinations of
+Scope, anchor offset, and Parent/Ancestors/Descendants query. Each row retains
+its own expected rows and native plan checks. The independent
+`ConfiguredPredecessorHasServerPlanEvidence` protects the configured-order
+lookup. The class-owned seed is prepared once; both suite fixtures collect
+scenario-keyed evidence and write the complete legacy artifacts in deterministic
+order at asynchronous disposal. Tests do not recover scenario meaning through
+numeric result-list positions, reseed per theory row, or overwrite each other's
+plan files.
+
+The complete MySQL/MariaDB family comparison on 2026-10-25 executed 108 before
+and 178 after cases without failures or skips. Both runs used two database
+containers and one Ryuk helper. Isolated databases increased from four to six:
+the immutable key fixture costs one extra database, 16 `CREATE TABLE` and 28
+`CREATE INDEX` statements per engine. Total seed saves stayed at 108 and actual
+payload readbacks at 30,592 rows; the separate cases do not seed sixteen times.
+The server-plan schema DDL multiset is unchanged. These are instrumented
+functional counts, not setup-speed measurements; observer queries and native
+versus EF command layers remain separate.
+
+`QueryPlanFixtureCleanupTests` covers successful teardown, synchronous and
+asynchronous failures, simultaneous evidence/cleanup failures, multiple failed
+cleanup tasks, cancellation, and preservation of an explicitly thrown aggregate.
+Both fixtures share this teardown boundary so diagnostic failures cannot hide
+resource failures or prevent cleanup.
+
+Sources: [key comparisons](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/KeyFilterComparisonTests.cs),
+[seed reuse and reset isolation](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/KeyFilterComparisonTests.Seed.cs),
+[isolated comparison fixture](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/KeyFilterComparisonFixture.cs),
+[hierarchy and predecessor plans](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/ServerQueryPlanTests.cs),
+[query-plan fixture](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/ServerQueryPlanFixture.cs),
+[shared native plan support](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/QueryPlanTestSupport.cs),
+and [fixture cleanup contracts](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Observation/QueryPlanFixtureCleanupTests.cs).
+
+The core `DefaultBoundsRemainPrintable` rows independently exercise direct,
+boxed `object`, and interpolated formatting of default bounds. The boxed case
+performs an actual object conversion; its name does not stand in for that path.
+The separate valid-bounds case retains its coordinate-format assertion.
+
+Source: [bounds formatting contracts](../tests/Doka.NestedSet.Tests/Unit/NestedSetBoundsTests.cs).
+
 The sections below name the source methods behind the matrix. The matrix is a
 selection guide, not a replacement for the full provider suites.
 
@@ -1038,6 +1085,25 @@ Sources: [metadata](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/
 [bulk allocation](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/BulkPlanAllocationTests.cs),
 [insert commands](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Mutations/Facade/NestedSetMutationFacadeBudgetTests.cs),
 and [move budgets](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Hierarchy/Movement/AutomaticMoveBudgetTests.cs).
+
+The expression-factory qualification (planned documentation: `qualification/query-performance.md#expression-construction`)
+adds mapped-member construction counterexamples for mutable/custom metadata,
+exact named models, independent aliases and weak lifetimes. It rejects an
+additional cache rather than adding retained state without a demonstrated
+complete-report benefit. Fixed path literals have a direct reuse regression
+with an old-binary negative control; whole-proof bytes remain diagnostic.
+Interleaved row-aware and independent edge rules execute in reverse order
+alongside nearest-before-value rejection. The record retains native MariaDB/
+MySQL reads, deep work budgets and unfavorable elapsed observations separately
+from the pure construction measurements. Existing allocation ceilings remain.
+
+## Provider-specific identity lengths
+
+- `RuntimeModelRetainsPrimitiveNativeIdentityPolicies` and
+  `CapturedIdentityPolicyKeepsBothBooleanDecisions` protect the adapter's
+  captured Scope/TreeId decisions. Missing, non-Boolean, namesake-assembly and
+  mapping-subclass controls reject invalid capture or unsupported recognition
+  instead of inferring a native policy.
 
 ## Execution and evidence limits
 

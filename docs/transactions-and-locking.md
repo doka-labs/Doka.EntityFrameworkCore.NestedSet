@@ -97,6 +97,42 @@ before calling a nested-set mutation in the same transaction. See Microsoft's
 and [SET XACT_ABORT](https://learn.microsoft.com/en-us/sql/t-sql/statements/set-xact-abort-transact-sql)
 documentation.
 
+## Read consistency
+
+The query composers do not start transactions or change isolation settings.
+One scalar statement retains the provider's configured read semantics; it does
+not automatically strengthen them. Collection loading through split queries
+and applications executing several terminals can require several statements.
+
+| Provider | Isolation for a sample-owned read transaction |
+| --- | --- |
+| Doka MySQL/MariaDB and PostgreSQL | RepeatableRead |
+| SQL Server | Snapshot |
+| SQLite | Serializable, deferred begin |
+
+The owned SQLite path uses the driver's explicit deferred transaction overload.
+It does not reserve the writer lock with `BEGIN IMMEDIATE` for a read-only report.
+With WAL configured by the application, a concurrent writer can commit while the
+report retains its original read snapshot. Rollback-journal mode has different
+reader/writer blocking behavior; the helper does not change journal mode or
+upgrade its reads into writes. See the driver's
+[deferred transaction contract](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/transactions#deferred-transactions)
+and [SQLite isolation](https://www.sqlite.org/isolation.html).
+
+The helper disposes both its native SQLite transaction and its EF wrapper, and
+balances only connection opens acquired by that attempt, including callback
+failure and cancellation. An already open caller connection remains open.
+
+The helper accepts an adequate existing caller transaction, including
+Serializable, and leaves its final commit and disposal to the caller. Weaker
+caller isolation is rejected before the first sample reader. SQL Server's
+database owner enables snapshot isolation in advance; the helper never changes
+server settings. A retry replays the complete read workflow in a new snapshot,
+including catalog validation and every frontier; it cannot reuse earlier hops.
+These are consumer orchestration rules, not implicit behavior of the generic
+query API. The [execution matrix](query-composition-regression-coverage.md#execution-qualification)
+records their actual provider qualification.
+
 ## Retrying execution strategies
 
 A retrying execution strategy must own the complete repeatable application

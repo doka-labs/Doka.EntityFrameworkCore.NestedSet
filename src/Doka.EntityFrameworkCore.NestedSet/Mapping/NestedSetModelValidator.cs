@@ -35,6 +35,13 @@ internal static class NestedSetModelValidator
         var depth = Property(entity, NestedSetPropertyRoles.Depth, required);
         var position = Property(entity, NestedSetPropertyRoles.Position, required);
         var scope = Property(entity, NestedSetPropertyRoles.Scope, false);
+        var ancestorIndex = NestedSetAncestorIndex.Name(entity) is { } flagName
+            ? entity.FindProperty(flagName)
+            ?? (required
+                ? throw new InvalidOperationException(
+                    $"Nested-set ancestor-index property '{flagName}' on '{entity.Name}' is not mapped.")
+                : null)
+            : null;
 
         if (nodeKey is null
             || treeId is null
@@ -47,9 +54,8 @@ internal static class NestedSetModelValidator
             return null;
         }
 
-        var roles = scope is null
-            ? new[]
-            {
+        IConventionProperty[] roles = scope is null
+            ? [
                 nodeKey,
                 treeId,
                 parent,
@@ -57,9 +63,8 @@ internal static class NestedSetModelValidator
                 right,
                 depth,
                 position,
-            }
-            : new[]
-            {
+            ]
+            : [
                 nodeKey,
                 scope,
                 treeId,
@@ -68,7 +73,7 @@ internal static class NestedSetModelValidator
                 right,
                 depth,
                 position,
-            };
+            ];
 
         var (orderProperties, orderDescending, orderNullSort, orderMode) = ValidateOrder(
             entity,
@@ -93,13 +98,11 @@ internal static class NestedSetModelValidator
                 orderProperties,
                 orderDescending,
                 orderNullSort,
-                orderMode);
+                orderMode,
+                ancestorIndex);
         }
 
-        if (roles
-                .Distinct()
-                .Count()
-            != roles.Length)
+        if (roles.Distinct().Count() != roles.Length)
         {
             throw new InvalidOperationException(
                 $"Nested-set entity '{entity.Name}' requires a different property for every structural role.");
@@ -157,7 +160,8 @@ internal static class NestedSetModelValidator
             orderProperties,
             orderDescending,
             orderNullSort,
-            orderMode);
+            orderMode,
+            ancestorIndex);
 
         if (entity.GetMappingStrategy() == RelationalAnnotationNames.TpcMappingStrategy
             && entity
@@ -488,7 +492,7 @@ internal static class NestedSetModelValidator
             || nullSortValue is not int[] nullSort
             || names.Length != descending.Length
             || names.Length != nullSort.Length
-            || nullSort.Any(value => value != -1 && !Enum.IsDefined((NullSortOrder)value)))
+            || nullSort.Any(innerValue => innerValue != -1 && !Enum.IsDefined((NullSortOrder)innerValue)))
         {
             throw new InvalidOperationException(
                 $"Nested-set entity '{entity.Name}' requires matching sibling-order property, direction, and null-order arrays.");
@@ -506,7 +510,7 @@ internal static class NestedSetModelValidator
             .ToArray();
 
         var nullSortOrders = nullSort
-            .Select(value => value == -1 ? (NullSortOrder?)null : (NullSortOrder)value)
+            .Select(innerValue => innerValue == -1 ? (NullSortOrder?)null : (NullSortOrder)innerValue)
             .ToArray();
 
         NestedSetOrdering.ValidateProperties(entity, names, structuralNames, nullSortOrders, validateNullability);
@@ -553,6 +557,7 @@ internal sealed class NestedSetModelDescriptor
     /// <param name="orderDescending">The direction matching every domain sort property.</param>
     /// <param name="orderNullSort">The explicit null placement matching every domain sort property.</param>
     /// <param name="orderMode">The configured automatic sibling-order policy.</param>
+    /// <param name="ancestorIndexProperty">The optional generated nonleaf scalar, separate from writable structure.</param>
     internal NestedSetModelDescriptor(
         IReadOnlyProperty nodeKey,
         IReadOnlyProperty? scope,
@@ -565,7 +570,8 @@ internal sealed class NestedSetModelDescriptor
         IReadOnlyList<IReadOnlyProperty> orderProperties,
         IReadOnlyList<bool> orderDescending,
         IReadOnlyList<NullSortOrder?> orderNullSort,
-        NestedSetOrderMode? orderMode
+        NestedSetOrderMode? orderMode,
+        IReadOnlyProperty? ancestorIndexProperty = null
     )
     {
         NodeKey = NestedSetPropertyDescriptor.Create(nodeKey);
@@ -576,11 +582,14 @@ internal sealed class NestedSetModelDescriptor
         Right = NestedSetPropertyDescriptor.Create(right);
         Depth = NestedSetPropertyDescriptor.Create(depth);
         Position = NestedSetPropertyDescriptor.Create(position);
+        AncestorIndexProperty = ancestorIndexProperty is null
+            ? null
+            : NestedSetPropertyDescriptor.Create(ancestorIndexProperty);
+
         OrderMode = orderMode;
 
-        var structuralProperties = Scope is { } scopeDescriptor
-            ? new[]
-            {
+        NestedSetPropertyDescriptor[] structuralProperties = Scope is { } scopeDescriptor
+            ? [
                 NodeKey,
                 scopeDescriptor,
                 TreeId,
@@ -589,9 +598,8 @@ internal sealed class NestedSetModelDescriptor
                 Right,
                 Depth,
                 Position,
-            }
-            : new[]
-            {
+            ]
+            : [
                 NodeKey,
                 TreeId,
                 Parent,
@@ -599,11 +607,14 @@ internal sealed class NestedSetModelDescriptor
                 Right,
                 Depth,
                 Position,
-            };
+            ];
 
         StructuralProperties = Array.AsReadOnly(structuralProperties);
         var order = new NestedSetOrderPropertyDescriptor[orderProperties.Count];
 
+        // WHY: Align each order property with its direction and null-placement vectors.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < order.Length; index++)
         {
             order[index] = new NestedSetOrderPropertyDescriptor(
@@ -630,6 +641,12 @@ internal sealed class NestedSetModelDescriptor
         var right = RequiredProperty(entity, NestedSetPropertyRoles.Right);
         var depth = RequiredProperty(entity, NestedSetPropertyRoles.Depth);
         var position = RequiredProperty(entity, NestedSetPropertyRoles.Position);
+        var ancestorIndex = NestedSetAncestorIndex.Name(entity) is { } flagName
+            ? entity.FindProperty(flagName)
+            ?? throw new InvalidOperationException(
+                $"Nested-set ancestor-index property '{flagName}' on '{entity.Name}' is not mapped.")
+            : null;
+
         var namesValue = entity.FindAnnotation(NestedSetAnnotationNames.OrderProperties)?.Value;
         var directionsValue = entity.FindAnnotation(NestedSetAnnotationNames.OrderDescending)?.Value;
         var nullSortValue = entity.FindAnnotation(NestedSetAnnotationNames.OrderNullSort)?.Value;
@@ -652,7 +669,8 @@ internal sealed class NestedSetModelDescriptor
                 [],
                 [],
                 [],
-                null);
+                null,
+                ancestorIndex);
         }
 
         if (namesValue is not string[] { Length: > 0 } names
@@ -660,7 +678,7 @@ internal sealed class NestedSetModelDescriptor
             || nullSortValue is not int[] nullSort
             || names.Length != directions.Length
             || names.Length != nullSort.Length
-            || nullSort.Any(value => value != -1 && !Enum.IsDefined((NullSortOrder)value)))
+            || nullSort.Any(innerValue => innerValue != -1 && !Enum.IsDefined((NullSortOrder)innerValue)))
         {
             throw new InvalidOperationException(
                 $"Nested-set entity '{entity.Name}' has invalid finalized sibling-order metadata.");
@@ -680,7 +698,7 @@ internal sealed class NestedSetModelDescriptor
             .ToArray();
 
         var nullSortOrders = nullSort
-            .Select(value => value == -1 ? (NullSortOrder?)null : (NullSortOrder)value)
+            .Select(innerValue => innerValue == -1 ? (NullSortOrder?)null : (NullSortOrder)innerValue)
             .ToArray();
 
         return new NestedSetModelDescriptor(
@@ -695,7 +713,8 @@ internal sealed class NestedSetModelDescriptor
             orderProperties,
             directions,
             nullSortOrders,
-            mode);
+            mode,
+            ancestorIndex);
     }
 
     /// <summary>Gets the stable hierarchy identity.</summary>
@@ -722,6 +741,9 @@ internal sealed class NestedSetModelDescriptor
     /// <summary>Gets the Int64 sibling position.</summary>
     internal NestedSetPropertyDescriptor Position { get; }
 
+    /// <summary>Gets the optional generated nonleaf scalar without treating it as writable hierarchy structure.</summary>
+    internal NestedSetPropertyDescriptor? AncestorIndexProperty { get; }
+
     /// <summary>Gets every structural property, with Scope present only for scoped entities.</summary>
     internal IReadOnlyList<NestedSetPropertyDescriptor> StructuralProperties { get; }
 
@@ -742,8 +764,7 @@ internal sealed class NestedSetModelDescriptor
     private static IReadOnlyProperty? OptionalProperty(
         IReadOnlyEntityType entity,
         string role
-    ) => entity.FindAnnotation(NestedSetAnnotationNames.Prefix + role)
-        ?.Value is string name
+    ) => entity.FindAnnotation(NestedSetAnnotationNames.Prefix + role)?.Value is string name
         ? entity.FindProperty(name)
         : null;
 }

@@ -70,6 +70,10 @@ internal sealed class NestedSetOptionsExtension : IDbContextOptionsExtension
         // NestedSetDbContext base class. Context-local coordination remains in a weak table owned by the save wrapper.
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IInterceptor, NestedSetSaveGuardInterceptor>());
 
+        // WHY: Captured fact queries must be expanded by EF before source-dependent strategy selection.
+        // The stateless interceptor composes with application interceptors and owns no context or query state.
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IInterceptor, NestedSetQueryExpressionInterceptor>());
+
         // WHY: EF passes each save's exact write set to IDatabase after every SavingChanges callback and before the
         // first command. Validating managed insertions there needs no per-command interception. Replace works in
         // either extension order: it overrides an earlier provider registration and a later TryAdd keeps it.

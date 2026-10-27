@@ -88,6 +88,27 @@ resolution remains in the generated SQL; no API requires loading the anchor
 entity first. Public queries respect application query filters and always add
 the required Scope and TreeId predicates.
 
+All three query bindings, including `NestedSetTree<TEntity, TTreeId>`, also
+expose these deferred compositors:
+
+| Member | Contract |
+| --- | --- |
+| `SelectSubtrees(anchors, projection)` | Anchor, inclusive descendant, mapped depth difference |
+| `SelectAncestors(nodes, projection)` | Source, strict ancestor, mapped depth difference |
+| `SelectAncestorsOrSelf(nodes, projection)` | Source, ancestor or self, mapped depth difference |
+| `WherePathEdges(source, anchor, node, edgeAllowed)` | Complete visible direct path, upper-exclusive and lower-inclusive |
+| `WhereAnyAncestorOrSelf(source, node, predicate)` | Visible ancestor/self existence, without a complete-path requirement |
+| `WhereNearestAncestorOrSelf(source, node, candidate, predicate)` | Nearest candidate first; value and complete visible path afterward, without fallback |
+
+The projection is `Expression<Func<TEntity, TEntity, int, TResult>>`.
+Path predicates receive `(row, directParent, directChild)`; owner predicates
+receive `(row, owner)`. Endpoints select existing mapped aliases from a query
+owned by the same EF context. Each filter preserves the source bag and adds no
+ordering. No method performs I/O or accepts a cancellation token: the async EF
+terminal operation owns execution and cancellation. See
+[Query Composition](query-composition.md) for visibility, error, tracking,
+identity, rank, and mixed-direction contracts.
+
 ## Mutation facade
 
 Both facades expose immediate asynchronous operations:

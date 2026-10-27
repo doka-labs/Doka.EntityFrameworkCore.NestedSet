@@ -376,7 +376,7 @@ query, its visibility proof, or parameter values across operations.
 
 ### Confirmation
 
-The query qualification (planned documentation: `../qualification/query-composition.md#optional-ancestor-access`)
+The [query qualification](../qualification/query-composition.md#optional-ancestor-access)
 records historical native read/write/storage controls, binary provenance,
 negative outcomes and mixed costs. The
 [provider/migration qualification](../qualification/provider-migrations.md)
@@ -385,7 +385,7 @@ and the remaining native x64 SQL Server boundary. Accepted status records
 the selected design; the implementation and its final verification accompany
 the ancestor-index feature commit.
 
-The regression map (planned documentation: `../query-composition-regression-coverage.md#optional-ancestor-index-and-source-binding`)
+The [regression map](../query-composition-regression-coverage.md#optional-ancestor-index-and-source-binding)
 owns the exact test inventory. Required controls cover exact public capability
 identity and lifetimes; independent endpoint provenance; mapped/filter/bag
 semantics; fresh/populated/down/compiled migrations; generated-value rollback;
@@ -515,8 +515,8 @@ informational diagnosis when that path is actually requested.
 - [Generated property-bag identity and exact recovery tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Composition/Models/AncestorIndexQueryTests.GeneratedBags.cs)
 - [Persistent native ancestor work controls](../../tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Querying/Composition/Performance/AncestorIndexWorkTestBase.cs)
 - [Post-structural-write generated refresh recovery tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests/Integration/AncestorIndexLifecycleTests.LateRollback.cs)
-- Focused regression map and allocation observations (planned documentation: `../query-composition-regression-coverage.md#optional-ancestor-index-and-source-binding`)
-- Historical local and native qualification (2026-10-19) (planned documentation: `../qualification/query-composition.md#optional-ancestor-access`)
+- [Focused regression map and allocation observations](../query-composition-regression-coverage.md#optional-ancestor-index-and-source-binding)
+- [Historical local and native qualification (2026-10-19)](../qualification/query-composition.md#optional-ancestor-access)
 - [Performance boundaries](../performance.md#optional-ancestor-index-and-shared-source-boundaries)
 
 

@@ -9,69 +9,16 @@ internal sealed partial class NestedSetStore<TEntity, TKey, TTreeId, TScope>
     /// <summary>Gets the structural-only projection; entity constructors and payload columns are excluded.</summary>
     internal IQueryable<NestedSetNode<TKey>> Structure => Nodes.Select(Map.Projection);
 
-    /// <summary>Closes the parent join over its actual nullable CLR type once per typed store.</summary>
-    private static readonly
-        Func<IQueryable<TEntity>, IProperty, IProperty, string?, IQueryable<NestedSetParentLink<TKey>>> s_parentLinks =
-            typeof(NestedSetStore<TEntity, TKey, TTreeId, TScope>).GetMethod(
-                    nameof(ParentLinksTyped),
-                    BindingFlags.NonPublic | BindingFlags.Static)!
-                // WHY: EF can require a nullable CLR key; its parent reuses that nullable type instead of nesting it.
-                .MakeGenericMethod(
-                    typeof(TKey).IsValueType && Nullable.GetUnderlyingType(typeof(TKey)) is null
-                        ? typeof(Nullable<>).MakeGenericType(typeof(TKey))
-                        : typeof(TKey))
-                .CreateDelegate<Func<IQueryable<TEntity>, IProperty, IProperty, string?,
-                    IQueryable<NestedSetParentLink<TKey>>>>();
-
     /// <summary>Gets canonical parent links according to the database's principal-key comparison rules.</summary>
     internal IQueryable<NestedSetParentLink<TKey>> ParentLinks =>
-        s_parentLinks(Nodes, Map.KeyProperty, Map.ParentProperty, Map.KeyCollation);
-
-    /// <summary>Joins typed nullable parent storage to typed principal keys without materializing payload.</summary>
-    private static IQueryable<NestedSetParentLink<TKey>> ParentLinksTyped<TParent>(
-        IQueryable<TEntity> nodes,
-        IProperty key,
-        IProperty parent,
-        string? collation
-    )
-    {
-        var principal = Expression.Parameter(typeof(TEntity), "principal");
-        var child = Expression.Parameter(typeof(TEntity), "child");
-        var principalKey = Expression.Convert(NestedSetExpressions.Property(principal, key), typeof(TParent));
-        Expression parentKey = NestedSetExpressions.Property(child, parent);
-
-        if (collation is not null)
-        {
-            // WHY: The nullable parent column must use the referenced principal's collation when aliases differ.
-            // Collate preserves the actual mapped nullable type and its provider converter inside the SQL join.
-            parentKey = Expression.Call(
-                typeof(RelationalDbFunctionsExtensions),
-                nameof(RelationalDbFunctionsExtensions.Collate),
-                [typeof(TParent)],
-                Expression.Property(null, typeof(EF), nameof(EF.Functions)),
-                parentKey,
-                Expression.Constant(collation));
-        }
-
-        var principalSelector = Expression.Lambda<Func<TEntity, TParent>>(principalKey, principal);
-        var parentSelector = Expression.Lambda<Func<TEntity, TParent>>(parentKey, child);
-        var pairs = nodes.Join(
-            nodes,
-            principalSelector,
-            parentSelector,
-            (
-                principalNode,
-                childNode
-            ) => new
-            {
-                Parent = principalNode,
-                Child = childNode,
-            });
-
-        return pairs.Select(pair => new NestedSetParentLink<TKey>(
-            EF.Property<TKey>(pair.Child, key.Name),
-            EF.Property<TKey>(pair.Parent, key.Name)));
-    }
+        NestedSetParentExpressions<TEntity, NestedSetParentLink<TKey>>.Join(
+            Nodes,
+            Map.KeyProperty,
+            Map.ParentProperty,
+            Map.KeyCollation,
+            (principal, child) => new NestedSetParentLink<TKey>(
+                EF.Property<TKey>(child, Map.KeyProperty.Name),
+                EF.Property<TKey>(principal, Map.KeyProperty.Name)));
 
     /// <summary>Gets all structural nodes in this exact tree without tracking.</summary>
     /// <value>A deferred query over every node in this exact tree.</value>

@@ -441,9 +441,13 @@ a successful restore.
 `PublicAPI.Shipped.txt` records the reviewed stable release contract.
 `PublicAPI.Unshipped.txt` contains additions for the next stable release,
 including declarations first published in an RC. The initial `10.0.0` contract
-is recorded in both shipped baselines; the unshipped files retain only the
-nullable directive until new declarations are added. The Public API analyzer
-must remain clean.
+is recorded in the original two shipped baselines. The composition methods and
+removed options-level registration for `10.1.0` remain in the EF package's
+unshipped baseline until release preparation. Each native adapter has its own
+callback API baseline; the pure core has no new declarations. The architectural
+break is recorded in [D-020](docs/decisions/D-020-provider-owned-runtime-packages.md)
+and the [upgrade guide](docs/upgrading-provider-packages.md). The Public API
+analyzer must remain clean.
 
 Before a stable release, move reviewed additions into the shipped file in the
 release-preparation source commit. Removals and signature changes require an

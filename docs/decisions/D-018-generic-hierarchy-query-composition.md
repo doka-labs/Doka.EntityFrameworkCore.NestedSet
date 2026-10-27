@@ -104,7 +104,7 @@ candidate-before-value ordering and public row multiplicity. SQL short-circuit
 evaluation, a particular index or optimizer plan, and constant execution cost
 are not public guarantees. The [performance guide](../performance.md#query-composition-and-actual-consumer-profiles)
 owns strategy trade-offs, construction budgets and capacity qualification;
-the dated record (planned documentation: `../qualification/query-composition.md#semantic-and-native-work-evidence`) preserves
+the [dated record](../qualification/query-composition.md#semantic-and-native-work-evidence) preserves
 historical measurements and their limitations.
 
 Invariant Doka long-path proofs partition invalid-child coordinates into
@@ -274,7 +274,7 @@ source binding are now implemented in the working source under
 [D-019](D-019-optional-ancestor-index-and-source-binding.md). Its 2026-10-19 local
 qualification used an unpublished Doka feature build; mixed performance results
 and the exact recorded source are retained in the
-dated qualification (planned documentation: `../qualification/query-composition.md#optional-ancestor-access`).
+[dated qualification](../qualification/query-composition.md#optional-ancestor-access).
 Those additions do not turn the rejected historical alternatives into qualified
 ancestor-cost fixes. Activation retains the supported public
 provider boundary, without changing bounds to Parent traversal or duplicating
@@ -407,7 +407,7 @@ A malformed existing API fails clearly instead of guessing a server family.
 ### Implementation References
 
 - Historical predecessor construction qualification (planned documentation: `../qualification/query-performance.md#historical-report-construction-and-materialization`)
-- Public query contracts (planned documentation: `../query-composition.md`)
+- [Public query contracts](../query-composition.md)
 - [Shared composition implementation](../../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQuery.Composition.cs)
 - [Selected subtree pairs](../../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQuery.SubtreePairs.cs)
 - [Complete path proof](../../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQuery.Path.cs)
@@ -424,9 +424,9 @@ A malformed existing API fails clearly instead of guessing a server family.
 - [Actual SignalLab query pipeline](../../samples/SignalLab/Reporting/SignalReportBuilder.Query.cs)
 - [SignalLab execution and snapshot ownership](../../samples/SignalLab/Reporting/SignalReportBuilder.cs)
 - [Shared sample snapshot](../../samples/Shared/SampleReadSnapshot.cs)
-- Composition regression mapping (planned documentation: `../query-composition-regression-coverage.md`)
+- [Composition regression mapping](../query-composition-regression-coverage.md)
 - [Performance contract](../performance.md)
-- Matched cost qualification (planned documentation: `../qualification/query-composition.md#semantic-and-native-work-evidence`)
+- [Matched cost qualification](../qualification/query-composition.md#semantic-and-native-work-evidence)
 
 The cited EF aggregate preparation, navigation expansion, row-identity and
 scalar-default implementations are unchanged between 10.0.12 and 10.0.13.

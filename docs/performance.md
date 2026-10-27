@@ -4,15 +4,24 @@ Nested sets exchange write amplification for fast ordered hierarchy reads. The
 package keeps client work iterative and bounded, while database range updates
 remain proportional to the affected coordinate suffix in the worst case.
 
+## Provider split allocation controls, 2026-10-26 (historical cached-search run)
+
+The [scoped adapter binding](../src/Doka.EntityFrameworkCore.NestedSet/Infrastructure/NestedSetProviderRegistration.cs)
+validates completed native ownership once per context scope and returns the
+existing immutable adapter. Actual warmed `Resolve` controls allocate zero
+bytes across 10,000 calls on all five engine profiles, including after a full
+GC. They initialize actual provider service graphs without database I/O.
+
+
 ## Cost model
 
 Let `n` be the node count of one TreeId and `s` the size of a selected subtree.
 
 | Operation | Dominant work |
 | --- | --- |
-| Tree read | Indexed `(Scope?, TreeId, Left)` range, proportional to the result |
+| Tree read | Tree-local `(Scope?, TreeId, Left)` range; examined rows and downstream work depend on the plan and application filters |
 | Children | Indexed `(Scope?, TreeId, ParentId, Position)` range |
-| Ancestors | Tree-local containment predicates, proportional to depth plus plan cost |
+| Ancestors | A valid tree returns at most `Depth` strict ancestors; containment visits and temporary work depend on the actual plan |
 | Insert | Opens a two-coordinate gap and may update a tree suffix |
 | Move | Stages `s` rows and shifts source and destination ranges |
 | Delete with promotion | Deletes one node, reparents direct children, closes one gap |
@@ -777,16 +786,448 @@ handwritten-runner observations use different measurement boundaries and do
 not establish a BenchmarkDotNet baseline. Dated regression-test allocation
 observations elsewhere in this guide retain their stated scope.
 
-The [benchmark regression project](../tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests.csproj)
-belongs to `tests` and runs in both Rider's normal Debug configuration and Release:
+## Query composition and actual consumer profiles
 
-```sh
-dotnet run --project tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests -c Debug
-dotnet run --project tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests -c Release
-```
+The [composition contract](query-composition.md) adds expression-building
+operators, not another database engine. Construction must not read a node,
+enumerate a payload, compile an application predicate, or retain a context in a
+global cache. Execution cost still depends on the relational result and plan.
+With options registration, source-sensitive ancestor composition and downstream
+filters over its owned markers can defer expression work to EF compilation.
+Cold compilation and cache-hit execution therefore need separate complete-reader
+observations. A reduction in public builder time/bytes does not by itself prove
+that end-to-end work or allocation decreased. Compilation-local root sharing
+owns no result, context or application query cache.
 
-The Debug suite also checks rejection of actual measurements before database
-ownership or artifact creation.
+| Query shape | Work that must remain visible in its qualification |
+| --- | --- |
+| Multiple subtree anchors | Every requested anchor's range and every matching occurrence |
+| Ancestor projection | Actual structural depth, including hidden intermediate levels |
+| Any owner | Visible matching-owner existence, without asserting a complete path |
+| Nearest owner | Candidate selection before value rejection; no farther fallback |
+| Complete path | Visible stored direct edges over the selected upper-to-lower interval |
+| Mixed-direction walk | Every intermediate occurrence and each leg's independent conditions |
+
+Combining overlapping anchors intentionally repeats occurrences. If there are
+`a` anchors with `r` matching rows each, an unreduced projection can contain
+`a * r` rows. A complete path of depth `d` can require `d` edge checks for each
+relevant occurrence. Nested sets do not make unrestricted overlap or every
+business predicate constant-cost. Select anchors and payloads explicitly, keep
+domain predicates in SQL, and aggregate before materializing reports.
+
+The shared path proof uses indexed identity/direct-parent checks for distances
+zero, one and two, then retains the general visible-edge proof for longer
+paths. Nearest handles a visible self candidate before its strict-ancestor
+lookup. These are equivalent execution shapes with adversarial regression
+coverage; they are not depth limits or permission to skip a hidden edge.
+For one edge, its already visible endpoints supply the typed Parent comparison
+directly. For two edges, one visible middle alias supplies both links, both
+containments and both edge predicates. Nullable converted keys and the
+principal collation still define equality; a forest still checks both TreeIds.
+Scalar CASE expressions keep the path proof out of observed premature
+semijoin evaluation. The database still chooses its actual execution plan.
+
+Endpoint validation removes a repeated visibility lookup only when an alias
+comes from the exact bound query expression. A different facade, raw set,
+optional outer-join endpoint, mixed set branch or changed query-filter policy
+retains its membership check. This is a conservative source proof, not a
+substitute for Scope/TreeId isolation or an assumption that equal CLR types
+have the same mapping.
+
+The source-wide visibility proof is reused only within one compositor call;
+each selected alias still needs its own provenance proof. Internal path aliases
+already bound to that source retain TreeId equality in a forest, while a
+tree-bound query needs only their coordinate relation. External aliases retain
+the complete mapped identity and source-membership check. Direct parameter
+replacement avoids allocating synthetic lambdas and argument arrays per edge.
+
+The [query-cache controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/CompositionQueryCacheTests.cs)
+observe actual asynchronous EF compilation. Changing captures, Scope, TreeId
+and fixed-cardinality anchors must reuse a warm shape while a changed projection
+requires another compilation. Query-cache reuse does not prove small commands,
+cheap parameter processing or efficient native plans. The
+[semantic/native-work summary](qualification/query-composition.md) keeps those
+separate from historical construction/reader observations.
+
+The sample applies `EF.Parameter` to finite catalog arrays and routing indices.
+This per-expression override keeps their collection transport independent of
+criterion count without changing the application's global EF options. The
+cardinality-change control switches from one to sixteen criteria, then changes
+their tenant and values: it checks both result freshness and actual compilation,
+command and binding stability. EF still extracts parameters and computes the
+cache key on each ordinary execution; reusing a query or expression object does
+not remove that work. See the [EF 10 collection change](https://learn.microsoft.com/en-us/ef/core/what-is-new/ef-core-10.0/breaking-changes#parameterized-collections-now-use-multiple-parameters-by-default)
+and [EF's execution pipeline](https://github.com/dotnet/efcore/blob/v10.0.13/src/EFCore/Query/Internal/QueryCompiler.cs).
+
+Query-only scalar reads use the exact mapped CLR property or field when EF's
+metadata resolves that member to the same property. This reduces method-marker
+arguments and reflection during warm parameter extraction. Shadow, indexer and
+complex roles retain their EF property markers; neither branch invokes an
+application getter. Renamed columns and differently named backing fields are
+qualified by actual scalar queries, including deliberately throwing getters.
+No query/context cache, compiled application predicate or EF internal service
+replacement is introduced.
+
+Containment retains both coordinate comparisons and states their implied
+overlap limits explicitly. Under the stored `Left < Right` invariant, this
+preserves the same results while exposing finite ranges to either existing
+coordinate index. Equality on Scope/TreeId followed by a bounded coordinate
+range fits the documented
+[PostgreSQL multicolumn B-tree rules](https://www.postgresql.org/docs/17/indexes-multicolumn.html).
+Actual plans still qualify whether the optimizer uses that access path.
+
+An additional MySQL LATERAL experiment did not meet the selective-work target:
+one selected row still caused 100,001 owner index tuples to be visited. It was
+not adopted. A public configured-engine API is sufficient to select a supported
+dialect, but is not proof of an efficient ancestor access path. A separate
+source-sharing/index contract requires native proof before replacing the
+corresponding strategy. The bounded ordinary route and optional generated-index
+route have separate qualification; neither is inferred from the engine name.
+
+### Ordinary strict source bounds and membership witnesses
+
+| Selected sources | MySQL owner rows | MariaDB owner rows | Scalar result rows |
+| ---: | ---: | ---: | ---: |
+| 1 | 1 | 1 | 1 |
+| 10 | 10 | 10 | 10 |
+| 100 | 100 | 100 | 100 |
+| 1,000 | 1,000 | 1,000 | 1,000 |
+
+The corrected route adds matched-pair completion only for positively identified
+MySQL, using the existing public engine API. MariaDB and unknown identification
+keep source-only binding, with ordinary source and directed owner hydration.
+The targeted corrected cohort passed 32 native cases, including all eight
+original `UpDownUpRetainsTheCompleteWalkBag` variants and 24 envelope/work/negative
+cases. The actual three-sample SQLite/MariaDB cohort passed 33 child-process
+cases under the same recorded two-CPU/two-GiB MariaDB limits. These are targeted
+semantic and sample checks, not final full-suite, ten-million-node plan, or paired
+construction/read/materialization evidence for the changed query. MySQL's
+intermediate-key materialization and possible lost predicate pushdown remain
+part of that separate cost qualification.
+
+### Deterministic construction and transport budgets
+
+Measure a warmed, finalized EF model and the complete actual builder, including
+the endpoint checks and expression substitution. Context/model creation and
+database setup are separate costs. Scalar criteria must remain parameters;
+adding one criterion must not copy a stored hierarchy or build a new compiler.
+
+| Boundary | Fixed contract |
+| --- | --- |
+| Added signal scalar criterion of the same pattern | At most 4 KiB additional allocation |
+| Scalar hierarchy/report projection | No hierarchy entity materialization or tracker growth |
+| Scalar or aggregate composed query terminal | One async reader command, with its caller token |
+| Chain frontier | Bounded batch, transport, path-copy and cycle budgets before allocation |
+
+The sample builder tests use the actual sample assemblies. A generic query
+with fewer predicates is not a substitute for these consumer budgets.
+Snapshot and grid allowances describe their fixed unit fixtures, including
+owned buffers and the final result cells. Nonempty SQL totals also require
+their duplicate-detecting lookup; the empty-total grid allowance does not
+claim to include that population. These checks are independent of the complete
+read's process-wide allocation measurements.
+Additional collection includes and EF's `AsSplitQuery()` policy can produce
+multiple statements; the single-reader budget above applies to the qualified
+scalar and aggregate shapes, not arbitrary entity loading.
+Both use the shared C# allocation protocol after ten warmup builds per shape:
+100 complete builds for the absolute mean, or 1,000 adjacent alternating
+baseline/expanded pairs for the incremental mean. Every sample contributes;
+there is no trimming, favorable-sample retry, or changed budget. Independent
+protocol tests verify exact call/order counts and retain a continuous 8 KiB
+regression above the 4 KiB limit.
+
+The chain reader applies its overflow probe in SQL after semantic selection
+and before async enumeration. EF can internally buffer when a retry strategy
+is active; a client-side row counter alone would act too late. Returned-row
+limits bound transport and buffering, not server-side scans or sorting. See
+[EF's internal-buffering documentation](https://learn.microsoft.com/en-us/ef/core/performance/efficient-querying#internal-buffering-by-ef).
+
+The pure person reducer keeps one canonical occurrence per distinct person,
+sorts those people, and retrieves the selected person's original evidence.
+For `R` occurrences and `P` people this takes `O(R + P log P)` work and `O(P)`
+rank storage, plus the returned evidence. Highest priority and Nth-person rank
+remain different rules; ranking must not replace the continuation rule.
+Server reduction similarly separates canonical ranks from the evidence join.
+These source-level bounds do not establish a database optimizer's complexity.
+
+Unique and highest-priority selection use linear winner/cursor passes without
+building a distinct-person rank map. Nth-person selection retains its rank
+storage. Unique, priority and Nth-person selection still snapshot caller-owned
+winning evidence slots; `All` retains its existing direct evidence forwarding. Only
+the internal reader's explicitly owned fresh buffer may be retained directly
+when every occurrence belongs to the winner. Chain continuation retains the
+hop and shared prefix node without allocating a one-element occurrence array
+for each logical path. Convergent paths do not preallocate routing storage from
+the unrelated full frontier count.
+
+Type-group ordinals select full mapped paths before membership, routing or
+edge validation. Eligible-group ordinals first qualify and deduplicate groups,
+then select an ordinal and rehydrate its exact visible endpoints by key.
+Every returned person still passes the same membership, role and routing
+conditions. The endpoint/date-only path proof is reused for that selected
+group rather than embedding a second complete hierarchy expansion. Native
+PostgreSQL controls count emitted and join-rejected tuples separately, each
+multiplied by actual loops; they reject a small final result backed by a
+quadratic intermediate.
+
+Both single-group windows admit at most one found group per origin. When the
+person witness proves a unique person, that group's membership key also proves
+one occurrence, so its group, distance and priority are already complete
+evidence. Those windows do not rejoin the complete candidate relation again.
+Other windows still restore every original occurrence, including repeated
+support in different groups and worse-priority occurrences of the winner.
+
+The sample's period condition reads at most one constant-one witness. Every
+matching period contributes the same value and an empty relation contributes
+zero, so overlapping periods preserve existence without multiplying edges or
+selecting a business period. This keeps the period proof scalar: flattening
+its EXISTS had joined repeated parent periods to all children before matching
+the exact child key. Null-day and inclusive date rules remain unchanged.
+
+`All` transports one source marker, one marker per visible origin, and each
+original candidate occurrence directly in the same reader. It does not join
+the complete evidence back to every origin. A nonempty origin therefore costs
+one additional marker compared with a null-extended combined row. These are
+real SQL rows: chain reads count them against the unchanged `MaxResultRows`
+and batch/probe limits before buffering. Empty origins retain their explicit
+NotFound status; markers never become evidence or deduplicate people.
+
+Native MySQL/MariaDB rank and origin profiles therefore measure the original
+command's seven session `Handler_read_*` request deltas on one open connection,
+before executing EXPLAIN. An empty-status control and a fully drained primary-key
+lookup calibrate the observation. Work budgets grow with actual people,
+occurrences, origins and criteria rather than their pairwise cross-products.
+The counters include logical requests, including some optimizer-time work;
+they are not physical I/O, rows examined, or peak temporary memory. Index
+condition pushdown can examine several index entries within one request. Raw
+executed plans and materialized output remain separate observations. See
+[MySQL status scope](https://dev.mysql.com/doc/refman/8.4/en/show-status.html),
+[handler counters](https://dev.mysql.com/doc/refman/8.4/en/server-status-variables.html#statvar_Handler_read_key)
+and [index condition pushdown](https://dev.mysql.com/doc/refman/8.4/en/index-condition-pushdown-optimization.html).
+
+### Shared medium, wide and deep populations
+
+The [composition capacity suite](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Composition/Performance/HierarchyCompositionCapacityTests.cs)
+uses 10,000 and 100,000 persisted nodes, wide and balanced shapes, anchor counts
+1/10/100/1,000, and selective/broad facts. The existing capacity suite supplies
+the larger one-million and ten-million populations and the 100,000-level chain.
+Composition assertions run on those existing populations; the samples do not
+seed a second million-node matrix.
+
+The existing [capacity tests](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Capacity/CapacityTests.cs)
+own each population and its lifetime. Each listed test has a combined outcome:
+structural work, generic composition profiles and actual consumer profiles
+must all complete before that test passes.
+
+| Owning test | Persisted population | Measurement and assertion order |
+| --- | --- | --- |
+| `TenMillionPersistedNodesAreReadableAndFullyValid` | Ten million wide nodes | Stream and validate; run generic and actual consumer reads; assert all results. |
+| `MillionDirectChildrenImportWithinAdditionalHeapBudget` | One root plus one million children | Measure public import; run both read-profile families; retain the original import heap, save-count and parameter assertions. |
+| `MillionNodeRebuildWithinAdditionalHeapBudget` | One million nodes, temporarily balanced | Run both read-profile families before repair measurement; restore wide adjacency and corrupt bounds; measure rebuild and assert the original repair contract. |
+| `DepthOneHundredThousandValidatesAndRebuilds` | 100,001 nodes at depth 100,000 | Validate and measure rebuild; run generic deep and actual consumer profiles; assert all results. |
+
+Record the owning test, population, read profile and measured phase with a
+failure. A composition or consumer failure can prevent later structural
+assertions from running; an earlier completed import/rebuild measurement does
+not turn that combined test into a pass. Conversely, a read-profile timeout
+alone does not establish an import or rebuild regression. Independent xUnit
+outcomes would require an explicit shared-population lifetime. Preserve the
+existing hooks and populations when diagnosing the current combined cases.
+
+Deep profiles vary 1,000/10,000/100,000 levels and 1/10/100 selected facts.
+Dense self-candidate acceptance/rejection, strict dense acceptance/rejection,
+a root owner, and controlled nested anchor overlap are separate cases. The
+strict forms exclude self and use 100 facts at each depth: acceptance requires
+the actual direct parent, and rejection requires the root instead and must
+not fall back to it. SQL, parameters and native plans accompany
+the observations. Statement count, exact result bags, DTO/entity counts,
+construction allocation and tracker state are assertions. Elapsed times are
+diagnostic observations, not hardware-dependent release thresholds.
+
+The chain observer retains an executed plan for every reader in each 2/4/8-hop
+original-path and expanded-membership profile. Diagnostic replay occurs after
+the measured operation. Each reader's file repeats the whole-chain header;
+its elapsed time and logical result count must not be summed as per-reader
+measurements. SQLite EQP describes access shape, not actual operator row counts.
+
+### Optional paired measurements
+
+The chain reference compares bounded application orchestration while sharing
+the structural candidate primitive. It is not an independent reimplementation
+of the entire SQL translation stack. Report that boundary with the result;
+do not attribute every difference to NestedSet's six compositors.
+
+### Provider plan boundaries
+
+An internal UNION can retain EF row identifiers for owned and ordinary
+collection projections, but deduplication can also materialize a large
+structural relation before an outer payload filter. That is a strategy
+trade-off, not permission to deduplicate a caller's occurrence bag. Qualify
+MySQL and MariaDB independently even when they share a provider; a broad-case
+improvement can accompany a severe selective-case regression.
+
+Configured-engine detection permits a MySQL-specific related-first correlation
+without guessing from model annotations or private options. Its current public
+provider prerequisite is listed in
+[configuration](configuration.md#current-query-capabilities). Both UNION branches join
+independent selected-key sets back to mapped entities so EF retains identifiers
+for both endpoints' collections. The boundary contains selected keys, not all
+structural pairs. Dated qualification distinguishes the portable-provider
+results from that feature-enabled strategy. The current published Doka 10.6.2
+declaration does not transfer an earlier private build's performance to the
+shipping package; fresh public-binary qualification remains separate.
+
+Within that upward formulation, distinct measured Node/Day pairs share their
+day-specific path and metadata proof before facts rejoin. A scalar distinct
+Anchor/Node/Day boundary prevents merging that proof into each metric/source
+contribution. The final join restores every original physical fact and applies
+its own measurement-type rule before aggregation. Equal-valued facts are never
+deduplicated, overlapping anchors remain independent, and Nearest still selects
+its owner before rejecting its value. The additional query-construction work
+is reported separately from complete EF allocation and native database work.
+
+The catalog reader filters requested `(type, field)` and `(type, field, value)`
+bindings together, rather than reading every field and choice of each selected
+type or using independent lists that admit crossed pairs. Its alternatives
+have logarithmic expression depth without a new criterion-count limit. SQL
+collation can still overmatch an alias, so ordinal post-read checks remain
+mandatory. Snapshot helpers preserve first-use order and owned buffers while
+deduplicating criteria. Incremental catalog validation retains scalar evidence;
+aggregate consumption stores selected sums and foreign duplicate identities,
+without retaining DTO histories. Both readers complete and dispose before their
+post-read rejection checks. Duplicate rejection precedes final checked grid
+sizing, and the final reference array retains requested order and
+missing-versus-zero cells. Neither path reserves the full sparse output grain
+as a lookup capacity.
+
+The sample uses bounded membership scans for axes of up to eight selections and
+lazy maps above that boundary, without per-axis recent-ordinal state. Nonempty
+completion uses counted offsets; empty selected-total grids create only missing
+cells after duplicate rejection and checked sizing. Repeated selections retain
+first-occurrence identity. Small repeated axes use bounded stack spans; larger
+repeated axes use proportional arrays. A terminal dictionary resize is capped
+only for a new identity when actual stored groups fill the dictionary and exceed
+half the representable grain. Capacity comes directly from the dictionary;
+sparse inputs do not trigger eager Cartesian reservation.
+The consumer performance summary (planned documentation: `qualification/query-performance.md#historical-report-construction-and-materialization`)
+separates actual `ReadAsync`, isolated materialization and expression-construction
+observations. Allocation savings do not imply lower CPU or reader latency;
+record smaller asynchronous and adverse native cases as well as large grids.
+The fixed unit budgets remain distinct from native consumer work allowances.
+
+For invariant long Doka paths, invalid children are grouped into coordinate
+blocks independently of each outer occurrence. A child is invalid when it lacks
+its visible, allowed, consecutive direct parent. In a valid nested set, such a
+child blocks the upper-to-lower path exactly when its Left is in
+`(upper.Left, lower.Left]` and its Right reaches `lower.Right`. A nullable MAX
+over those Right values proves existence without a reserved key or coordinate.
+The upper endpoint's own incoming edge is excluded; the lower endpoint is included.
+
+The block width is `1 + floor(sqrt(maximum visible Right))`, computed in the
+same SQL statement. Integer modulo defines exact block starts without an
+overflow-prone end-coordinate addition. Complete interior blocks need only their
+maximum Right; the two endpoint blocks retain the exact Left predicate. Summary
+joins use mapped Scope/Tree identity, and fringe joins additionally use the
+endpoint's block. Unscoped models omit Scope entirely. Original caller rows and
+payload multiplicity are never grouped or deduplicated by this internal proof.
+
+Three independent grouped sources avoid correlated rematerialization. Successful
+long paths can therefore build the visible failure relation three times, a real
+preprocessing and temporary-storage tradeoff. With dense valid coordinates, the
+subsequent proof inspects block summaries and at most two blocks of points per
+occurrence, rather than all `B` failures for every occurrence. Its partition work
+is proportional to `R * (M / W + W)`, where `M` is the maximum visible coordinate
+and `W` the derived width, in addition to the constant number of population
+passes. `M` is not the visible-row count: filters or a much larger neighboring
+tree can make a small tree's fringe wider. The width is a cost estimate; floating
+square-root rounding does not change the exact integer partition semantics.
+
+Row-dependent rules retain their direct-edge count; they cannot share a failure
+set independent of application input. These proofs assume valid stored bounds
+and depths and do not replace arbitrary-corruption validation. Native checks
+cover dense on-path/off-path failures, rejecting fringes, clean paths and disjoint
+branches. Iterator tuples and temporary relations are observed separately from
+elapsed time; no claim of zero server memory or universal latency follows.
+
+Independent nonrelational Doka Nearest candidates use the same coordinate
+partitioning on both Left and Right. Two independent exact point relations
+retain candidates in the lower endpoint's Left block or Right block. Both
+fringes test strict containment. A third independent relation groups complete
+Left/Right block pairs and retains their maximum Left; only pairs strictly
+before the lower Left block and strictly after its Right block qualify.
+These three regions cover every strict-containing candidate.
+
+Candidates containing one lower endpoint form an ancestor chain. A candidate
+in its Left fringe is nearer than every candidate in an earlier Left block.
+A candidate in its Right fringe is nearer than every interior candidate,
+whose Right belongs to a strictly later block. The exact nearest coordinate
+is therefore `leftFringeMax ?? rightFringeMax ?? interiorMax`. NULL represents
+absence; no key or coordinate is reserved. Native scope/tree/block joins
+resolve the fringes, and a scope/tree/Left lookup resolves the actual owner.
+Value and complete owner-to-lower path decisions run after coordinate selection;
+neither rejection retries another owner. No caller anchor limits that selection.
+
+The two-coordinate summary is not a quadratic block grid on valid laminar
+bounds. Intervals are noncrossing chords; contracting consecutive coordinate
+blocks preserves outerplanarity. With `K >= 2` blocks per tree there are at most
+`2*K - 3` distinct non-loop block pairs and `K` same-block pairs. With one
+block there is at most one pair. Each exact fringe has at most `W` candidate
+coordinates. The logical lookup work per invocation is thus proportional to
+`1 + M/W + W`, in addition to candidate preprocessing. Native plans must still
+qualify grouping, temporary indexes and actual invocations: an optimizer can
+evaluate a predicate before the caller's other filters. This is not a physical
+read or total server-memory bound.
+
+The candidate relations do not copy or group the caller's source. Upstream
+filtering, paging, random ordering and duplicate occurrences remain on that
+source. Dense controls include empty Left fringes, independent Right-fringe
+and interior winners, rejection without farther fallback, and full forests.
+
+These independent grouped candidate relations add preprocessing passes and
+temporary storage, like the failure proof. They avoid scanning every candidate
+for every lower endpoint on the qualified sparse and dense profiles. A visible
+self candidate still takes precedence. Row-aware and query-bearing candidates
+retain their correlated mapped Left DESC selection and projected value/path
+decision. On valid ancestors that ordering agrees with structural depth.
+An index-compatible expression alone does not prove which index the optimizer
+chooses, when it evaluates projections, or how many subplan loops execute.
+
+Native counters have different boundaries. MySQL TREE reports emitted iterator
+rows times loops, supplemented by a repeated whole-prefix access guard.
+MariaDB uses `r_index_rows` before index checks where available and retains
+`r_rows` after those checks separately, each multiplied by its execution count.
+See [MariaDB's counter definitions](https://mariadb.com/docs/server/reference/sql-statements/administrative-sql-statements/analyze-and-explain-statements/analyze-interpreting-rows-and-filtered-members).
+A physical table scan may read foreign decoys once; it is distinct from
+materializing those rows into an authorized failure set or repeating the scan
+per occurrence. Native work fixtures therefore record both stored and visible
+populations. MariaDB's terminal sort above a grouped temporary table can expose
+its output; other shapes remain explicitly unknown. Its sort output is a
+rounded average per invocation, not peak memory, as defined by the
+[11.8.9 implementation](https://github.com/MariaDB/server/blob/mariadb-11.8.9/sql/sql_analyze_stmt.cc#L58-L62).
+
+Inspect both selective and broad native plans. A materialized structural pair
+relation can still have `anchors * descendants` rows before a payload join;
+predicate pushdown on one medium profile does not establish pushdown for deep
+overlap or another provider. Retained plan row counts, loops, temporary
+relations and allocations qualify that tradeoff. Scalar results and zero CLR
+entities are not claims of zero server memory or constant database work.
+
+The [execution qualification](query-composition-regression-coverage.md#execution-qualification)
+distinguishes source coverage, the recorded execution boundary and remaining
+native-platform work. Timings describe their measured environment; later
+physical expressions require new evidence.
+
+The recorded complete-report allocation profile (planned documentation: `qualification/query-performance.md#historical-complete-report-phase-attribution`)
+separates disjoint sampled parameter/cache/execution stack attribution from
+process-level complete-reader allocated bytes. Both mechanisms retain their
+own units and workload boundaries. The completed serial A-B-B-A matrix separately covers actual construction,
+native complete reports on both engines and dense materialization. It retains
+all process means, mixed materializer/cold observations and normal host-load
+limits for its frozen source. It does not qualify subsequent physical query
+changes; neither lower builders nor overlapping intervals prove universal
+latency or regression freedom. Sixteen native diagnostic traces attribute
+sampled allocation stacks, while process-level bytes and native work remain
+independent observations. These optional timings introduce no CI/RC gate.
 
 ## Regression diagnosis
 

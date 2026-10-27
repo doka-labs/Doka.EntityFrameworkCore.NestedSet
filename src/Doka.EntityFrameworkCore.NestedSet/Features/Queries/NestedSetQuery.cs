@@ -2,13 +2,20 @@ namespace Doka.EntityFrameworkCore.NestedSet.Features.Queries;
 
 /// <summary>Builds public hierarchy queries from finalized metadata without materializing anchor entities.</summary>
 /// <typeparam name="TEntity">The configured hierarchy entity.</typeparam>
-internal sealed class NestedSetQuery<TEntity>
+internal sealed partial class NestedSetQuery<TEntity>
     where TEntity : class
 {
     private readonly IQueryable<TEntity> _nodes;
+    private readonly IQueryable<TEntity> _unboundNodes;
+
+    /// <summary>Owns cumulative identity constraints, or null before the first scope/tree binding.</summary>
+    private readonly Expression<Func<TEntity, bool>>? _binding;
+    private readonly DbContext _context;
     private readonly IEntityType _entityType;
     private readonly NestedSetModelDescriptor _descriptor;
     private readonly bool _scopeBound;
+    private readonly bool _treeBound;
+    private readonly NestedSetProviderCapabilities _capabilities;
     private readonly string? _keyCollation;
 
     /// <summary>Creates an unbound public query root and validates the hierarchy configuration immediately.</summary>
@@ -22,6 +29,7 @@ internal sealed class NestedSetQuery<TEntity>
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(entityType);
 
+        _context = context;
         _entityType = entityType;
         _descriptor = NestedSetModelMapping
             .For(context.Model)
@@ -31,24 +39,47 @@ internal sealed class NestedSetQuery<TEntity>
             .Set(context, _entityType)
             .AsNoTracking();
 
+        _unboundNodes = _nodes;
         _scopeBound = _descriptor.Scope is null;
+        _capabilities = NestedSetProviderCapabilities.Resolve(context);
         _keyCollation = NestedSetCollations.Resolve(context, _descriptor.NodeKey.Resolve(_entityType), _entityType);
     }
 
     /// <summary>Creates a new immutable binding over an already validated public query root.</summary>
     private NestedSetQuery(
-        IQueryable<TEntity> nodes,
-        IEntityType entityType,
-        NestedSetModelDescriptor descriptor,
+        NestedSetQuery<TEntity> source,
+        Expression<Func<TEntity, bool>> binding,
         bool scopeBound,
-        string? keyCollation
+        bool treeBound
     )
     {
-        _nodes = nodes;
-        _entityType = entityType;
-        _descriptor = descriptor;
+        _binding = binding;
+        _unboundNodes = source._unboundNodes;
+        _nodes = _unboundNodes.Where(binding);
+        _context = source._context;
+        _entityType = source._entityType;
+        _descriptor = source._descriptor;
         _scopeBound = scopeBound;
-        _keyCollation = keyCollation;
+        _treeBound = treeBound;
+        _capabilities = source._capabilities;
+        _keyCollation = source._keyCollation;
+    }
+
+    /// <summary>Restores only EF-normalized roots for one deferred compilation without rebinding caller identities.</summary>
+    internal NestedSetQuery(
+        DbContext context,
+        IEntityType entityType,
+        IQueryable<TEntity> visible,
+        IQueryable<TEntity> unbound,
+        bool treeBound
+    ) : this(context, entityType)
+    {
+        // WHY: The original public call already checked Scope. Its exact normalized visible root owns
+        // all Scope/Tree predicates; reconstructing scalar bindings would freeze different captured values.
+        _nodes = visible;
+        _unboundNodes = unbound;
+        _scopeBound = true;
+        _treeBound = treeBound;
     }
 
     /// <summary>Binds the configured application partition using the exact mapped Scope type.</summary>
@@ -70,11 +101,10 @@ internal sealed class NestedSetQuery<TEntity>
         var snapshot = NestedSetTypedValue<TScope>.Snapshot(property, scope);
 
         return new NestedSetQuery<TEntity>(
-            _nodes.Where(Equal(property.Name, snapshot)),
-            _entityType,
-            _descriptor,
-            true,
-            _keyCollation);
+            this,
+            Bind(property, snapshot),
+            scopeBound: true,
+            treeBound: _treeBound);
     }
 
     /// <summary>Returns one complete tree in stable nested-set preorder.</summary>
@@ -98,9 +128,11 @@ internal sealed class NestedSetQuery<TEntity>
         // WHY: Query execution is deferred. Its predicate and later tree maintenance must own the same identity
         // rather than independently snapshotting a caller value that can change between those bindings.
         return new NestedSetTree<TEntity, TTreeId>(
-            _nodes
-                .Where(Equal(property.Name, snapshot))
-                .OrderBy(Left()),
+            new NestedSetQuery<TEntity>(
+                this,
+                Bind(property, snapshot),
+                scopeBound: _scopeBound,
+                treeBound: true),
             operations,
             snapshot);
     }
@@ -302,15 +334,32 @@ internal sealed class NestedSetQuery<TEntity>
         ArgumentNullException.ThrowIfNull(nodeKey);
         var snapshot = NestedSetTypedValue<TKey>.Snapshot(property, nodeKey);
 
-        return _nodes.Where(Equal(property.Name, snapshot));
+        return _nodes.Where(Equal(property, snapshot));
     }
 
     /// <summary>Builds typed parameter equality while keeping the configured column's store semantics.</summary>
     private static Expression<Func<TEntity, bool>> Equal<TValue>(
-        string property,
+        IProperty property,
         TValue value
     )
         where TValue : notnull => NestedSetKeyFilter<TEntity>.Equal(property, value);
+
+    /// <summary>Adds a cumulative owned identity without visiting application predicates.</summary>
+    private Expression<Func<TEntity, bool>> Bind<TValue>(
+        IProperty property,
+        TValue value
+    )
+        where TValue : notnull
+    {
+        var parameter = _binding?.Parameters[0] ?? Expression.Parameter(typeof(TEntity), "node");
+        var comparison = NestedSetKeyFilter<TEntity>.Equal(parameter, property, value);
+        var condition = _binding is null ? comparison : Expression.AndAlso(_binding.Body, comparison);
+
+        // WHY: EF revisits every root occurrence during warm parameter extraction. One cumulative
+        // owned Where removes repeated method calls while preserving exact-root provenance and the
+        // original snapshots, including contradictory rebindings. Caller filters never enter this state.
+        return Expression.Lambda<Func<TEntity, bool>>(condition, parameter);
+    }
 
     /// <summary>Returns the mapped Int64 left-bound selector used for stable preorder.</summary>
     private Expression<Func<TEntity, long>> Left()

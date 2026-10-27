@@ -106,6 +106,13 @@ Equal bounds in these trees do not collide. Anchor-based queries and structural
 mutations use the configured Scope and the resolved or explicit `TreeId`.
 `InTree(treeId)` selects one complete tree without mixing bounds from other trees.
 
+[Query composition](docs/query-composition.md) projects several subtrees or
+ancestor paths in one deferred EF query. It retains origins and structural
+distances, supports complete-path pruning, and distinguishes any matching
+ancestor from the nearest candidate. Joins, filters, aggregates, and the async
+terminal operation remain ordinary LINQ. Connection availability, tags, roles, and
+supervisor selection are application rules demonstrated in the samples.
+
 ```csharp
 public sealed class Folder
 {

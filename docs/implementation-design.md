@@ -394,6 +394,76 @@ then reapply the mandatory Scope and TreeId predicates owned by the library.
 Preorder is the persisted Left order. Additional application predicates remain
 composable before materialization.
 
+The [generic composition contract](query-composition.md) adds range-pair
+projections and existential row filters to the same query engine:
+
+```mermaid
+flowchart LR
+    Binding["Exact mapping / Scope / optional tree binding"] --> Pairs["Range-pair expressions"]
+    Binding --> Guard["Selected entity-alias validation"]
+    Pairs --> Linq["Application joins and projections"]
+    Linq --> Guard
+    Guard --> Filters["Path / Any / Nearest expressions"]
+    Filters --> Terminal["One ordinary EF async terminal"]
+```
+
+Projection substitution compares ParameterExpression identities and reduces
+anonymous or simple member-initializer members. It never compiles application
+predicates or invokes entity getters. Selected endpoints retain their exact
+mapped owner; unrelated fact roots remain legal payload. Direct foreign
+providers and LINQ-to-Objects sources are rejected before enumeration; nested
+foreign contexts remain subject to EF's pre-command translation guard.
+
+Endpoint analysis has three separate responsibilities:
+
+- Mapping resolution requires a real entity alias of the exact configured
+  mapping, including named mappings; an object with matching key values is
+  not an endpoint.
+- Source stability decides whether that resolution may be reused within the
+  current operation. Mutable expression metadata must be inspected again.
+- Visibility proof decides whether an additional membership check is
+  redundant. A stable `IgnoreQueryFilters` expression still fails this proof;
+  stability cannot authorize access to an otherwise hidden endpoint.
+
+The last two checks deliberately remain separate contracts. Shared primitive
+metadata checks may reduce duplication, but must not turn a stable source into
+a visibility guarantee or narrow supported entity-alias shapes.
+
+Source classification inspects children before reading a parent's derived
+expression type. Ordinary framework constructor and index expressions can
+forward that read to virtual constructor/property metadata; constant types can
+likewise carry application-owned `Type` wrappers. Both the query-operator
+pre-pass and fact-source inspection require actual runtime-owned metadata and
+types before type/assignability checks. Opaque metadata and dynamic expressions
+retain conservative strategy selection without getter execution or dynamic
+reduction. Ordinary runtime metadata retains its existing classification.
+The observation starts after the caller finishes building the expression:
+public expression factories can legitimately validate metadata during setup.
+
+Path checks join visible direct parents and children using the shared mapped
+Parent primitive, retain complete Scope/Tree identity, and require consecutive
+mapped depths. Their visible allowed-edge count must equal endpoint distance.
+Any remains a visible existence query. Nearest first selects one scalar NodeKey
+by descending mapped depth, exposes that key for the owner lookup, and gates
+the complete-path count after the selected owner's predicate. These choices
+were driven by actual provider plans, not an assumption that SQL evaluates
+AND predicates in source order.
+
+The expression helper caches closed public EF.Property MethodInfo metadata
+through weak Type keys. This removes repeated overload discovery during query
+construction without retaining contexts, entities, values, or result sets.
+Queryable expressions and captured application values remain owned by the
+individual deferred query. See [D-018](decisions/D-018-generic-hierarchy-query-composition.md)
+for alternatives and re-evaluation triggers.
+
+Scope and TreeId bindings accumulate typed comparisons in one library-owned AND
+predicate over the original visible root. Rebinding retains every earlier
+comparison and its private identity snapshot; a contradictory binding yields
+no rows. Only library-owned comparisons participate. Caller predicates remain
+separate, deferred expression occurrences, and global filters retain their
+ordinary EF behavior. This reduces actual repeated method visits without
+rewriting consumer expressions or weakening endpoint provenance.
+
 ## Mutation and lock protocol
 
 ```mermaid
@@ -639,9 +709,27 @@ intentionally change CLR and model-cache identity, while entity short names,
 explicit physical tables, inheritance mappings, and existing measurement
 warmups remain intact. Fresh builds and model tests qualify the changed identity.
 
-`QueryPlanTestSupport` owns shared asynchronous evidence writing independently
-of any query-plan suite. All six existing call paths use it directly, preserving
-the configured output directory, file names, spacing, and cancellation behavior.
+`QueryPlanTestSupport` owns shared statistics refresh, native plan explanation,
+and asynchronous evidence writing independently of any query-plan suite. Shared
+and provider-local callers use it directly, preserving provider-specific SQL,
+captured parameter bindings, command selection, output names, and cancellation.
+
+Key comparison and hierarchy-plan cases are separately discovered scenario rows.
+`KeyFilterComparisonFixture` owns one additional read-only comparison database
+for its 1,024-row seed, independent of its resettable sibling-test database.
+`ServerQueryPlanFixture` owns the immutable 4,000-node hierarchy-plan seed.
+Both acquire resources lazily after the database-platform
+hook and reuse the existing assembly-owned servers. Each scenario opens a fresh
+context. Class-owned evidence is emitted once during asynchronous disposal in
+the original deterministic scenario order; rows do not overwrite the legacy
+`<Engine>-key-filter` or `<Engine>-hierarchy` aggregate.
+
+Large metadata-guard and retention suites retain their owning test types while
+separating annotation, ownership, discovery, probe, helper, and model source
+files. This does not change test discovery, collection serialization, no-inline
+GC frames, or reference lifetimes. Project-level partial-family metadata is an
+IDE aid, not another compiled source owner; compiler inputs and actual discovery
+remain separate verification boundaries.
 
 Common suites are nongeneric and accept an `IProviderFixture<TResource>` view in
 a protected constructor. Each concrete leaf exposes one public constructor with

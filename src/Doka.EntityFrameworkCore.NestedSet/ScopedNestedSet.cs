@@ -3,7 +3,7 @@ namespace Doka.EntityFrameworkCore.NestedSet;
 /// <summary>Provides hierarchy queries and operations permanently bound to one application partition.</summary>
 /// <typeparam name="TEntity">The configured hierarchy entity.</typeparam>
 /// <typeparam name="TScope">The mapped Scope type.</typeparam>
-public sealed class ScopedNestedSet<TEntity, TScope>
+public sealed partial class ScopedNestedSet<TEntity, TScope>
     where TEntity : class
     where TScope : notnull
 {

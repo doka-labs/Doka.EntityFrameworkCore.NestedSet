@@ -22,6 +22,9 @@ to `10.0.0`. See the [changelog](../CHANGELOG.md) for changes and the
   manual placement, and database comparison behavior.
 - [Operations](operations.md) covers composable queries and every insert, move,
   delete, validate, and rebuild operation.
+- [Query Composition](query-composition.md) covers multi-anchor projections,
+  upward and mixed-direction walks, complete paths, Any/Nearest visibility,
+  multiplicity, and ordinary EF execution.
 - [Bulk Import](bulk-import.md) covers atomic forest and subtree insertion.
 - [API Reference](api-reference.md) maps the public types and methods to their
   inputs, outputs, ordering, transaction behavior, and failure contracts.
@@ -63,6 +66,8 @@ to `10.0.0`. See the [changelog](../CHANGELOG.md) for changes and the
   integration.
 - [Regression Coverage](regression-coverage.md) maps typed runtime risks to
   positive, negative, and adversarial tests and explains evidence limits.
+- [Query Composition Coverage](query-composition-regression-coverage.md) maps
+  all 160 generic and consumer contracts to their concrete test cases.
 - [Security Design](security/security-design.md) defines assets, trust
   boundaries, abuse cases, controls, and residual application responsibilities.
 - [Secure Development](security/secure-development.md) defines security review,

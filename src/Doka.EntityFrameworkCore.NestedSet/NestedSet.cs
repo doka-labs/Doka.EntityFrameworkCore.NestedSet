@@ -2,7 +2,7 @@ namespace Doka.EntityFrameworkCore.NestedSet;
 
 /// <summary>Provides composable hierarchy queries and operations over a normal EF Core entity set.</summary>
 /// <typeparam name="TEntity">The configured hierarchy entity.</typeparam>
-public sealed class NestedSet<TEntity>
+public sealed partial class NestedSet<TEntity>
     where TEntity : class
 {
     private readonly NestedSetQuery<TEntity> _query;
