@@ -17,8 +17,7 @@ public sealed class EnterpriseIndexMappingTests
         // Arrange
         var options = new DbContextOptionsBuilder<IndexMappingContext>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .ReplaceService<IModelCacheKeyFactory, TestModelCacheKeyFactory>()
             .Options;
 

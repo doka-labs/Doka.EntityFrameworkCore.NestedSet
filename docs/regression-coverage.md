@@ -197,8 +197,8 @@ requested map operations compile lazily and are reused from that cache.
 typed readers retain the installed composite-key snapshot independently of
 changed current values. `IncompatibleFrameworkHasARegistrationDiagnostic`
 requires the loaded version, exact missing member, and registration guidance.
-`RegistrationValidatesWithoutCreatingAContext` exercises `UseNestedSets()`
-without a provider or model. Structural compatibility does not qualify the
+`RegistrationValidatesWithoutCreatingAContext` invokes the typed SQLite
+callback's `UseNestedSets()` before a context or model exists. Structural compatibility does not qualify the
 behavior of a future EF patch; its insertion and rollback matrix must still run.
 
 Source: [insertion contract controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/InsertionReflectionContractTests.cs).

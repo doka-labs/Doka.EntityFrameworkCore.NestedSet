@@ -108,25 +108,24 @@ public sealed class ContractFixture : IAsyncLifetime
         using var source = database.CreateContext();
         var connection = source.Database.GetConnectionString()!;
         var builder = new DbContextOptionsBuilder<TContext>()
-            .ConfigureTestWarnings()
-            .UseNestedSets();
+            .ConfigureTestWarnings();
 
         switch (engine)
         {
             case "Sqlite":
-                builder.UseSqlite(connection);
+                builder.UseSqlite(connection, provider => provider.UseNestedSets());
                 break;
             case "PostgreSql":
-                builder.UseNpgsql(connection);
+                builder.UseNpgsql(connection, provider => provider.UseNestedSets());
                 break;
             case "SqlServer":
-                builder.UseSqlServer(connection);
+                builder.UseSqlServer(connection, provider => provider.UseNestedSets());
                 break;
             case "MySql":
-                builder.UseMySql(connection, DatabaseTestTargets.MySql);
+                builder.UseMySql(connection, DatabaseTestTargets.MySql, provider => provider.UseNestedSets());
                 break;
             case "MariaDb":
-                builder.UseMySql(connection, DatabaseTestTargets.MariaDb);
+                builder.UseMySql(connection, DatabaseTestTargets.MariaDb, provider => provider.UseNestedSets());
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(engine));

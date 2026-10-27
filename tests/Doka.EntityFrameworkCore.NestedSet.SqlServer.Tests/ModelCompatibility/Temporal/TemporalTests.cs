@@ -17,8 +17,7 @@ public sealed class TemporalTests : ProviderTest, IClassFixture<ProviderFixture<
         var connection = await (await TestDatabaseServers.GetCurrentAsync()).NewConnectionStringAsync(Engine);
         var options = new DbContextOptionsBuilder<TemporalContext>()
             .ConfigureTestWarnings()
-            .UseSqlServer(connection)
-            .UseNestedSets()
+            .UseSqlServer(connection, provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new TemporalContext(options);

@@ -11,13 +11,11 @@ public sealed class UserGroupsInitialMigrationTests
         var dokaOptions = new DbContextOptionsBuilder<UserGroupContext>()
             .UseMySql(
                 "Server=127.0.0.1;Port=1;Database=nestedset_sample_usergroups;User ID=unused;Password=unused;",
-                MySqlServerVersion.MySql(new Version(8, 4, 0)))
-            .UseNestedSets()
+                MySqlServerVersion.MySql(new Version(8, 4, 0)), provider => provider.UseNestedSets())
             .Options;
 
         var sqliteOptions = new DbContextOptionsBuilder<UserGroupSqliteContext>()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .Options;
 
         using var doka = new UserGroupContext(dokaOptions);
@@ -169,8 +167,7 @@ public sealed class UserGroupsInitialMigrationTests
     private static UserGroupSqliteContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<UserGroupSqliteContext>()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .Options;
 
         return new UserGroupSqliteContext(options);

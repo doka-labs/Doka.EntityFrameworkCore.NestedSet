@@ -1,40 +1,67 @@
 # Implementation design
 
-NestedSet is a two-package library with one relational execution engine. The
-public EF package extends an application's existing model and `DbContext`; it
-does not introduce a second unit of work or a domain container entity.
+NestedSet has one shared relational hierarchy engine and four native provider
+integrations. Six packages express these dependencies. The common EF package
+extends an application's existing model and `DbContext`; it does not introduce
+a second unit of work or a domain container entity.
 
 ## Package boundaries
 
 ```mermaid
 flowchart TB
     App[Application entities and DbContext]
-    Core[Doka.NestedSet]
+    Pure[Doka.NestedSet]
     EF[Doka.EntityFrameworkCore.NestedSet]
-    Provider[Qualified EF Core provider]
+    MySql[NestedSet.MySql]
+    Postgres[NestedSet.Postgres]
+    Sqlite[NestedSet.Sqlite]
+    SqlServer[NestedSet.SqlServer]
+    Native[Matching native EF provider]
     DB[(Relational database)]
 
-    App --> EF
-    App --> Provider
-    EF --> Core
-    EF -.->|runtime provider services| Provider
-    Provider --> DB
+    App -->|Select its adapter| MySql
+    App -->|Alternative| Postgres
+    App -->|Alternative| Sqlite
+    App -->|Alternative| SqlServer
+    MySql --> EF
+    Postgres --> EF
+    Sqlite --> EF
+    SqlServer --> EF
+    EF --> Pure
+    MySql --> Native
+    Postgres --> Native
+    Sqlite --> Native
+    SqlServer --> Native
+    Native --> DB
 ```
 
 `Doka.NestedSet` contains optional entity contracts, bounds semantics, and pure
 relationship predicates. It has no EF Core dependency.
 
-`Doka.EntityFrameworkCore.NestedSet` owns model conventions, query composition,
-set-based mutations, ordering, transactions, typed tree locks, migrations,
-validation, rebuild, and diagnostics. The package uses the caller's context,
-connection, transaction, execution strategy, interceptors, and authorization
-decision.
+`Doka.EntityFrameworkCore.NestedSet` owns common model roles, structural query
+and mutation algorithms, ordering, transaction/savepoint coordination, tree
+lifecycle, validation, rebuild, and bounded diagnostics. Its shipping dependency
+graph contains EF/Relational and `Doka.NestedSet`, without a concrete provider.
+
+The `.MySql`, `.Postgres`, `.Sqlite`, and `.SqlServer` packages own their native
+SQL, registry rowset transport, physical model/index conventions, query
+translation, and physical strategy selection. They implement one internal
+selected-provider boundary; it is not a public extension framework. Common
+algorithms are not copied into the adapters. Each adapter uses the caller's
+context, connection, transaction, execution strategy, and authorization decision.
+Each adapter's packed kernel dependency is an exact release version because
+the boundary uses internal members. Source `ProjectReference` restore edges
+keep the SDK's ordinary minimum-range representation; a pack-only target pins
+the generated NuGet dependency without changing local restore semantics.
+The kernel uses only public `Doka.NestedSet` APIs and retains a minimum dependency.
+See [D-020](decisions/D-020-provider-owned-runtime-packages.md) and the
+[installation/registration migration](upgrading-provider-packages.md).
 
 ## Registration and finalized model
 
 ```mermaid
 flowchart LR
-    Options[options.UseNestedSets]
+    Options[Native provider callback UseNestedSets]
     Plugin[EF convention plugin]
     Entity[HasNestedSet mapping]
     Final[Final model validation]
@@ -46,8 +73,24 @@ flowchart LR
     Final --> Schema
 ```
 
-`UseNestedSets()` installs the convention plugin, SaveChanges guard, and
-relational persistence boundary in the EF internal service provider.
+The native provider callback's `UseNestedSets()` selects the exact adapter and
+installs the convention plugin, SaveChanges guard, relational persistence
+boundary and stateless query-expression interceptor in the EF internal service
+provider. Its immutable options identity includes the actual selected adapter,
+so contexts cannot reuse an incompatible provider service graph. Missing,
+conflicting, or mismatched registration is rejected before hierarchy I/O,
+including when a compiled model bypasses convention execution.
+
+The context-scoped `INestedSetProviderBinding` factory validates the completed
+options, actual native provider, and exact adapter/native assembly identities.
+It returns the existing immutable adapter singleton itself; no binding wrapper
+or context reference is added. EF caches that validated reference in the context
+scope, so warm `Resolve` calls do not repeat provider-name enumeration or options
+metadata inspection. The scope owns validation, while the adapter stays
+stateless across contexts.
+
+The query interceptor uses EF's public
+`IQueryExpressionInterceptor` contract and retains no context or query state.
 `HasNestedSet(...)` assigns structural roles on an ordinary entity, including
 a scalar NodeKey, stable TreeId, optional Scope,
 Parent, bounds, Depth, Position, and optional sibling order.
@@ -486,14 +529,27 @@ still depends on the retired generation.
 
 ## Provider boundary
 
-Provider capabilities isolate lock SQL, required isolation, identifier quoting,
-set-update details, self-referential delete behavior, and store-specific order.
-All value parameters come from finalized relational type mappings. Physical
-identifiers come only from trusted model metadata and the provider SQL helper.
+The selected provider service delegates native lock SQL, registry rowset
+encoding, session prerequisites, supported isolation/snapshot policies,
+set-update details, generated-column expressions, collation handling, physical
+query strategies, and SQL translations to the corresponding adapter. The common
+engine retains lifecycle validation, deterministic lock acquisition, mapped
+parameter execution, transaction ownership, and shared structural algorithms.
+It does not dispatch through concrete provider-name strings or a provider enum.
 
-The common contract is qualified for Doka MySQL/MariaDB, Npgsql PostgreSQL,
-Microsoft SQLite, and Microsoft SQL Server. Pomelo is outside the contract.
-Ordinary EF migrations are the required baseline; SafeMigrations is optional.
+MySql binds the required public Doka APIs directly. Exact source/ordered-join
+method identities still belong to query-provenance validation; they are captured
+from typed public methods rather than optional string/signature discovery.
+Neutral structural query markers remain common and are translated by the
+selected adapter only. No process-wide assembly discovery is introduced.
+
+All value parameters come from finalized relational type mappings. Physical
+identifiers come only from trusted model metadata and the selected provider's
+SQL identifier helper. Each adapter has a direct dependency on its native EF
+provider; the common kernel has none. Pomelo is outside the contract. Ordinary
+EF migrations remain the required baseline; SafeMigrations is independently
+optional. Package declarations and actual executed qualifications are separated
+in [the support matrix](support-and-qualification.md).
 
 ## Diagnostics boundary
 
@@ -519,15 +575,18 @@ machine. Deferred query execution remains visible through EF Core diagnostics.
 | `Features/Ordering` and `Features/ManagedSave` | Sibling order and coordinated SaveChanges |
 | `Features/Maintenance` | Registry lifecycle, inspection, repair, and rebuild |
 | `Configuration` and `Mapping` | Structural roles, conventions, and finalized immutable metadata |
-| `Execution` and `Providers` | Transactions, tree locks, retries, and provider capabilities |
+| `Execution` and `Providers` in the common package | Shared transaction/tree-lifecycle coordination, retries, and the internal provider boundary |
+| The four adapter projects | Native SQL/rowsets, physical model conventions, query primitives/translators, and native callback registration |
 | `Storage` and `Shared/Structural` | Typed relational access and structural primitives shared by features |
 | `Diagnostics` and `Errors` | Bounded telemetry and stable failure codes |
 
 The public namespace stays `Doka.EntityFrameworkCore.NestedSet` regardless of
 the source folder. The internal feature namespaces reflect ownership; shared
 storage, mapping, and transaction code remains outside the feature folders
-because multiple operations consume it. The split is organizational: it does
-not add a project, a service registration, or a per-operation handler.
+because multiple operations consume it. Feature folders retain the common
+algorithm owners; the provider boundary is a real project/dependency boundary.
+Selecting an adapter does not create a per-node handler or duplicate a feature
+algorithm.
 
 [D-011](decisions/D-011-feature-oriented-source-layout.md) records the runtime
 source layout.

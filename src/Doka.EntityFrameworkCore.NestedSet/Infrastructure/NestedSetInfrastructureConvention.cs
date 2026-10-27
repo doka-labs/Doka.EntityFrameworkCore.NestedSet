@@ -4,20 +4,20 @@ namespace Doka.EntityFrameworkCore.NestedSet;
 internal sealed class NestedSetInfrastructureConvention : IModelFinalizingConvention
 {
     /// <summary>The official registered provider identity controlling canonical table collation support.</summary>
-    private readonly string _providerName;
+    private readonly NestedSetProviderCapabilities _provider;
 
     /// <summary>The provider service resolving the exact registry identity's effective conversion.</summary>
     private readonly ITypeMappingSource _typeMappings;
 
     /// <summary>Creates registry metadata conventions for the registered database provider.</summary>
-    /// <param name="providerName">The official registered database provider name.</param>
+    /// <param name="provider">The selected native provider implementation.</param>
     /// <param name="typeMappings">The provider's effective property-mapping service.</param>
     internal NestedSetInfrastructureConvention(
-        string providerName,
+        NestedSetProviderCapabilities provider,
         ITypeMappingSource typeMappings
     )
     {
-        _providerName = providerName;
+        _provider = provider;
         _typeMappings = typeMappings;
     }
 
@@ -35,19 +35,19 @@ internal sealed class NestedSetInfrastructureConvention : IModelFinalizingConven
 
         foreach (var hierarchy in hierarchies)
         {
-            AddRegistry(modelBuilder, hierarchy, _providerName, _typeMappings);
+            AddRegistry(modelBuilder, hierarchy, _provider, _typeMappings);
         }
     }
 
     /// <summary>Maps one shared infrastructure entity whose key matches the hierarchy's database identity.</summary>
     /// <param name="modelBuilder">The convention model receiving the registry entity.</param>
     /// <param name="hierarchy">The already validated nested-set hierarchy.</param>
-    /// <param name="providerName">The official registered database provider name.</param>
+    /// <param name="provider">The selected native provider implementation.</param>
     /// <param name="typeMappings">The provider's effective property-mapping service.</param>
     private static void AddRegistry(
         IConventionModelBuilder modelBuilder,
         IConventionEntityType hierarchy,
-        string providerName,
+        NestedSetProviderCapabilities provider,
         ITypeMappingSource typeMappings
     )
     {
@@ -103,7 +103,7 @@ internal sealed class NestedSetInfrastructureConvention : IModelFinalizingConven
                     scopeProperty,
                     NestedSetTreeRegistryMetadata.Scope,
                     NestedSetCollations.ResolveEffective(
-                        hierarchy, scopeProperty, hierarchyStore, providerName, typeMappings)));
+                        hierarchy, scopeProperty, hierarchyStore, provider, typeMappings)));
         }
 
         var treeProperty = descriptor.TreeId.Resolve(hierarchy);
@@ -117,7 +117,7 @@ internal sealed class NestedSetInfrastructureConvention : IModelFinalizingConven
                     hierarchy,
                     treeProperty,
                     hierarchyStore,
-                    providerName,
+                    provider,
                     typeMappings)));
 
         var revision = registry.Property(typeof(long), NestedSetTreeRegistryMetadata.Revision, false, true)

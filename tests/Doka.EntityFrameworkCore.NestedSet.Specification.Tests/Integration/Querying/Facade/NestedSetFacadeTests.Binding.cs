@@ -164,8 +164,7 @@ public abstract partial class NestedSetFacadeTests
     {
         var options = new DbContextOptionsBuilder<TreeContext>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .Options;
 
         return new TreeContext(options);

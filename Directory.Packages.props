@@ -4,9 +4,14 @@
   </PropertyGroup>
 
   <PropertyGroup Label="Qualification transitive security floor"
-                 Condition="'$(MSBuildProjectName)' != 'Doka.NestedSet' and '$(MSBuildProjectName)' != 'Doka.EntityFrameworkCore.NestedSet'">
+                 Condition="'$(MSBuildProjectName)' != 'Doka.NestedSet'
+                            and '$(MSBuildProjectName)' != 'Doka.EntityFrameworkCore.NestedSet'
+                            and '$(MSBuildProjectName)' != 'Doka.EntityFrameworkCore.NestedSet.MySql'
+                            and '$(MSBuildProjectName)' != 'Doka.EntityFrameworkCore.NestedSet.Postgres'
+                            and '$(MSBuildProjectName)' != 'Doka.EntityFrameworkCore.NestedSet.Sqlite'
+                            and '$(MSBuildProjectName)' != 'Doka.EntityFrameworkCore.NestedSet.SqlServer'">
     <!-- WHY: SQL Client still requests vulnerable PKCS 9.0.11. Pin its existing dependency without
-         promoting qualification-only packages into either shipping package's dependency contract. -->
+         promoting qualification-only packages into shipping package dependency contracts. -->
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
 
@@ -19,8 +24,8 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="5.6.0"/>
   </ItemGroup>
 
-  <!-- The provider suites and benchmarks use all four providers; samples use Doka and optional SQLite. -->
-  <ItemGroup Label="Provider qualification">
+  <!-- Native adapters declare bounded production compatibility below; qualification uses these fixed baselines. -->
+  <ItemGroup Label="Database provider baselines">
     <PackageVersion Include="Doka.EntityFrameworkCore.MySql" Version="10.6.2"/>
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14"/>
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.14"/>
@@ -65,5 +70,29 @@
     <!-- WHY: The shipping contract supports EF Core 10; a new major requires explicit compatibility validation. -->
     <PackageVersion Update="Microsoft.EntityFrameworkCore" Version="[10.0.12,11.0.0)"/>
     <PackageVersion Update="Microsoft.EntityFrameworkCore.Relational" Version="[10.0.12,11.0.0)"/>
+  </ItemGroup>
+
+  <ItemGroup Label="Production MySql provider compatibility"
+             Condition="'$(MSBuildProjectName)' == 'Doka.EntityFrameworkCore.NestedSet.MySql'">
+    <!-- WHY: The typed source-binding and ordered-join APIs first qualified here belong to the Doka 10.6 line. -->
+    <PackageVersion Update="Doka.EntityFrameworkCore.MySql" Version="[10.6.2,10.7.0)"/>
+  </ItemGroup>
+
+  <ItemGroup Label="Production Postgres provider compatibility"
+             Condition="'$(MSBuildProjectName)' == 'Doka.EntityFrameworkCore.NestedSet.Postgres'">
+    <PackageVersion Update="Npgsql.EntityFrameworkCore.PostgreSQL" Version="[10.0.3,11.0.0)"/>
+  </ItemGroup>
+
+  <ItemGroup Label="Production Sqlite provider compatibility"
+             Condition="'$(MSBuildProjectName)' == 'Doka.EntityFrameworkCore.NestedSet.Sqlite'">
+    <PackageVersion Update="Microsoft.EntityFrameworkCore.Sqlite" Version="[10.0.13,11.0.0)"/>
+  </ItemGroup>
+
+  <ItemGroup Label="Production SqlServer provider compatibility"
+             Condition="'$(MSBuildProjectName)' == 'Doka.EntityFrameworkCore.NestedSet.SqlServer'">
+    <PackageVersion Update="Microsoft.EntityFrameworkCore.SqlServer" Version="[10.0.13,11.0.0)"/>
+    <!-- WHY: PKCS 9.0.21 fixes the reviewed advisories. Keep that security minimum independent of the
+         newer qualification pin so an already patched consumer is not forced into a servicing update. -->
+    <PackageVersion Update="System.Security.Cryptography.Pkcs" Version="9.0.21"/>
   </ItemGroup>
 </Project>

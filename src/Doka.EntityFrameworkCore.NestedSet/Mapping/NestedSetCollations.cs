@@ -5,11 +5,11 @@ internal static class NestedSetCollations
 {
     /// <summary>Captures hierarchy-specific string identities before EF removes relational collations.</summary>
     /// <param name="model">The convention model whose physical hierarchy stores have been validated.</param>
-    /// <param name="providerName">The official registered database provider name.</param>
+    /// <param name="provider">The selected native table-collation implementation.</param>
     /// <param name="typeMappings">The provider service resolving effective conversions before finalization.</param>
     internal static void Capture(
         IConventionModel model,
-        string providerName,
+        NestedSetProviderCapabilities provider,
         ITypeMappingSource typeMappings
     )
     {
@@ -42,7 +42,7 @@ internal static class NestedSetCollations
                 // have different collations. Capture on the configured owner, never on that shared property.
                 hierarchy.SetAnnotation(
                     AnnotationName(property.Name),
-                    ResolveEffective(hierarchy, property, store, providerName, typeMappings) ?? string.Empty);
+                    ResolveEffective(hierarchy, property, store, provider, typeMappings) ?? string.Empty);
             }
         }
 
@@ -84,7 +84,7 @@ internal static class NestedSetCollations
             var captured = hierarchy.FindAnnotation(AnnotationName(property.Name))?.Value as string
                 ?? throw new InvalidOperationException(
                     $"The nested-set collation capture for '{hierarchy.Name}.{property.Name}' is incomplete. "
-                    + "Regenerate after configuring optionsBuilder.UseNestedSets() before model generation "
+                    + "Regenerate after configuring the native provider callback's UseNestedSets() before model generation "
                     + "so hierarchy-owned physical identity collations are captured.");
 
             return captured.Length == 0 ? null : captured;
@@ -98,7 +98,7 @@ internal static class NestedSetCollations
         {
             // WHY: Reconstructing a supplied runtime model defeats compiled-model reuse and can change semantics.
             throw new InvalidOperationException(
-                "Compiled or explicitly supplied models require optionsBuilder.UseNestedSets() before model "
+                "Compiled or explicitly supplied models require the native provider callback's UseNestedSets() before model "
                 + "generation. Regenerate the model so hierarchy-owned physical collation metadata is captured.");
         }
 
@@ -113,23 +113,23 @@ internal static class NestedSetCollations
 
         var descriptor = NestedSetModelDescriptor.FromFinalized(designHierarchy);
         var store = NestedSetStoreObject.Resolve(designHierarchy, descriptor);
-        var providerName = context.GetService<IDatabaseProvider>().Name;
+        var provider = NestedSetProviderCapabilities.Resolve(context);
 
-        return ResolveEffective(designHierarchy, designProperty, store, providerName);
+        return ResolveEffective(designHierarchy, designProperty, store, provider);
     }
 
     /// <summary>Resolves one design-time facet shared by runtime capture and registry identity construction.</summary>
     /// <param name="hierarchy">The configured owner of the exact structural table.</param>
     /// <param name="property">The identity property whose physical column is inspected.</param>
     /// <param name="store">The validated structural table, including an entity-splitting fragment.</param>
-    /// <param name="providerName">The official registered database provider name.</param>
+    /// <param name="provider">The selected native table-collation implementation.</param>
     /// <param name="typeMappings">The provider service when type mappings are not yet finalized.</param>
     /// <returns>The physical-column, supported table, or model collation; otherwise null.</returns>
     internal static string? ResolveEffective(
         IReadOnlyEntityType hierarchy,
         IReadOnlyProperty property,
         StoreObjectIdentifier store,
-        string providerName,
+        NestedSetProviderCapabilities provider,
         ITypeMappingSource? typeMappings = null
     )
     {
@@ -145,88 +145,12 @@ internal static class NestedSetCollations
             return columnCollation;
         }
 
-        if (string.Equals(providerName, NestedSetProviderCapabilities.MySqlProviderName, StringComparison.Ordinal)
-            && FindTableCollation(hierarchy.Model, store) is { } tableCollation)
+        if (provider.ResolveTableCollation(hierarchy.Model, store) is { } tableCollation)
         {
             return tableCollation;
         }
 
         return hierarchy.Model.GetCollation();
-    }
-
-    /// <summary>Finds the canonical Doka table annotation only on owners mapped to the exact physical table.</summary>
-    /// <param name="model">The design model containing all possible shared physical-table owners.</param>
-    /// <param name="store">The hierarchy's validated structural table.</param>
-    /// <returns>The applicable table collation, or null when no owner declares one.</returns>
-    /// <exception cref="InvalidOperationException">Mapped owners declare conflicting table values.</exception>
-    private static string? FindTableCollation(
-        IReadOnlyModel model,
-        StoreObjectIdentifier store
-    )
-    {
-        string? collation = null;
-
-        foreach (var owner in model.GetEntityTypes())
-        {
-            if (!MapsTable(owner, store)
-                || owner.FindAnnotation(RelationalAnnotationNames.Collation)?.Value is not string candidate)
-            {
-                continue;
-            }
-
-            if (collation is not null
-                && !string.Equals(collation, candidate, StringComparison.Ordinal))
-            {
-                // WHY: Identity semantics must not depend on which contradictory shared-table owner the
-                // provider visits first. Reject the ambiguous table default when an identity needs it.
-                throw new InvalidOperationException(
-                    $"Nested-set structural table '{store}' has conflicting canonical table collations "
-                    + $"'{collation}' and '{candidate}' on its mapped owners.");
-            }
-
-            collation = candidate;
-        }
-
-        return collation;
-    }
-
-    /// <summary>Tests primary and split-table mappings while retaining the original physical mapping owner.</summary>
-    /// <param name="owner">A possible physical table owner.</param>
-    /// <param name="store">The exact validated structural table.</param>
-    /// <returns>Whether the owner is mapped to that physical table.</returns>
-    private static bool MapsTable(
-        IReadOnlyEntityType owner,
-        StoreObjectIdentifier store
-    )
-    {
-        if (owner.GetTableName() is null)
-        {
-            return false;
-        }
-
-        var strategy = owner.GetMappingStrategy();
-
-        // WHY: EF retains the original TypeBase when a TPT mapping visits ancestor tables; Doka reads the table
-        // annotation from that original owner. TPH and TPC stop at their own primary and explicit fragment maps.
-        for (var mappedType = owner; mappedType is not null; mappedType = mappedType.BaseType)
-        {
-            if (mappedType.GetTableName() is { } table
-                && (StoreObjectIdentifier.Table(table, mappedType.GetSchema()) == store
-                    || mappedType
-                        .GetMappingFragments(StoreObjectType.Table)
-                        .Any(fragment => fragment.StoreObject == store)))
-            {
-                return true;
-            }
-
-            if (strategy is RelationalAnnotationNames.TpcMappingStrategy
-                or RelationalAnnotationNames.TphMappingStrategy)
-            {
-                break;
-            }
-        }
-
-        return false;
     }
 
     /// <summary>Checks the effective converter, including conversions selected by the relational store type.</summary>

@@ -32,8 +32,7 @@ public sealed class BulkIdentityRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new IdentityContext(options);
@@ -100,8 +99,7 @@ public sealed class BulkIdentityRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new IdentityContext(options);
@@ -170,8 +168,7 @@ public sealed class BulkIdentityRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<ShallowBinaryContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new ShallowBinaryContext(options);
@@ -215,8 +212,7 @@ public sealed class BulkIdentityRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new IdentityContext(options);
@@ -254,8 +250,7 @@ public sealed class BulkIdentityRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new IdentityContext(options);
@@ -307,8 +302,7 @@ public sealed class BulkIdentityRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new IdentityContext(options);
@@ -413,8 +407,7 @@ public sealed class BulkIdentityRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new IdentityContext(options);
@@ -472,8 +465,7 @@ public sealed class BulkIdentityRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new IdentityContext(options);
@@ -545,8 +537,7 @@ public sealed class BulkIdentityRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new IdentityContext(options);

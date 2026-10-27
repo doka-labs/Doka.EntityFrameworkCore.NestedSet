@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup Label="Provider package metadata">
+    <IsPackable>true</IsPackable>
+    <Description>Nested-set hierarchy integration for the Sqlite Entity Framework Core provider.</Description>
+    <PackageTags>efcore;nested-set;tree;hierarchy;sqlite</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup Label="Common hierarchy and native provider">
+    <ProjectReference Include="../Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite"/>
+  </ItemGroup>
+
+  <ItemGroup Label="IDE file nesting">
+    <Compile Update="Registry/SqliteNestedSetProvider.Rowsets.cs">
+      <DependentUpon>SqliteNestedSetProvider.Registry.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+</Project>

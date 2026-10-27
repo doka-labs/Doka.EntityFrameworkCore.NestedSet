@@ -25,8 +25,7 @@ public sealed class MutationContextGuardTests : ProviderTest,
         // Arrange
         var options = new DbContextOptionsBuilder()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new StrictOrderingContext(options);
@@ -99,8 +98,7 @@ public sealed class MutationContextGuardTests : ProviderTest,
         // Arrange
         var options = new DbContextOptionsBuilder()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new StrictOrderingContext(options);

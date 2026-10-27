@@ -5,12 +5,13 @@ guide by the task you need to complete. Feature guides define supported
 behavior, architecture records explain why material decisions exist, and
 runbooks own operational procedures.
 
-These guides describe the stable `10.0.0` contract. See the
-[changelog](../CHANGELOG.md) for changes since `10.0.0-rc.1` and the
+These guides describe the `10.1.0` source contract and its compatible additions
+to `10.0.0`. See the [changelog](../CHANGELOG.md) for changes and the
 [support matrix](support-and-qualification.md) for qualified versions.
 
 ## Use NestedSet
 
+- [Provider Package Upgrade](upgrading-provider-packages.md) explains the breaking adapter installation and native-callback registration transition.
 - [Getting Started](getting-started.md) builds a complete Doka MySQL/MariaDB
   application and its first hierarchy.
 - [Hierarchy Model](hierarchy-model.md) defines scopes, forests, roots, parent
@@ -41,6 +42,11 @@ These guides describe the stable `10.0.0` contract. See the
   activities, metrics, logging boundaries, and incident evidence.
 - [Performance](performance.md) explains read/write cost, memory ownership,
   mutation budgets, and how to measure an application workload.
+- Query and Consumer Performance (planned documentation: `qualification/query-performance.md`)
+  separates construction, complete-reader, materializer and framework observations.
+- [Provider and Migration Qualification](qualification/provider-migrations.md)
+  records exact local package inputs, actual migrations/replay, retained negatives
+  and the published-package/native SQL Server boundaries.
 - [Deployment and Recovery](runbooks/deployment-and-recovery.md) routes schema,
   lock, hierarchy, and partial-operation failures.
 

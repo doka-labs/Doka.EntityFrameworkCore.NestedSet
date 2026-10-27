@@ -9,10 +9,12 @@ internal static class NestedSetIndexes
     /// <summary>Ensures mapped structural queries have ordinary indexes and removes unused owned indexes.</summary>
     /// <param name="entity">The mutable entity metadata being configured.</param>
     /// <param name="validateModel">Whether the finalized model contract must be validated.</param>
+    /// <param name="provider">The selected native index policy, or null during provider-free mapping.</param>
     /// <exception cref="InvalidOperationException">A finalized structural role or identity is invalid.</exception>
     internal static void Reconcile(
         IConventionEntityType entity,
-        bool validateModel = false
+        bool validateModel = false,
+        NestedSetProviderCapabilities? provider = null
     )
     {
         var desired = DesiredIndexes(entity, validateModel);
@@ -39,7 +41,7 @@ internal static class NestedSetIndexes
             var existing = entity
                 .GetIndexes()
                 .Where(index => index.Properties.SequenceEqual(definition.Properties)
-                    && IsOrdinary(index, definition.Descending))
+                    && IsOrdinary(index, definition.Descending, provider))
                 .OrderBy(owned.Contains)
                 .FirstOrDefault();
 
@@ -75,32 +77,18 @@ internal static class NestedSetIndexes
         }
     }
 
-    /// <summary>Restricts PostgreSQL's generated tree paths to queries that constrain their required TreeId.</summary>
-    /// <param name="entity">The configured hierarchy whose indexes were reconciled in the preceding batch.</param>
-    /// <param name="mapping">The validated structural descriptor.</param>
-    /// <param name="sql">The PostgreSQL identifier-delimiting service.</param>
-    internal static void ApplyTreePredicate(
-        IConventionEntityType entity,
-        NestedSetModelDescriptor mapping,
-        ISqlGenerationHelper sql
-    )
+    /// <summary>Applies a native access predicate only to this convention's unmodified owned indexes.</summary>
+    /// <param name="entity">The hierarchy whose ordinary index roles were reconciled.</param>
+    /// <param name="filter">The model-derived native predicate supplied by the selected adapter.</param>
+    internal static void ApplyOwnedIndexFilter(IConventionEntityType entity, string filter)
     {
         if (!s_owned.TryGetValue(entity, out var indexes))
         {
             return;
         }
 
-        var store = NestedSetStoreObject.Resolve(entity, mapping);
-        var tree = mapping.TreeId.Resolve(entity);
-        var column = tree.GetColumnName(store)
-            ?? throw new InvalidOperationException(
-                $"Nested-set TreeId property '{tree.Name}' on '{entity.Name}' is not mapped to its hierarchy table.");
-        var filter = sql.DelimitIdentifier(column) + " IS NOT NULL";
-
         foreach (var index in indexes.Where(index => index.IsInModel && IsUnmodified(index)))
         {
-            // WHY: Every required TreeId remains indexed, and tree equality proves this predicate. Principal
-            // FK checks omit TreeId, so empty committed statistics cannot select a scope-only structural scan.
             index.SetFilter(filter);
         }
     }
@@ -154,6 +142,9 @@ internal static class NestedSetIndexes
 
             var descending = new bool[properties.Length];
 
+            // WHY: Place each sort direction at its matching offset in the complete index definition.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var index = 0; index < mapping.Order.Count; index++)
             {
                 descending[prefix.Length + 1 + index] = mapping.Order[index].Descending;
@@ -181,10 +172,12 @@ internal static class NestedSetIndexes
     /// <summary>Recognizes complete B-tree paths with the exact requested direction sequence.</summary>
     /// <param name="index">The configured model index.</param>
     /// <param name="descending">The required direction for every key property.</param>
+    /// <param name="provider">The selected native annotation policy, or null before provider selection.</param>
     /// <returns>Whether the index can serve the complete requested access path.</returns>
     private static bool IsOrdinary(
         IConventionIndex index,
-        IReadOnlyList<bool> descending
+        IReadOnlyList<bool> descending,
+        NestedSetProviderCapabilities? provider
     )
     {
         // WHY: Filters, prefix lengths, expressions, operator metadata, and specialized methods cannot guarantee
@@ -194,7 +187,7 @@ internal static class NestedSetIndexes
             && DirectionsMatch(index.IsDescending, descending)
             && index
                 .GetAnnotations()
-                .All(IsCompatibleAnnotation);
+                .All(annotation => IsCompatibleAnnotation(annotation, provider));
     }
 
     /// <summary>Compares EF's null-for-all-ascending representation with an explicit direction vector.</summary>
@@ -210,25 +203,19 @@ internal static class NestedSetIndexes
 
     /// <summary>Recognizes documented annotations that preserve complete B-tree key lookups.</summary>
     /// <param name="annotation">One index annotation.</param>
+    /// <param name="provider">The selected native annotation policy, or no policy during early mapping.</param>
     /// <returns>Whether the annotation preserves ordinary B-tree key semantics.</returns>
     private static bool IsCompatibleAnnotation(
-            IConventionAnnotation annotation
-        ) // WHY: Covering columns, page fill, and concurrent creation do not change B-tree key lookup semantics.
-        // Recognizing their public API metadata avoids duplicate writes without a runtime provider dependency.
-        => annotation.Name switch
-        {
-            RelationalAnnotationNames.Name => true,
-            RelationalAnnotationNames.Filter => annotation.Value is null,
-            "SqlServer:Include" => annotation.Value is string[],
-            "SqlServer:Clustered" or "SqlServer:Online" => annotation.Value is bool,
-            "SqlServer:FillFactor" => annotation.Value is int and >= 1 and <= 100,
-            "SqlServer:SortInTempDb" => annotation.Value is bool,
-            "Npgsql:IndexMethod" => annotation.Value is "btree",
-            "Npgsql:IndexInclude" => annotation.Value is string[],
-            "Npgsql:CreatedConcurrently" => annotation.Value is bool,
-            "Npgsql:StorageParameter:fillfactor" => annotation.Value is int and >= 10 and <= 100,
-            _ => false,
-        };
+        IConventionAnnotation annotation,
+        NestedSetProviderCapabilities? provider
+    ) => annotation.Name switch
+    {
+        RelationalAnnotationNames.Name => true,
+        RelationalAnnotationNames.Filter => annotation.Value is null,
+        // WHY: Early provider-free mapping stays conservative; selected native conventions reconcile again
+        // before their physical index budgeting and can adopt proven equivalent application indexes.
+        _ => provider?.IsCompatibleIndexAnnotation(annotation) is true,
+    };
 
     /// <summary>Allows cleanup only while the application has not adopted or customized an owned index.</summary>
     /// <param name="index">The convention-created index to inspect.</param>

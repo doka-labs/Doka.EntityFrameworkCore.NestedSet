@@ -152,7 +152,7 @@ public sealed class InsertionReflectionContractTests
         Assert.DoesNotContain("Discard", incompatible.Message, StringComparison.Ordinal);
     }
 
-    /// <summary>Options registration validates its framework contract without a provider, model or context.</summary>
+    /// <summary>The typed native callback validates its framework seam before any context or model exists.</summary>
     [Fact]
     public void RegistrationValidatesWithoutCreatingAContext()
     {
@@ -177,24 +177,28 @@ public sealed class InsertionReflectionContractTests
                 .GetType()
                 .GetProperty("IsValueCreated")!;
 
-            var registrationType = assembly.GetType(
-                typeof(NestedSetDbContextOptionsBuilderExtensions).FullName!,
-                throwOnError: true)!;
+            var adapterAssembly = loadContext.LoadFromAssemblyPath(
+                typeof(SqliteNestedSetOptionsBuilderExtensions).Assembly.Location);
+
+            var registrationType = adapterAssembly.GetType(
+                typeof(SqliteNestedSetOptionsBuilderExtensions).FullName!, throwOnError: true)!;
 
             var registration = registrationType.GetMethod(
-                nameof(NestedSetDbContextOptionsBuilderExtensions.UseNestedSets),
-                [typeof(DbContextOptionsBuilder)])!;
+                nameof(SqliteNestedSetOptionsBuilderExtensions.UseNestedSets),
+                [typeof(SqliteDbContextOptionsBuilder)])!;
 
             var options = new DbContextOptionsBuilder();
+            var native = new SqliteDbContextOptionsBuilder(options);
             var initiallyCreated = (bool)created.GetValue(lazy)!;
 
             // Act
-            var registered = registration.Invoke(null, [options]);
+            var registered = registration.Invoke(null, [native]);
 
             // Assert
             Assert.False(initiallyCreated);
-            Assert.Same(options, registered);
+            Assert.Same(native, registered);
             Assert.True((bool)created.GetValue(lazy)!);
+            Assert.False(Assert.Single(options.Options.Extensions).Info.IsDatabaseProvider);
         }
         finally
         {

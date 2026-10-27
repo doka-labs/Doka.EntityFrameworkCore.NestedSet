@@ -47,7 +47,7 @@ internal sealed class NestedSetTrackedIdentityGuard<TEntity, TKey, TTreeId, TSco
         _treeComparer = treeComparer;
         _usesNativeScopeComparison = map.ScopeProperty is { } scope
             && (scope.GetTypeMapping().Converter?.ProviderClrType ?? scope.ClrType) == typeof(string)
-            && NestedSetProviderCapabilities.Resolve(context).Kind == NestedSetProviderKind.MySql;
+            && NestedSetProviderCapabilities.Resolve(context).UsesNativeScopeComparison;
 
         _context.ChangeTracker.Tracked += OnTracked;
         _observing = true;

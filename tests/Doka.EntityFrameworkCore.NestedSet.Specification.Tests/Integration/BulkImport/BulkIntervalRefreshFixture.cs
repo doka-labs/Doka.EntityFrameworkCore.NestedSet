@@ -24,8 +24,7 @@ public sealed class BulkIntervalRefreshFixture : IAsyncLifetime
 
         await using var source = database!.CreateContext();
         var options = new DbContextOptionsBuilder<BulkIntervalRefreshContext>()
-            .ConfigureTestWarnings()
-            .UseNestedSets();
+            .ConfigureTestWarnings();
 
         foreach (var extension in source.GetService<IDbContextOptions>()
                      .Extensions)

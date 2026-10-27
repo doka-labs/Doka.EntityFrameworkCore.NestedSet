@@ -6,20 +6,20 @@ This guide defines the EF Core model and context contract. See
 
 ## Register infrastructure
 
-Call `UseNestedSets()` on the `DbContextOptionsBuilder` after selecting the
-provider:
+Install the selected NestedSet adapter and call `UseNestedSets()` on the
+native provider builder inside its callback:
 
 ```csharp
 var serverVersion = MySqlServerVersion.MariaDb(new Version(11, 8, 0));
 
 services.AddDbContext<ApplicationDbContext>(options => options
-    .UseMySql(connectionString, serverVersion)
-    .UseNestedSets());
+    .UseMySql(connectionString, serverVersion, mysql => mysql.UseNestedSets()));
 ```
 
-This `IDbContextOptionsExtension` installs model-finalizing conventions, typed
-tree registries, provider capabilities, the save guard, the persistence
-boundary, and diagnostics. It is idempotent and safe for context pooling. The
+The adapter adds an immutable `IDbContextOptionsExtension` selecting its exact
+provider implementation. It installs shared model-finalizing conventions,
+typed tree registries, the save guard, persistence boundary, and diagnostics,
+plus the selected adapter's native services. It is idempotent and safe for context pooling. The
 persistence boundary replaces the provider's standard relational `IDatabase`
 service in either extension order; a provider-specific `IDatabase`
 implementation is rejected instead of being replaced.

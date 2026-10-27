@@ -151,16 +151,18 @@ without expanding the support matrix.
 
 ## Version and Compatibility Lifecycle
 
-This source defines the first stable `10.0.0` contract for both packages;
+This source defines the `10.1.0` contract across the common libraries and four
+provider adapters, including the documented breaking registration transition;
 publication is established by the release's successful public readback.
 Reports must identify the actual package version or the exact source revision
 and build for unreleased changes. The earlier `10.0.0-rc.1` has no separate
 maintenance line; fixes target the shared 10.x line.
 
-Both packages target .NET 10. The EF package declares compatibility with EF
-Core 10 beginning at the repository's minimum version and excludes EF Core 11.
-The exact minimum, locked versions, providers, and engine images belong to the
-support and qualification contract rather than this routing policy.
+All six packages target .NET 10. The common EF package declares an EF Core 10
+range; each native adapter also has its own provider dependency constraints.
+Their intersection determines what an application can restore. The exact
+ranges, locked versions, providers, and engine images belong to the support
+and qualification contract rather than this routing policy.
 
 Consumers and reproducers should use supported .NET and EF Core releases and
 remain current on their patch line. That upstream lifecycle does not by itself
@@ -168,8 +170,12 @@ establish NestedSet compatibility: EF providers generally do not work across
 major EF Core versions, and every provider or engine line requires explicit
 NestedSet qualification.
 
-The `10.0.0` API is recorded in the shipped baselines. Subsequent public API
-changes follow the documented compatibility and SemVer review.
+The `10.0.0` API is recorded in the shipped baselines. The owner explicitly
+kept `10.1.0` for the provider-package/registration break as the narrow SemVer
+exception in [D-020](docs/decisions/D-020-provider-owned-runtime-packages.md).
+Package majors follow the .NET family and `11.x` is reserved for .NET 11.
+Other public API changes still require compatibility and version review; this
+exception is not permission for unrelated breaking minor updates.
 
 Unsupported versions or configurations may be investigated to understand a
 regression or future compatibility need. Such investigation does not create a

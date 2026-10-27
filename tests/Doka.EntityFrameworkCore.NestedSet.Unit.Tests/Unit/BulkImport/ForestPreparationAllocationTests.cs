@@ -27,8 +27,7 @@ public sealed class ForestPreparationAllocationTests
         // Arrange
         var boundary = new PreparationBoundary();
         var options = new DbContextOptionsBuilder<TreeContext>()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .AddInterceptors(boundary)
             .Options;
 

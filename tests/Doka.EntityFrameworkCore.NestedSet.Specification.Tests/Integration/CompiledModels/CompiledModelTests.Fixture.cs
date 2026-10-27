@@ -98,11 +98,6 @@ public sealed class CompiledModelFixture : IAsyncLifetime
         var options = new DbContextOptionsBuilder<TContext>(new DbContextOptions<TContext>(extensions))
             .ConfigureTestWarnings();
 
-        if (enableNestedSets)
-        {
-            options.UseNestedSets();
-        }
-
         return model is null
             ? options.Options
             : options.UseModel(model).Options;

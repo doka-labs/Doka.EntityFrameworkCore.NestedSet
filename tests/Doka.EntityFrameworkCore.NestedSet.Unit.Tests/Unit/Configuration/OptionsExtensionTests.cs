@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Verifies options-based nested-set registration and its context lifetime behavior.</summary>
-public sealed class OptionsExtensionTests
+public sealed partial class OptionsExtensionTests
 {
     /// <summary>
     ///     Options registration installs exact hierarchy metadata without context-level registration hooks.
@@ -14,8 +14,7 @@ public sealed class OptionsExtensionTests
         // Arrange
         var options = new DbContextOptionsBuilder<EnabledContext>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", sqlite => sqlite.UseNestedSets())
             .Options;
 
         using var context = new EnabledContext(options);
@@ -23,6 +22,7 @@ public sealed class OptionsExtensionTests
         // Act
         var model = context.GetService<IDesignTimeModel>()
             .Model;
+
         var nodeEntity = model.FindEntityType(typeof(Node))
             ?? throw new InvalidOperationException("The enabled test model did not contain its hierarchy entity.");
 
@@ -141,7 +141,7 @@ public sealed class OptionsExtensionTests
 
         // Assert
         var invalid = Assert.IsType<InvalidOperationException>(exception, exactMatch: false);
-        Assert.Contains("optionsBuilder.UseNestedSets()", invalid.Message, StringComparison.Ordinal);
+        Assert.Contains("UseNestedSets()", invalid.Message, StringComparison.Ordinal);
     }
 
     /// <summary>Options registration runs final validation after application key configuration completes.</summary>
@@ -151,8 +151,7 @@ public sealed class OptionsExtensionTests
         // Arrange
         var options = new DbContextOptionsBuilder<InvalidContext>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", sqlite => sqlite.UseNestedSets())
             .Options;
 
         using var context = new InvalidContext(options);
@@ -173,14 +172,20 @@ public sealed class OptionsExtensionTests
             .ConfigureTestWarnings()
             .UseSqlite("Data Source=:memory:");
 
+        var native = new SqliteDbContextOptionsBuilder(optionsBuilder);
+
         // Act
-        optionsBuilder.UseNestedSets();
-        optionsBuilder.UseNestedSets();
+        var firstBuilder = native.UseNestedSets();
+        var first = optionsBuilder.Options.FindExtension<NestedSetOptionsExtension>();
+        var secondBuilder = native.UseNestedSets();
+        var second = optionsBuilder.Options.FindExtension<NestedSetOptionsExtension>();
 
         // Assert
-        Assert.Single(
-            optionsBuilder.Options.Extensions,
-            extension => extension.Info.LogFragment.Contains("NestedSets", StringComparison.Ordinal));
+        Assert.Same(native, firstBuilder);
+        Assert.Same(native, secondBuilder);
+        Assert.Same(first, second);
+        Assert.Same(NestedSetTestAdapters.ForEngine("Sqlite"), second!.Provider);
+        Assert.Single(optionsBuilder.Options.Extensions.OfType<NestedSetOptionsExtension>());
     }
 
     /// <summary>Different physical hierarchy tables receive independent technical registry tables.</summary>
@@ -212,8 +217,7 @@ public sealed class OptionsExtensionTests
         // Arrange
         var options = new DbContextOptionsBuilder<EnabledContext>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", sqlite => sqlite.UseNestedSets())
             .Options;
 
         using var context = new EnabledContext(options);
@@ -237,8 +241,7 @@ public sealed class OptionsExtensionTests
         services.AddPooledDbContextFactory<EnabledContext>(
             options => options
                 .ConfigureTestWarnings()
-                .UseSqlite("Data Source=:memory:")
-                .UseNestedSets(),
+                .UseSqlite("Data Source=:memory:", sqlite => sqlite.UseNestedSets()),
             1);
 
         await using var provider = services.BuildServiceProvider();
@@ -268,15 +271,21 @@ public sealed class OptionsExtensionTests
     {
         // Arrange
         var builder = new DbContextOptionsBuilder<EnabledContext>().ConfigureTestWarnings();
-        var options = nestedSetsFirst
-            ? builder
-                .UseNestedSets()
-                .UseSqlite("Data Source=:memory:")
-                .Options
-            : builder
-                .UseSqlite("Data Source=:memory:")
-                .UseNestedSets()
-                .Options;
+
+        if (nestedSetsFirst)
+        {
+            // WHY: Some native builders invoke their callback before their own options update completes.
+            // Registration must therefore defer actual-provider validation until context initialization.
+            NestedSetProviderRegistration.Register(builder, NestedSetTestAdapters.ForEngine("Sqlite"));
+        }
+
+        var options = builder.UseSqlite("Data Source=:memory:", sqlite =>
+        {
+            if (!nestedSetsFirst)
+            {
+                sqlite.UseNestedSets();
+            }
+        }).Options;
 
         using var context = new EnabledContext(options);
 
@@ -297,7 +306,7 @@ public sealed class OptionsExtensionTests
             IDatabase,
             RelationalDatabase>();
 
-        var extension = (IDbContextOptionsExtension)NestedSetOptionsExtension.Instance;
+        var extension = (IDbContextOptionsExtension)new NestedSetOptionsExtension(NestedSetTestAdapters.ForEngine("Sqlite"));
 
         // Act
         extension.ApplyServices(services);
@@ -320,7 +329,7 @@ public sealed class OptionsExtensionTests
         services.AddScoped<IDatabase>(_ =>
             throw new InvalidOperationException("The provider-specific test service is never resolved."));
 
-        IDbContextOptionsExtension extension = NestedSetOptionsExtension.Instance;
+        IDbContextOptionsExtension extension = new NestedSetOptionsExtension(NestedSetTestAdapters.ForEngine("Sqlite"));
 
         // Act
         var error = Record.Exception(() => extension.ApplyServices(services));

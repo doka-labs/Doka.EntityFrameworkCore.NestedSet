@@ -1,13 +1,32 @@
 # Changelog
 
 All notable changes to this project are documented here. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and released versions
-follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version review follows
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html), with the owner's
+explicit one-time `10.1.0` exception for the provider-package/registration break
+below. The package major follows the .NET family; `11.x` is reserved for .NET 11.
+This exception does not authorize other breaking minor releases.
 
 ## Unreleased
 
+The source version is `10.1.0`. The historical `10.0.0` shipped declarations
+remain recorded; the provider-package and registration transition below is
+explicitly breaking.
+
 ### Changed
 
+- Split native integration into `.MySql`, `.Postgres`, `.Sqlite`, and `.SqlServer`
+  shipping packages while retaining one common EF hierarchy engine. Each adapter
+  owns its native SQL, model/index conventions, registry transport, and query
+  integration through direct provider dependencies.
+- **Breaking:** install the selected NestedSet adapter and register
+  `UseNestedSets()` inside its native provider callback. Remove the former
+  `DbContextOptionsBuilder.UseNestedSets()` calls. Model mappings and public
+  hierarchy operations stay common. See the [upgrade guide](docs/upgrading-provider-packages.md)
+  and [D-020](docs/decisions/D-020-provider-owned-runtime-packages.md).
+- Bind each adapter to the exact common EF package version it was built with.
+  Update NestedSet adapters together; their private integration contract is not
+  a promise of compatibility with another kernel patch.
 - Refresh the qualification graph to published Doka 10.6.2 and SafeMigrations
   10.6.0 and EF Core 10.0.14. Preserve shipping
   EF compatibility ranges and database LTS lines. The newer local adapter
@@ -18,6 +37,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Refresh MySQL to 8.4.13 and SQL Server 2022 to CU27-GDR1; refresh the existing
   MariaDB 11.8.9 and PostgreSQL 17.11 image digests. Keep the supported engine
   lines and update the CodeQL SARIF uploader to 4.39.1.
+- Declare the SQL Server adapter's PKCS security floor as `9.0.21` without an
+  arbitrary upper bound, allowing applications to use newer compatible framework
+  packages. The common libraries retain no SQL Client dependency.
 
 ## 10.0.0 (2026-10-09)
 

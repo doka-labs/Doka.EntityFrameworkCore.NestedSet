@@ -27,8 +27,7 @@ public sealed class BulkStagingRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<ShadowStagingContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new ShadowStagingContext(options);
@@ -156,8 +155,7 @@ public sealed class BulkStagingRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<StagingContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new StagingContext(options);
@@ -198,8 +196,7 @@ public sealed class BulkStagingRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<StagingContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new StagingContext(options);
@@ -250,8 +247,7 @@ public sealed class BulkStagingRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<StagingContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new StagingContext(options);
@@ -322,8 +318,7 @@ public sealed class BulkStagingRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<StagingContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new StagingContext(options);
@@ -389,8 +384,7 @@ public sealed class BulkStagingRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<StagingContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new StagingContext(options);
@@ -463,8 +457,7 @@ public sealed class BulkStagingRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<StagingContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new StagingContext(options);
@@ -512,8 +505,7 @@ public sealed class BulkStagingRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<StagingContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new StagingContext(options);
@@ -579,8 +571,7 @@ public sealed class BulkStagingRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<StagingContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new StagingContext(options);
@@ -657,8 +648,7 @@ public sealed class BulkStagingRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<StagingContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new StagingContext(options);
@@ -718,8 +708,7 @@ public sealed class BulkStagingRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<StagingContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new StagingContext(options);

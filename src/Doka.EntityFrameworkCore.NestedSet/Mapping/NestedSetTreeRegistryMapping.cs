@@ -13,7 +13,8 @@ internal sealed class NestedSetTreeRegistryMapping
     {
         var registryName = hierarchy.FindAnnotation(NestedSetAnnotationNames.TreeRegistryEntity)?.Value as string
             ?? throw new InvalidOperationException(
-                $"Hierarchy '{hierarchy.Name}' has no typed tree registry. Use optionsBuilder.UseNestedSets().");
+                $"Hierarchy '{hierarchy.Name}' has no typed tree registry. "
+                + "Call UseNestedSets() inside the matching native provider callback.");
 
         Registry = hierarchy.Model.FindEntityType(registryName)
             ?? throw new InvalidOperationException(

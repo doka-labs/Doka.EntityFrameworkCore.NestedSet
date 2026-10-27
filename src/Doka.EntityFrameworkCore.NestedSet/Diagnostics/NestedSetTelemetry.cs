@@ -385,14 +385,7 @@ internal static class NestedSetTelemetry
     /// <summary>Maps one verified provider to a bounded, non-identifying diagnostic family.</summary>
     private static string ProviderName(
         DbContext context
-    ) => NestedSetProviderCapabilities.Resolve(context).Kind switch
-    {
-        NestedSetProviderKind.Sqlite => "sqlite",
-        NestedSetProviderKind.MySql => "mysql_mariadb",
-        NestedSetProviderKind.PostgreSql => "postgresql",
-        NestedSetProviderKind.SqlServer => "sql_server",
-        _ => "unknown",
-    };
+    ) => NestedSetProviderCapabilities.Resolve(context).TelemetryName;
 
     /// <summary>Records one completed database task against the state captured before its await.</summary>
     private static async Task<int> TrackRowsAsync(

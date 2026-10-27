@@ -161,7 +161,7 @@ values. Opaque predicates and other unproven conversions do not inherit those ap
 
 - [Index roles](../../src/Doka.EntityFrameworkCore.NestedSet/Configuration/NestedSetIndexes.cs)
 - [Model index convention](../../src/Doka.EntityFrameworkCore.NestedSet/Configuration/NestedSetIndexConvention.cs)
-- [PostgreSQL parent convention](../../src/Doka.EntityFrameworkCore.NestedSet/Configuration/NestedSetParentIndexes.cs)
+- [PostgreSQL parent convention](../../src/Doka.EntityFrameworkCore.NestedSet.Postgres/Configuration/PostgresParentIndexes.cs)
 - [PostgreSQL eligibility tests](../../tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests/Indexes/NullableParentIndexTests.Eligibility.cs)
 - [Index ownership tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/IndexConventionTests.PostgreSqlParents.cs)
 - [Provider capabilities](../../src/Doka.EntityFrameworkCore.NestedSet/Providers)

@@ -30,8 +30,7 @@ public sealed class NativeArrayKeyTests : ProviderTest,
         var probe = new EnterpriseProbe(captureParameterBindings: true);
         var options = new DbContextOptionsBuilder<NativeArrayContext>()
             .ConfigureTestWarnings()
-            .UseNpgsql(source.Database.GetConnectionString())
-            .UseNestedSets()
+            .UseNpgsql(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .AddInterceptors(probe)
             .Options;
 

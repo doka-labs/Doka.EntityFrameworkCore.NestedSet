@@ -8,22 +8,33 @@ optional scope isolation, composable queries, and atomic structural changes.
 | Package | Purpose |
 | --- | --- |
 | `Doka.NestedSet` | EF-independent node contracts, validated bounds, and ancestry predicates |
-| `Doka.EntityFrameworkCore.NestedSet` | EF mapping, hierarchy queries, mutations, ordering, and repair |
+| `Doka.EntityFrameworkCore.NestedSet` | Common EF mapping, hierarchy algorithms, queries, mutations, ordering, and repair |
+| `Doka.EntityFrameworkCore.NestedSet.MySql` | Doka integration for MySQL and MariaDB |
+| `Doka.EntityFrameworkCore.NestedSet.Postgres` | Npgsql integration for PostgreSQL |
+| `Doka.EntityFrameworkCore.NestedSet.Sqlite` | Microsoft SQLite integration |
+| `Doka.EntityFrameworkCore.NestedSet.SqlServer` | Microsoft SQL Server integration |
 
-The EF package references the core package transitively. Neither shipping
-package depends on a specific database provider or SafeMigrations.
+Each adapter depends on the common EF package and its actual database provider.
+The common EF package references `Doka.NestedSet` and EF/Relational, without a
+concrete provider or SafeMigrations dependency. Common hierarchy algorithms are
+shared; native SQL, model conventions, and translations belong to the adapter.
+Each adapter's kernel dependency is exact because it implements a private
+integration contract. Keep adapter and kernel versions aligned when updating;
+the kernel's public dependency on `Doka.NestedSet` remains a minimum version.
 
-The 10.x package line targets .NET 10 and EF Core 10. This source defines the
-first stable package contract, `10.0.0`. The EF package brings in the matching core package
-transitively:
+The 10.x package line targets .NET 10 and EF Core 10. The `10.1.0` source contract
+changes installation and infrastructure registration from `10.0.0`; existing
+mapping and hierarchy APIs remain in the common package. Install one adapter,
+which brings in both common packages transitively:
 
 ```bash
-dotnet package add Doka.EntityFrameworkCore.NestedSet --version 10.0.0
+dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.1.0
 ```
 
 Use the exact published version from the matching
 [GitHub release](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/releases)
-or NuGet package page. Add the application's EF Core provider separately.
+or NuGet package page. Select the adapter matching the application's EF provider;
+`Postgres` is the NestedSet suffix for the Npgsql PostgreSQL integration.
 
 ## Identify and configure a hierarchy
 
@@ -81,13 +92,14 @@ once through context options. With the Doka MySQL/MariaDB provider:
 
 ```csharp
 services.AddDbContext<ApplicationDbContext>(options => options
-    .UseMySql(connectionString, serverVersion)
-    .UseNestedSets());
+    .UseMySql(connectionString, serverVersion, mysql => mysql.UseNestedSets()));
 ```
 
 `serverVersion` is the Doka capability profile matching the configured server.
-Use the provider's normal configuration for PostgreSQL, SQL Server, or SQLite,
-then call the same `UseNestedSets()` extension.
+Use the matching `.Postgres`, `.SqlServer`, or `.Sqlite` package and call
+`UseNestedSets()` inside `UseNpgsql`, `UseSqlServer`, or `UseSqlite` respectively.
+The former `DbContextOptionsBuilder.UseNestedSets()` overloads are removed;
+registration now identifies the adapter explicitly.
 
 Create a root and child through the metadata-validated facade:
 

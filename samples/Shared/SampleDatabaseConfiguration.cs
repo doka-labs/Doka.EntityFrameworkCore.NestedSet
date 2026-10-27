@@ -128,7 +128,7 @@ internal sealed class SampleDatabaseConfiguration
                     : SqliteOpenMode.ReadWriteCreate,
             };
 
-            options.UseSqlite(sqlite.ConnectionString);
+            options.UseSqlite(sqlite.ConnectionString, provider => provider.UseNestedSets());
         }
         else
         {
@@ -137,10 +137,9 @@ internal sealed class SampleDatabaseConfiguration
                 : MySqlServerVersion.MySql(new Version(8, 4, 0));
 
             // WHY: Explicit versions avoid a database connection during help, configuration and design-time discovery.
-            options.UseMySql(_connectionString, version);
+            options.UseMySql(_connectionString, version, provider => provider.UseNestedSets());
         }
 
-        options.UseNestedSets();
 
         return options.Options;
     }

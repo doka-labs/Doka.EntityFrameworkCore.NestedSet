@@ -115,7 +115,7 @@ x64:
 
 ```sh
 bash eng/release-candidate.sh \
-  --version 10.0.0 \
+  --version 10.1.0 \
   --workspace \
   --output artifacts/qualification-local
 ```
@@ -409,7 +409,7 @@ and limitations in [Performance](docs/performance.md).
 
 ## Dependency updates
 
-A dependency change requires project-owner approval. Only the two shipping
+A dependency change requires project-owner approval. The six shipping
 packages under `src/` commit `packages.lock.json`; tests, samples, benchmarks,
 and engineering tools restore their own graphs without committed locks.
 Review affected shipping locks, including transitive changes. After approval,

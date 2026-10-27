@@ -32,9 +32,8 @@ public sealed class BulkOwnedGeneratedTests : ProviderTest,
         var probe = new BulkRefreshFailure("OwnedGeneratedImportNodes");
         var options = new DbContextOptionsBuilder<OwnedGeneratedContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
             .AddInterceptors(probe)
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new OwnedGeneratedContext(options);
@@ -134,8 +133,7 @@ public sealed class BulkOwnedGeneratedTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<OwnedGeneratedContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new OwnedGeneratedContext(options);
@@ -184,9 +182,8 @@ public sealed class BulkOwnedGeneratedTests : ProviderTest,
         var probe = new BulkRefreshFailure("OwnedGeneratedImportNodes");
         var options = new DbContextOptionsBuilder<OwnedGeneratedContext>()
             .ConfigureTestWarnings()
-            .UseNestedSets()
             .AddInterceptors(probe)
-            .UseSqlite(source.Database.GetConnectionString())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new OwnedGeneratedContext(options);

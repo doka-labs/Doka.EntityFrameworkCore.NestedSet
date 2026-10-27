@@ -34,8 +34,7 @@ public sealed class BulkPlanAllocationTests
     {
         // Arrange
         var options = new DbContextOptionsBuilder<TreeContext>()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new TreeContext(options);

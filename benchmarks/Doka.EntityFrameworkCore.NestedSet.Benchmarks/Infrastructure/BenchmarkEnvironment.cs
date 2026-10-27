@@ -91,20 +91,20 @@ public sealed class BenchmarkEnvironment : IAsyncDisposable
         switch (engine)
         {
             case BenchmarkEngine.MySql:
-                builder.UseMySql(connectionString, DatabaseTestTargets.MySql);
+                builder.UseMySql(connectionString, DatabaseTestTargets.MySql, provider => provider.UseNestedSets());
                 break;
             case BenchmarkEngine.MariaDb:
-                builder.UseMySql(connectionString, DatabaseTestTargets.MariaDb);
+                builder.UseMySql(connectionString, DatabaseTestTargets.MariaDb, provider => provider.UseNestedSets());
                 break;
             case BenchmarkEngine.PostgreSql:
-                builder.UseNpgsql(connectionString);
+                builder.UseNpgsql(connectionString, provider => provider.UseNestedSets());
                 break;
             case BenchmarkEngine.SqlServer:
-                builder.UseSqlServer(connectionString);
+                builder.UseSqlServer(connectionString, provider => provider.UseNestedSets());
                 break;
             case BenchmarkEngine.SqliteMemory:
             case BenchmarkEngine.SqliteFile:
-                builder.UseSqlite(connectionString);
+                builder.UseSqlite(connectionString, provider => provider.UseNestedSets());
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(engine));

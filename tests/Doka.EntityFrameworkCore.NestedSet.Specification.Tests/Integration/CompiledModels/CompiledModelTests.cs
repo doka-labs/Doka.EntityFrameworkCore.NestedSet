@@ -137,6 +137,7 @@ public abstract class CompiledModelTests : ProviderTest
                 .GetService<IDesignTimeModel>()
                 .Model
                 .FindEntityType(typeof(CompiledFolder))!;
+
             Assert.Null(ordinary.FindProperty(nameof(CompiledFolder.Scope))!.GetCollation());
             Assert.Equal(scopeCapture, ordinary.FindAnnotation(RelationalAnnotationNames.Collation)?.Value);
         }
@@ -196,9 +197,11 @@ public abstract class CompiledModelTests : ProviderTest
         var rows = await tree
             .TreeContaining("b")
             .ToArrayAsync(CancellationToken.None);
+
         var parent = await tree
             .ParentOf("b")
             .SingleAsync(CancellationToken.None);
+
         var problems = await tree
             .InTree(Guid.Empty)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
@@ -328,22 +331,22 @@ public abstract class CompiledModelTests : ProviderTest
                 .ToArrayAsync(CancellationToken.None));
     }
 
-    /// <summary>Verifies explicitly supplied models fail clearly if finalization capture was omitted.</summary>
+    /// <summary>A valid supplied model does not replace the required native adapter registration.</summary>
     [Fact]
-    public async Task SuppliedModelWithoutCollationCaptureHasAnActionableDiagnostic()
+    public async Task SuppliedModelWithoutAdapterHasAnActionableDiagnostic()
     {
         // Arrange
+        var sourceOptions = await _fixture.CreateOptionsAsync<LegacyCompiledContext>(Engine);
+        await using var source = new LegacyCompiledContext(sourceOptions);
+        var supplied = source.Model;
         var options = await _fixture.CreateOptionsAsync<LegacyCompiledContext>(
             Engine,
-            model: null,
+            supplied,
             enableNestedSets: false);
 
-        await using var source = new LegacyCompiledContext(options);
-        var supplied = source.Model;
+        var boundary = new ConfigurationIoBoundary();
         await using var context = new LegacyCompiledContext(
-            new DbContextOptionsBuilder<LegacyCompiledContext>(options)
-                .ConfigureTestWarnings()
-                .UseModel(supplied)
+            new DbContextOptionsBuilder<LegacyCompiledContext>(options).AddInterceptors(boundary, boundary.Commands)
                 .Options);
 
         // Act
@@ -352,9 +355,54 @@ public abstract class CompiledModelTests : ProviderTest
             .ForScope("scope"));
 
         // Assert
-        var error = Assert.IsAssignableFrom<InvalidOperationException>(exception);
-        Assert.Contains("optionsBuilder.UseNestedSets()", error.Message, StringComparison.Ordinal);
+        var error = Assert.IsType<InvalidOperationException>(exception);
+
+        Assert.Contains("matching NestedSet provider package", error.Message, StringComparison.Ordinal);
+        Assert.Contains("UseNestedSets()", error.Message, StringComparison.Ordinal);
+        Assert.Contains("callback", error.Message, StringComparison.Ordinal);
+        Assert.Same(supplied, context.Model);
+        Assert.True((bool)supplied.FindAnnotation(NestedSetAnnotationNames.CollationsCaptured)!.Value!);
+        Assert.Null(context.GetService<IDbContextOptions>().FindExtension<NestedSetOptionsExtension>());
+        Assert.Equal(0, boundary.ConnectionStarts);
+        Assert.Equal(0, boundary.CommandsCreated);
+    }
+
+    /// <summary>A registered runtime adapter cannot repair capture missing from a supplied model.</summary>
+    [Fact]
+    public async Task SuppliedModelWithoutCollationCaptureHasAnActionableDiagnostic()
+    {
+        // Arrange
+        var legacyOptions = await _fixture.CreateOptionsAsync<LegacyCompiledContext>(
+            Engine,
+            model: null,
+            enableNestedSets: false);
+
+        await using var source = new LegacyCompiledContext(legacyOptions);
+        var supplied = source.Model;
+
+        // WHY: Register the runtime adapter independently; supplying the legacy model must skip regeneration.
+        var options = await _fixture.CreateOptionsAsync<LegacyCompiledContext>(Engine, supplied);
+        var boundary = new ConfigurationIoBoundary();
+        await using var context = new LegacyCompiledContext(
+            new DbContextOptionsBuilder<LegacyCompiledContext>(options).AddInterceptors(boundary, boundary.Commands)
+                .Options);
+
+        // Act
+        var exception = Record.Exception(() => context
+            .NestedSet<TextNode>()
+            .ForScope("scope"));
+
+        // Assert
+        var error = Assert.IsType<InvalidOperationException>(exception);
+
+        Assert.Contains("native provider callback's UseNestedSets()", error.Message, StringComparison.Ordinal);
         Assert.Contains("before model generation", error.Message, StringComparison.Ordinal);
+        Assert.Contains("Regenerate", error.Message, StringComparison.Ordinal);
+        Assert.Same(supplied, context.Model);
+        Assert.Null(supplied.FindAnnotation(NestedSetAnnotationNames.CollationsCaptured));
+        Assert.NotNull(context.GetService<IDbContextOptions>().FindExtension<NestedSetOptionsExtension>());
+        Assert.Equal(0, boundary.ConnectionStarts);
+        Assert.Equal(0, boundary.CommandsCreated);
     }
 
     /// <summary>Rejects stale property-only capture with an actionable regeneration diagnostic.</summary>
@@ -369,8 +417,12 @@ public abstract class CompiledModelTests : ProviderTest
 
         await using var source = new StaleCollationCaptureContext(options);
         var supplied = source.Model;
+        var runtimeOptions = await _fixture.CreateOptionsAsync<StaleCollationCaptureContext>(Engine, supplied);
+        var boundary = new ConfigurationIoBoundary();
         await using var context = new StaleCollationCaptureContext(
-            new DbContextOptionsBuilder<StaleCollationCaptureContext>(options).UseModel(supplied).Options);
+            new DbContextOptionsBuilder<StaleCollationCaptureContext>(runtimeOptions)
+                .AddInterceptors(boundary, boundary.Commands)
+                .Options);
 
         var owner = supplied.FindEntityType(typeof(TextNode))!;
         var key = owner.FindProperty(nameof(TextNode.Id))!;
@@ -385,6 +437,9 @@ public abstract class CompiledModelTests : ProviderTest
         Assert.True((bool)supplied.FindAnnotation(NestedSetAnnotationNames.CollationsCaptured)!.Value!);
         Assert.Equal(string.Empty, key.FindAnnotation(NestedSetAnnotationNames.Collation)?.Value);
         Assert.Null(owner.FindAnnotation(NestedSetAnnotationNames.Collation + ":" + key.Name));
+        Assert.NotNull(context.GetService<IDbContextOptions>().FindExtension<NestedSetOptionsExtension>());
+        Assert.Equal(0, boundary.ConnectionStarts);
+        Assert.Equal(0, boundary.CommandsCreated);
     }
 
     /// <summary>

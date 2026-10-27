@@ -178,8 +178,7 @@ public sealed class TypedTreeLockRequestTests
         internal RequestContext() : base(
             new DbContextOptionsBuilder<RequestContext>()
                 .ConfigureTestWarnings()
-                .UseSqlite("Data Source=:memory:")
-                .UseNestedSets()
+                .UseSqlite("Data Source=:memory:", sqlite => sqlite.UseNestedSets())
                 .Options) { }
 
         /// <inheritdoc />

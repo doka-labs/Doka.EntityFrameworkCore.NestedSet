@@ -107,10 +107,12 @@ approach, as recorded in Decision History.
 All projects appear directly under the solution's `tests` folder.
 `Doka.EntityFrameworkCore.NestedSet.Specification.Tests` is a non-runnable,
 non-packable library containing public abstract common suites, models, and
-reusable test infrastructure. It references the already resolved xUnit
-`xunit.v3.extensibility.core` and `xunit.v3.assert` components at 4.0.1. Executable
-runner targets stay in the runner projects; this organization does not upgrade
-the framework or introduce another dependency version.
+reusable test infrastructure. It references the centrally pinned xUnit
+`xunit.v3.extensibility.core` and `xunit.v3.assert` components at the same
+framework version as the executable projects. The current pin is 4.0.2;
+the VSTest adapter has its separate 4.0.1 version. Executable runner targets
+stay in the runner projects; separating shared sources does not select another
+framework version.
 
 The four provider projects and the EF unit project use `ProjectReference` to
 consume the library without compiling linked copies of its sources. Each
@@ -190,10 +192,12 @@ enforced through existing exclusion metadata; no `OnlyEngines` API is added.
 
 The shared runner configuration explicitly enables `preEnumerateTheories`.
 This aligns the native runner with Rider/VSTest and gives ordinary serializable
-variants the same discovery contract. xUnit 4.0.1's deferred path checks for
-missing data inside the data-attribute loop; an empty excluded source sorted
-before a valid source can therefore reject the entire theory. Its discovery
-path checks the combined result after all sources. Tests load the actual copied
+variants the same discovery contract. The original xUnit 4.0.1 investigation
+found that its deferred path checks for missing data inside the data-attribute
+loop; an empty excluded source sorted before a valid source can therefore
+reject the entire theory. Its discovery path checks the combined result after
+all sources. The dated sources below retain that investigation. Current
+qualification uses the centrally pinned framework: tests load the actual copied
 configuration and verify an empty source both before and after a valid source,
 while genuinely empty or over-filtered theories still produce failures.
 This discovery setting introduces no custom executor or duplicate factory

@@ -9,25 +9,69 @@ defines what this repository has exercised.
 | Component | Repository baseline |
 | --- | --- |
 | Target framework | .NET 10 |
-| SDK | `10.0.403`, pinned by `global.json` |
-| EF Core runtime range | `10.0.12` through, but excluding, `11.0.0` |
+| SDK | `10.0.403`, pinned by `global.json`; includes runtime `10.0.14` |
+| Common EF Core declared range | `10.0.12` through, but excluding, `11.0.0`; adapter dependencies may narrow it |
 | EF Core qualification patch | `10.0.14` |
+| Test SDK and Code Coverage qualification | `18.11.0` |
+| Property-based test integration | `FsCheck.Xunit.v3` `3.6.0` |
 | Core package | `Doka.NestedSet` |
-| EF package | `Doka.EntityFrameworkCore.NestedSet` |
+| Common EF package | `Doka.EntityFrameworkCore.NestedSet` |
+| Native adapter packages | `.MySql`, `.Postgres`, `.Sqlite`, `.SqlServer` under `Doka.EntityFrameworkCore.NestedSet` |
 
-The two shipping package graphs are locked. Tests, samples, and tooling use
+The SDK pin includes Microsoft's
+[out-of-band .NET 10.0.14 security update](https://github.com/dotnet/core/blob/main/release-notes/10.0/10.0.14/10.0.14.md).
+Current declarations and dated execution evidence remain separate below.
+
+Code Coverage 18.11.0 remains the approved tooling baseline with the mandatory
+uninstrumented Unit allocation/GC-lifetime partition recorded in
+[D-013](decisions/D-013-provider-owned-integration-test-projects.md). Its injected
+event registrations and active flush worker prevent collectible-module unloading
+in the diagnosed macOS ARM64 static-instrumentation path. The partition preserves
+ordinary NestedSet lifetime assertions; it does not fix the collector or qualify
+unloading under instrumentation. The
+[control matrix, execution procedure and re-evaluation criteria](performance.md#coverage-collector-18110-and-unloadability)
+define the boundary; this tooling choice changes no shipping dependency or
+supported product contract.
+
+The six shipping package graphs are locked. Tests, samples, and tooling use
 the centrally reviewed dependency versions without additional committed
 lockfiles. Updating a package requires reviewing affected locks and rerunning
 the complete applicable matrix.
 
 Non-shipping projects use NuGet's
 [transitive pinning](https://learn.microsoft.com/en-us/nuget/consume-packages/central-package-management#transitive-pinning)
-to raise the existing SQL Client PKCS dependency to 9.0.21. Its requested 9.0.11
-version triggers the active vulnerability audit. Neither shipping project
-enables this qualification policy or acquires a PKCS dependency. The existing
-shipping lockfiles retain the supported EF Core minimum.
+to raise the existing SQL Client PKCS dependency to 10.0.14. Its requested 9.0.11
+version triggers the active vulnerability audit. This qualification policy is
+separate from shipping dependency declarations. The ORM-independent and common
+EF packages have no SQL Client dependency; the SQL Server adapter's native graph
+is reviewed and inspected as its own shipping dependency closure. Its explicit
+`System.Security.Cryptography.Pkcs` minimum `9.0.21`, without an upper bound,
+supplies the native SQL Client security floor without promoting qualification-only pinning into
+other shipping packages. Shipping lockfiles record each package's declared
+supported minimum.
 
-Version `10.0.0` is the first stable contract for both packages. Qualification
+PKCS 9.0.21 is the first patched 9.x version for Microsoft's
+[CVE-2026-70162](https://github.com/dotnet/runtime/security/advisories/GHSA-2fmv-rv2c-59x7)
+and [CVE-2026-84008](https://github.com/dotnet/runtime/security/advisories/GHSA-846f-f764-76mx)
+advisories. The 10.0.14 qualification pin selects the current .NET 10 package, not an
+additional consumer security minimum. Applications can retain 9.0.21 or select
+a newer compatible version without a dependency downgrade diagnostic.
+
+Every adapter declares an exact dependency on its matching common EF kernel
+release because that integration uses internal members. The kernel's public
+dependency on `Doka.NestedSet` remains a minimum. Package inspection checks the
+actual primary and symbol archives, not just the source declarations. The SDK
+also validates the two original packages against their published `10.0.0`
+baseline; the approved removal of the former options-registration API is
+recorded by a narrowly scoped compatibility suppression. The four new adapter
+IDs have no preceding package to use as a baseline.
+
+Version `10.0.0` is the initial stable contract. The `10.1.0` source includes
+generic query composition and the explicitly breaking provider-package/callback
+registration transition described in the [upgrade guide](upgrading-provider-packages.md).
+The owner explicitly kept `10.1.0` for this narrow SemVer exception; package
+majors follow the .NET family and `11.x` is reserved for .NET 11. Other breaking
+minor changes are not authorized by that decision. Qualification
 always identifies its exact source and artifacts. The dated local results
 below describe their own runs; hosted release evidence belongs to the matching
 release and is not inferred from a successful local execution.
@@ -45,6 +89,19 @@ This statement does not assert the same limitation for the separate
 [ef-aot]: https://learn.microsoft.com/en-us/ef/core/performance/nativeaot-and-precompiled-queries
 
 ## Provider and engine matrix
+
+Install one NestedSet adapter for each context's native provider:
+
+| NestedSet adapter | Direct native provider range | Effective EF constraint |
+| --- | --- | --- |
+| `.MySql` | Doka `[10.6.2,10.7.0)` | Common EF minimum plus Doka's EF Relational `<10.1.0` bound |
+| `.Postgres` | Npgsql `[10.0.3,11.0.0)` | Common EF range intersected with the selected Npgsql version |
+| `.Sqlite` | Microsoft SQLite `[10.0.13,11.0.0)` | EF/provider 10, at least `10.0.13` |
+| `.SqlServer` | Microsoft SQL Server `[10.0.13,11.0.0)` | EF/provider 10, at least `10.0.13` |
+
+Suffixes use the `Doka.EntityFrameworkCore.NestedSet` prefix. These declared
+ranges do not establish qualification of every future native-provider patch.
+The exact executed graph is identified by each qualification record below.
 
 | Database | EF provider baseline | Engine image baseline |
 | --- | --- | --- |
@@ -152,7 +209,7 @@ Optional adapter qualification uses:
 
 SafeMigrations tests are additive. A failure there must not be described as a
 runtime requirement for Doka, Npgsql, SQLite, or SQL Server. Adapter packages
-are referenced only by the optional test project; neither shipping package
+are referenced only by the optional test project; no shipping NestedSet package
 depends on SafeMigrations.
 
 Published MySQL adapter 10.6.0 requires Doka [10.6.2,10.7.0), matching the
@@ -296,7 +353,7 @@ server matrix. Local ARM skips provide development feedback only:
 
 ```sh
 bash eng/release-candidate.sh \
-  --version 10.0.0 \
+  --version 10.1.0 \
   --workspace \
   --output artifacts/qualification-local
 ```

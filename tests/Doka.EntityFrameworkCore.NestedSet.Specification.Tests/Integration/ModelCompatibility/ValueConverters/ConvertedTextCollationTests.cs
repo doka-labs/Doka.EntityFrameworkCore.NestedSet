@@ -103,7 +103,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
         var store = StoreObjectIdentifier.Table(designNode.GetTableName()!, designNode.GetSchema());
         var registryName = (string)node.FindAnnotation(NestedSetAnnotationNames.TreeRegistryEntity)!.Value!;
         var registry = designModel.FindEntityType(registryName)!;
-        var provider = source.GetService<IDatabaseProvider>().Name;
+        var provider = NestedSetProviderCapabilities.Resolve(source);
         var typeMappings = source.GetService<ITypeMappingSource>();
 
         // Act
@@ -157,7 +157,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
         else
         {
             Assert.Equal(typeof(int), providerType);
-            Assert.True(source.Database.IsSqlite() || provider == NestedSetProviderCapabilities.MySqlProviderName);
+            Assert.True(source.Database.IsSqlite() || provider.ProviderName == DatabaseTestTargets.MySqlProviderName);
             Assert.DoesNotContain(" COLLATE ", parentSql, StringComparison.OrdinalIgnoreCase);
         }
     }
@@ -375,7 +375,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
             // follow the effective conversion rather than inferring text identity from the column type name.
             Assert.Equal(typeof(int), property.GetTypeMapping().Converter!.ProviderClrType);
             Assert.True(context.Database.IsSqlite()
-                || context.GetService<IDatabaseProvider>().Name == NestedSetProviderCapabilities.MySqlProviderName);
+                || context.GetService<IDatabaseProvider>().Name == DatabaseTestTargets.MySqlProviderName);
             Assert.Null(collation);
             Assert.DoesNotContain(" COLLATE ", parents.ToQueryString(), StringComparison.OrdinalIgnoreCase);
         }

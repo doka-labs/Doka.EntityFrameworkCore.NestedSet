@@ -137,8 +137,7 @@ public sealed class MutationContextGuardTests
     private static TreeContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<TreeContext>()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .Options;
 
         return new TreeContext(options);

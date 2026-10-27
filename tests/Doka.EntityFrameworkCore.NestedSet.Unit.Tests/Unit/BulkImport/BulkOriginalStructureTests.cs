@@ -91,8 +91,7 @@ public sealed class BulkOriginalStructureTests
     private static SnapshotContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<SnapshotContext>()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .Options;
 
         return new SnapshotContext(options);

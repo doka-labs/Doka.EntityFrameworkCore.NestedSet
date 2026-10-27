@@ -126,8 +126,7 @@ public sealed class TypedTreeStoreTests
         ) : base(
             new DbContextOptionsBuilder<BinaryStoreContext>()
                 .ConfigureTestWarnings()
-                .UseSqlite("Data Source=:memory:")
-                .UseNestedSets()
+                .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
                 .ReplaceService<IModelCacheKeyFactory, TestModelCacheKeyFactory>()
                 .Options)
         {

@@ -1,5 +1,12 @@
 # Provider and migration qualification
 
+The earlier results in this record retain their exact source, provider graph, and
+package layout. The [provider-package transition](../upgrading-provider-packages.md)
+changes installation and registration after those recorded runs. Existing pass
+counts are not relabeled as qualification of the split. The
+[2026-10-26 local record](#six-package-local-qualification-2026-10-26) separately
+identifies the six-package source and artifacts.
+
 The [support matrix](../support-and-qualification.md) owns package declarations
 and supported engines. This page separates the current published-package
 declarations from dated local Doka and optional SafeMigrations evidence. Private

@@ -347,8 +347,7 @@ public sealed class UserGroupMembershipTests
     private static UserGroupSqliteContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<UserGroupSqliteContext>()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .Options;
 
         return new UserGroupSqliteContext(options);

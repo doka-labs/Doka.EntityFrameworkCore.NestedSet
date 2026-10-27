@@ -93,35 +93,73 @@ public sealed class ModelCompatibilityDatabase : IAsyncDisposable
             case "Sqlite":
                 options.UseSqlite(
                     connection,
-                    collectionMode.HasValue ? provider => provider.UseParameterizedCollectionMode(mode) : null);
+                    provider =>
+                    {
+                        provider.UseNestedSets();
+
+                        if (collectionMode is { } mode)
+                        {
+                            provider.UseParameterizedCollectionMode(mode);
+                        }
+                    });
                 break;
             case "MySql":
                 options.UseMySql(
                     connection,
                     DatabaseTestTargets.MySql,
-                    collectionMode.HasValue ? provider => provider.UseParameterizedCollectionMode(mode) : null);
+                    provider =>
+                    {
+                        provider.UseNestedSets();
+
+                        if (collectionMode is { } mode)
+                        {
+                            provider.UseParameterizedCollectionMode(mode);
+                        }
+                    });
                 break;
             case "MariaDb":
                 options.UseMySql(
                     connection,
                     DatabaseTestTargets.MariaDb,
-                    collectionMode.HasValue ? provider => provider.UseParameterizedCollectionMode(mode) : null);
+                    provider =>
+                    {
+                        provider.UseNestedSets();
+
+                        if (collectionMode is { } mode)
+                        {
+                            provider.UseParameterizedCollectionMode(mode);
+                        }
+                    });
                 break;
             case "PostgreSql":
                 options.UseNpgsql(
                     connection,
-                    collectionMode.HasValue ? provider => provider.UseParameterizedCollectionMode(mode) : null);
+                    provider =>
+                    {
+                        provider.UseNestedSets();
+
+                        if (collectionMode is { } mode)
+                        {
+                            provider.UseParameterizedCollectionMode(mode);
+                        }
+                    });
                 break;
             case "SqlServer":
                 options.UseSqlServer(
                     connection,
-                    collectionMode.HasValue ? provider => provider.UseParameterizedCollectionMode(mode) : null);
+                    provider =>
+                    {
+                        provider.UseNestedSets();
+
+                        if (collectionMode is { } mode)
+                        {
+                            provider.UseParameterizedCollectionMode(mode);
+                        }
+                    });
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(engine));
         }
-
-        options.UseNestedSets();
 
         return options.Options;
     }

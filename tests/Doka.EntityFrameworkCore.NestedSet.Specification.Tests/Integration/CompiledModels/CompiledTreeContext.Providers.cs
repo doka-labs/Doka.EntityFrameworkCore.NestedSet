@@ -7,8 +7,10 @@ public sealed class CompiledMySqlContext : CompiledTreeContext
     public CompiledMySqlContext() : this(
         new DbContextOptionsBuilder<CompiledMySqlContext>()
             .ConfigureTestWarnings()
-            .UseMySql("Server=localhost;Database=compiled;User ID=unused", DatabaseTestTargets.MySql)
-            .UseNestedSets()
+            .UseMySql(
+                "Server=localhost;Database=compiled;User ID=unused",
+                DatabaseTestTargets.MySql,
+                provider => provider.UseNestedSets())
             .Options,
         false) { }
 
@@ -28,8 +30,10 @@ public sealed class CompiledMariaDbContext : CompiledTreeContext
     public CompiledMariaDbContext() : this(
         new DbContextOptionsBuilder<CompiledMariaDbContext>()
             .ConfigureTestWarnings()
-            .UseMySql("Server=localhost;Database=compiled;User ID=unused", DatabaseTestTargets.MariaDb)
-            .UseNestedSets()
+            .UseMySql(
+                "Server=localhost;Database=compiled;User ID=unused",
+                DatabaseTestTargets.MariaDb,
+                provider => provider.UseNestedSets())
             .Options,
         false) { }
 
@@ -49,8 +53,7 @@ public sealed class CompiledPostgreSqlContext : CompiledTreeContext
     public CompiledPostgreSqlContext() : this(
         new DbContextOptionsBuilder<CompiledPostgreSqlContext>()
             .ConfigureTestWarnings()
-            .UseNpgsql("Host=localhost;Database=compiled;Username=unused")
-            .UseNestedSets()
+            .UseNpgsql("Host=localhost;Database=compiled;Username=unused", provider => provider.UseNestedSets())
             .Options,
         false) { }
 
@@ -72,8 +75,7 @@ public sealed class CompiledSqlServerContext : CompiledTreeContext
             .ConfigureTestWarnings()
             .UseSqlServer(
                 "Server=localhost;Database=compiled;User ID=unused;Password=unused;"
-                + "TrustServerCertificate=True;MultipleActiveResultSets=False")
-            .UseNestedSets()
+                + "TrustServerCertificate=True;MultipleActiveResultSets=False", provider => provider.UseNestedSets())
             .Options,
         false) { }
 

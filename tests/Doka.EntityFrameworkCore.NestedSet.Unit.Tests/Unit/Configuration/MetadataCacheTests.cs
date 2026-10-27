@@ -151,26 +151,17 @@ public sealed class MetadataCacheTests
     {
         // WHY: This test measures reuse inside one specific EF service graph, not process-global provider caching.
         // Explicit ownership avoids retaining a test-only CacheKeyFactory graph among the real-provider fixtures.
+        var options = CreateOptions().Options;
 
-        var services = new ServiceCollection()
-            .AddEntityFrameworkSqlite()
-            .AddSingleton<IModelCacheKeyFactory, CacheKeyFactory>();
-
-        // WHY: UseInternalServiceProvider transfers ownership of the complete EF service graph to the caller.
-        // Registering the same internal services as UseNestedSets keeps this cache-isolation test representative.
-        ServiceCollectionDescriptorExtensions.TryAddEnumerable(
-            services,
-            ServiceDescriptor
-                .Scoped<IConventionSetPlugin,
-                    NestedSetConventionSetPlugin>());
-        ServiceCollectionDescriptorExtensions.TryAddEnumerable(
-            services,
-            ServiceDescriptor
-                .Singleton<IInterceptor,
-                    Features.ManagedSave.NestedSetSaveGuardInterceptor>());
-
-        return services.BuildServiceProvider();
+        return NestedSetTestAdapters.BuildServices(options, services => services.Replace(
+            ServiceDescriptor.Singleton<IModelCacheKeyFactory, CacheKeyFactory>()));
     }
+
+    /// <summary>Configures the same native provider and adapter for the owned graph and its contexts.</summary>
+    private static DbContextOptionsBuilder<CacheContext> CreateOptions()
+        => new DbContextOptionsBuilder<CacheContext>()
+            .ConfigureTestWarnings()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets());
 
     /// <summary>Separates the model variants used to verify the library's weak model cache.</summary>
     public sealed class CacheKeyFactory : IModelCacheKeyFactory
@@ -192,10 +183,7 @@ public sealed class MetadataCacheTests
             IServiceProvider services,
             int variant
         ) : base(
-            new DbContextOptionsBuilder<CacheContext>()
-                .ConfigureTestWarnings()
-                .UseSqlite("Data Source=:memory:")
-                .UseNestedSets()
+            CreateOptions()
                 .UseInternalServiceProvider(services)
                 .Options)
         {

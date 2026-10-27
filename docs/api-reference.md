@@ -1,18 +1,32 @@
 # API reference
 
-This reference describes the public 10.x API. The application keeps its normal
+This reference describes the public `10.1.0` source API, including the explicit
+provider-package/registration break from `10.0.0`. The application keeps its normal
 `DbSet<TEntity>` and obtains hierarchy behavior from the caller-owned context.
 
 The initial `10.0.0` contract is recorded in the shipped baselines for
 [Core](../src/Doka.NestedSet/PublicAPI.Shipped.txt) and
 [EF Core](../src/Doka.EntityFrameworkCore.NestedSet/PublicAPI.Shipped.txt).
-These declarations are unchanged from the accepted RC API.
+They preserve the historical `10.0.0` declarations. The `10.1.0` source contract
+records additions and the removed options-level registration in the EF package's
+[unshipped API baseline](../src/Doka.EntityFrameworkCore.NestedSet/PublicAPI.Unshipped.txt).
+Each provider adapter has its own callback API baseline. See the
+[breaking registration migration](upgrading-provider-packages.md).
 
 ## Registration and mapping
 
-`DbContextOptionsBuilder.UseNestedSets()` installs the conventions, typed tree
-registry, save guard, relational persistence boundary, provider services, and
-diagnostics. It is idempotent and safe for context pooling.
+`UseNestedSets()` on the actual provider callback builder installs the shared
+conventions, typed tree registry, save guard, relational persistence boundary,
+diagnostics, and the selected adapter's native services. The overload receiver
+is `MySqlDbContextOptionsBuilder`, `NpgsqlDbContextOptionsBuilder`,
+`SqliteDbContextOptionsBuilder`, or `SqlServerDbContextOptionsBuilder`, from the
+corresponding NestedSet adapter package. It returns the same native builder.
+Registration is idempotent and safe for context pooling; conflicting adapters
+and mismatched configured provider identities are rejected before hierarchy I/O.
+
+The former `DbContextOptionsBuilder.UseNestedSets()` overloads are removed.
+`ModelBuilder.UseNestedSets()`, `ModelConfigurationBuilder.UseNestedSets()` and
+`HasNestedSet(...)` remain model configuration APIs.
 
 `EntityTypeBuilder<TEntity>.HasNestedSet(...)` maps one hierarchy entity. The
 builder supports these structural roles:

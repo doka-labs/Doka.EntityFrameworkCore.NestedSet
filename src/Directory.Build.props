@@ -3,7 +3,7 @@
 
   <PropertyGroup Label="Package metadata and release baseline">
     <!-- WHY: Local builds use the reviewed stable version; qualified candidates must retain this exact identity. -->
-    <VersionPrefix>10.0.0</VersionPrefix>
+    <VersionPrefix>10.1.0</VersionPrefix>
     <Authors>Dominic Kalkbrenner</Authors>
     <Company>Doka Labs</Company>
     <Copyright>Copyright (c) 2026 Dominic Kalkbrenner</Copyright>
@@ -23,6 +23,14 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
+  <PropertyGroup Label="Published package API baselines"
+                 Condition="'$(MSBuildProjectName)' == 'Doka.NestedSet'
+                            or '$(MSBuildProjectName)' == 'Doka.EntityFrameworkCore.NestedSet'">
+    <!-- WHY: Only these package IDs have a published predecessor. New adapters cannot restore a
+         nonexistent baseline; the approved registration removal has a narrowly scoped suppression. -->
+    <PackageValidationBaselineVersion>10.0.0</PackageValidationBaselineVersion>
+  </PropertyGroup>
+
   <PropertyGroup Label="Package dependency locks">
     <!-- WHY: Only shipping packages commit dependency locks; test, sample, and tooling graphs are restored independently. -->
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
@@ -35,6 +43,9 @@
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all"/>
     <None Include="$(MSBuildThisFileDirectory)../LICENSE" Pack="true" PackagePath="/"/>
     <!-- WHY: Package consumers receive usage guidance without depending on unfinished repository delivery tooling. -->
-    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="/"/>
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="/"
+          Condition="!Exists('$(MSBuildProjectDirectory)/README.md')"/>
+    <None Include="$(MSBuildProjectDirectory)/README.md" Pack="true" PackagePath="/"
+          Condition="Exists('$(MSBuildProjectDirectory)/README.md')"/>
   </ItemGroup>
 </Project>

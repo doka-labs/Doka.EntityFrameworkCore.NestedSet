@@ -6,7 +6,7 @@ is never a runtime prerequisite.
 
 ## Generated model
 
-After adding `.UseNestedSets()` to context options and
+After selecting the NestedSet adapter inside the native provider callback and
 `.HasNestedSet(...)` to an entity configuration, scaffold and review a
 migration:
 
@@ -259,8 +259,7 @@ design-time services. Enable the ordinary provider and both extensions:
 using Doka.EntityFrameworkCore.SafeMigrations.SqlServer;
 
 var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-    .UseSqlServer(connectionString)
-    .UseNestedSets()
+    .UseSqlServer(connectionString, sqlServer => sqlServer.UseNestedSets())
     .UseSqlServerSafeMigrations();
 ```
 

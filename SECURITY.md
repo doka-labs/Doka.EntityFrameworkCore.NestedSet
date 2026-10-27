@@ -167,7 +167,8 @@ signal, resource boundary, or release trust boundary changes.
 
 ## Supported Versions
 
-This source defines the first stable `10.0.0` contract for both packages;
+This source defines the `10.1.0` contract across the common libraries and four
+provider adapters, including the documented breaking registration transition;
 the support policy below does not itself establish public package availability.
 Security fixes target the latest stable 10.x release. Reports against the
 earlier `10.0.0-rc.1` are accepted and triaged, but the RC has no separate

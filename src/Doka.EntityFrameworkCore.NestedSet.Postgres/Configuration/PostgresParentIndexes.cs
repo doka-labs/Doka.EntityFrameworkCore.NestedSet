@@ -1,14 +1,14 @@
-namespace Doka.EntityFrameworkCore.NestedSet;
+namespace Doka.EntityFrameworkCore.NestedSet.Postgres;
 
 /// <summary>Partitions PostgreSQL's conventional nullable parent index into dependent and root access paths.</summary>
-internal sealed class NestedSetParentIndexes : IModelFinalizingConvention
+internal sealed class PostgresParentIndexes : IModelFinalizingConvention
 {
     /// <summary>The active provider's SQL identifier service.</summary>
     private readonly ISqlGenerationHelper _sql;
 
     /// <summary>Creates the PostgreSQL parent-index convention.</summary>
     /// <param name="sql">The active provider's SQL identifier service.</param>
-    internal NestedSetParentIndexes(
+    internal PostgresParentIndexes(
         ISqlGenerationHelper sql
     )
     {
@@ -26,7 +26,16 @@ internal sealed class NestedSetParentIndexes : IModelFinalizingConvention
             if (NestedSetModelValidator.IsNestedSet(entity))
             {
                 var mapping = NestedSetModelValidator.Validate(entity, true)!;
-                NestedSetIndexes.ApplyTreePredicate(entity, mapping, _sql);
+                var store = NestedSetStoreObject.Resolve(entity, mapping);
+                var tree = mapping.TreeId.Resolve(entity);
+                var column = tree.GetColumnName(store)
+                    ?? throw new InvalidOperationException(
+                        $"Nested-set TreeId property '{tree.Name}' on '{entity.Name}' "
+                        + "is not mapped to its hierarchy table.");
+
+                // WHY: Tree equality proves this predicate, while principal FK checks omit TreeId and
+                // must not choose a scope-only structural scan from empty committed statistics.
+                NestedSetIndexes.ApplyOwnedIndexFilter(entity, _sql.DelimitIdentifier(column) + " IS NOT NULL");
                 Reconcile(entity, mapping, _sql);
             }
         }

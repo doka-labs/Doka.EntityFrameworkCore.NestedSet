@@ -50,7 +50,7 @@ internal static class NestedSetTransaction
                     context,
                     callerTransaction,
                     isolation,
-                    provider.Kind,
+                    provider,
                     operation,
                     cancellationToken)
                 .ConfigureAwait(false);
@@ -70,26 +70,28 @@ internal static class NestedSetTransaction
                 "A retrying execution strategy requires an explicit caller transaction created inside its delegate.");
         }
 
-        await ExecuteInOwnedTransactionAsync(context, isolation, operation, cancellationToken)
+        await ExecuteInOwnedTransactionAsync(context, provider, operation, cancellationToken)
             .ConfigureAwait(false);
     }
 
     /// <summary>Owns commit, failure rollback, and disposal without losing any earlier exception.</summary>
     /// <param name="context">The context whose connection owns this transaction.</param>
-    /// <param name="isolation">The provider-specific isolation required by the hierarchy locking protocol.</param>
+    /// <param name="provider">The selected isolation and transaction-wait implementation.</param>
     /// <param name="operation">The structural reads and writes to execute after acquiring the write lock.</param>
     /// <param name="cancellationToken">The token used for forward progress, excluding rollback and disposal.</param>
     /// <returns>A task that completes after the transaction commits and is disposed.</returns>
     /// <exception cref="AggregateException">Rollback or disposal failed after an earlier failure.</exception>
     private static async Task ExecuteInOwnedTransactionAsync(
         DbContext context,
-        IsolationLevel isolation,
+        NestedSetProviderCapabilities provider,
         Func<CancellationToken, Task> operation,
         CancellationToken cancellationToken
     )
     {
-        // WHY: SQLite acquires its writer lock at BEGIN IMMEDIATE; later lock-row writes do not measure that wait.
-        var transaction = isolation == IsolationLevel.Serializable
+        var isolation = provider.RequiredIsolation;
+
+        // WHY: A native adapter may acquire the writer lock at transaction creation rather than a later statement.
+        var transaction = provider.MeasureTransactionBeginLockWait
             ? await NestedSetTelemetry
                 .MeasureLockAsync(token => context.Database.BeginTransactionAsync(isolation, token), cancellationToken)
                 .ConfigureAwait(false)
@@ -159,10 +161,10 @@ internal static class NestedSetTransaction
     }
 
     /// <summary>Protects one operation while preserving the caller's prior writes and transaction ownership.</summary>
-    /// <param name="context">The context used to read SQL Server session options.</param>
+    /// <param name="context">The context used to validate native transaction session options.</param>
     /// <param name="transaction">The existing EF transaction, which this method never commits or disposes.</param>
     /// <param name="isolation">The isolation required for lock-protected structural reads on the provider.</param>
-    /// <param name="providerKind">The verified provider dialect used for transaction preconditions.</param>
+    /// <param name="provider">The selected native caller-session implementation.</param>
     /// <param name="operation">The structural operation to run after acquiring the configured write lock.</param>
     /// <param name="cancellationToken">The token used for savepoint creation, locking, operation, and release.</param>
     /// <returns>A task that completes when the operation and savepoint release succeed.</returns>
@@ -172,7 +174,7 @@ internal static class NestedSetTransaction
         DbContext context,
         IDbContextTransaction transaction,
         IsolationLevel isolation,
-        NestedSetProviderKind providerKind,
+        NestedSetProviderCapabilities provider,
         Func<CancellationToken, Task> operation,
         CancellationToken cancellationToken
     )
@@ -191,26 +193,9 @@ internal static class NestedSetTransaction
                 $"The caller transaction must use {isolation} isolation.");
         }
 
-        if (providerKind == NestedSetProviderKind.SqlServer)
-        {
-            // WHY: Under XACT_ABORT ON a caught duplicate-key error dooms the whole SQL Server transaction.
-            // A savepoint cannot restore it, so reject that session mode before acquiring any tree lock.
-            // SQL Server documents 16384 as the XACT_ABORT bit in @@OPTIONS.
-            var options = await context
-                .Database
-                .SqlQueryRaw<int>("SELECT @@OPTIONS & 16384 AS [Value]")
-                .SingleAsync(cancellationToken)
-                .ConfigureAwait(false);
+        await provider.ValidateCallerSessionAsync(context, cancellationToken).ConfigureAwait(false);
 
-            if (options != 0)
-            {
-                throw new NestedSetException(
-                    NestedSetErrorCode.InvalidTransaction,
-                    "SQL Server caller transactions must use SET XACT_ABORT OFF for nested-set savepoints.");
-            }
-        }
-
-        // WHY: A distinct identifier avoids application/EF collisions and respects SQL Server's 32-character limit.
+        // WHY: A distinct identifier avoids application/EF collisions while staying within the supported short-name limit.
         var savepoint = $"NS{Guid.NewGuid():N}"[..32];
 
         await transaction

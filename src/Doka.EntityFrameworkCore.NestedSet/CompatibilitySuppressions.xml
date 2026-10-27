@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Suppressions>
+  <!-- WHY: D-020 explicitly approves removing only this legacy registration class in 10.1.0.
+       All other published APIs remain subject to the SDK's 10.0.0 baseline comparison. -->
+  <Suppression>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:Doka.EntityFrameworkCore.NestedSet.NestedSetDbContextOptionsBuilderExtensions</Target>
+    <Left>lib/net10.0/Doka.EntityFrameworkCore.NestedSet.dll</Left>
+    <Right>lib/net10.0/Doka.EntityFrameworkCore.NestedSet.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+</Suppressions>

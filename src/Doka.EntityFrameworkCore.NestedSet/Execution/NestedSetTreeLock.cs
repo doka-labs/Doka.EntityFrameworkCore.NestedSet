@@ -36,14 +36,35 @@ internal sealed class NestedSetTreeLock
         _lifecycle = sql.DelimitIdentifier(mapping.Lifecycle.GetColumnName(mapping.Store)!);
     }
 
+    /// <summary>Gets the caller context used by the selected native registry implementation.</summary>
+    internal DbContext Context => _context;
+
+    /// <summary>Gets the complete typed identity and lifecycle requirement.</summary>
+    internal INestedSetTreeLockRequest Request => _request;
+
+    /// <summary>Gets the delimited registry table.</summary>
+    internal string Table => _table;
+
+    /// <summary>Gets the optional delimited scope column.</summary>
+    internal string? Scope => _scope;
+
+    /// <summary>Gets the delimited tree identity column.</summary>
+    internal string TreeId => _treeId;
+
+    /// <summary>Gets the delimited revision column.</summary>
+    internal string Revision => _revision;
+
+    /// <summary>Gets the delimited lifecycle column.</summary>
+    internal string Lifecycle => _lifecycle;
+
     /// <summary>Acquires one row lock and enforces active, unused, and tombstoned lifecycle rules.</summary>
     /// <param name="cancellationToken">The token used while waiting for and acquiring the database lock.</param>
     /// <returns>A task that completes after the transaction owns the registry row lock.</returns>
     internal Task AcquireAsync(
         CancellationToken cancellationToken
-    ) => _provider.Kind == NestedSetProviderKind.Sqlite
-        ? AcquireCoreAsync(cancellationToken)
-        : NestedSetTelemetry.MeasureLockAsync(AcquireCoreAsync, cancellationToken);
+    ) => _provider.MeasureTreeRowLockWait
+        ? NestedSetTelemetry.MeasureLockAsync(AcquireCoreAsync, cancellationToken)
+        : AcquireCoreAsync(cancellationToken);
 
     /// <summary>Runs the provider-specific reservation and locking statements.</summary>
     private async Task AcquireCoreAsync(
@@ -54,29 +75,11 @@ internal sealed class NestedSetTreeLock
 
         if (_request.Mode == NestedSetTreeLockMode.New)
         {
-            if (_provider.Kind == NestedSetProviderKind.SqlServer)
-            {
-                created = await ReserveSqlServerAsync(cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                var affected = await ExecuteAsync(CreateSql(), cancellationToken).ConfigureAwait(false);
-
-                if (_provider.Kind == NestedSetProviderKind.MySql)
-                {
-                    created = await QueryRevisionAsync(cancellationToken).ConfigureAwait(false) == 0;
-                }
-                else
-                {
-                    created = affected == 1;
-                }
-            }
+            created = await _provider.ReserveTreeAsync(this, cancellationToken).ConfigureAwait(false);
         }
-        else if (_provider.Kind == NestedSetProviderKind.Sqlite)
+        else
         {
-            // WHY: A SQLite SELECT cannot acquire a row write lock. The no-op update enters the same writer
-            // transaction used by every later structural statement without changing the revision.
-            await ExecuteAsync(UpdateSql(), cancellationToken).ConfigureAwait(false);
+            await _provider.LockExistingTreeAsync(this, cancellationToken).ConfigureAwait(false);
         }
 
         var rows = await QueryLifecycleAsync(cancellationToken)
@@ -135,7 +138,7 @@ internal sealed class NestedSetTreeLock
     }
 
     /// <summary>Executes one parameterized registry write with the identity's exact relational mappings.</summary>
-    private async Task<int> ExecuteAsync(
+    internal async Task<int> ExecuteAsync(
         string statement,
         CancellationToken cancellationToken
     )
@@ -155,22 +158,11 @@ internal sealed class NestedSetTreeLock
         CancellationToken cancellationToken
     )
     {
-        var hint = _provider.Kind == NestedSetProviderKind.SqlServer
-            ? " WITH (UPDLOCK, HOLDLOCK, ROWLOCK)"
-            : string.Empty;
-
-        var suffix = _provider.Kind switch
-        {
-            NestedSetProviderKind.PostgreSql => " FOR NO KEY UPDATE",
-            NestedSetProviderKind.MySql => " FOR UPDATE",
-            _ => string.Empty,
-        };
-
         var value = _context
             .GetService<ISqlGenerationHelper>()
             .DelimitIdentifier("Value");
 
-        var statement = $"SELECT {_lifecycle} AS {value} FROM {_table}{hint} WHERE {Predicate()}{suffix}";
+        var statement = _provider.TreeLifecycleReadSql(this, value);
 
         return _context
             .Database
@@ -178,87 +170,8 @@ internal sealed class NestedSetTreeLock
             .ToListAsync(cancellationToken);
     }
 
-    /// <summary>Reads the revision needed to distinguish MySQL insertion from matched-row duplicate updates.</summary>
-    private async Task<long> QueryRevisionAsync(
-        CancellationToken cancellationToken
-    )
-    {
-        var value = _context
-            .GetService<ISqlGenerationHelper>()
-            .DelimitIdentifier("Value");
-
-        var statement = $"SELECT {_revision} AS {value} FROM {_table} WHERE {Predicate()} FOR UPDATE";
-        var revisions = await _context
-            .Database
-            .SqlQueryRaw<long>(statement, CreateParameters())
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        return revisions.Count == 1 ? revisions[0] : -1;
-    }
-
-    /// <summary>Reserves one SQL Server key without locking unrelated gaps in an empty registry.</summary>
-    private async Task<bool> ReserveSqlServerAsync(
-        CancellationToken cancellationToken
-    )
-    {
-        await using var command = _context
-            .Database
-            .GetDbConnection()
-            .CreateCommand();
-
-        var created = command.CreateParameter();
-        created.ParameterName = "created";
-        created.DbType = DbType.Int32;
-        created.Direction = ParameterDirection.Output;
-        var parameters = CreateParameters()
-            .Append(created)
-            .ToArray();
-
-        var output = $"{{{parameters.Length - 1}}}";
-        var statement = $"SET NOCOUNT ON; BEGIN TRY {DirectInsertSql()}; SET {output} = 1; END TRY "
-            + "BEGIN CATCH IF ERROR_NUMBER() NOT IN (2601, 2627) THROW; "
-            + $"SET {output} = 0; END CATCH";
-
-        // WHY: A serializable absence probe locks the sole gap of an empty registry and blocks unrelated trees.
-        // The unique key remains the race arbiter: equal identities wait and report a duplicate, while distinct
-        // identities insert independently. An output parameter avoids leaving a result reader open during rollback.
-        // Catching only SQL Server's two duplicate-key numbers preserves every unrelated database error.
-        await _context
-            .Database
-            .ExecuteSqlRawAsync(statement, parameters, cancellationToken)
-            .ConfigureAwait(false);
-
-        return created.Value is 1;
-    }
-
-    /// <summary>Builds a first-use-safe insert whose affected count distinguishes creation from reuse.</summary>
-    private string CreateSql()
-    {
-        var columns = _scope is null
-            ? $"{_treeId}, {_revision}, {_lifecycle}"
-            : $"{_scope}, {_treeId}, {_revision}, {_lifecycle}";
-
-        var values = _scope is null
-            ? $"{{0}}, 0, {NestedSetTreeRegistryMetadata.Active}"
-            : $"{{0}}, {{1}}, 0, {NestedSetTreeRegistryMetadata.Active}";
-
-        if (_provider.Kind == NestedSetProviderKind.MySql)
-        {
-            // WHY: Doka requires MySQL matched-row reporting, so affected rows cannot distinguish insert from
-            // duplicate. A revision marker distinguishes a conflicting reservation and is rolled back with
-            // the rejected operation, preserving the active tree's committed revision.
-            return $"INSERT INTO {_table} ({columns}) VALUES ({values}) "
-                + $"ON DUPLICATE KEY UPDATE {_revision} = {_revision} + 1";
-        }
-
-        var conflict = _scope is null ? _treeId : $"{_scope}, {_treeId}";
-
-        return $"INSERT INTO {_table} ({columns}) VALUES ({values}) ON CONFLICT ({conflict}) DO NOTHING";
-    }
-
-    /// <summary>Builds the provider-neutral direct insert used by SQL Server's duplicate-key handler.</summary>
-    private string DirectInsertSql()
+    /// <summary>Builds the mapped direct insert used by native reservation handlers.</summary>
+    internal string DirectInsertSql()
     {
         var columns = _scope is null
             ? $"{_treeId}, {_revision}, {_lifecycle}"
@@ -271,16 +184,13 @@ internal sealed class NestedSetTreeLock
         return $"INSERT INTO {_table} ({columns}) VALUES ({values})";
     }
 
-    /// <summary>Builds SQLite's no-op writer statement for an already active registry row.</summary>
-    private string UpdateSql() => $"UPDATE {_table} SET {_revision} = {_revision} WHERE {Predicate()}";
-
     /// <summary>Builds the complete Scope/TreeId equality predicate using positional parameters.</summary>
-    private string Predicate() => _scope is null
+    internal string Predicate() => _scope is null
         ? $"{_treeId} = {{0}}"
         : $"{_scope} = {{0}} AND {_treeId} = {{1}}";
 
     /// <summary>Creates provider parameters through the registry's copied relational type mappings.</summary>
-    private object[] CreateParameters()
+    internal object[] CreateParameters()
     {
         using var command = _context
             .Database

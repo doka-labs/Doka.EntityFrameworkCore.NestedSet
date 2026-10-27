@@ -926,8 +926,7 @@ public sealed class TargetModelConventionTests
     {
         var options = new DbContextOptionsBuilder<TContext>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets();
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets());
 
         if (typeof(ITestModelVariant).IsAssignableFrom(typeof(TContext)))
         {

@@ -6,6 +6,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Testing;
 /// <summary>Keeps provider capability profiles aligned with the canonical test-image manifest.</summary>
 internal static class DatabaseTestTargets
 {
+    /// <summary>Identifies the Doka provider shared by MySQL and MariaDB test configurations.</summary>
+    internal const string MySqlProviderName = "Doka.EntityFrameworkCore.MySql";
+
     private static readonly Dictionary<string, string> s_images = LoadImages();
 
     /// <summary>Gets the immutable MariaDB image shared by runtime, migration, and benchmark fixtures.</summary>

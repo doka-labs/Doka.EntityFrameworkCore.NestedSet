@@ -12,8 +12,7 @@ public static class NestedSetEntityTypeBuilderExtensions
     /// <exception cref="ArgumentException">A callback selector is not a direct entity property.</exception>
     /// <exception cref="InvalidOperationException">Required nested-set properties are not configured.</exception>
     /// <remarks>
-    ///     Enable nested sets through
-    ///     <see cref="NestedSetDbContextOptionsBuilderExtensions.UseNestedSets(DbContextOptionsBuilder)" /> so final
+    ///     Enable nested sets through <c>UseNestedSets()</c> inside the selected native provider callback so final
     ///     validation, infrastructure, collation capture, and late index reconciliation are applied. Existing databases
     ///     require an ordinary provider migration to receive newly configured indexes; SafeMigrations is optional.
     ///     Generated indexes are nonunique and include the tree identity even when no application scope is configured.

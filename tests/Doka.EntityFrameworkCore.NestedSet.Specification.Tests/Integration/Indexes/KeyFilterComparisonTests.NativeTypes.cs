@@ -79,22 +79,22 @@ public abstract partial class KeyFilterComparisonTests
         switch (engine)
         {
             case "Sqlite":
-                options.UseSqlite(connection);
+                options.UseSqlite(connection, provider => provider.UseNestedSets());
                 break;
             case "PostgreSql":
-                options.UseNpgsql(connection);
+                options.UseNpgsql(connection, provider => provider.UseNestedSets());
                 break;
             case "SqlServer":
-                options.UseSqlServer(connection);
+                options.UseSqlServer(connection, provider => provider.UseNestedSets());
                 break;
             default:
                 options.UseMySql(
                     connection,
-                    engine == "MariaDb" ? DatabaseTestTargets.MariaDb : DatabaseTestTargets.MySql);
+                    engine == "MariaDb" ? DatabaseTestTargets.MariaDb : DatabaseTestTargets.MySql,
+                    provider => provider.UseNestedSets());
                 break;
         }
 
-        options.UseNestedSets();
         var probe = new EnterpriseProbe(captureParameterBindings: true);
         options.AddInterceptors(probe);
         await using var context = new NativeKeyContext<TKey>(options.Options);

@@ -36,30 +36,32 @@ public sealed partial class IndexConventionTests
             var options = new DbContextOptionsBuilder<ConventionContext>().ConfigureTestWarnings();
             options.ReplaceService<IModelCacheKeyFactory, TestModelCacheKeyFactory>();
 
-            // WHY: Repeated options registration must not duplicate finalizing conventions in generated models.
-            options.UseNestedSets();
-            options.UseNestedSets();
+            // WHY: Repeated native callback registration must not duplicate finalizing conventions in generated models.
 
             switch (engine)
             {
                 case "Sqlite":
-                    options.UseSqlite("Data Source=:memory:");
+                    options.UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets().UseNestedSets());
                     break;
                 case "MySql":
                     options.UseMySql(
                         "Server=127.0.0.1;Database=Conventions;User ID=unused",
-                        DatabaseTestTargets.MySql);
+                        DatabaseTestTargets.MySql, provider => provider.UseNestedSets().UseNestedSets());
                     break;
                 case "MariaDb":
                     options.UseMySql(
                         "Server=127.0.0.1;Database=Conventions;User ID=unused",
-                        DatabaseTestTargets.MariaDb);
+                        DatabaseTestTargets.MariaDb, provider => provider.UseNestedSets().UseNestedSets());
                     break;
                 case "SqlServer":
-                    options.UseSqlServer("Server=127.0.0.1;Database=Conventions;User ID=unused;Password=unused");
+                    options.UseSqlServer(
+                        "Server=127.0.0.1;Database=Conventions;User ID=unused;Password=unused",
+                        provider => provider.UseNestedSets().UseNestedSets());
                     break;
                 case "PostgreSql":
-                    options.UseNpgsql("Host=127.0.0.1;Database=Conventions;Username=unused");
+                    options.UseNpgsql(
+                        "Host=127.0.0.1;Database=Conventions;Username=unused",
+                        provider => provider.UseNestedSets().UseNestedSets());
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(engine));

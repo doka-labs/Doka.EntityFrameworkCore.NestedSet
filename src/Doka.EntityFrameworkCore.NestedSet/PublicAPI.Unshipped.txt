@@ -1,1 +1,4 @@
 #nullable enable
+*REMOVED*Doka.EntityFrameworkCore.NestedSet.NestedSetDbContextOptionsBuilderExtensions
+*REMOVED*static Doka.EntityFrameworkCore.NestedSet.NestedSetDbContextOptionsBuilderExtensions.UseNestedSets<TContext>(this Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<TContext!>! optionsBuilder) -> Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<TContext!>!
+*REMOVED*static Doka.EntityFrameworkCore.NestedSet.NestedSetDbContextOptionsBuilderExtensions.UseNestedSets(this Microsoft.EntityFrameworkCore.DbContextOptionsBuilder! optionsBuilder) -> Microsoft.EntityFrameworkCore.DbContextOptionsBuilder!

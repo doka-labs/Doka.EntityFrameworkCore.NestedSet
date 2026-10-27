@@ -1,6 +1,6 @@
-namespace Doka.EntityFrameworkCore.NestedSet.Providers;
+namespace Doka.EntityFrameworkCore.NestedSet.MySql;
 
-/// <summary>Composes native MySQL Scope comparison with the provider's existing SQL translators.</summary>
+/// <summary>Composes native hierarchy comparisons with the provider's existing SQL translators.</summary>
 internal sealed class NestedSetMySqlMethodCallTranslatorPlugin : IMethodCallTranslatorPlugin
 {
     /// <summary>Creates a translator using the provider's SQL expression and type mapping services.</summary>
@@ -14,11 +14,40 @@ internal sealed class NestedSetMySqlMethodCallTranslatorPlugin : IMethodCallTran
         var integerMapping = typeMappings.FindMapping(typeof(int))
             ?? throw new InvalidOperationException("Native Scope comparison requires an integer SQL mapping.");
 
-        Translators = [new NativeScopeTranslator(sql, integerMapping)];
+        Translators = [new NativeScopeTranslator(sql, integerMapping), new NativePointRangeTranslator(sql)];
     }
 
     /// <inheritdoc />
     public IEnumerable<IMethodCallTranslator> Translators { get; }
+
+    /// <summary>Keeps dynamic point ranges available to MariaDB for each completed source envelope.</summary>
+    private sealed class NativePointRangeTranslator(ISqlExpressionFactory sql) : IMethodCallTranslator
+    {
+        /// <inheritdoc />
+        public SqlExpression? Translate(
+            SqlExpression? instance,
+            MethodInfo method,
+            IReadOnlyList<SqlExpression> arguments,
+            IDiagnosticsLogger<DbLoggerCategory.Query> logger
+        )
+        {
+            if (method.DeclaringType is not { IsConstructedGenericType: true } declaringType
+                || declaringType.GetGenericTypeDefinition() != typeof(NestedSetNativePointRange<>)
+                || method.Name != nameof(NestedSetNativePointRange<int>.Contains)
+                || arguments.Count != 2
+                || arguments[0].TypeMapping is not { } mapping)
+            {
+                return null;
+            }
+
+            // WHY: An equality or constant prefix makes MariaDB fix a broad ref/index plan before
+            // the source-derived bounds are available. Both native comparisons retain a closed
+            // point while allowing dynamic range planning, including native collations/converters.
+            var point = sql.ApplyTypeMapping(arguments[1], mapping);
+
+            return sql.AndAlso(sql.GreaterThanOrEqual(arguments[0], point), sql.LessThanOrEqual(arguments[0], point));
+        }
+    }
 
     /// <summary>Preserves column collation while isolating candidate equality from constant folding.</summary>
     private sealed class NativeScopeTranslator(

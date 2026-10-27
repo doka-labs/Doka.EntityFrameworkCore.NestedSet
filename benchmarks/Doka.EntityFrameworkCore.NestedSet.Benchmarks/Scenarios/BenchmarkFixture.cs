@@ -61,7 +61,7 @@ internal sealed class BenchmarkFixture : IAsyncDisposable
         cancellationToken.ThrowIfCancellationRequested();
         scenario.Validate();
         var counter = new CommandObservation();
-        var builder = new DbContextOptionsBuilder().UseNestedSets();
+        var builder = new DbContextOptionsBuilder();
 
         BenchmarkEnvironment.ConfigureProvider(builder, options.Engine, connection);
 
