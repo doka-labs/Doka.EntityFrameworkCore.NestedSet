@@ -153,6 +153,7 @@ public abstract partial class SingleInsertGuardTests
                 .Set<SingleIdentityNode>()
                 .AsNoTracking()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal(
             (3, 42, 43, 3),
             (saved.Id.Value, saved.GeneratedValue, saved.Details.GeneratedValue, saved.Details.OwnerId.Value));

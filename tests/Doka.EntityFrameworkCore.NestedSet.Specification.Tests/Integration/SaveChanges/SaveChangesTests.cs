@@ -24,6 +24,7 @@ public abstract partial class SaveChangesTests : ProviderTest
         var hierarchy = context
             .NestedSet<OrderingNode>()
             .ForScope(1);
+
         await hierarchy.InsertRootAsync(
             new OrderingNode
             {

@@ -322,6 +322,7 @@ public abstract class OrderingNotificationTests : ProviderTest
         var tree = verification
             .NestedSet<OrderingNotificationNode>()
             .ForScope(1);
+
         var report = await tree
             .InTree(persisted[0].TreeId)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);

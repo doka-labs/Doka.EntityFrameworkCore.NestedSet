@@ -24,7 +24,7 @@ internal static class NestedSetTelemetry
     };
 
     /// <summary>The wall-clock duration of a complete public operation, including transaction cleanup.</summary>
-    private static readonly Histogram<double> s_duration = s_meter.CreateHistogram<double>(
+    private static readonly Histogram<double> s_duration = s_meter.CreateHistogram(
         "nestedset.operation.duration",
         "s",
         "Duration of a complete hierarchy operation.",
@@ -43,7 +43,7 @@ internal static class NestedSetTelemetry
         "Failed hierarchy operations, excluding cancellation.");
 
     /// <summary>The wall-clock duration of lock acquisition, excluding the operation protected by that lock.</summary>
-    private static readonly Histogram<double> s_lockWait = s_meter.CreateHistogram<double>(
+    private static readonly Histogram<double> s_lockWait = s_meter.CreateHistogram(
         "nestedset.lock.wait.duration",
         "s",
         "Time spent acquiring a hierarchy write lock.",
@@ -183,7 +183,7 @@ internal static class NestedSetTelemetry
         CancellationToken cancellationToken
     )
     {
-        using var activity = s_source.StartActivity("nestedset." + operation, ActivityKind.Internal);
+        using var activity = s_source.StartActivity("nestedset." + operation);
         var started = Stopwatch.GetTimestamp();
         var previous = s_current.Value;
         var state = new OperationState(provider);
@@ -221,7 +221,7 @@ internal static class NestedSetTelemetry
         CancellationToken cancellationToken
     )
     {
-        using var activity = s_source.StartActivity("nestedset." + operation, ActivityKind.Internal);
+        using var activity = s_source.StartActivity("nestedset." + operation);
         var started = Stopwatch.GetTimestamp();
         var previous = s_current.Value;
         var state = new OperationState(provider);
@@ -254,7 +254,7 @@ internal static class NestedSetTelemetry
         CancellationToken cancellationToken
     )
     {
-        using var activity = s_source.StartActivity("nestedset.lock", ActivityKind.Internal);
+        using var activity = s_source.StartActivity("nestedset.lock");
         var started = Stopwatch.GetTimestamp();
         Exception? failure = null;
 
@@ -286,7 +286,7 @@ internal static class NestedSetTelemetry
         CancellationToken cancellationToken
     )
     {
-        using var activity = s_source.StartActivity("nestedset.lock", ActivityKind.Internal);
+        using var activity = s_source.StartActivity("nestedset.lock");
         var started = Stopwatch.GetTimestamp();
         Exception? failure = null;
 

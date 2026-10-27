@@ -75,6 +75,7 @@ public sealed partial class EngineTestDiscoveryTests
         // Arrange
         var suite = CreateTestMethod("SqlServer", nameof(DiscoveryProbe.Ordinary),
             [typeof(ProviderFixture<ProviderResources, SqlServerEngine>)]).TestClass.Class;
+
         var method = typeof(DatabaseLifecycleTests).GetMethod(methodName)!;
 
         // Act

@@ -60,6 +60,14 @@ when their source file moves. `NestedSetStore`, `NestedSetSaveGroup`, and
 object is required. The unused internal service interface is removed; the
 public scoped and unscoped API remains unchanged.
 
+The same boundary applies within larger feature implementations: pair queries,
+path proofs, ancestor decisions, save guards, and insertion recovery use focused
+partials of their existing owner. The central execution order stays visible in
+the main orchestration file. Immutable model, property, and ordering descriptors
+have separate files because configuration and execution consume them directly.
+These source boundaries preserve type identity, visibility, field initialization,
+and cache lifetime; they do not introduce another runtime abstraction.
+
 Internal feature namespaces follow their consuming feature. Tracked structure
 refresh belongs to `ManagedSave`, callback write capture to `BulkImport`, and
 generated concurrency refresh to `Insert`. `Features.Facade` owns model-based
@@ -142,6 +150,7 @@ entity. The folder structure is not a new public contract.
 - 2026-09-28: The maintainer accepted the current decision and designated the core-maintainers audience.
 - 2026-09-28: Status changed from accepted to implemented.
 - 2026-09-28: Confirmed feature-owned source folders, shared execution and storage boundaries, the removed compatibility interface, and architectural regression specifications against the linked repository evidence.
+- 2026-10-25: Refined file ownership within existing query, save, and insertion types and separated independently consumed mapping descriptors. The public API, type identities, initialization order, and shared execution boundary remain unchanged; this entry records source organization rather than a new runtime qualification result.
 
 ### Implementation References
 

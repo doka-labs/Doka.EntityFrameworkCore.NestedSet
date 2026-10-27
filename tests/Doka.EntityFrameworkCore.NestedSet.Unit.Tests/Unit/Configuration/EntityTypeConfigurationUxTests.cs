@@ -15,6 +15,7 @@ public sealed class EntityTypeConfigurationUxTests
             .GetService<IDesignTimeModel>()
             .Model
             .FindEntityType(typeof(ScopedNode))!;
+
         var indexes = entity
             .GetIndexes()
             .Select(index => new

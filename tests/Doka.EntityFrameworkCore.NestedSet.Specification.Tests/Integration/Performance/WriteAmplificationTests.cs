@@ -139,6 +139,7 @@ public abstract partial class WriteAmplificationTests : ProviderTest
             .InTree(treeId)
             .Nodes
             .SingleAsync(CancellationToken.None);
+
         Assert.Equal((1L, 2L, 0, 0L), (root.Start, root.End, root.Depth, root.Position));
         Assert.Empty(
             (await service

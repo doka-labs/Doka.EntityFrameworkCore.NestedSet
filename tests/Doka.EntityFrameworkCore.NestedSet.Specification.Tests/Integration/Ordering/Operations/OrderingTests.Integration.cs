@@ -42,17 +42,18 @@ public abstract partial class OrderingTests
         Assert.Equal(1, ordinaryProbe.MaterializedNodes);
     }
 
-    /// <summary>Verifies an ordered mutation rejects a context that omitted the required save integration.</summary>
+    /// <summary>An unregistered ordered facade fails before starting its requested mutation.</summary>
     [Fact]
-    public async Task OrderedMutationRejectsMissingSaveIntegration()
+    public async Task OrderedFacadeRejectsMissingAdapterBeforeMutation()
     {
         // Arrange
         await using var configured = await _fixture.ResetAsync(Engine);
         var connection = configured.Database.GetConnectionString()!;
         var probe = new OrderingSaveProbe();
+        var boundary = new ConfigurationIoBoundary();
         var options = new DbContextOptionsBuilder()
             .ConfigureTestWarnings()
-            .AddInterceptors(probe);
+            .AddInterceptors(probe, boundary, boundary.Commands);
 
         switch (Engine)
         {
@@ -78,28 +79,84 @@ public abstract partial class OrderingTests
         // WHY: Reusing the configured context's options would also reuse UseNestedSets() and invalidate this
         // negative control. Only the provider connection is intentionally shared.
         await using var context = new MissingIntegrationOrderingContext(options.Options);
-        var tree = context
-            .NestedSet<OrderingNode>()
-            .ForScope(1);
-
         // Act
-        var exception = await Record.ExceptionAsync(() => tree.InsertRootAsync(
-            new OrderingNode
-            {
-                Id = 1,
-                Name = "Root",
-            },
-            Guid.NewGuid(),
-            CancellationToken.None));
+        var exception = await Record.ExceptionAsync(async () =>
+        {
+            var tree = context.NestedSet<OrderingNode>().ForScope(1);
+
+            await tree.InsertRootAsync(
+                new OrderingNode
+                {
+                    Id = 1,
+                    Name = "Root",
+                },
+                Guid.NewGuid(),
+                CancellationToken.None);
+        });
 
         // Assert
-        var integrationFailure = Assert.IsType<NestedSetException>(exception);
-        Assert.Equal(NestedSetErrorCode.InvalidContext, integrationFailure.Code);
+        var integrationFailure = Assert.IsType<InvalidOperationException>(exception);
+
+        Assert.Contains("matching NestedSet provider package", integrationFailure.Message, StringComparison.Ordinal);
         Assert.Contains("UseNestedSets()", integrationFailure.Message, StringComparison.Ordinal);
+        Assert.Contains("callback", integrationFailure.Message, StringComparison.Ordinal);
+        Assert.Equal(0, boundary.ConnectionStarts);
+        Assert.Equal(0, boundary.CommandsCreated);
         Assert.Empty(probe.Commands);
         Assert.Empty(
             await configured
                 .Set<OrderingNode>()
                 .ToArrayAsync(CancellationToken.None));
+    }
+
+    /// <summary>A selected adapter still rejects tracked ordering writes saved without the coordinated wrapper.</summary>
+    [Fact]
+    public async Task TrackedOrderingChangeRejectsMissingCoordinatedSaveWrapper()
+    {
+        // Arrange
+        await using var configured = await _fixture.ResetAsync(Engine);
+        await configured
+            .NestedSet<OrderingNode>()
+            .ForScope(1)
+            .InsertRootAsync(
+                new OrderingNode
+                {
+                    Id = 1,
+                    Name = "Root",
+                },
+                Guid.NewGuid(),
+                CancellationToken.None);
+
+        var options = ModelCompatibilityDatabase.Options<MissingIntegrationOrderingContext>(
+            Engine,
+            configured.Database.GetConnectionString()!);
+
+        var probe = new OrderingSaveProbe();
+        await using var context = new MissingIntegrationOrderingContext(
+            new DbContextOptionsBuilder<MissingIntegrationOrderingContext>(options).AddInterceptors(probe)
+                .Options);
+
+        var node = await context
+            .Set<OrderingNode>()
+            .SingleAsync(row => row.Id == 1, CancellationToken.None);
+
+        node.Name = "Changed";
+        probe.Commands.Clear();
+
+        // Act
+        var exception = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
+
+        // Assert
+        var integrationFailure = Assert.IsType<NestedSetException>(exception);
+
+        Assert.Equal(NestedSetErrorCode.InvalidContext, integrationFailure.Code);
+        Assert.Contains("SaveNestedSetChangesAsync", integrationFailure.Message, StringComparison.Ordinal);
+        Assert.Empty(probe.Commands);
+        Assert.Equal(0, probe.CompletedPayloadUpdates);
+        Assert.Equal(0, probe.StructuralUpdates);
+        Assert.Equal(EntityState.Modified, context.Entry(node).State);
+        Assert.Equal("Changed", node.Name);
+        Assert.Equal("Root", (await configured.Set<OrderingNode>().AsNoTracking()
+            .SingleAsync(row => row.Id == 1, CancellationToken.None)).Name);
     }
 }

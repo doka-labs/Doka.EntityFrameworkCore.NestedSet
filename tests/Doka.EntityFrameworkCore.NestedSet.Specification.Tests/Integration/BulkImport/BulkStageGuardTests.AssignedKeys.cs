@@ -72,6 +72,7 @@ public abstract partial class BulkStageGuardTests
         var tree = context
             .NestedSet<BulkStageBinaryParent>()
             .ForScope(1);
+
         var originalTreeId = Guid.NewGuid();
         var input = new BulkStageBinaryParent
         {

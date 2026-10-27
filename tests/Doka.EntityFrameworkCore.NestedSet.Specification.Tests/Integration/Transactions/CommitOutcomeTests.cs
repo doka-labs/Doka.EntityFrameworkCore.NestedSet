@@ -55,6 +55,7 @@ public abstract class CommitOutcomeTests : ProviderTest
             .Set<TreeNode>()
             .AsNoTracking()
             .SingleAsync(CancellationToken.None);
+
         Assert.Equal(
             (41, 1, 2, 0, 0),
             (persisted.NodeId, persisted.Start, persisted.End, persisted.Depth, persisted.Position));
@@ -62,6 +63,7 @@ public abstract class CommitOutcomeTests : ProviderTest
         var verifiedTree = verification
             .NestedSet<TreeNode>()
             .ForScope(1);
+
         Assert.Empty(
             (await verifiedTree
                 .InTree(Guid.Empty)

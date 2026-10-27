@@ -153,6 +153,7 @@ public sealed class TypedTreeLockRequestTests
         Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
         Assert.Null(context.Database.CurrentTransaction);
         Assert.Empty(context.ChangeTracker.Entries());
+
         return;
 
         Task Operation(

@@ -64,6 +64,7 @@ must still execute every applicable database case. The test list must retain
 those local cases with visible runtime skips before container startup, and
 metadata-only suites must remain runnable.
 
+
 ## Decision Drivers
 
 - Make unit and provider ownership visible as separate projects in Rider.
@@ -150,10 +151,17 @@ table names remain unchanged; in particular, `SqlServerVersionNode` keeps its
 short name and explicit table mapping. The earlier probe extraction itself
 does not alter the context/entity identities described above.
 
-`QueryPlanTestSupport` owns the shared asynchronous evidence writer. All six
-existing call paths reference the helper directly instead of another suite.
-Output-directory overrides, file names, double-newline formatting, and explicit
-cancellation behavior remain unchanged.
+`QueryPlanTestSupport` owns shared statistics refresh, native plan explanation,
+and asynchronous evidence writing. Shared and provider-local callers use it
+directly, preserving provider SQL, captured parameter bindings, command selection,
+output-directory overrides, file names, double-newline formatting, and explicit
+cancellation behavior.
+
+Read-only comparison and query-plan scenario rows use lazy class-owned seed
+resources. Resettable native-type and collection-mode rows cannot invalidate the
+comparison seed. The [current lifetime map](../implementation-design.md#test-project-ownership)
+describes the separate comparison database and deterministic aggregate evidence;
+the existing assembly-owned containers remain shared.
 
 Common suites stay nongeneric. Their protected constructors consume an
 `IProviderFixture<TResource>` view; a concrete leaf's one public constructor
@@ -357,6 +365,11 @@ measurement isolation. Collection and
 assembly initialization, cleanup, and discovery are not supported contexts for
 the database helper's contextual fixture lookup.
 
+
+| Option | Disposition and reason |
+| --- | --- |
+| Skip the lifetime controls or relax their assertions | Rejected: would remove the evidence that a NestedSet registration releases its adapter. |
+
 ### Consequences
 
 - Good, because each provider project reports only its own tests, with no
@@ -546,6 +559,9 @@ optional SafeMigrations adapter retain their own existing test projects.
 - Microsoft changes the SQL Server container platform boundary, or xUnit changes
   dynamic skip and before-test hook ordering; requalify platform checks and lazy
   fixtures before changing the local ARM execution policy.
+- A new test depends on GC reachability, or CI/RC selection and result validation
+  change: verify its required execution environment, actual xUnit classification
+  and complete complementary reports before accepting the changed qualification.
 
 ### Decision History
 
@@ -568,9 +584,20 @@ optional SafeMigrations adapter retain their own existing test projects.
 - 2026-10-09: Wholly excluded families no longer require or retain an engine wrapper. The common same-tree writer scenario is separated from server-only concurrency scenarios, preserving all 13 original engine/scenario cases and their deadlines and assertions. Raw metadata and applicability regressions reject unsupported inherited scenarios and missing supported owners. Prior history remains intact; this amendment does not attribute an earlier cancellation or claim a vendor startup fix.
 - 2026-10-09: The first split exposed PostgreSQL error 53300 when two 64-writer scenarios overlapped. One type-based collection per server engine preserves the original single-class serialization without reducing writer count, increasing server limits, or disabling other collections. The raw metadata regression also protects this scheduling boundary.
 - 2026-10-09: The owner approved visible runtime skips for SQL Server database cases on local ARM before container startup, while retaining metadata and unit execution. Native Linux x64 CI retains mandatory provider, ordinary migration, and SafeMigrations cases with zero skips; unsupported CI must fail. The policy uses xUnit's runtime skip hook with lazy resources and records no new native CI qualification result or vendor startup correction.
+- 2026-10-25: Comparison and server-plan aggregates became independently discovered scenario rows with lazy class-owned immutable seeds and deterministic aggregate evidence. The comparison seed is separate from resettable sibling rows, while containers remain assembly-owned. Current framework text now follows the central pin; dated xUnit 4.0.1 sources and prior history remain intact. This entry records no new hosted qualification result.
 
 ### Implementation References
 
+- [Actual xUnit lifetime-partition metadata guards](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/ProviderFixtureIsolationTests.cs)
+- [CI complementary Unit executions](../../.github/workflows/ci.yml)
+- [RC partition execution and result validation](../../eng/release/qualification.py)
+- [Current central framework and adapter pins](../../Directory.Packages.props)
+- [Current test lifetime map](../implementation-design.md#test-project-ownership)
+- [Independent key comparisons](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/KeyFilterComparisonTests.cs)
+- [Comparison seed isolation](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/KeyFilterComparisonTests.Seed.cs)
+- [Comparison fixture](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/KeyFilterComparisonFixture.cs)
+- [Independent hierarchy and predecessor plans](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/ServerQueryPlanTests.cs)
+- [Query-plan fixture](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/ServerQueryPlanFixture.cs)
 - [Shared SQL Server platform contract](../../tests/Shared/SqlServerTestPlatform.cs)
 - [Provider execution hook](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Providers/ProviderDatabasePlatformAttribute.cs)
 - [Database-independent metadata markers](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Providers/DatabaseIndependentAttribute.cs)
@@ -620,6 +647,7 @@ optional SafeMigrations adapter retain their own existing test projects.
 
 ### Sources
 
+- [Microsoft cooperative assembly unloadability and GC-root diagnosis](https://learn.microsoft.com/en-us/dotnet/standard/assembly/unloadability) (primary source; retrieved 2026-10-26)
 - [OS architecture under emulation](https://learn.microsoft.com/en-us/dotnet/api/system.runtime.interopservices.runtimeinformation.osarchitecture?view=net-10.0) (primary source; retrieved 2026-10-09)
 - [Installed xUnit before-test invocation](https://github.com/xunit/xunit/blob/8ed8aa354c7298e157a0fc2dcd61b95df345256a/src/xunit.v3.core/Runners/Core/CoreTestRunner.cs) (primary source; retrieved 2026-10-09)
 - [Installed xUnit class and hook execution order](https://github.com/xunit/xunit/blob/8ed8aa354c7298e157a0fc2dcd61b95df345256a/src/xunit.v3.core/Runners/Base/TestRunner.cs) (primary source; retrieved 2026-10-09)

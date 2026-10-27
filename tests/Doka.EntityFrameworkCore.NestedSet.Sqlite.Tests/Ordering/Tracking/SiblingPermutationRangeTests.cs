@@ -81,7 +81,7 @@ public sealed class SiblingPermutationRangeTests : ProviderTest,
 
         foreach (var index in commands)
         {
-            var plan = await Specifications.ServerQueryPlanTests.ExplainAsync(context, probe, index, Engine);
+            var plan = await Specifications.QueryPlanTestSupport.ExplainAsync(context, probe, index, Engine);
             _output.WriteLine(probe.Commands[index]);
             _output.WriteLine(plan);
             Assert.Contains("SEARCH StrictOrderingNodes", plan, StringComparison.Ordinal);
@@ -118,6 +118,7 @@ public sealed class SiblingPermutationRangeTests : ProviderTest,
                 1 => index - 1,
                 _ => index,
             };
+
             Assert.Equal(expectedPosition, after[index + 1].Position);
         }
     }

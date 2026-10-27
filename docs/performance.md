@@ -4,6 +4,8 @@ Nested sets exchange write amplification for fast ordered hierarchy reads. The
 package keeps client work iterative and bounded, while database range updates
 remain proportional to the affected coordinate suffix in the worst case.
 
+## Allocation measurement and Unicode counting
+
 ### Unicode counting contract
 
 The common Unicode counter uses the framework's generic surrogate-range search
@@ -50,6 +52,48 @@ validates completed native ownership once per context scope and returns the
 existing immutable adapter. Actual warmed `Resolve` controls allocate zero
 bytes across 10,000 calls on all five engine profiles, including after a full
 GC. They initialize actual provider service graphs without database I/O.
+
+## Maintainability comparison on published packages
+
+| Complete group read | Before process means | After process means | Descriptive change |
+| --- | --- | --- | ---: |
+| MariaDB, one origin | 6.146 / 6.086 ms | 5.958 / 6.222 ms | -0.43% |
+| MariaDB, 16 origins | 6.567 / 6.935 ms | 9.169 / 6.911 ms | +19.09% |
+| MySQL, one origin | 5.406 / 5.409 ms | 5.679 / 5.869 ms | +6.78% |
+| MySQL, 16 origins | 9.063 / 9.218 ms | 9.122 / 9.287 ms | +0.70% |
+
+The MariaDB 16-origin processes vary substantially; both MySQL one-origin
+after processes are slower. Construction and signal timings are also mixed.
+These observations establish neither a general speedup nor regression-free
+performance. Group reads allocate approximately 20-35 KB more per read in
+these cases, about 3-6%; the fixed per-read overhead is not an improvement.
+The materializer's synchronous 24-cell case stays at 5,016 B/op and its
+6,144-cell case at 865,683 B/op; suspended large reads stay near 866,466 B/op.
+Small suspended reads vary slightly across processes.
+
+Residual background activity remains material: observed mean host CPU idle
+ranges from 45.89% to 59.38%, with substantial memory compression. Whole-child
+CPU includes setup, warmup, verification and observation; it is not isolated
+benchmark-body CPU. The 24-cell materializer has MinIterationTime warnings
+with roughly 8-24 ms actual iterations, so its latency evidence is weaker.
+All 68 separate diagnostic captures were parsed with complete actual-body
+intervals and zero lost events. CPU sample weights include waiting threads;
+allocation ticks are sampled, so neither gives exact CPU duration or bytes per
+type. The synchronous 24-cell profile has only 166/172 before/after actual-body
+thread samples and is excluded from CPU root-cause claims. Diagnostic timings
+remain outside the 68 plain observations; the profiles establish neither a
+universal causal explanation nor exhausted optimization.
+
+The separately instrumented setup comparison retains two database containers
+plus one Ryuk helper before and after. The immutable key-comparison fixture
+adds one database, 16 table-creation and 28 index-creation statements per engine;
+the complete two-engine filters use four versus six databases. Seed frequency
+and actual payload stay unchanged at 108 saves and 30,592 readback rows, and the
+server-plan DDL multiset is identical. The 114 explicit readback observations
+are excluded from ordinary command counts. EF completed commands and native
+Execute activities are different layers and are not added together. These
+functional setup scopes overlap and include observer/logging overhead, so
+their durations establish no setup speedup or additive throughput result.
 
 
 ## Cost model
@@ -585,6 +629,11 @@ SQL Server hosted capacity result; the 512 MiB assertion remains unchanged.
 
 The [heap observer](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Observation/ManagedHeapObservation.cs)
 has [held-allocation controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Observation/ManagedHeapObservationTests.cs).
+The independent calibration runs the actual helper in the existing Unit
+executable before xUnit initializes. It holds 100,000 objects or small arrays,
+counts their allocation bytes independently and retains the original +/-10%
+accuracy bound. Runner-state reclamation cannot be hidden by a wider tolerance;
+ordinary test invocations still use xUnit's public console runner.
 The same controls include a captured native scalar tuple, qualified-anchor
 cases, unknown identities, and the completion/start race that would otherwise
 understate occupied bytes. They verify measurement safety rather than relaxing

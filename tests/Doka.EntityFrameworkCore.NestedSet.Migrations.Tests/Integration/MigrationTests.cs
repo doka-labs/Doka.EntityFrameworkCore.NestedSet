@@ -2,7 +2,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Migrations.Tests;
 
 /// <summary>Verifies generated migrations independently of the optional SafeMigrations integration.</summary>
 [DatabasePlatform]
-public sealed class MigrationTests : IClassFixture<MigrationFixture>
+public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
 {
     private readonly MigrationFixture _fixture;
 
@@ -264,6 +264,7 @@ public sealed class MigrationTests : IClassFixture<MigrationFixture>
             },
             treeId: 0,
             CancellationToken.None);
+
         await hierarchy.InsertChildAsync(
             new MigrationNode
             {
@@ -272,9 +273,11 @@ public sealed class MigrationTests : IClassFixture<MigrationFixture>
             },
             41,
             cancellationToken: CancellationToken.None);
+
         var report = await hierarchy
             .InTree(0)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+
         var nodes = await database.ReadNodesAsync();
 
         // Assert
@@ -555,7 +558,8 @@ public sealed class MigrationTests : IClassFixture<MigrationFixture>
     /// <summary>Normalizes provider quoting and whitespace for semantic check-expression assertions.</summary>
     private static string NormalizeSql(
         string expression
-    ) => Regex.Replace(expression.ToLowerInvariant(), "[\\s\\\"`\\[\\]()]", "", RegexOptions.CultureInvariant);
+    ) => NormalizeSqlRegex()
+        .Replace(expression.ToLowerInvariant(), "");
 
     /// <summary>Compares catalog definitions by value, including physical names and provider index facets.</summary>
     private static string[] IndexSignatures(
@@ -564,4 +568,7 @@ public sealed class MigrationTests : IClassFixture<MigrationFixture>
         .Select(x => $"{x.Name}:{string.Join(",", x.Columns)}:{string.Join(",", x.Descending)}:"
             + $"{x.IsUnique}:{x.IsOrdinary}")
         .ToArray();
+
+    [GeneratedRegex("[\\s\\\"`\\[\\]()]", RegexOptions.CultureInvariant)]
+    private static partial Regex NormalizeSqlRegex();
 }

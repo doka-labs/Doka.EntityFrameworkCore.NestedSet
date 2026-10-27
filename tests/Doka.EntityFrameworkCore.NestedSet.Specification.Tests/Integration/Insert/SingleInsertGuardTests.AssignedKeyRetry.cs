@@ -52,6 +52,7 @@ public abstract partial class SingleInsertGuardTests
                 .Set<TreeNode>()
                 .AsNoTracking()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal(101, saved.NodeId);
         Assert.Equal(
             (101, 1, Guid.Empty, (int?)null, 1L, 2L, 0, 0L),
@@ -118,6 +119,7 @@ public abstract partial class SingleInsertGuardTests
                 .Set<BinaryNode>()
                 .AsNoTracking()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal<byte>([3], saved.Id);
         Assert.Equal<byte>([3], input.Id);
         Assert.Null(input.ParentId);

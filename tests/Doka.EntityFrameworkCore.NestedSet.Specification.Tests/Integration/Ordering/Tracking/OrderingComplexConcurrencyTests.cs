@@ -47,6 +47,7 @@ public abstract partial class OrderingComplexConcurrencyTests : ProviderTest
             .Entry(nodes[1])
             .ComplexProperty(node => node.Details)
             .Property(value => value.Revision);
+
         Assert.Equal(10, token.CurrentValue);
         Assert.Equal(acceptChanges ? 10 : previousToken, token.OriginalValue);
         Assert.Equal(5, sibling.CurrentValue);

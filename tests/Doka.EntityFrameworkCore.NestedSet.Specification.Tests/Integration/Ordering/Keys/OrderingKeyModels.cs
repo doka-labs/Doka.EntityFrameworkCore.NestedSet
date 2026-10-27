@@ -81,8 +81,7 @@ public sealed class OrderingKeyFixture : IAsyncLifetime
             .CreateContext();
 
         var connection = source.Database.GetConnectionString()!;
-        var options = new DbContextOptionsBuilder<OrderingKeyContext>()
-            .ConfigureTestWarnings();
+        var options = new DbContextOptionsBuilder<OrderingKeyContext>().ConfigureTestWarnings();
 
         switch (engine)
         {

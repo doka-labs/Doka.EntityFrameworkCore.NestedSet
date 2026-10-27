@@ -143,7 +143,8 @@ public sealed class OrderingSaveProbe : DbCommandInterceptor
     {
         var sql = command.CommandText;
         var update = sql.IndexOf("UPDATE ", StringComparison.OrdinalIgnoreCase);
-        if (update < 0 || !sql.Contains("OrderingNodes", StringComparison.OrdinalIgnoreCase))
+        if (update < 0
+            || !sql.Contains("OrderingNodes", StringComparison.OrdinalIgnoreCase))
         {
             return "";
         }

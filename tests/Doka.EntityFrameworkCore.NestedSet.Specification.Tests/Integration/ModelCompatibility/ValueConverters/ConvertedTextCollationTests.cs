@@ -19,6 +19,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
     /// <returns>Provider-neutral cases inherited by every supported engine.</returns>
     public static IEnumerable<TheoryDataRow<int, string>> Cases()
     {
+        // ReSharper disable once LoopCanBeConvertedToQuery
         foreach (var model in Enumerable.Range(0, 4))
         {
             foreach (var operation in new[]
@@ -127,6 +128,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
                 store,
                 provider,
                 typeMappings);
+
             var captured = NestedSetCollations.Resolve(source, node.FindProperty(name)!, node);
             Assert.Equal(expected, captured);
             Assert.Equal(
@@ -147,6 +149,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
 
         var providerType = node.FindProperty("Id")!.GetTypeMapping()
             .Converter!.ProviderClrType;
+
         if (providerType == typeof(string))
         {
             Assert.Contains(
@@ -210,11 +213,13 @@ public abstract class ConvertedTextCollationTests : ProviderTest
         var report = await hierarchy
             .InTree(treeId)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+
         Assert.True(report.IsValid);
         var stored = await hierarchy
             .InTree(treeId)
             .Nodes
             .ToArrayAsync(CancellationToken.None);
+
         Assert.Equal(2, stored.Length);
         Assert.Equal(
             EnumTextKey.Root,
@@ -222,6 +227,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
                 .ParentId);
         var property = context.Model.FindEntityType(typeof(ConvertedTextCollationNode<EnumTextKey?, EnumTextKey?>))!
             .FindProperty(nameof(ConvertedTextCollationNode<EnumTextKey?, EnumTextKey?>.Id))!;
+
         Assert.Equal(typeof(EnumTextKey?), property.ClrType);
         Assert.False(property.IsNullable);
         Assert.Equal(
@@ -482,6 +488,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
             .InTree(treeId)
             .Nodes
             .ToArrayAsync(CancellationToken.None);
+
         Assert.All(
             tracked,
             node =>
@@ -665,6 +672,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
         var report = await hierarchy
             .InTree(treeId)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+
         Assert.True(report.IsValid);
     }
 }

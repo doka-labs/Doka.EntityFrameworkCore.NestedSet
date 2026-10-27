@@ -191,6 +191,7 @@ public sealed partial class IndexConventionTests
             .GetService<IDesignTimeModel>()
             .Model
             .FindEntityType(typeof(IndexNode))!;
+
         var indexes = entity
             .GetIndexes()
             .ToArray();

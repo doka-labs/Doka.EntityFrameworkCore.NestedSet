@@ -61,6 +61,7 @@ public sealed partial class IndexConventionTests
         var indexes = model.FindEntityType(typeof(IndexNode))!
             .GetIndexes()
             .ToArray();
+
         Assert.Equal(4, indexes.Length);
         Assert.Single(
             indexes,

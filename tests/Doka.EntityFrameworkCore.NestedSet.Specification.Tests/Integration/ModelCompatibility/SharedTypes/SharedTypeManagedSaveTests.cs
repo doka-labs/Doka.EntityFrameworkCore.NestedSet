@@ -25,6 +25,7 @@ public abstract class SharedTypeManagedSaveTests : ProviderTest
         await using var context = await _fixture.CreateContextAsync<SortedSharedContext>(
             Engine,
             static options => new SortedSharedContext(options));
+
         var treeId = Guid.NewGuid();
         var hierarchy = context.NestedSet<SharedSaveNode>(SortedSharedContext.FolderEntity);
         await hierarchy.InsertRootAsync(
@@ -89,6 +90,7 @@ public abstract class SharedTypeManagedSaveTests : ProviderTest
         var children = await hierarchy
             .ChildrenOf(1)
             .ToArrayAsync(CancellationToken.None);
+
         Assert.Collection(
             children,
             first => Assert.Equal(
@@ -177,6 +179,7 @@ public abstract class SharedTypeManagedSaveTests : ProviderTest
             .ChangeTracker
             .Entries<Dictionary<string, object>>()
             .ToArray();
+
         Assert.All(entries, entry => Assert.Equal(EntityState.Unchanged, entry.State));
         var childEntry = Assert.Single(entries, entry => ReferenceEquals(entry.Entity, child));
         Assert.Equal(SharedTypeContext.FolderEntity, childEntry.Metadata.Name);

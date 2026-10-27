@@ -40,6 +40,7 @@ public abstract partial class OrderingTests
             command.Contains("OrderingNodes", StringComparison.OrdinalIgnoreCase)
             && command.Contains("UPDATE", StringComparison.OrdinalIgnoreCase)
             && command.Contains("Name", StringComparison.OrdinalIgnoreCase));
+
         Assert.True(payloadIndex >= 0);
         Assert.Contains(commands.Commands.Take(payloadIndex), IsRegistryLock);
         Assert.DoesNotContain(commands.Commands.Skip(payloadIndex + 1), IsRegistryLock);

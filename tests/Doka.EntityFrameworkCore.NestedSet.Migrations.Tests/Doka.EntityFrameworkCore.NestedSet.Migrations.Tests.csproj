@@ -21,4 +21,12 @@
     <PackageReference Include="Testcontainers.MsSql"/>
     <PackageReference Include="Testcontainers.PostgreSql"/>
   </ItemGroup>
+  <ItemGroup Label="IDE file nesting">
+    <Compile Update="Integration/AncestorIndexLifecycleTests.*.cs">
+      <DependentUpon>AncestorIndexLifecycleTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/AncestorIndexReadbackTests.*.cs">
+      <DependentUpon>AncestorIndexReadbackTests.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
 </Project>

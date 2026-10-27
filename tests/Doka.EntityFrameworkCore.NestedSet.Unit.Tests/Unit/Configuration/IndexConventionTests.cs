@@ -21,6 +21,7 @@ public sealed partial class IndexConventionTests
             .Metadata
             .GetIndexes()
             .ToArray();
+
         Assert.Equal(3, indexes.Length);
         Assert.All(indexes, index => Assert.Equal(nameof(IndexNode.OtherScope), index.Properties[0].Name));
     }
@@ -351,6 +352,7 @@ public sealed partial class IndexConventionTests
                     node.TreeId,
                     node.Left
                 });
+
                 Customize(special, facet);
                 Configure(entity);
             });
@@ -432,6 +434,7 @@ public sealed partial class IndexConventionTests
             .GetIndexes()
             .Select(index => index.GetDatabaseName()!)
             .ToArray();
+
         Assert.All(names, name => Assert.InRange(name.Length, 1, limit));
         Assert.Equal(
             engine == "PostgreSql" ? 5 : 4,

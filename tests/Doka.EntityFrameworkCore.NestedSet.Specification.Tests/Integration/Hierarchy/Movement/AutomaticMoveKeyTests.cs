@@ -27,10 +27,25 @@ public abstract class AutomaticMoveKeyTests : ProviderTest
             .NestedSet<OrderingKeyNode<string, string?>>()
             .ForScope(1);
 
-        await tree.InsertRootAsync(new OrderingKeyNode<string, string?>("A", "Alpha"), Guid.Empty, CancellationToken.None);
-        await tree.InsertRootAsync(new OrderingKeyNode<string, string?>("Z", "Zulu"), Guid.NewGuid(), CancellationToken.None);
-        await tree.InsertChildAsync(new OrderingKeyNode<string, string?>("SOURCE", "Middle"), "a", CancellationToken.None);
-        await tree.InsertChildAsync(new OrderingKeyNode<string, string?>("LEAF", "Leaf"), "source", CancellationToken.None);
+        await tree.InsertRootAsync(
+            new OrderingKeyNode<string, string?>("A", "Alpha"),
+            Guid.Empty,
+            CancellationToken.None);
+
+        await tree.InsertRootAsync(
+            new OrderingKeyNode<string, string?>("Z", "Zulu"),
+            Guid.NewGuid(),
+            CancellationToken.None);
+
+        await tree.InsertChildAsync(
+            new OrderingKeyNode<string, string?>("SOURCE", "Middle"),
+            "a",
+            CancellationToken.None);
+
+        await tree.InsertChildAsync(
+            new OrderingKeyNode<string, string?>("LEAF", "Leaf"),
+            "source",
+            CancellationToken.None);
 
         // Act
         await tree.MoveToAsync("source", "z", CancellationToken.None);
@@ -47,8 +62,6 @@ public abstract class AutomaticMoveKeyTests : ProviderTest
         Assert.True(
             (await tree
                 .InTree(rows[0].TreeId)
-                .ValidateAsync(
-                    NestedSetValidationLevel.Full,
-                    CancellationToken.None)).IsValid);
+                .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
     }
 }

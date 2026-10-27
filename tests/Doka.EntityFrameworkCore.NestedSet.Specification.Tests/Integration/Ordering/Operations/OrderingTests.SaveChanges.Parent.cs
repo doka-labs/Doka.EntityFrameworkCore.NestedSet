@@ -33,6 +33,7 @@ public abstract partial class OrderingTests
         var nodes = await verification.Set<OrderingNode>()
             .OrderBy(node => node.Left)
             .ToArrayAsync(CancellationToken.None);
+
         Assert.Equal([1, 2, 4, 3], nodes.Select(node => node.Id));
         Assert.Equal(4, nodes.Single(node => node.Id == 3).ParentId);
         Assert.Equal(2, nodes.Single(node => node.Id == 4).ParentId);
@@ -118,6 +119,7 @@ public abstract partial class OrderingTests
         var nodes = await verification.Set<OrderingNode>()
             .OrderBy(node => node.Left)
             .ToArrayAsync(CancellationToken.None);
+
         Assert.Equal([1, 2, 5, 4, 3], nodes.Select(node => node.Id));
         Assert.Equal([0, 1, 2, 3, 4], nodes.Select(node => node.Depth));
         await AssertForestAsync(verification);
@@ -153,6 +155,7 @@ public abstract partial class OrderingTests
             .Where(node => node.Id == 2 || node.Id == 3)
             .OrderBy(node => node.Id)
             .ToArrayAsync(CancellationToken.None);
+
         Assert.All(nodes, node => Assert.Equal(1, node.ParentId));
         Assert.Equal("original", nodes[0].Payload);
     }
@@ -223,6 +226,7 @@ public abstract partial class OrderingTests
         var nodes = await verification.Set<OrderingNode>()
             .OrderBy(node => node.Id)
             .ToArrayAsync(CancellationToken.None);
+
         Assert.Equal(sourceTreeId, nodes.Single(node => node.Id == 1).TreeId);
         Assert.Equal(targetTreeId, nodes.Single(node => node.Id == 2).TreeId);
         Assert.Equal(targetTreeId, nodes.Single(node => node.Id == 3).TreeId);
@@ -294,6 +298,7 @@ public abstract partial class OrderingTests
             .AsNoTracking()
             .OrderBy(node => node.Left)
             .ToArrayAsync(CancellationToken.None);
+
         var expectedOrder = new[] { 1, 2 };
 
         Assert.Equal(expectedOrder, persisted.Select(node => node.Id));
@@ -331,6 +336,7 @@ public abstract partial class OrderingTests
         await using var verification = await _fixture.CreateContextAsync(Engine);
         var persisted = await verification.Set<OrderingNode>()
             .SingleAsync(node => node.Id == 2, CancellationToken.None);
+
         Assert.Equal(3, persisted.ParentId);
         Assert.Equal("moved payload", persisted.Payload);
         Assert.Equal(EntityState.Unchanged, context.Entry(changed).State);

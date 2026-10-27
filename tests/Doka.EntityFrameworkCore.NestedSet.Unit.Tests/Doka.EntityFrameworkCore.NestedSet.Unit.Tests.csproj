@@ -1,6 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <Import Project="../Shared/TestRunnerReferences.props"/>
 
+  <PropertyGroup Label="Isolated heap calibration">
+    <!-- WHY: The existing executable can calibrate the actual helper before xUnit creates runner state.
+         Normal invocations still delegate to xUnit's public console runner; generated code stays enabled. -->
+    <StartupObject>Doka.EntityFrameworkCore.NestedSet.Tests.UnitTestProgram</StartupObject>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="FsCheck.Xunit.v3"/>
     <ProjectReference Include="../Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests.csproj"/>
@@ -10,5 +16,82 @@
   <ItemGroup Label="Sample infrastructure regressions">
     <!-- WHY: Compile the actual shared sample boundary so lifecycle and reset regressions test production sample code. -->
     <Compile Include="../../samples/Shared/*.cs" Link="Samples/Shared/%(Filename)%(Extension)"/>
+  </ItemGroup>
+  <ItemGroup Label="IDE file nesting">
+    <Compile Update="Unit/Providers/ProviderCapabilitiesTests.*.cs">
+      <DependentUpon>ProviderCapabilitiesTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Configuration/AncestorIndexTests.*.cs">
+      <DependentUpon>AncestorIndexTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Queries/Composition/CompositionAncestorIndexTests.*.cs">
+      <DependentUpon>CompositionAncestorIndexTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Queries/Composition/CompositionBindingExpressionTests.*.cs">
+      <DependentUpon>CompositionBindingExpressionTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Queries/Composition/CompositionCoordinateProjectionTests.*.cs">
+      <DependentUpon>CompositionCoordinateProjectionTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Queries/Composition/CompositionSourceBindingEndpointTests.*.cs">
+      <DependentUpon>CompositionSourceBindingEndpointTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Queries/Composition/CompositionVisibilityTraversalTests.*.cs">
+      <DependentUpon>CompositionVisibilityTraversalTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/ManagedSave/CoordinatedGroupIterationTests.*.cs">
+      <DependentUpon>CoordinatedGroupIterationTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Providers/DokaQueryFeaturesTests.*.cs">
+      <DependentUpon>DokaQueryFeaturesTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Providers/DokaSourceBindingTests.*.cs">
+      <DependentUpon>DokaSourceBindingTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Providers/DokaStraightJoinTests.*.cs">
+      <DependentUpon>DokaStraightJoinTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Providers/EngineTestDiscoveryTests.*.cs">
+      <DependentUpon>EngineTestDiscoveryTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Queries/Composition/ExpressionInliningTests.*.cs">
+      <DependentUpon>ExpressionInliningTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Configuration/IndexConventionTests.*.cs">
+      <DependentUpon>IndexConventionTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Providers/IndexConventionTests.*.cs">
+      <DependentUpon>../Configuration/IndexConventionTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/BulkImport/InsertionRefreshAllocationTests.*.cs">
+      <DependentUpon>InsertionRefreshAllocationTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Samples/SignalLab/SignalReportConstructionTests.*.cs">
+      <DependentUpon>SignalReportConstructionTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Samples/SignalLab/SignalReportValidationTests.*.cs">
+      <DependentUpon>SignalReportValidationTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Configuration/OrderingConfigurationTests.*.cs">
+      <DependentUpon>OrderingConfigurationTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Providers/ProviderFixtureContractTests.*.cs">
+      <DependentUpon>ProviderFixtureContractTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Providers/ProviderTestContractTests.*.cs">
+      <DependentUpon>ProviderTestContractTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Samples/SampleReadSnapshotTests.*.cs">
+      <DependentUpon>SampleReadSnapshotTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Execution/TrackerSnapshotAllocationTests.*.cs">
+      <DependentUpon>TrackerSnapshotAllocationTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Storage/TypedPropertyReadTests.*.cs">
+      <DependentUpon>TypedPropertyReadTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Execution/UnicodeIdentityLengthTests.*.cs">
+      <DependentUpon>UnicodeIdentityLengthTests.cs</DependentUpon>
+    </Compile>
   </ItemGroup>
 </Project>

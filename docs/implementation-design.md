@@ -1018,8 +1018,34 @@ algorithm owners; the provider boundary is a real project/dependency boundary.
 Selecting an adapter does not create a per-node handler or duplicate a feature
 algorithm.
 
-[D-011](decisions/D-011-feature-oriented-source-layout.md) records the runtime
-source layout.
+[D-011](decisions/D-011-feature-oriented-source-layout.md) records common feature
+organization; [D-020](decisions/D-020-provider-owned-runtime-packages.md) records
+the provider project and registration boundary.
+
+The following files are the entry points for internal changes. Partials retain
+one owning type; moving a responsibility does not create a service, another
+cache, or an extra per-operation object. Static initializers whose order matters
+stay together, and independently consumed mapping types have their own files.
+
+| Responsibility | Source entry points |
+| --- | --- |
+| Convention validation and immutable mapping | [Validator](../src/Doka.EntityFrameworkCore.NestedSet/Mapping/NestedSetModelValidator.cs), [model descriptor](../src/Doka.EntityFrameworkCore.NestedSet/Mapping/NestedSetModelDescriptor.cs), [property descriptor](../src/Doka.EntityFrameworkCore.NestedSet/Mapping/NestedSetPropertyDescriptor.cs), [order descriptor](../src/Doka.EntityFrameworkCore.NestedSet/Mapping/NestedSetOrderPropertyDescriptor.cs) |
+| Query entry points and pair selection | [Composition](../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQuery.Composition.cs), [subtree pairs](../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQuery.SubtreePairs.cs) |
+| Complete paths and ancestor decisions | [Path proof](../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQuery.Path.cs), [Any and Nearest](../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQuery.AncestorDecisions.cs), [structural expressions](../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQuery.StructuralExpressions.cs), [edge carrier](../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQueryEdge.cs) |
+| Coordinated save order and boundaries | [Orchestration](../src/Doka.EntityFrameworkCore.NestedSet/Features/ManagedSave/NestedSetSaveChanges.cs), [guards](../src/Doka.EntityFrameworkCore.NestedSet/Features/ManagedSave/NestedSetSaveChanges.Guards.cs), [managed writes](../src/Doka.EntityFrameworkCore.NestedSet/Features/ManagedSave/NestedSetSaveChanges.ManagedSave.cs), [context-local state](../src/Doka.EntityFrameworkCore.NestedSet/Features/ManagedSave/NestedSetSaveChanges.State.cs) |
+| Insertion identity lifetime | [Owner and caches](../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetInsertionTracking.cs), [identity](../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetInsertionTracking.Identity.cs), [recovery](../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetInsertionTracking.Recovery.cs), [typed readers](../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetInsertionTracking.Readers.cs) |
+| Single insertion and owned graphs | [Insert](../src/Doka.EntityFrameworkCore.NestedSet/Features/Insert/NestedSetInsert.cs), [owned graph](../src/Doka.EntityFrameworkCore.NestedSet/Features/Insert/NestedSetInsert.OwnedGraph.cs), [validation](../src/Doka.EntityFrameworkCore.NestedSet/Features/Insert/NestedSetInsert.Validation.cs), [recovery](../src/Doka.EntityFrameworkCore.NestedSet/Features/Insert/NestedSetInsert.Recovery.cs) |
+
+These file boundaries preserve the existing separate proofs for query syntax,
+endpoint provenance, source stability, and normalized captures. Likewise,
+single-insert and bulk recovery retain their own lifecycle contracts. A shorter
+file does not justify combining those responsibilities.
+
+Application policy remains in the samples. Their source entry points separate
+query construction from asynchronous execution and result reconstruction:
+
+| Consumer responsibility | Source entry points |
+| --- | --- |
 
 ## Test project ownership
 

@@ -64,7 +64,7 @@ public sealed class NativeArrayKeyTests : ProviderTest,
             CancellationToken.None);
 
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
-        var keys = new[] { new[] { 1, 2 }, new[] { 9, 9 } };
+        int[][] keys = [[1, 2], [9, 9]];
         var commandIndex = probe.Commands.Count;
         var keyProperty =
             context.Model.FindEntityType(typeof(NativeArrayNode))!.FindProperty(nameof(NativeArrayNode.Id))!;

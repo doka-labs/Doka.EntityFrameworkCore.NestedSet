@@ -125,6 +125,7 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
 
         var designModel = context.GetService<IDesignTimeModel>()
             .Model;
+
         var designBase = designModel.FindEntityType(entityType.Name)!;
         var designLeaf = designModel.FindEntityType(leafType.Name)!;
         Assert.Null(designModel.GetCollation());

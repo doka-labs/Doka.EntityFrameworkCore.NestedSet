@@ -5,165 +5,114 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Compares portable bounded key predicates against each provider's native collection translation.</summary>
 public abstract partial class KeyFilterComparisonTests : ProviderTest
 {
-    private readonly RelationalFixture _fixture;
+    private readonly KeyFilterComparisonFixture _fixture;
 
-    /// <summary>Shares provider provisioning while comparison cases use independently reset rows.</summary>
+    /// <summary>
+    /// Shares immutable comparison rows while sibling native-mapping cases retain their resettable rows.
+    /// </summary>
     protected KeyFilterComparisonTests(
-        IProviderFixture<RelationalFixture> fixture
+        IProviderFixture<KeyFilterComparisonFixture> fixture
     ) : base(fixture)
     {
         _fixture = fixture.Value;
     }
 
-    /// <summary>Both query forms preserve native mapped integer, Guid, binary, and collated string equality.</summary>
-    [Fact]
-    public async Task NativeContainsAndBalancedEqualityHaveEquivalentResults()
+    /// <summary>Gets separately discoverable key representations and membership cardinalities.</summary>
+    public static TheoryData<string, int> ComparisonCases
+    {
+        get
+        {
+            var cases = new TheoryData<string, int>();
+
+            foreach (var count in new[] { 0, 1, 2, 64 })
+            {
+                foreach (var representation in new[] { "Int32", "Guid", "Binary", "String" })
+                {
+                    cases.Add(representation, count);
+                }
+            }
+
+            return cases;
+        }
+    }
+
+    /// <summary>Three query forms preserve equality for one native key representation and cardinality.</summary>
+    /// <param name="representation">The independently discovered mapped key representation.</param>
+    /// <param name="count">The requested number of distinct existing keys.</param>
+    [Theory]
+    [MemberData(nameof(ComparisonCases))]
+    public Task NativeContainsAndBalancedEqualityHaveEquivalentResults(
+        string representation,
+        int count
+    ) => representation switch
+    {
+        "Int32" =>
+            CompareSeededAsync<TreeNode, int>(representation, nameof(TreeNode.NodeId), count, static value => value),
+        "Guid" => CompareSeededAsync<GuidNode, Guid>(
+            representation,
+            nameof(GuidNode.Id),
+            count,
+            static value => new Guid(
+                value,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0)),
+        "Binary" => CompareSeededAsync<BinaryNode, byte[]>(
+            representation,
+            nameof(BinaryNode.Id),
+            count,
+            BitConverter.GetBytes),
+        "String" => CompareSeededAsync<TextNode, string>(
+            representation,
+            nameof(TextNode.Id),
+            count,
+            static value => $"Node-{value:D4}".ToLowerInvariant()),
+        _ => throw new ArgumentOutOfRangeException(nameof(representation)),
+    };
+
+    /// <summary>Runs one comparison against a shared immutable seed with a fresh context and observer.</summary>
+    private async Task CompareSeededAsync<TEntity, TKey>(
+        string representation,
+        string property,
+        int count,
+        Func<int, TKey> createKey
+    )
+        where TEntity : class
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await using var setup = database.CreateContext();
-        var integers = Enumerable
-            .Range(1, 256)
+        var database = await _fixture.ComparisonAsync(Engine);
+        var keys = Enumerable
+            .Range(0, count)
+            .Select(index => createKey((index * 4) + 1))
             .ToArray();
 
-        var guids = integers
-            .Select(value => new Guid(value, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
-            .ToArray();
-
-        var binaries = integers
-            .Select(BitConverter.GetBytes)
-            .ToArray();
-
-        var strings = integers
-            .Select(value => $"Node-{value:D4}")
-            .ToArray();
-
-        for (var index = 0; index < integers.Length; index++)
-        {
-            await setup.AddAsync(
-                new TreeNode
-                {
-                    NodeId = integers[index],
-                    Tree = 1,
-                    TreeId = guids[index],
-                    Start = 1,
-                    End = 2,
-                },
-                CancellationToken.None);
-
-            await setup.AddAsync(
-                new GuidNode
-                {
-                    Id = guids[index],
-                    Tree = 1,
-                    TreeId = guids[index],
-                    Left = 1,
-                    Right = 2,
-                },
-                CancellationToken.None);
-
-            await setup.AddAsync(
-                new BinaryNode
-                {
-                    Id = binaries[index],
-                    Tree = 1,
-                    TreeId = guids[index],
-                    Left = 1,
-                    Right = 2,
-                },
-                CancellationToken.None);
-
-            await setup.AddAsync(
-                new TextNode
-                {
-                    Id = strings[index],
-                    Tree = "scope",
-                    TreeId = guids[index],
-                    Left = 1,
-                    Right = 2,
-                },
-                CancellationToken.None);
-        }
-
-        await setup.SavePrecomputedHierarchyAsync(CancellationToken.None);
-        await ServerQueryPlanTests.RefreshStatisticsAsync<TreeNode>(setup, Engine);
-        await ServerQueryPlanTests.RefreshStatisticsAsync<GuidNode>(setup, Engine);
-        await ServerQueryPlanTests.RefreshStatisticsAsync<BinaryNode>(setup, Engine);
-        await ServerQueryPlanTests.RefreshStatisticsAsync<TextNode>(setup, Engine);
         var probe = new EnterpriseProbe(captureParameterBindings: true);
         await using var context = database.CreateContext(probe);
-        var results = new List<(string[] Equality, string[] Contains, string[] Production)>();
         var evidence = new List<string>();
-        int[] expectedStringCounts = Engine == "PostgreSql" ? [0, 0, 0, 0] : [0, 1, 2, 64];
+        var expected = representation == "String" && Engine == "PostgreSql" ? 0 : count;
 
         // Act
-        foreach (var count in new[] { 0, 1, 2, 64 })
-        {
-            results.Add(
-                await CompareAsync<TreeNode, int>(
-                    context,
-                    probe,
-                    Engine,
-                    nameof(TreeNode.NodeId),
-                    integers
-                        .Where((_, index) => index % 4 == 0)
-                        .Take(count)
-                        .ToArray(),
-                    evidence));
+        var (equality, contains, production) = await CompareAsync<TEntity, TKey>(
+            context,
+            probe,
+            Engine,
+            property,
+            keys,
+            evidence);
 
-            results.Add(
-                await CompareAsync<GuidNode, Guid>(
-                    context,
-                    probe,
-                    Engine,
-                    nameof(GuidNode.Id),
-                    guids
-                        .Where((_, index) => index % 4 == 0)
-                        .Take(count)
-                        .ToArray(),
-                    evidence));
-
-            results.Add(
-                await CompareAsync<BinaryNode, byte[]>(
-                    context,
-                    probe,
-                    Engine,
-                    nameof(BinaryNode.Id),
-                    binaries
-                        .Where((_, index) => index % 4 == 0)
-                        .Take(count)
-                        .ToArray(),
-                    evidence));
-
-            results.Add(
-                await CompareAsync<TextNode, string>(
-                    context,
-                    probe,
-                    Engine,
-                    nameof(TextNode.Id),
-                    strings
-                        .Where((_, index) => index % 4 == 0)
-                        .Take(count)
-                        .Select(value => value.ToLowerInvariant())
-                        .ToArray(),
-                    evidence));
-        }
-
-        await QueryPlanTestSupport.WriteEvidenceAsync(Engine + "-key-filter", evidence);
+        _fixture.RecordEvidence(representation, count, evidence);
 
         // Assert
-        Assert.All(results, result => Assert.Equal(result.Equality, result.Contains));
-        Assert.All(results, result => Assert.Equal(result.Equality, result.Production));
-        Assert.Equal(
-            [0, 0, 0, 1, 1, 1, 2,2, 2, 64, 64, 64],
-            results
-                .Where((_, index) => index % 4 != 3)
-                .Select(result => result.Equality.Length));
-        Assert.Equal(
-            expectedStringCounts,
-            results
-                .Where((_, index) => index % 4 == 3)
-                .Select(result => result.Equality.Length));
+        Assert.Equal(expected, equality.Length);
+        Assert.Equal(equality, contains);
+        Assert.Equal(equality, production);
         Assert.All(probe.Commands, sql => Assert.DoesNotContain("SELECT *", sql, StringComparison.OrdinalIgnoreCase));
     }
 
@@ -186,9 +135,7 @@ public abstract partial class KeyFilterComparisonTests : ProviderTest
 
         var contains = context
             .Set<TEntity>()
-            .Where(node => keys
-                .AsEnumerable()
-                .Contains(EF.Property<TKey>(node, property)));
+            .Where(node => Enumerable.Contains(keys, EF.Property<TKey>(node, property)));
 
         var mappedProperty = context.Model.FindEntityType(typeof(TEntity))!.FindProperty(property)!;
         var production = context
@@ -208,15 +155,16 @@ public abstract partial class KeyFilterComparisonTests : ProviderTest
             var start = Stopwatch.GetTimestamp();
             var rows = await queries[index]
                 .Select(node => EF.Property<TKey>(node, property))
-                .ToArrayAsync(CancellationToken.None)
-                ;
-            var elapsed = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
+                .ToArrayAsync(CancellationToken.None);
+
+            var elapsed = Stopwatch.GetElapsedTime(start)
+                .TotalMilliseconds;
             results[index] = rows
                 .Select(value => value is byte[] bytes ? Convert.ToHexString(bytes) : value!.ToString()!)
                 .Order(StringComparer.Ordinal)
                 .ToArray();
 
-            var plan = await ServerQueryPlanTests.ExplainAsync(context, probe, commandIndex, engine);
+            var plan = await QueryPlanTestSupport.ExplainAsync(context, probe, commandIndex, engine);
             var shape = index == 0
                 ? "equality"
                 : index == 1

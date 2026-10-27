@@ -125,6 +125,7 @@ internal static class BroadNodeKeyModel
                 value => value == null ? null : new BroadNodeKey(value))
             .HasMaxLength(40)
             .UseCollation(collation);
+
         node
             .Property(entity => entity.Name)
             .HasMaxLength(40);

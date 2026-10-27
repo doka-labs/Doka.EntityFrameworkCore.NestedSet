@@ -204,10 +204,13 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
             var changes = group.ToArray();
             var keys = new TKey[changes.Length * 2];
 
+            // WHY: Keep source and target keys in adjacent predictable endpoint slots for each move.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var index = 0; index < changes.Length; index++)
             {
                 keys[index * 2] = changes[index].Key;
-                keys[(index * 2) + 1] = changes[index].TargetParent;
+                keys[index * 2 + 1] = changes[index].TargetParent;
             }
 
             var endpoints = new ParentEndpoint[keys.Length];
@@ -252,10 +255,13 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
                 throw new DbUpdateConcurrencyException("A hierarchy endpoint changed before locking.");
             }
 
+            // WHY: Rejoin each requested move with its matching source and target endpoint slots.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var index = 0; index < changes.Length; index++)
             {
                 var origin = endpoints[index * 2];
-                var target = endpoints[(index * 2) + 1];
+                var target = endpoints[index * 2 + 1];
 
                 if (origin is null
                     || target is null

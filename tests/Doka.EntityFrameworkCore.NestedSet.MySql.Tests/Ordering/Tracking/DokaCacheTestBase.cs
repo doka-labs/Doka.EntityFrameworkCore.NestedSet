@@ -36,8 +36,8 @@ public abstract class DokaCacheTestBase : ProviderTest
     {
         // Arrange
         await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, 5000);
-        await using var services = CacheTestServices.Create(Engine);
         await using var template = await _fixture.CreateContextAsync(Engine);
+        await using var services = CacheTestServices.Create(template.GetService<IDbContextOptions>());
 
         await using (var warm = OrderingRefreshTestSupport.CreateCacheContext(template, services))
         {

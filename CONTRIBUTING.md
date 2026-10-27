@@ -202,6 +202,19 @@ Use blank lines to make control flow and logical phases readable:
 
 Rider formatting does not replace review of these rules.
 
+Keep a feature's orchestration and execution order visible in its main file.
+Use cohesive partial files for the same owner's distinct responsibilities;
+give independently consumed internal types their own files. Preserve static
+initialization order, cache ownership, visibility, and method behavior when
+moving code. A partial-file boundary must not introduce another runtime object.
+
+Group confirmed partial families with a directory-specific `Compile Update`
+wildcard and `DependentUpon` in a labeled project `ItemGroup`. Keep a meaningful
+main file, and review cross-directory families and generic arities explicitly.
+Do not add another `Compile Include` or nest unrelated dotted filenames.
+Verify evaluated compiler inputs and actual test discovery after file moves;
+check Rider's resulting presentation separately from MSBuild metadata.
+
 ## Async and cancellation
 
 - Use the asynchronous API for asynchronous I/O and resource cleanup.
@@ -344,8 +357,8 @@ changes alter EF's CLR model identity and require fresh qualification.
 Wide registry-rowset tests belong in `Concurrency/TreeRegistry` for every
 provider. Keep SQL Server's rowset-lock and Scope-validation cases in separate
 suites, and its row-version tests and support in `Ordering/Tracking/RowVersion`.
-Shared query-plan evidence belongs in `QueryPlanTestSupport`, rather than in
-a test suite that other suites must call.
+Shared statistics refresh, native plan explanation, and evidence writing belong
+in `QueryPlanTestSupport`, rather than in a test suite that other suites must call.
 
 The five `ProviderAnnotationTests` methods inspect executable-wide metadata
 once per executable. Their reasoned MariaDB exclusions remove exactly five
@@ -381,6 +394,21 @@ Prepare all starting state in Arrange. Capture an expected exception in Act.
 Assert the result and final state in Assert. A second action after assertions,
 or a repeated Arrange/Act/Assert sequence, belongs in another test. Multiple
 assertions about one outcome are appropriate.
+
+Keep a retry or rollback scenario together when the sequence establishes one
+contract. For example, prepare a failed save in Arrange, retry in Act, then
+assert its persisted result. A coordinated concurrent operation can likewise
+have one Act containing its workers and barriers. Separate independent input
+variants into discovered theory rows; do not hide them in an internal loop or
+recover their meaning from result-list positions.
+
+When splitting database comparisons, preserve the seed's ownership explicitly.
+Read-only scenario rows can share a once-initialized class fixture and use a
+fresh context per row. Resettable sibling tests must not invalidate that seed.
+Collect per-scenario plan evidence under the fixture and emit the required
+aggregate once; do not overwrite the same artifact from each row. Fixture
+constructors and initialization callbacks must not acquire database resources;
+defer that work until after the platform hook.
 
 Additional test rules:
 

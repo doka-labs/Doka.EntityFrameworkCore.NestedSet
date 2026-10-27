@@ -30,4 +30,159 @@
     <PackageReference Include="Testcontainers.MsSql"/>
     <PackageReference Include="Testcontainers.PostgreSql"/>
   </ItemGroup>
+  <ItemGroup Label="IDE file nesting">
+    <Compile Update="Integration/Querying/Composition/Models/AncestorIndexMappedContext.*.cs">
+      <DependentUpon>AncestorIndexMappedContext.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Querying/Composition/Models/AncestorIndexQueryTests.*.cs">
+      <DependentUpon>AncestorIndexQueryTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Hierarchy/Movement/AutomaticMoveBudgetTests.*.cs">
+      <DependentUpon>AutomaticMoveBudgetTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/BulkImport/BulkIntervalRefreshTests.*.cs">
+      <DependentUpon>BulkIntervalRefreshTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/BulkImport/BulkStageGuardTests.*.cs">
+      <DependentUpon>BulkStageGuardTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Capacity/CapacityTests.*.cs">
+      <DependentUpon>CapacityTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Querying/Composition/Performance/CompositionCapacityProfiles.*.cs">
+      <DependentUpon>CompositionCapacityProfiles.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Querying/Composition/Consumers/CompositionConsumerCapacityProfiles.*.cs">
+      <DependentUpon>CompositionConsumerCapacityProfiles.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Mutations/Facade/ConfiguredMutableIdentityTests.*.cs">
+      <DependentUpon>ConfiguredMutableIdentityTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Contracts/ContractTests.*.cs">
+      <DependentUpon>ContractTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Concurrency/EnterpriseTests.*.cs">
+      <DependentUpon>../Infrastructure/EnterpriseTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Keys/EnterpriseTests.*.cs">
+      <DependentUpon>../Infrastructure/EnterpriseTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Maintenance/EnterpriseTests.*.cs">
+      <DependentUpon>../Infrastructure/EnterpriseTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Queries/EnterpriseTests.*.cs">
+      <DependentUpon>../Infrastructure/EnterpriseTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/SaveChanges/EnterpriseTests.*.cs">
+      <DependentUpon>../Infrastructure/EnterpriseTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Transactions/EnterpriseTests.*.cs">
+      <DependentUpon>../Infrastructure/EnterpriseTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Validation/EnterpriseTests.*.cs">
+      <DependentUpon>../Infrastructure/EnterpriseTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Samples/UserGroups/GroupSupervisorTests.*.cs">
+      <DependentUpon>GroupSupervisorTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Querying/Composition/Performance/HierarchyCompositionCapacityTests.*.cs">
+      <DependentUpon>HierarchyCompositionCapacityTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Querying/Composition/Consistency/HierarchyCompositionConsistencyTests.*.cs">
+      <DependentUpon>HierarchyCompositionConsistencyTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Querying/Composition/Models/HierarchyCompositionModelTests.*.cs">
+      <DependentUpon>HierarchyCompositionModelTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Querying/Composition/Semantics/HierarchyCompositionSemanticTests.*.cs">
+      <DependentUpon>HierarchyCompositionSemanticTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Querying/Composition/HierarchyCompositionTests.*.cs">
+      <DependentUpon>HierarchyCompositionTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Querying/Composition/Semantics/HierarchyCompositionTests.*.cs">
+      <DependentUpon>../HierarchyCompositionTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/ModelCompatibility/Inheritance/InheritanceTests.*.cs">
+      <DependentUpon>InheritanceTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Insert/InsertionCleanupTests.*.cs">
+      <DependentUpon>InsertionCleanupTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Indexes/KeyFilterComparisonTests.*.cs">
+      <DependentUpon>KeyFilterComparisonTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Samples/SignalLab/SignalReportTests.*.cs">
+      <DependentUpon>SignalReportTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Concurrency/NativeTrackedIdentityGuardTests.*.cs">
+      <DependentUpon>NativeTrackedIdentityGuardTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Querying/Facade/NestedSetFacadeTests.*.cs">
+      <DependentUpon>NestedSetFacadeTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Mutations/Facade/NestedSetMutationFacadeTests.*.cs">
+      <DependentUpon>NestedSetMutationFacadeTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Ordering/Tracking/OrderingComplexConcurrencyTests.*.cs">
+      <DependentUpon>OrderingComplexConcurrencyTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Ordering/Keys/OrderingKeyTests.*.cs">
+      <DependentUpon>OrderingKeyTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Ordering/Tracking/OrderingQueryShapeTests.*.cs">
+      <DependentUpon>OrderingQueryShapeTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Ordering/Tracking/OrderingRefreshScaleTests.*.cs">
+      <DependentUpon>OrderingRefreshScaleTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Ordering/Tracking/OrderingRefreshTests.*.cs">
+      <DependentUpon>OrderingRefreshTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Ordering/Operations/OrderingTests.*.cs">
+      <DependentUpon>OrderingTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Ordering/Tracking/OrderingTrackerTests.*.cs">
+      <DependentUpon>OrderingTrackerTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Concurrency/RelationalTests.*.cs">
+      <DependentUpon>../Hierarchy/Infrastructure/RelationalTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Hierarchy/Deletion/RelationalTests.*.cs">
+      <DependentUpon>../Infrastructure/RelationalTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Hierarchy/Failures/RelationalTests.*.cs">
+      <DependentUpon>../Infrastructure/RelationalTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Hierarchy/Insertion/RelationalTests.*.cs">
+      <DependentUpon>../Infrastructure/RelationalTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Hierarchy/Keys/RelationalTests.*.cs">
+      <DependentUpon>../Infrastructure/RelationalTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Hierarchy/Maintenance/RelationalTests.*.cs">
+      <DependentUpon>../Infrastructure/RelationalTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Hierarchy/Movement/RelationalTests.*.cs">
+      <DependentUpon>../Infrastructure/RelationalTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Hierarchy/Queries/RelationalTests.*.cs">
+      <DependentUpon>../Infrastructure/RelationalTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Hierarchy/Sequences/RelationalTests.*.cs">
+      <DependentUpon>../Infrastructure/RelationalTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/SaveChanges/SaveChangesTests.*.cs">
+      <DependentUpon>SaveChangesTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Performance/SiblingReorderWriteTests.*.cs">
+      <DependentUpon>SiblingReorderWriteTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Insert/SingleInsertGuardTests.*.cs">
+      <DependentUpon>SingleInsertGuardTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Performance/WriteAmplificationTests.*.cs">
+      <DependentUpon>WriteAmplificationTests.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
 </Project>

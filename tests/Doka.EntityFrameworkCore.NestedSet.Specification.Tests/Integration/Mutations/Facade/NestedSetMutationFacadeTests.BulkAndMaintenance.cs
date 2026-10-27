@@ -92,6 +92,7 @@ public abstract partial class NestedSetMutationFacadeTests
         var hierarchy = context
             .NestedSet<TreeNode>()
             .ForScope(7);
+
         var first = new TreeNode
         {
             NodeId = 1,

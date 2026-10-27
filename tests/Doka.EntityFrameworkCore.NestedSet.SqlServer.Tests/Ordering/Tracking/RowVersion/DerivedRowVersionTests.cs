@@ -65,11 +65,13 @@ public sealed class DerivedRowVersionTests : ProviderTest,
             return (Current: property.CurrentValue.ToArray(), Original: property.OriginalValue.ToArray(),
                 State: context.Entry(node).State);
         });
+
         var nameOriginal = context.Entry(changed).Property(node => node.Name).OriginalValue;
         var clrToken = changed.Version.ToArray();
         var payloads = tracked.Select(node => node.Payload).ToArray();
         var persisted = await context.Set<DerivedVersionTokenNode>()
             .AsNoTracking().OrderBy(node => node.Id).ToArrayAsync(CancellationToken.None);
+
         context.ChangeTracker.AcceptAllChanges();
         leaf.Payload = "Later payload";
         await context.SaveChangesAsync(CancellationToken.None);
@@ -122,6 +124,7 @@ public sealed class DerivedRowVersionTests : ProviderTest,
         await hierarchy.MoveToAsync(2, 5, CancellationToken.None);
         var persisted = await context.Set<DerivedVersionTokenNode>()
             .SingleAsync(node => node.Id == leaf.Id, CancellationToken.None);
+
         var afterMove = persisted.Version.ToArray();
         persisted.Payload = "After explicit move";
         await context.SaveChangesAsync(CancellationToken.None);
@@ -130,6 +133,7 @@ public sealed class DerivedRowVersionTests : ProviderTest,
         Assert.NotEqual(original, afterMove);
         var stored = await context.Set<DerivedVersionTokenNode>().AsNoTracking()
             .SingleAsync(node => node.Id == leaf.Id, CancellationToken.None);
+
         Assert.Equal("After explicit move", stored.Payload);
         Assert.Equal(stored.Version, persisted.Version);
         Assert.Equal(persisted.Version, context.Entry(persisted).Property(node => node.Version).OriginalValue);
@@ -145,6 +149,7 @@ public sealed class DerivedRowVersionTests : ProviderTest,
         var tracked = await SeedAsync(context);
         var tokens = tracked.OfType<DerivedVersionTokenNode>()
             .ToDictionary(node => node.Id, node => node.Version.ToArray());
+
         var before = await SnapshotAsync(context);
         var hierarchy = context.NestedSet<DerivedVersionBaseNode>().ForScope(1);
 
@@ -175,6 +180,7 @@ public sealed class DerivedRowVersionTests : ProviderTest,
         var peer = tracked.Single(node => node.Id == 3);
         var tokens = tracked.OfType<DerivedVersionTokenNode>()
             .ToDictionary(node => node.Id, node => node.Version.ToArray());
+
         var before = await SnapshotAsync(context);
         changed.ParentId = 5;
         changed.Name = "Zulu";
@@ -242,6 +248,7 @@ public sealed class DerivedRowVersionTests : ProviderTest,
         var returned = inserted.Version.ToArray();
         var persisted = await context.Set<DerivedVersionTokenNode>().AsNoTracking()
             .SingleAsync(node => node.Id == inserted.Id, CancellationToken.None);
+
         context.Attach(inserted);
         inserted.Payload = "Attached payload";
         await context.SaveChangesAsync(CancellationToken.None);
@@ -254,6 +261,7 @@ public sealed class DerivedRowVersionTests : ProviderTest,
             (inserted.Left, inserted.Right, inserted.Depth, inserted.Position));
         var stored = await context.Set<DerivedVersionTokenNode>().AsNoTracking()
             .SingleAsync(node => node.Id == inserted.Id, CancellationToken.None);
+
         Assert.Equal("Attached payload", stored.Payload);
         Assert.Equal(stored.Version, inserted.Version);
         Assert.True((await hierarchy.InTree(Guid.Empty)
@@ -303,6 +311,7 @@ public sealed class DerivedRowVersionTests : ProviderTest,
         var peer = tracked.Single(node => node.Id == 3);
         var tokens = tracked.OfType<DerivedVersionTokenNode>()
             .ToDictionary(node => node.Id, node => node.Version.ToArray());
+
         var before = await SnapshotAsync(context);
         changed.ParentId = 5;
         changed.Name = "Zulu";

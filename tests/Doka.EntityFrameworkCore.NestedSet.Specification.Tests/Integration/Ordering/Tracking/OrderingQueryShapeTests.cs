@@ -53,7 +53,7 @@ public abstract partial class OrderingQueryShapeTests : ProviderTest
         // Arrange
         await using var setup = await _fixture.ResetAsync(Engine);
         await SeedAsync(setup);
-        await using var services = CacheTestServices.Create(Engine);
+        await using var services = CacheTestServices.Create(setup.GetService<IDbContextOptions>());
         using var warmProbe = new ScaleProbe();
         var warmOrdinals = new OrdinalProbe();
         await using var warm = CreateContext(setup, warmProbe, warmOrdinals, services);

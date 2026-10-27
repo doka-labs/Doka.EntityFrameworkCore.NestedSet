@@ -23,7 +23,7 @@ public abstract class OrderingLockTests : ProviderTest
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task RegistryRequestsUseOneNativeOrderAcrossHierarchyTypes(
+    public async Task RegistryRequestsUseOneNativeOrderAcrossNodeKinds(
         bool reverseScopes
     )
     {

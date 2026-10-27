@@ -103,6 +103,7 @@ public abstract partial class RelationalTests
         Assert.Null(nodes.Single(node => node.NodeId == 1).Parent);
         Assert.Equal(1, nodes.Single(node => node.NodeId == 7).Parent);
         Assert.All(nodes.Where(node => node.NodeId is 4 or 5), node => Assert.Equal(1, node.Parent));
+
         return;
 
         async Task MutateAsync(

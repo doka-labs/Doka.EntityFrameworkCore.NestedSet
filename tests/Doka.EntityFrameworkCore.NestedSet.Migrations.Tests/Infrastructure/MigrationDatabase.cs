@@ -117,7 +117,7 @@ public sealed class MigrationDatabase : IAsyncDisposable
 
         using var serviceProvider = services.BuildServiceProvider();
         var scaffolder = serviceProvider.GetRequiredService<IMigrationsScaffolder>();
-        var migration = scaffolder.ScaffoldMigration(name, "Doka.Generated", "Migrations", "C#", false);
+        var migration = scaffolder.ScaffoldMigration(name, "Doka.Generated", "Migrations", "C#");
         var sources = priorChain?.Sources.ToList() ?? [];
         sources.Add(migration.MigrationCode);
         sources.Add(migration.MetadataCode);
@@ -256,6 +256,7 @@ public sealed class MigrationDatabase : IAsyncDisposable
             .GetDbConnection()
             .CreateCommand()
             .CreateParameter();
+
         parent.ParameterName = "@parent";
         parent.DbType = DbType.Int32;
         parent.Value = node.ParentId is null ? DBNull.Value : node.ParentId.Value;
@@ -480,6 +481,7 @@ public sealed class MigrationDatabase : IAsyncDisposable
             .Database
             .GetDbConnection()
             .CreateCommand();
+
         command.CommandText = Engine switch
         {
             "Sqlite" =>
@@ -564,6 +566,7 @@ public sealed class MigrationDatabase : IAsyncDisposable
             .Database
             .GetDbConnection()
             .CreateCommand();
+
         command.CommandText = Engine switch
         {
             "Sqlite" => "SELECT name, type FROM pragma_table_info(@table) ORDER BY cid",

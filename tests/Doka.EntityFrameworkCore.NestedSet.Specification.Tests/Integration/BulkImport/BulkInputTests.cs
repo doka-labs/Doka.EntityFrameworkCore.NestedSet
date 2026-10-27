@@ -87,8 +87,17 @@ public abstract class BulkInputTests : ProviderTest
         };
 
         NestedSetTreeImport<TreeNode, Guid>[] trees = differentTrees
-            ? [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(inputs[0])), new NestedSetTreeImport<TreeNode, Guid>(Guid.NewGuid(), new NestedSetBranch<TreeNode>(inputs[1]))]
-            : [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(inputs[0], [new NestedSetBranch<TreeNode>(inputs[1])]))];
+            ?
+            [
+                new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(inputs[0])),
+                new NestedSetTreeImport<TreeNode, Guid>(Guid.NewGuid(), new NestedSetBranch<TreeNode>(inputs[1])),
+            ]
+            :
+            [
+                new NestedSetTreeImport<TreeNode, Guid>(
+                    Guid.Empty,
+                    new NestedSetBranch<TreeNode>(inputs[0], [new NestedSetBranch<TreeNode>(inputs[1])])),
+            ];
 
         // Act
         var error = await Record.ExceptionAsync(() => tree.InsertForestAsync(trees, CancellationToken.None));
@@ -165,7 +174,7 @@ public abstract class BulkInputTests : ProviderTest
     ///     A save callback cannot persist a hierarchy node that was absent from the validated branch plan.
     /// </summary>
     [Fact]
-    public async Task SavingCallbackCannotAddUnplannedHierarchyNode()
+    public async Task SavingCallbackCannotAddUnplannedSignalNode()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine);
@@ -240,7 +249,7 @@ public abstract class BulkInputTests : ProviderTest
 
     /// <summary>Unrelated tracked hierarchy rows do not masquerade as callback-created import nodes.</summary>
     [Fact]
-    public async Task ImportAllowsUnrelatedTrackedHierarchyNode()
+    public async Task ImportAllowsUnrelatedTrackedSignalNode()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine);

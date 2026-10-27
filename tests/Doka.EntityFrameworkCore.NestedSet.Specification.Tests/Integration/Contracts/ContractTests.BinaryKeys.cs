@@ -36,6 +36,7 @@ public abstract partial class ContractTests
         var tree = context
             .NestedSet<BinaryNode>()
             .ForScope(1);
+
         await tree
             .InTree(Guid.Empty)
             .Nodes
@@ -126,6 +127,7 @@ public abstract partial class ContractTests
         var tree = context
             .NestedSet<BinaryNode>()
             .ForScope(1);
+
         await tree.MoveToAsync<byte[]>([5, 6], [1, 2], CancellationToken.None);
 
         // Act

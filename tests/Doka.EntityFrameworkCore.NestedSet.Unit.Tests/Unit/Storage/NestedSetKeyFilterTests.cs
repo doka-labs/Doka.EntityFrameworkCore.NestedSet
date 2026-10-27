@@ -19,7 +19,8 @@ public sealed class NestedSetKeyFilterTests
     )
     {
         // Arrange
-        using var context = CreateContext();
+        using var services = CreateServices();
+        using var context = CreateContext(services);
         var property = Property(context, nameof(KeyFilterNode.Id));
         var keys = Enumerable
             .Range(0, count)
@@ -38,7 +39,8 @@ public sealed class NestedSetKeyFilterTests
     public void ConvertedNativeClrBatchRetainsScalarEquality()
     {
         // Arrange
-        using var context = CreateContext();
+        using var services = CreateServices();
+        using var context = CreateContext(services);
         var property = Property(context, nameof(KeyFilterNode.Converted));
         int[] keys = [12, 23];
 
@@ -62,7 +64,8 @@ public sealed class NestedSetKeyFilterTests
     public void ConvertedStringBatchRetainsScalarEquality()
     {
         // Arrange
-        using var context = CreateContext();
+        using var services = CreateServices();
+        using var context = CreateContext(services);
         var property = Property(context, nameof(KeyFilterNode.ConvertedText));
         string[] keys = ["first", "second"];
 
@@ -86,7 +89,8 @@ public sealed class NestedSetKeyFilterTests
     public void NativeArrayBatchRetainsEqualityFallback()
     {
         // Arrange
-        using var context = CreateContext();
+        using var services = CreateServices();
+        using var context = CreateContext(services);
         var property = Property(context, nameof(KeyFilterNode.Array));
         int[][] keys = [[1, 2], [3, 4]];
 
@@ -104,7 +108,8 @@ public sealed class NestedSetKeyFilterTests
     public void MismatchedMappedTypeIsRejected()
     {
         // Arrange
-        using var context = CreateContext();
+        using var services = CreateServices();
+        using var context = CreateContext(services);
         var property = Property(context, nameof(KeyFilterNode.Id));
         long[] keys = [1, 2];
 
@@ -120,7 +125,8 @@ public sealed class NestedSetKeyFilterTests
     public void ScalarEqualityUsesOneMappedComparison()
     {
         // Arrange
-        using var context = CreateContext();
+        using var services = CreateServices();
+        using var context = CreateContext(services);
 
         // Act
         var predicate = NestedSetKeyFilter<KeyFilterNode>.Equal(nameof(KeyFilterNode.Id), 12);
@@ -135,14 +141,113 @@ public sealed class NestedSetKeyFilterTests
         Assert.DoesNotContain(" IN (", sql, StringComparison.Ordinal);
     }
 
+    /// <summary>Metadata equality reuses the exact surrounding alias without invoking its CLR accessors.</summary>
+    [Fact]
+    public void MetadataEqualityRetainsTheSuppliedAlias()
+    {
+        // Arrange
+        using var services = CreateServices();
+        using var context = CreateContext(services);
+        var property = Property(context, nameof(KeyFilterNode.Id));
+        var alias = Expression.Parameter(typeof(KeyFilterNode), "existingAlias");
+
+        // Act
+        var body = NestedSetKeyFilter<KeyFilterNode>.Equal(alias, property, 12);
+        var query = context.Set<KeyFilterNode>().Where(Expression.Lambda<Func<KeyFilterNode, bool>>(body, alias));
+        var sql = query.ToQueryString();
+
+        // Assert
+        var equality = Assert.IsAssignableFrom<BinaryExpression>(body);
+        var access = Assert.IsAssignableFrom<MemberExpression>(equality.Left);
+        Assert.Same(alias, access.Expression);
+        Assert.Equal(property.PropertyInfo, access.Member);
+        Assert.Contains("WHERE", sql, StringComparison.Ordinal);
+        Assert.Empty(context.ChangeTracker.Entries());
+    }
+
+    /// <summary>Nullable direct-reference comparisons preserve SQL null and non-null semantics.</summary>
+    /// <param name="value">The nullable mapped reference value.</param>
+    [Theory]
+    [InlineData(null)]
+    [InlineData(12)]
+    public void MetadataEqualityPreservesNullableReferences(int? value)
+    {
+        // Arrange
+        using var services = CreateServices();
+        using var context = CreateContext(services);
+        var property = Property(context, nameof(KeyFilterNode.ParentId));
+        var alias = Expression.Parameter(typeof(KeyFilterNode), "existingAlias");
+
+        // Act
+        var body = NestedSetKeyFilter<KeyFilterNode>.Equal(alias, property, value);
+        var sql = context.Set<KeyFilterNode>().Where(Expression.Lambda<Func<KeyFilterNode, bool>>(body, alias))
+            .ToQueryString();
+
+        // Assert
+        Assert.Equal(typeof(int?), property.ClrType);
+        Assert.Equal(value is null, sql.Contains("IS NULL", StringComparison.Ordinal));
+        Assert.Contains("\"ParentId\"", sql, StringComparison.Ordinal);
+        Assert.Empty(context.ChangeTracker.Entries());
+    }
+
+    /// <summary>Reused aliases retain converted value equality without equality operators.</summary>
+    [Fact]
+    public void MetadataEqualityRetainsOperatorFreeConversion()
+    {
+        // Arrange
+        using var services = CreateServices();
+        using var context = CreateContext(services);
+        var property = Property(context, nameof(KeyFilterNode.OperatorFree));
+        var alias = Expression.Parameter(typeof(KeyFilterNode), "existingAlias");
+
+        // Act
+        var body = NestedSetKeyFilter<KeyFilterNode>.Equal(alias, property, new OperatorFreeKey(12));
+        var sql = context.Set<KeyFilterNode>().Where(Expression.Lambda<Func<KeyFilterNode, bool>>(body, alias))
+            .ToQueryString();
+
+        // Assert
+        Assert.NotNull(property.GetTypeMapping().Converter);
+        Assert.Contains("WHERE", sql, StringComparison.Ordinal);
+        Assert.Contains("\"OperatorFree\"", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain(" IN (", sql, StringComparison.Ordinal);
+        Assert.Empty(context.ChangeTracker.Entries());
+    }
+
+    /// <summary>The reused-alias route rejects a mismatched value before building a comparison.</summary>
+    [Fact]
+    public void MetadataEqualityRejectsMismatchedValueTypes()
+    {
+        // Arrange
+        using var services = CreateServices();
+        using var context = CreateContext(services);
+        var property = Property(context, nameof(KeyFilterNode.Id));
+        var alias = Expression.Parameter(typeof(KeyFilterNode), "existingAlias");
+
+        // Act
+        var error = Record.Exception(() => NestedSetKeyFilter<KeyFilterNode>.Equal(alias, property, 12L));
+
+        // Assert
+        Assert.IsType<ArgumentException>(error);
+        Assert.Empty(context.ChangeTracker.Entries());
+    }
+
     /// <summary>Finalizes real provider mappings without opening a database connection.</summary>
-    private static KeyFilterContext CreateContext()
+    private static KeyFilterContext CreateContext(ServiceProvider provider)
     {
         var options = new DbContextOptionsBuilder<KeyFilterContext>().UseNpgsql(
                 "Host=localhost;Database=key_filter_metadata;Username=unused;Password=unused")
+            .UseInternalServiceProvider(provider)
             .Options;
 
         return new KeyFilterContext(options);
+    }
+
+    /// <summary>Owns the public PostgreSQL services used only by this metadata probe.</summary>
+    private static ServiceProvider CreateServices()
+    {
+        // WHY: Other test families legitimately use different provider graphs. Keeping these probes
+        // outside EF's global cache makes their unchanged warning policy independent of test order.
+        return new ServiceCollection().AddEntityFrameworkNpgsql().BuildServiceProvider();
     }
 
     /// <summary>Resolves the exact finalized property used by each predicate case.</summary>
@@ -166,6 +271,8 @@ public sealed class NestedSetKeyFilterTests
             node
                 .Property(value => value.ConvertedText)
                 .HasConversion(value => value.ToUpperInvariant(), value => value);
+            node.Property(value => value.OperatorFree)
+                .HasConversion(value => value.Value, value => new OperatorFreeKey(value));
         }
     }
 
@@ -183,5 +290,27 @@ public sealed class NestedSetKeyFilterTests
 
         /// <summary>Gets or sets a provider-native array value.</summary>
         public int[] Array { get; set; } = [];
+
+        /// <summary>Gets or sets a nullable direct reference independently of the ordinary key.</summary>
+        public int? ParentId { get; set; }
+
+        /// <summary>Gets or sets an immutable converted value that deliberately has no equality operators.</summary>
+        public OperatorFreeKey OperatorFree { get; set; }
+    }
+
+    /// <summary>Exposes value equality without operator overloads for metadata-aware SQL comparison.</summary>
+    private readonly struct OperatorFreeKey(int value) : IEquatable<OperatorFreeKey>
+    {
+        /// <summary>Gets the scalar representation used by the provider converter.</summary>
+        public int Value { get; } = value;
+
+        /// <inheritdoc />
+        public bool Equals(OperatorFreeKey other) => Value == other.Value;
+
+        /// <inheritdoc />
+        public override bool Equals(object? obj) => obj is OperatorFreeKey other && Equals(other);
+
+        /// <inheritdoc />
+        public override int GetHashCode() => Value;
     }
 }

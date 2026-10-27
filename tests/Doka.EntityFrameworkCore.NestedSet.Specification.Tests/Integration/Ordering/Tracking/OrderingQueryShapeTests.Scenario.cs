@@ -248,6 +248,7 @@ public abstract partial class OrderingQueryShapeTests
             var name = context
                 .Entry(node)
                 .Property(value => value.Name);
+
             Assert.Equal($"N{triple:D3}-{(first ? 'a' : 'b')}", name.OriginalValue);
             Assert.Equal(first && triple < intervals, name.IsModified);
             Assert.Equal(first && triple < intervals ? $"N{triple:D3}-bz" : name.OriginalValue, name.CurrentValue);

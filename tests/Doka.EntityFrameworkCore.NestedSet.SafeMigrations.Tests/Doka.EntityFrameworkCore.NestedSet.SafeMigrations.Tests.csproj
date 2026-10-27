@@ -12,4 +12,21 @@
     <PackageReference Include="Doka.EntityFrameworkCore.SafeMigrations.SqlServer"/>
     <PackageReference Include="Doka.EntityFrameworkCore.SafeMigrations.Sqlite"/>
   </ItemGroup>
+  <ItemGroup Label="IDE file nesting">
+    <Compile Update="Integration/Indexes/AncestorIndexSafeMigrationTests.*.cs">
+      <DependentUpon>AncestorIndexSafeMigrationTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Design/SafeMigrationTests.*.cs">
+      <DependentUpon>../SafeMigrationTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Indexes/SafeMigrationTests.*.cs">
+      <DependentUpon>../SafeMigrationTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Lifecycle/SafeMigrationTests.*.cs">
+      <DependentUpon>../SafeMigrationTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Qualification/SafeMigrationTests.*.cs">
+      <DependentUpon>../SafeMigrationTests.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
 </Project>

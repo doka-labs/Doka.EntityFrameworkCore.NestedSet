@@ -86,8 +86,6 @@ public sealed class ModelCompatibilityDatabase : IAsyncDisposable
         where TContext : DbContext
     {
         var options = new DbContextOptionsBuilder<TContext>().ConfigureTestWarnings();
-        var mode = collectionMode.GetValueOrDefault();
-
         switch (engine)
         {
             case "Sqlite":

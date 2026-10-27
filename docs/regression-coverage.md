@@ -41,6 +41,7 @@ hierarchy before the one operation being assessed.
 | Model cache leaks state | Same-model immutable metadata reuse | Different model and hierarchy separation |
 | Query UX adds hidden reads | Composed anchor query uses one command | Missing or filtered anchor returns no rows |
 | Structural work loses bounds | Existing statement/allocation limits | Wide, deep, and failed-operation regressions |
+| Hotpath traversal allocates or skips the final item | `TrackedIdentityIterationAllocationTests` and projection lookup allocation controls | Existing 63/64/65 guard edits, absent projection members, unevaluated getters, and two-owner save rollback |
 | SQLite keyed writes scan whole trees | Actual unanalyzed repair UPDATE plans | Excluded scope/tree keys and membership-alias collisions |
 | Capacity inferred from small fixtures | Actual ten-million reads and million-node import/rebuild | Last-wave failure/cancellation and complete rollback |
 | Background heap observation charges an unnecessary preceding cycle | Proven earlier allocation anchor and captured native scalar tuple | Completion/start race, unknown identities, counter epochs, and held allocations |
@@ -100,6 +101,29 @@ Source: [bounds formatting contracts](../tests/Doka.NestedSet.Tests/Unit/NestedS
 
 The sections below name the source methods behind the matrix. The matrix is a
 selection guide, not a replacement for the full provider suites.
+
+The hotpath iteration qualification (planned documentation: `qualification/query-performance.md#managed-hot-paths`)
+distinguishes measured allocation savings from mixed timings and rejected loop
+changes. `CoordinatedGroupIterationTests` protects two independent hierarchy
+owners across the existing save phases and their failure cleanup.
+
+The follow-up qualification (planned documentation: `qualification/query-performance.md#managed-hot-paths`) covers
+`BinaryProviderComparerTests` and the fixed-arity direct-binding regressions in
+`ExpressionInliningTests`. Binary tests protect complete content equality,
+bounded framework-compatible hashes, null/converter behavior, and exclusion of
+object-provider mappings. Binding tests preserve parameter identity, exception
+behavior, unvisited arguments and getters, and zero per-call visitor allocation.
+Seventeen allocation controls reject the frozen preceding implementation; the
+current unit and targeted provider runs are recorded separately.
+
+The historical predecessor Nearest qualification (planned documentation: `qualification/query-performance.md#historical-report-construction-and-materialization`)
+adds `TypedEqualityConstructionTests` for method/lifting/null/converted equality
+parity and measured metadata savings, `CompositionCoordinateWidthTests` for
+deferred per-binding reuse and stale-scope rejection, and nearest-candidate
+capture-isolation cases. Seven controls reject frozen old libraries. The
+existing allocation collection now also isolates the guard allocation class
+and the separate `SignalReportSnapshotAllocationTests`, without changing their
+work or budgets; `ProviderFixtureIsolationTests` protects that registration.
 
 ## Generated invariant coverage
 
@@ -330,7 +354,10 @@ Sources: [prepared generic-plan cases](../tests/Doka.EntityFrameworkCore.NestedS
 and [prepared session cleanup](../tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests/Indexes/NullableParentIndexTests.PreparedPlan.cs).
 
 The capacity heap observer has independent held-allocation controls and
-deterministic background-cycle guards. Qualified collection-start identities
+deterministic background-cycle guards. Its object/array calibration uses an
+isolated invocation of the existing Unit executable before runner initialization,
+comparing independently counted held allocations with collected heap growth at
+the original +/-10% accuracy bound. Qualified collection-start identities
 exclude unnecessary older allocation traffic; completion followed by another
 full start, invalid counts, and unknown counter epochs retain the conservative
 earlier anchor. A captured native MySQL tuple rejects the old unconditional
@@ -1246,9 +1273,10 @@ resources. It examines every `ICollectionFixture<>` registration without
 initializing it, so an unrelated registration cannot disappear through a
 recognized-fixture filter. Catalog and registration controls complement
 the existing constructor, named-collection, and fixture-lifetime regressions.
-Shared query-plan evidence is written by the independent `QueryPlanTestSupport`
-helper from all six existing call paths; preserve output-directory selection,
-file naming, double-newline formatting, and asynchronous cancellation behavior.
+Shared statistics refresh, native plan explanation, and evidence writing belong
+to the independent `QueryPlanTestSupport` helper. Preserve provider SQL,
+captured bindings, command selection, output-directory selection, file naming,
+double-newline formatting, and asynchronous cancellation behavior.
 
 The complete local migration accounts for 17 former legacy suites, 35 methods,
 and 57 engine/scenario variants. Every database behavior variant remains a

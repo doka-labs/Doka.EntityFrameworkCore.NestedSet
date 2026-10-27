@@ -97,6 +97,7 @@ public abstract partial class SingleInsertGuardTests
                 .Set<SingleIdentityNode>()
                 .AsNoTracking()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal(3, saved.Id.Value);
         Assert.Equal("owned", saved.Details.Label);
         Assert.NotSame(

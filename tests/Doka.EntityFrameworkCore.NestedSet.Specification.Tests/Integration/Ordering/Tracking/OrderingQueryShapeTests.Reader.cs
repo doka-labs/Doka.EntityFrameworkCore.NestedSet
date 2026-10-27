@@ -92,6 +92,7 @@ public abstract partial class OrderingQueryShapeTests
             var available = await inner
                 .ReadAsync(cancellationToken)
                 .ConfigureAwait(false);
+
             RecordOrdinal(available);
 
             return available;

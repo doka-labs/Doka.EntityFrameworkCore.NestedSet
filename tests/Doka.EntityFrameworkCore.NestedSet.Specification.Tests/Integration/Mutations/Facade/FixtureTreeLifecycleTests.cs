@@ -35,6 +35,7 @@ public abstract class FixtureTreeLifecycleTests : ProviderTest
         var replacement = context
             .NestedSet<FieldNode>()
             .ForScope(1);
+
         await replacement.InsertRootAsync(new FieldNode { Id = 2 }, Guid.Empty, CancellationToken.None);
 
         // Assert

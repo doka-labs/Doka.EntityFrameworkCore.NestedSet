@@ -3,109 +3,137 @@ using System.Text.Json;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-/// <summary>Captures real server plans for scoped wide and deep hierarchy queries.</summary>
+/// <summary>Captures real server plans for independently discovered scoped hierarchy query contracts.</summary>
 public abstract class ServerQueryPlanTests : ProviderTest
 {
-    private readonly OrderingFixture _fixture;
+    private readonly ServerQueryPlanFixture _fixture;
 
-    /// <summary>Uses isolated ordering tables on each supported server.</summary>
+    /// <summary>Shares one immutable ordering dataset across this concrete provider suite's query cases.</summary>
     protected ServerQueryPlanTests(
-        IProviderFixture<OrderingFixture> fixture
+        IProviderFixture<ServerQueryPlanFixture> fixture
     ) : base(fixture)
     {
         _fixture = fixture.Value;
     }
 
-    /// <summary>
-    /// Native plans preserve selective scoped anchors and expose the cost of ancestor and ordering scans.
-    /// </summary>
+    /// <summary>Gets each original scope, anchor, query kind and independent expected row count.</summary>
+    public static TheoryData<int, int, string, int> HierarchyQueryCases =>
+        new()
+        {
+            { 10, 0, "Parent", 0 },
+            { 10, 0, "Ancestors", 0 },
+            { 10, 0, "Descendants", 199 },
+            { 10, 100, "Parent", 1 },
+            { 10, 100, "Ancestors", 1 },
+            { 10, 100, "Descendants", 0 },
+            { 10, 199, "Parent", 1 },
+            { 10, 199, "Ancestors", 1 },
+            { 10, 199, "Descendants", 0 },
+            { 11, 0, "Parent", 0 },
+            { 11, 0, "Ancestors", 0 },
+            { 11, 0, "Descendants", 199 },
+            { 11, 100, "Parent", 1 },
+            { 11, 100, "Ancestors", 100 },
+            { 11, 100, "Descendants", 99 },
+            { 11, 199, "Parent", 1 },
+            { 11, 199, "Ancestors", 199 },
+            { 11, 199, "Descendants", 0 },
+        };
+
+    /// <summary>One native plan preserves its independently named scope, anchor and hierarchy query contract.</summary>
+    /// <param name="scope">The wide or deep hierarchy partition.</param>
+    /// <param name="offset">The root, middle or final anchor offset.</param>
+    /// <param name="query">The parent, ancestor or descendant query kind.</param>
+    /// <param name="expectedRows">The original independent expected result count.</param>
+    [EngineTheory(
+        ExcludedEngines = ["Sqlite"],
+        Reason = "The assertion requires a server database and server execution plans rather than a SQLite file.")]
+    [MemberData(nameof(HierarchyQueryCases))]
+    public async Task ScopedHierarchyQueriesHaveServerPlanEvidence(
+        int scope,
+        int offset,
+        string query,
+        int expectedRows
+    )
+    {
+        // Arrange
+        var probe = new EnterpriseProbe(captureParameterBindings: true);
+        await using var context = await _fixture.CreateContextAsync(Engine, probe);
+        var service = context
+            .NestedSet<OrderingNode>()
+            .ForScope(scope);
+
+        var key = scope * 1000 + offset;
+        var selected = query switch
+        {
+            "Parent" => service.ParentOf(key),
+            "Ancestors" => service.AncestorsOf(key),
+            "Descendants" => service.DescendantsOf(key),
+            _ => throw new ArgumentOutOfRangeException(nameof(query)),
+        };
+
+        // Act
+        var commandIndex = probe.Commands.Count;
+        var rows = await selected
+            .Select(node => node.Id)
+            .ToArrayAsync(CancellationToken.None);
+
+        var plan = await QueryPlanTestSupport.ExplainAsync(context, probe, commandIndex, Engine);
+        var queryIndex = query switch
+        {
+            "Parent" => 0,
+            "Ancestors" => 1,
+            _ => 2,
+        };
+
+        _fixture.RecordEvidence(
+            scope,
+            offset,
+            query,
+            $"scope={scope}; offset={offset}; query={queryIndex}; rows={rows.Length}\n{plan}");
+
+        // Assert
+        Assert.Equal(expectedRows, rows.Length);
+        Assert.NotEmpty(plan);
+
+        if (query == "Parent"
+            && offset == 100)
+        {
+            // WHY: These are the two original selective point-lookup controls; root ancestors may be constant-empty.
+            AssertPointLookups(Engine, plan);
+        }
+
+        Assert.All(probe.Commands, sql => Assert.DoesNotContain("EXISTS", sql, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>Configured predecessor resolution retains its own native ordering-plan evidence.</summary>
     [EngineFact(
         ExcludedEngines = ["Sqlite"],
         Reason = "The assertion requires a server database and server execution plans rather than a SQLite file.")]
-    public async Task ScopedHierarchyQueriesHaveServerPlanEvidence()
+    public async Task ConfiguredPredecessorHasServerPlanEvidence()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
-        await RefreshStatisticsAsync<OrderingNode>(setup, Engine);
         var probe = new EnterpriseProbe(captureParameterBindings: true);
-        await using var context = await _fixture.CreateContextAsync(Engine, "Strict", probe);
-        var plans = new List<string>();
-        var counts = new List<int>();
-
-        // Act
-        foreach (var scope in new[] { 10, 11 })
-        {
-            var service = context
-                .NestedSet<OrderingNode>()
-                .ForScope(scope);
-
-            foreach (var offset in new[] { 0, 100, 199 })
-            {
-                var key = (scope * 1000) + offset;
-                var queries = new[] { service.ParentOf(key), service.AncestorsOf(key), service.DescendantsOf(key) };
-
-                for (var queryIndex = 0; queryIndex < queries.Length; queryIndex++)
-                {
-                    var commandIndex = probe.Commands.Count;
-                    var rows = await queries[queryIndex]
-                        .Select(node => node.Id)
-                        .ToArrayAsync(CancellationToken.None);
-
-                    counts.Add(rows.Length);
-                    var plan = await ExplainAsync(context, probe, commandIndex, Engine);
-                    plans.Add($"scope={scope}; offset={offset}; query={queryIndex}; rows={rows.Length}\n{plan}");
-                }
-            }
-        }
-
-        var orderingIndex = probe.Commands.Count;
+        await using var context = await _fixture.CreateContextAsync(Engine, probe);
         var store = new NestedSetStore<OrderingNode, int, Guid, int>(
             context,
             context.Model.FindEntityType(typeof(OrderingNode))!,
             10,
             Guid.Empty);
 
+        // Act
+        var commandIndex = probe.Commands.Count;
         await new NestedSetOrderer<OrderingNode, int, Guid, int>(store).ResolveAsync(
             10100,
             new NestedSetParent<int>(true, 10000),
             CancellationToken.None);
-        plans.Add("configured-predecessor\n" + await ExplainAsync(context, probe, orderingIndex + 1, Engine));
-        await QueryPlanTestSupport.WriteEvidenceAsync(Engine + "-hierarchy", plans);
+
+        var plan = await QueryPlanTestSupport.ExplainAsync(context, probe, commandIndex + 1, Engine);
+        _fixture.RecordPredecessorEvidence(plan);
 
         // Assert
-        Assert.Equal([0, 0, 199, 1, 1, 0, 1, 1, 0, 0, 0, 199, 1, 100, 99, 1, 199, 0], counts);
-        Assert.All(plans, Assert.NotEmpty);
-
-        // WHY: Empty root-ancestor results may be proven without reading an index. Nonempty direct-parent
-        // point lookups must retain index evidence; wider interval and ordering plans remain inspectable artifacts.
-        AssertPointLookups(Engine, plans[3]);
-        AssertPointLookups(Engine, plans[12]);
+        Assert.NotEmpty(plan);
         Assert.All(probe.Commands, sql => Assert.DoesNotContain("EXISTS", sql, StringComparison.OrdinalIgnoreCase));
-    }
-
-    /// <summary>
-    /// Gives the optimizer current seed distributions without waiting for background statistics collection.
-    /// </summary>
-    internal static Task RefreshStatisticsAsync<TEntity>(
-        DbContext context,
-        string engine
-    )
-        where TEntity : class
-    {
-        var entity = context.Model.FindEntityType(typeof(TEntity))!;
-        var sql = context.GetService<ISqlGenerationHelper>();
-        var table = sql.DelimitIdentifier(entity.GetTableName()!, entity.GetSchema());
-        // WHY: Fresh PostgreSQL tables otherwise estimated two scope rows where the probe seeded two hundred.
-        // Keep statistics preparation outside measured queries and restrict it to this case's owned table.
-        var statement = engine switch
-        {
-            "SqlServer" => "UPDATE STATISTICS " + table + " WITH FULLSCAN",
-            "MySql" or "MariaDb" => "ANALYZE TABLE " + table,
-            _ => "ANALYZE " + table,
-        };
-
-        return context.Database.ExecuteSqlRawAsync(statement, CancellationToken.None);
     }
 
     /// <summary>
@@ -136,8 +164,16 @@ public abstract class ServerQueryPlanTests : ProviderTest
             tables,
             table =>
             {
-                Assert.Equal("PRIMARY", table.GetProperty("key").GetString());
-                Assert.True(table.GetProperty("access_type").GetString() is "const" or "eq_ref", plan);
+                Assert.Equal(
+                    "PRIMARY",
+                    table
+                        .GetProperty("key")
+                        .GetString());
+                Assert.True(
+                    table
+                        .GetProperty("access_type")
+                        .GetString() is "const" or "eq_ref",
+                    plan);
                 var rows = table.TryGetProperty("rows_examined_per_scan", out var estimated)
                     ? estimated
                     : table.GetProperty("rows");
@@ -155,6 +191,7 @@ public abstract class ServerQueryPlanTests : ProviderTest
         {
             yield return value;
 
+            // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
             foreach (var property in value.EnumerateObject())
             {
                 foreach (var nested in Objects(property.Value))
@@ -165,6 +202,7 @@ public abstract class ServerQueryPlanTests : ProviderTest
         }
         else if (value.ValueKind == JsonValueKind.Array)
         {
+            // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
             foreach (var item in value.EnumerateArray())
             {
                 foreach (var nested in Objects(item))
@@ -173,108 +211,5 @@ public abstract class ServerQueryPlanTests : ProviderTest
                 }
             }
         }
-    }
-
-    /// <summary>
-    /// Obtains actual execution plans while retaining the mapped parameter values of the original query.
-    /// </summary>
-    internal static async Task<string> ExplainAsync(
-        DbContext context,
-        EnterpriseProbe probe,
-        int index,
-        string engine
-    )
-    {
-        await context.Database.OpenConnectionAsync(CancellationToken.None);
-        await using var command = context
-            .Database
-            .GetDbConnection()
-            .CreateCommand();
-
-        var sql = probe.Commands[index];
-        command.CommandText = engine switch
-        {
-            "PostgreSql" => "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) " + sql,
-            // WHY: Const lookups disappear from MySQL's runtime TREE once fetched during optimization.
-            // Retain JSON access-path metadata alongside the actual runtime plan to verify those primary-key reads.
-            "MySql" => "EXPLAIN FORMAT=JSON " + sql + "; EXPLAIN ANALYZE FORMAT=TREE " + sql,
-            "MariaDb" => "ANALYZE FORMAT=JSON " + sql,
-            "SqlServer" => "SET STATISTICS XML ON; " + sql + "; SET STATISTICS XML OFF;",
-            _ => "EXPLAIN QUERY PLAN " + sql,
-        };
-
-        foreach (var parameter in probe.ParameterBindings[index])
-        {
-            command.Parameters.Add(parameter);
-        }
-
-        var plan = new StringBuilder();
-        await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
-
-        do
-        {
-            while (await reader.ReadAsync(CancellationToken.None))
-            {
-                // WHY: SQL Server first returns the actual SELECT results, then a separate XML plan result set.
-                if (engine == "SqlServer"
-                    && !reader
-                        .GetName(0)
-                        .Contains("Showplan", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                plan.AppendLine(reader.GetString(engine == "Sqlite" ? 3 : 0));
-            }
-        } while (await reader.NextResultAsync(CancellationToken.None));
-
-        return plan.ToString();
-    }
-
-    /// <summary>
-    /// Seeds twenty overlapping scopes, alternating wide siblings and deep chains, without timed inserts.
-    /// </summary>
-    private static async Task SeedAsync(
-        OrderingContext context
-    )
-    {
-        for (var scope = 1; scope <= 20; scope++)
-        {
-            for (var offset = 0; offset < 200; offset++)
-            {
-                var root = scope * 1000;
-                var wide = scope % 2 == 0;
-                await context.AddAsync(
-                    new OrderingNode
-                    {
-                        Id = root + offset,
-                        Scope = scope,
-                        Name = $"Node-{offset:D4}",
-                        ParentId = offset == 0
-                            ? null
-                            : wide
-                                ? root
-                                : root + offset - 1,
-                        Left = wide ? offset == 0 ? 1 : offset * 2 : offset + 1,
-                        Right = wide ? offset == 0 ? 400 : (offset * 2) + 1 : 400 - offset,
-                        Depth = wide ? offset == 0 ? 0 : 1 : offset,
-                        Position = wide && offset != 0 ? offset - 1 : 0,
-                    },
-                    CancellationToken.None);
-            }
-        }
-
-        using (NestedSetSaveChanges.EnterManagedSave(
-                   context,
-                   context
-                       .ChangeTracker
-                       .Entries()
-                       .Select(entry => entry.Entity),
-                   static () => { }))
-        {
-            await context.SaveChangesAsync(CancellationToken.None);
-        }
-
-        context.ChangeTracker.Clear();
     }
 }

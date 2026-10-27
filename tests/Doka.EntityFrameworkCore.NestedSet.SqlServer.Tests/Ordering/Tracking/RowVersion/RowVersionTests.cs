@@ -101,6 +101,7 @@ public sealed class RowVersionTests : ProviderTest, IClassFixture<ProviderFixtur
             .Entry(tracked[0])
             .Property(node => node.Version)
             .CurrentValue;
+
         Assert.NotEqual(originalToken, currentToken);
         Assert.NotEqual(peerToken, tracked[1].Version);
         Assert.Equal(

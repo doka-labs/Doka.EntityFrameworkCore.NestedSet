@@ -67,6 +67,7 @@ public sealed class OrderingFixture : IAsyncLifetime
     {
         await using var source = _databases[engine]
             .CreateContext();
+
         var connection = source.Database.GetConnectionString()!;
         var options = new DbContextOptionsBuilder().ConfigureTestWarnings();
 

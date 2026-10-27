@@ -130,7 +130,7 @@ public abstract partial class KeyFilterComparisonTests
             }
 
             await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
-            await ServerQueryPlanTests.RefreshStatisticsAsync<NativeKeyNode<TKey>>(context, engine);
+            await QueryPlanTestSupport.RefreshStatisticsAsync<NativeKeyNode<TKey>>(context, engine);
             context.ChangeTracker.Clear();
             var evidence = new List<string>();
             var keys = values
