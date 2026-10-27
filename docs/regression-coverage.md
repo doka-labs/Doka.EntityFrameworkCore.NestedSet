@@ -1099,11 +1099,38 @@ from the pure construction measurements. Existing allocation ceilings remain.
 
 ## Provider-specific identity lengths
 
+- `UnicodeIdentityLengthTests` verifies both roles before I/O using actual
+  provider mappings: scalar boundaries, combining sequences, malformed
+  surrogates, converter output, byte limits, custom mappings and bounded
+  PostgreSQL aliases. Runtime clones retain their concrete policy; another
+  assembly cannot authorize character counting with the same type name.
 - `RuntimeModelRetainsPrimitiveNativeIdentityPolicies` and
   `CapturedIdentityPolicyKeepsBothBooleanDecisions` protect the adapter's
   captured Scope/TreeId decisions. Missing, non-Boolean, namesake-assembly and
   mapping-subclass controls reject invalid capture or unsupported recognition
   instead of inferring a native policy.
+- `EveryNonSurrogateCodeUnitCountsOnce` covers every BMP code unit outside
+  `D800..DFFF`. `EverySurrogateCodeUnitCountsInsideValidPairs` covers every high
+  and low surrogate in a valid pair; `EveryUnpairedSurrogateCodeUnitIsRejected`
+  rejects every unpaired surrogate. These exercise the actual generic
+  surrogate-range search and common counter, including both ends and interior
+  of the range. Positive/negative Unicode semantics remain in the covered
+  partition rather than being omitted with the allocation budget.
+- MySQL/MariaDB `UnicodeIdentityTests` verify real stored values and native
+  `CHAR_LENGTH`/`OCTET_LENGTH`, neighboring identity isolation, coordinated
+  ordering saves, scopeless requests, zero-command rejection, scalar/JSON
+  transport and duplicate rejection. Binary converters retain byte boundaries.
+- `UnicodeIdentityCompiledModelTests` use actual generated and compiled C#
+  models for native positive/rejection cases, including `bpchar(8)`. The shared
+  `CompiledModelTestSupport` also serves the existing ancestor-index suite.
+
+Sources: [Unit boundaries](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Execution/UnicodeIdentityLengthTests.cs),
+[captured policy and ownership](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Execution/UnicodeIdentityLengthTests.Metadata.cs),
+[complete code-unit range controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Execution/UnicodeIdentityLengthTests.Ranges.cs),
+[warm allocation budget](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Execution/UnicodeIdentityLengthTests.Allocations.cs),
+[native tests](../tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Concurrency/TreeRegistry/UnicodeIdentityTestBase.cs),
+[generated-model tests](../tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests/Integration/UnicodeIdentityCompiledModelTests.cs),
+and [qualification](qualification/unicode-identities.md).
 
 ## Execution and evidence limits
 

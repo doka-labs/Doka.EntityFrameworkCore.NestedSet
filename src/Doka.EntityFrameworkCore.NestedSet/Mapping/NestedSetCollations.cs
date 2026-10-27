@@ -22,6 +22,7 @@ internal static class NestedSetCollations
 
             var descriptor = NestedSetModelValidator.Validate(hierarchy, true)!;
             var store = NestedSetStoreObject.Resolve(hierarchy, descriptor);
+            NestedSetIdentityLength.Capture(hierarchy, descriptor, provider, typeMappings);
 
             foreach (var role in new[]
                      {

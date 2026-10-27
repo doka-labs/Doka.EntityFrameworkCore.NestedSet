@@ -163,7 +163,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels.MariaDb
                     treeId,
                     parentId,
                     name,
-                    id,
+                    id
                 });
             index2.AddAnnotation("Relational:Name", "IX_NestedSet_5E8397B91CAC71CA724524FC");
 
@@ -188,7 +188,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels.MariaDb
             runtimeEntityType.AddAnnotation("Doka:NestedSet:Position", "Position");
             runtimeEntityType.AddAnnotation("Doka:NestedSet:Right", "Right");
             runtimeEntityType.AddAnnotation("Doka:NestedSet:Scope", "Scope");
+            runtimeEntityType.AddAnnotation("Doka:NestedSet:ScopeUnicodeScalarLength", true);
             runtimeEntityType.AddAnnotation("Doka:NestedSet:TreeId", "TreeId");
+            runtimeEntityType.AddAnnotation("Doka:NestedSet:TreeIdUnicodeScalarLength", false);
             runtimeEntityType.AddAnnotation(
                 "Doka:NestedSet:TreeRegistryEntity",
                 "Doka.EntityFrameworkCore.NestedSet.TreeRegistry:Doka.EntityFrameworkCore.NestedSet.Tests.CompiledFolder");

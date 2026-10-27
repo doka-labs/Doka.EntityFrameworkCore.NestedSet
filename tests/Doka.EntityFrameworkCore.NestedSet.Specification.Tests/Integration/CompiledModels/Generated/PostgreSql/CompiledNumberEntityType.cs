@@ -23,6 +23,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels.PostgreSql
                 propertyCount: 8,
                 foreignKeyCount: 1,
                 unnamedIndexCount: 4,
+                namedIndexCount: 1,
                 keyCount: 2);
 
             var id = runtimeEntityType.AddProperty(
@@ -100,18 +101,28 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels.PostgreSql
 
             var index = runtimeEntityType.AddIndex(
                 new[] { scope, parentId });
+            index.AddAnnotation("Relational:Filter", "\"ParentId\" IS NOT NULL");
 
             var index0 = runtimeEntityType.AddIndex(
                 new[] { scope, treeId, left });
+            index0.AddAnnotation("Relational:Filter", "\"TreeId\" IS NOT NULL");
             index0.AddAnnotation("Relational:Name", "IX_NestedSet_DBC61ED0C32F767AE2484F6B");
 
             var index1 = runtimeEntityType.AddIndex(
                 new[] { scope, treeId, right });
+            index1.AddAnnotation("Relational:Filter", "\"TreeId\" IS NOT NULL");
             index1.AddAnnotation("Relational:Name", "IX_NestedSet_706E74021A65FCC61FCD5FB6");
 
             var index2 = runtimeEntityType.AddIndex(
                 new[] { scope, treeId, parentId, position });
+            index2.AddAnnotation("Relational:Filter", "\"TreeId\" IS NOT NULL");
             index2.AddAnnotation("Relational:Name", "IX_NestedSet_B75A353C051332700D4D0877");
+
+            var iX_NestedSet_Roots_210C8870F1886F4DAD651418 = runtimeEntityType.AddIndex(
+                new[] { scope, id, parentId },
+                name: "IX_NestedSet_Roots_210C8870F1886F4DAD651418");
+            iX_NestedSet_Roots_210C8870F1886F4DAD651418.AddAnnotation("Relational:Filter", "\"ParentId\" IS NULL");
+            iX_NestedSet_Roots_210C8870F1886F4DAD651418.AddAnnotation("Relational:Name", "IX_NestedSet_Roots_210C8870F1886F4DAD651418");
 
             return runtimeEntityType;
         }
@@ -135,7 +146,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels.PostgreSql
             runtimeEntityType.AddAnnotation("Doka:NestedSet:Position", "Position");
             runtimeEntityType.AddAnnotation("Doka:NestedSet:Right", "Right");
             runtimeEntityType.AddAnnotation("Doka:NestedSet:Scope", "Scope");
+            runtimeEntityType.AddAnnotation("Doka:NestedSet:ScopeUnicodeScalarLength", false);
             runtimeEntityType.AddAnnotation("Doka:NestedSet:TreeId", "TreeId");
+            runtimeEntityType.AddAnnotation("Doka:NestedSet:TreeIdUnicodeScalarLength", false);
             runtimeEntityType.AddAnnotation("Doka:NestedSet:TreeRegistryEntity", "Doka.EntityFrameworkCore.NestedSet.TreeRegistry:Doka.EntityFrameworkCore.NestedSet.Tests.CompiledNumber");
             runtimeEntityType.AddAnnotation("Relational:FunctionName", null);
             runtimeEntityType.AddAnnotation("Relational:Schema", null);

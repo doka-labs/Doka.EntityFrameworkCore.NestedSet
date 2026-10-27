@@ -107,6 +107,16 @@ runtime metadata trimming and compiled-model generation. A supplied or compiled
 model with incomplete older capture must be regenerated with the current
 NestedSet conventions; runtime does not silently replace its comparison rules.
 
+The selected adapter also recognizes native string-mapping length semantics.
+The same late capture persists two primitive hierarchy annotations,
+`Doka:NestedSet:ScopeUnicodeScalarLength` and
+`Doka:NestedSet:TreeIdUnicodeScalarLength`, after effective
+mapping facets settle. Registry mappings read these Boolean facts without
+retaining a provider service, delegate, or live context in model metadata.
+Generic Unicode scalar counting remains common. Missing or invalid captured
+facts reject an older supplied/compiled model with an instruction to regenerate
+it; runtime does not infer native semantics from store-type spelling alone.
+
 ## Runtime facade
 
 ```mermaid
@@ -523,6 +533,26 @@ are not retained, but EF still creates projections and the evidence, sums and
 final output consume population-dependent memory. See the
 isolated EF and read qualification (planned documentation: `qualification/query-performance.md#ef-ownership-experiment`)
 for the current measurement boundary.
+
+`HasAncestorIndex()` is an explicit schema choice, recorded as a simple
+property-name annotation in design, runtime, and compiled models. Configuration
+records that name; an early model-finalizing convention creates the flag and
+complete index only after application mapping choices are known and before
+provider index-key length budgeting. This ordering avoids declaring a flag on
+an inherited base too early: TPT needs the structural base table, whereas an
+independent concrete TPC hierarchy must not add the flag to sibling tables.
+Application code that configures an index on the flag before finalization
+declares its Boolean property explicitly first. The later final convention
+resolves the actual structural fragment and quoted boundary
+columns, validates or creates the generated Boolean flag, and reconciles an
+additive `(Scope?, flag, TreeId, Right, Left, NodeKey)` index. Existing structural
+and ordering indexes remain. PostgreSQL uses stored generation; Doka, SQLite,
+and SQL Server use their supported non-stored forms. Incompatible property
+facets or a physically separate application-owned flag fail finalization.
+Generated values participate in the existing bounded tracked refresh rather
+than the writable structural contract. Property bags use required indexer
+properties and retain their natural missing-key sentinel, so insertions do not
+need to initialize implementation details in the caller's dictionary.
 
 Early declaration does not repair the published Doka 10.5.0 string-budgeting
 defect. When Scope, TreeId, and NodeKey all have implicit `utf8mb4` lengths,

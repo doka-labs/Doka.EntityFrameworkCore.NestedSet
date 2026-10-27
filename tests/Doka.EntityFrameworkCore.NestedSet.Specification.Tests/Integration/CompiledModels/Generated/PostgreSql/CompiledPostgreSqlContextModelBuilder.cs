@@ -12,7 +12,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels.PostgreSql
     public partial class CompiledPostgreSqlContextModel
     {
         private CompiledPostgreSqlContextModel()
-            : base(skipDetectChanges: false, modelId: new Guid("0a949a6a-ff5e-4e7f-90d8-89d90a649c74"), entityTypeCount: 5)
+            : base(skipDetectChanges: false, modelId: new Guid("9f6b9ae1-91b5-47a4-ba99-fdf5b0d23854"), entityTypeCount: 5)
         {
         }
 
@@ -35,7 +35,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels.PostgreSql
             AddAnnotation("Doka:NestedSet:CollationsCaptured", true);
             AddAnnotation("Npgsql:CollationDefinition:nestedset_compiled_ci", "und-u-ks-level2,und-u-ks-level2,icu,False");
             AddAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
-            AddAnnotation("ProductVersion", "10.0.12");
+            AddAnnotation("ProductVersion", "10.0.13");
             AddAnnotation("Relational:MaxIdentifierLength", 63);
         }
     }

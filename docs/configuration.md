@@ -58,6 +58,31 @@ Scope, TreeId, and NodeKey can use relationally mapped value converters. Their
 store type, length, fixed/unicode facets, precision, scale, and collation are
 part of database identity.
 
+Registry requests validate Scope and TreeId lengths after the finalized value
+converter has produced their stored representation. Byte arrays use byte
+lengths. Known Doka `char`/`varchar` and Npgsql bounded character mappings
+(including `bpchar`) count Unicode scalar values: one valid surrogate pair
+counts once, while a combining mark counts separately. In these bounded
+character checks, malformed surrogate sequences are rejected before a registry
+command; values are never normalized,
+replaced, or truncated by this check.
+
+SQL Server and SQLite retain their existing UTF-16 guard. SQL Server
+`nchar`/`nvarchar` capacities use UTF-16 byte-pairs, whereas ANSI capacities
+depend on encoded bytes; the guard is not a substitute for that encoding
+constraint. SQLite does not enforce a declared character length, but the
+configured library guard remains in effect. Unknown or custom mapping classes
+retain the conservative UTF-16 check rather than inferring character semantics
+from a `varchar` name alone. Actual compiled models retain the same concrete
+mapping classification without an additional annotation or registration.
+
+The physical charset and collation still determine representability and
+equality. For MySQL/MariaDB supplementary characters, configure a compatible
+charset such as `utf8mb4`. This length correction does not change key comparers,
+padding semantics, required identity roles, or the full-index byte budget. See
+the [Unicode qualification](qualification/unicode-identities.md)
+for native boundaries and the primary sources defining these units.
+
 When a converted Scope, TreeId, or NodeKey has broader CLR equality than its
 stored identity, configure its EF value comparer to match the stored key.
 Configure the Parent comparer consistently with NodeKey. Scope and NodeKey may

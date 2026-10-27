@@ -4,6 +4,45 @@ Nested sets exchange write amplification for fast ordered hierarchy reads. The
 package keeps client work iterative and bounded, while database range updates
 remain proportional to the affected coordinate suffix in the worst case.
 
+### Unicode counting contract
+
+The common Unicode counter uses the framework's generic surrogate-range search
+without an additional cached predicate or initialization buffer. Exhaustive
+code-unit and malformed-surrogate controls retain its scalar-counting contract.
+The historical comparison below explains why coverage-only boxing is handled
+by measurement isolation instead of retaining a slower production search.
+
+### Unicode counting and allocation measurement, 2026-10-26
+
+| Count input | Cached before | Generic after | Warm allocation, both |
+| --- | ---: | ---: | ---: |
+| ASCII, 8 code units | 1.302 ns | 1.609 ns | 0 B |
+| ASCII, 256 code units | 21.141 ns | 13.022 ns | 0 B |
+| Late surrogate pair, 256 code units | 21.291 ns | 13.464 ns | 0 B |
+| Mixed short input | 5.387 ns | 5.887 ns | 0 B |
+| Short paired input | 9.195 ns | 8.741 ns | 0 B |
+| BMP, 8 code units, batched control | 1.881 ns | 1.595 ns | 0 B |
+
+The ordinary scan/count comparison completed 24 cases with three warmups and
+five measured iterations per case. The original single-call BMP timing was
+reduced to zero by harness-overhead subtraction and is excluded from latency
+claims. Its paired control uses 512 calls per invocation, identical input read
+through changing array slots, and two fresh launches. That row includes the
+same loop/array cost in both cohorts and is not directly comparable with the
+single-call rows. Independent 10,000-call allocation controls report zero
+bytes for both counters on every shape, and 196,608 first-surrogate comparisons
+agree.
+
+The longer identities save approximately 8 ns. Short ASCII and mixed inputs
+are approximately 0.3-0.5 ns slower; the paired-input timing intervals overlap.
+This restores simpler production code without its extra predicate factory,
+not a universal latency improvement or a benchmark gate. The removed factory
+allocated 2,104 B on its first measured access and retained a compact predicate;
+that was a one-time cost, not an allocation on every read. These isolated
+counter results do not establish whole-query or provider-split performance.
+
+<a id="provider-split-allocation-controls-2026-10-26"></a>
+
 ## Provider split allocation controls, 2026-10-26 (historical cached-search run)
 
 The [scoped adapter binding](../src/Doka.EntityFrameworkCore.NestedSet/Infrastructure/NestedSetProviderRegistration.cs)

@@ -58,7 +58,11 @@ internal sealed class NestedSetTreeLockRequest<TTreeId, TScope> : INestedSetTree
         if (Mapping.SourceScope is { } scopeProperty)
         {
             RequireType<TScope>(scopeProperty, NestedSetTreeRegistryMetadata.Scope);
-            RequireMappedLength(scope, scopeProperty, NestedSetTreeRegistryMetadata.Scope);
+            RequireMappedLength(
+                scope,
+                scopeProperty,
+                NestedSetTreeRegistryMetadata.Scope,
+                Mapping.ScopeUsesUnicodeScalarLength);
             Scope = NestedSetTypedValue<TScope>.Snapshot(scopeProperty, scope);
         }
         else
@@ -73,7 +77,11 @@ internal sealed class NestedSetTreeLockRequest<TTreeId, TScope> : INestedSetTree
             Scope = scope;
         }
 
-        RequireMappedLength(treeId, Mapping.SourceTreeId, NestedSetTreeRegistryMetadata.TreeId);
+        RequireMappedLength(
+            treeId,
+            Mapping.SourceTreeId,
+            NestedSetTreeRegistryMetadata.TreeId,
+            Mapping.TreeIdUsesUnicodeScalarLength);
 
         // WHY: Caller-owned mutable identities must not change while asynchronous ordering and lock commands run.
         // Only heterogeneous native consumers erase these same snapshots; typed consumers never cast them back.
@@ -124,7 +132,8 @@ internal sealed class NestedSetTreeLockRequest<TTreeId, TScope> : INestedSetTree
     private static void RequireMappedLength<TValue>(
         TValue value,
         IProperty property,
-        string role
+        string role,
+        bool unicodeScalarLength
     )
         where TValue : notnull
     {
@@ -139,7 +148,9 @@ internal sealed class NestedSetTreeLockRequest<TTreeId, TScope> : INestedSetTree
         var providerValue = converter is null ? value : converter.ConvertToProvider(value);
         var length = providerValue switch
         {
-            string text => text.Length, byte[] binary => binary.Length, _ => 0,
+            string text => unicodeScalarLength ? NestedSetIdentityLength.CountUnicodeScalars(text, role) : text.Length,
+            byte[] binary => binary.Length,
+            _ => 0,
         };
 
         if (length > maximum)

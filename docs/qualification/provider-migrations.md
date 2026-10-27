@@ -92,6 +92,14 @@ ordinary cases, including the 114 formerly failing split-mapping identities.
 This establishes the owner correction, not a NestedSet workaround, a published
 package qualification or a rerun of every upstream provider/capacity suite.
 
+The historical implicit-string ancestor-index and generated-value batching
+corrections also retain separate consumer contracts. Full-length `utf8mb4`
+identities and compatible Parent facets must create prefix-free indexes;
+explicit domain lengths may not be shortened to force a schema through.
+Generated-value batching must preserve row-distinct sidecars, trigger fallback,
+rollback and caller transaction ownership. The
+[Unicode record](unicode-identities.md) distinguishes scalar length from bytes.
+
 ## Current local adapter contract
 
 The current same-source adapters support the canonical generated nonleaf CASE
@@ -210,6 +218,16 @@ identify those uncommitted changes.
 | Optional SafeMigrations | 96 | 0 | 54 |
 | SQL Server metadata/platform contracts | 29 | 0 | 1,984 |
 | Total across nine unique suites | 11,789 | 0 | 2,081 |
+
+Every skip message identifies the existing native-x64 SQL Server policy; there
+are no other skipped cases in these results. The full MySQL/MariaDB run precedes
+only the isolated Unicode counter refinement. All 70 affected native Unicode
+and compiled-model cases passed afterward; the full PostgreSQL, SQLite,
+ordinary-migration and optional-adapter runs use the final code. Benchmark
+contracts passed from identical binaries in an owned checkout artifact
+directory; the initial launch outside the checkout could not resolve Git
+provenance and is retained separately. These are distinct runs, not additional
+passes added to the table.
 
 All five checked-in compiled-model sets were regenerated through EF's actual
 C# generator. The 21-project Release build completed with zero warnings and

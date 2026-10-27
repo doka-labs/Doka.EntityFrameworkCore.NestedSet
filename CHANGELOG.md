@@ -65,6 +65,12 @@ explicitly breaking.
   Preserve the complete walk bag through the required public provider APIs.
   Preserve portable strategies for ineligible sources, model filters, exact identities,
   containment, and mapped endpoint checks.
+- Count supplementary characters correctly for known Doka/Npgsql character
+  mappings after conversion, and reject malformed surrogate sequences before
+  registry commands. Preserve binary byte limits and conservative custom mappings.
+- Recognize assigned property-bag keys using their raw EF sentinel. Failed single
+  and bulk insertions restore absent dictionary keys separately from present
+  null/default values while retaining unrelated application payload.
 - Preserve overflow-safe nonleaf classification at `Int64.MaxValue`, including
   representable malformed split intervals, without changing mutation arithmetic.
 

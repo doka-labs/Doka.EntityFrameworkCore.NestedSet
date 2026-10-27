@@ -3,7 +3,7 @@ using System.Runtime.ExceptionServices;
 namespace Doka.EntityFrameworkCore.NestedSet.Execution;
 
 /// <summary>Preserves exact native identities throughout library-owned single and bounded bulk insertions.</summary>
-internal static class NestedSetInsertionTracking
+internal static partial class NestedSetInsertionTracking
 {
     private static readonly ConditionalWeakTable<IEntityType, IKey[]> s_keys = new();
     private static readonly ConditionalWeakTable<IEntityType, IForeignKey[]> s_foreignKeys = new();
@@ -18,93 +18,17 @@ internal static class NestedSetInsertionTracking
         EntityEntry entry
     ) => new(entry);
 
-    /// <summary>Restores the caller's owned membership without creating detached EF references.</summary>
-    /// <param name="owner">The introduced aggregate owner whose membership belonged to this insertion.</param>
-    /// <param name="navigation">The exact mapped ownership navigation or its inverse.</param>
-    /// <param name="entity">The original aggregate member whose reference must remain reusable after rollback.</param>
-    internal static void RestoreRelationship(
-        object owner,
-        INavigationBase navigation,
-        object entity
-    )
-    {
-        if (navigation.IsCollection)
-        {
-            navigation.GetCollectionAccessor()!.Add(owner, entity, forMaterialization: false);
-        }
-        else
-        {
-            // WHY: NavigationEntry.CurrentValue can create new strong Detached reference-map entries while
-            // restoring an already-detached aggregate. EF's model-owned CLR setter preserves exact member
-            // access without another tracker lifecycle or context-retained application reference.
-            NestedSetDetachedValueSetter.Get(navigation)!.SetClrValueUsingContainingEntity(owner, entity);
-        }
-    }
+    /// <summary>Obtains EF's exact invariant entry identity without inspecting private storage fields.</summary>
+    /// <param name="entry">A public wrapper for an introduced root or owned dependent.</param>
+    /// <returns>The context-local identity shared by every wrapper for this exact mapped entry.</returns>
+    internal static IUpdateEntry EntryIdentity(
+        EntityEntry entry
+    ) => Contract.Entry(entry);
 
-    /// <summary>Rejects a failed insertion's surviving native identities after exact lifecycle cleanup.</summary>
-    /// <param name="entries">Only the aggregate entries introduced by this failed insertion.</param>
-    internal static void VerifyFailedCleanup(
-        IEnumerable<EntityEntry> entries
-    )
-    {
-        var introduced = new HashSet<IUpdateEntry>(ReferenceEqualityComparer.Instance);
-        var maps = new HashSet<object>(ReferenceEqualityComparer.Instance);
-
-        foreach (var entry in entries)
-        {
-            var update = EntryIdentity(entry);
-            introduced.Add(update);
-            var manager = StateManager(update);
-
-            foreach (var key in entry.Metadata.GetKeys())
-            {
-                if (Contract.FindMap(manager, key) is { } map)
-                {
-                    maps.Add(map);
-                }
-            }
-        }
-
-        var retained = false;
-        List<Exception>? errors = null;
-
-        foreach (var map in maps)
-        {
-            try
-            {
-                // WHY: Callback-owned DetectChanges can reinstall a live mutable hash key, then a second
-                // in-place edit can strand it while a final detection installs another valid current slot.
-                // Exact key lookups cannot prove cleanup in that case. Only failed attempts enumerate their
-                // touched maps once, matching this bounded entry set without clearing or changing other rows.
-                foreach (var entry in Contract
-                             .Map(map.GetType())
-                             .Entries(map))
-                {
-                    retained |= introduced.Contains(entry);
-                }
-            }
-            catch (Exception error)
-            {
-                (errors ??= []).Add(error);
-            }
-        }
-
-        if (retained)
-        {
-            (errors ??= []).Add(
-                new InvalidOperationException(
-                    "An insertion callback left a corrupted native EF identity after exact rollback cleanup. "
-                    + "Repeated in-place key changes around DetectChanges can invalidate stored hash keys. "
-                    + "Discard the context."));
-        }
-
-        if (errors is not null)
-        {
-            throw new AggregateException(
-                "Insertion identity cleanup could not be verified. Discard the context.",
-                errors);
-        }
-    }
+    /// <summary>Obtains the exact context-local native manager for the introduced entry.</summary>
+    private static object StateManager(
+        IUpdateEntry entry
+    ) => Contract.Manager(entry);
 
     /// <summary>Owns exact installed identity snapshots for one introduced root or dependent.</summary>
     internal sealed class Identity
@@ -133,6 +57,7 @@ internal static class NestedSetInsertionTracking
                 static metadata => metadata
                     .GetKeys()
                     .ToArray());
+
             _values = new object?[_keys.Length][];
             _clrValues = new object?[_keys.Length][];
             _foreignKeys = s_foreignKeys.GetValue(
@@ -149,6 +74,9 @@ internal static class NestedSetInsertionTracking
         /// <summary>Captures generated identities before acceptance or callbacks can mutate CLR values.</summary>
         internal void Refresh()
         {
+            // WHY: Indexing keeps each key paired with its EF and CLR snapshot slots.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var index = 0; index < _keys.Length; index++)
             {
                 var key = _keys[index];
@@ -168,6 +96,9 @@ internal static class NestedSetInsertionTracking
                 var clrValues = new object?[key.Properties.Count];
                 var mutable = false;
 
+                // WHY: Matching ordinals keep property metadata and both snapshot vectors aligned.
+                // ReSharper disable once ForCanBeConvertedToForeach
+                // ReSharper disable once LoopCanBeConvertedToQuery
                 for (var propertyIndex = 0; propertyIndex < values.Length; propertyIndex++)
                 {
                     var property = key.Properties[propertyIndex];
@@ -181,6 +112,7 @@ internal static class NestedSetInsertionTracking
                             property
                                 .GetGetter()
                                 .GetClrValueUsingContainingEntity(_entry.Entity));
+
                     mutable |= current is not null
                         && !property.ClrType.IsValueType
                         && !ReferenceEquals(current, snapshot);
@@ -232,6 +164,9 @@ internal static class NestedSetInsertionTracking
             object?[] clrValues
         )
         {
+            // WHY: Indexing compares each typed reader with both snapshot slots and stops at the first mismatch.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var index = 0; index < shape.Readers.Length; index++)
             {
                 var reader = shape.Readers[index];
@@ -255,6 +190,9 @@ internal static class NestedSetInsertionTracking
             // WHY: SavingChanges or a later Tracking callback can trigger EF detection and install a new
             // scalar identity before the structural guard rejects it. Capture only this entry's exact current
             // map membership before restoring CLR values, so both staged and subsequently installed slots unwind.
+            // Indexing keeps each key aligned with its installed identity snapshot.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var keyIndex = 0; keyIndex < _keys.Length; keyIndex++)
             {
                 var key = _keys[keyIndex];
@@ -275,11 +213,17 @@ internal static class NestedSetInsertionTracking
 
             CaptureDependentBuckets();
 
+            // WHY: Each key ordinal selects the same metadata, readers and installed value vectors.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var keyIndex = 0; keyIndex < _keys.Length; keyIndex++)
             {
                 var properties = _keys[keyIndex].Properties;
                 var shape = s_shapes.GetValue(_keys[keyIndex], CreateShape);
 
+                // WHY: Property ordinals keep typed readers and both restoration snapshots aligned.
+                // ReSharper disable once ForCanBeConvertedToForeach
+                // ReSharper disable once LoopCanBeConvertedToQuery
                 for (var propertyIndex = 0; propertyIndex < properties.Count; propertyIndex++)
                 {
                     var property = properties[propertyIndex];
@@ -340,6 +284,9 @@ internal static class NestedSetInsertionTracking
             var differs = false;
             var shape = s_shapes.GetValue(key, CreateShape);
 
+            // WHY: Compare typed readers against the matching staged key slots without a projection iterator.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var index = 0; index < key.Properties.Count; index++)
             {
                 var reader = shape.Readers[index];
@@ -361,6 +308,9 @@ internal static class NestedSetInsertionTracking
 
             var values = new object?[key.Properties.Count];
 
+            // WHY: Fill native key-vector slots directly from the same property ordinals.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var index = 0; index < values.Length; index++)
             {
                 values[index] = NestedSetStructuralValue.Snapshot(
@@ -394,10 +344,16 @@ internal static class NestedSetInsertionTracking
             IProperty property
         )
         {
+            // WHY: Retain the key ordinal needed to find its matching snapshot and reader shape.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var keyIndex = 0; keyIndex < _keys.Length; keyIndex++)
             {
                 var properties = _keys[keyIndex].Properties;
 
+                // WHY: The matching property ordinal selects its exact typed reader and saved values.
+                // ReSharper disable once ForCanBeConvertedToForeach
+                // ReSharper disable once LoopCanBeConvertedToQuery
                 for (var propertyIndex = 0; propertyIndex < properties.Count; propertyIndex++)
                 {
                     if (properties[propertyIndex] == property)
@@ -405,6 +361,7 @@ internal static class NestedSetInsertionTracking
                         var reader = s_shapes
                             .GetValue(_keys[keyIndex], CreateShape)
                             .Readers[propertyIndex];
+
                         var expected = _values[keyIndex][propertyIndex];
 
                         // WHY: SaveChanges(false) publishes SavedChanges before acceptance. Generated Added
@@ -442,6 +399,9 @@ internal static class NestedSetInsertionTracking
 
             if (_entry.State == EntityState.Detached)
             {
+                // WHY: Remove each identity using the installed snapshot at the same key ordinal.
+                // ReSharper disable once ForCanBeConvertedToForeach
+                // ReSharper disable once LoopCanBeConvertedToQuery
                 for (var index = 0; index < _keys.Length; index++)
                 {
                     try
@@ -538,6 +498,9 @@ internal static class NestedSetInsertionTracking
 
             var operations = Contract.Map(map.GetType());
 
+            // WHY: Keep each foreign key aligned with its reusable dependent-value vector.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var index = 0; index < _foreignKeys.Length; index++)
             {
                 var foreignKey = _foreignKeys[index];
@@ -553,6 +516,9 @@ internal static class NestedSetInsertionTracking
 
                 var absent = false;
 
+                // WHY: Match each FK component to its existing vector slot without building a projected sequence.
+                // ReSharper disable once ForCanBeConvertedToForeach
+                // ReSharper disable once LoopCanBeConvertedToQuery
                 for (var propertyIndex = 0; propertyIndex < values.Length; propertyIndex++)
                 {
                     var property = foreignKey.Properties[propertyIndex];
@@ -592,18 +558,6 @@ internal static class NestedSetInsertionTracking
         }
     }
 
-    /// <summary>Obtains EF's exact invariant entry identity without inspecting private storage fields.</summary>
-    /// <param name="entry">A public wrapper for an introduced root or owned dependent.</param>
-    /// <returns>The context-local identity shared by every wrapper for this exact mapped entry.</returns>
-    internal static IUpdateEntry EntryIdentity(
-        EntityEntry entry
-    ) => Contract.Entry(entry);
-
-    /// <summary>Obtains the exact context-local native manager for the introduced entry.</summary>
-    private static object StateManager(
-        IUpdateEntry entry
-    ) => Contract.Manager(entry);
-
     /// <summary>Closes public typed reads once per exact model property, outside insertion row loops.</summary>
     private static ValueReader CreateReader(
         IProperty property
@@ -617,6 +571,9 @@ internal static class NestedSetInsertionTracking
         var readers = new ValueReader[key.Properties.Count];
         var requiresSnapshot = false;
 
+        // WHY: Fill typed readers directly at their corresponding key-property ordinals.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < readers.Length; index++)
         {
             var property = key.Properties[index];
@@ -817,6 +774,9 @@ internal static class NestedSetInsertionTracking
         IReadOnlyList<object?> right
     )
     {
+        // WHY: Compare property-specific key comparers and both value vectors at matching ordinals.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < key.Properties.Count; index++)
         {
             if (!key
@@ -829,6 +789,95 @@ internal static class NestedSetInsertionTracking
         }
 
         return true;
+    }
+
+    /// <summary>Restores the caller's owned membership without creating detached EF references.</summary>
+    /// <param name="owner">The introduced aggregate owner whose membership belonged to this insertion.</param>
+    /// <param name="navigation">The exact mapped ownership navigation or its inverse.</param>
+    /// <param name="entity">The original aggregate member whose reference must remain reusable after rollback.</param>
+    internal static void RestoreRelationship(
+        object owner,
+        INavigationBase navigation,
+        object entity
+    )
+    {
+        if (navigation.IsCollection)
+        {
+            navigation.GetCollectionAccessor()!.Add(owner, entity, forMaterialization: false);
+        }
+        else
+        {
+            // WHY: NavigationEntry.CurrentValue can create new strong Detached reference-map entries while
+            // restoring an already-detached aggregate. EF's model-owned CLR setter preserves exact member
+            // access without another tracker lifecycle or context-retained application reference.
+            NestedSetDetachedValueSetter.Get(navigation)!.SetClrValueUsingContainingEntity(owner, entity);
+        }
+    }
+
+    /// <summary>Rejects a failed insertion's surviving native identities after exact lifecycle cleanup.</summary>
+    /// <param name="entries">Only the aggregate entries introduced by this failed insertion.</param>
+    internal static void VerifyFailedCleanup(
+        IEnumerable<EntityEntry> entries
+    )
+    {
+        var introduced = new HashSet<IUpdateEntry>(ReferenceEqualityComparer.Instance);
+        var maps = new HashSet<object>(ReferenceEqualityComparer.Instance);
+
+        foreach (var entry in entries)
+        {
+            var update = EntryIdentity(entry);
+            introduced.Add(update);
+            var manager = StateManager(update);
+
+            foreach (var key in entry.Metadata.GetKeys())
+            {
+                if (Contract.FindMap(manager, key) is { } map)
+                {
+                    maps.Add(map);
+                }
+            }
+        }
+
+        var retained = false;
+        List<Exception>? errors = null;
+
+        foreach (var map in maps)
+        {
+            try
+            {
+                // WHY: Callback-owned DetectChanges can reinstall a live mutable hash key, then a second
+                // in-place edit can strand it while a final detection installs another valid current slot.
+                // Exact key lookups cannot prove cleanup in that case. Only failed attempts enumerate their
+                // touched maps once, matching this bounded entry set without clearing or changing other rows.
+                // ReSharper disable once LoopCanBeConvertedToQuery
+                foreach (var entry in Contract
+                             .Map(map.GetType())
+                             .Entries(map))
+                {
+                    retained |= introduced.Contains(entry);
+                }
+            }
+            catch (Exception error)
+            {
+                (errors ??= []).Add(error);
+            }
+        }
+
+        if (retained)
+        {
+            (errors ??= []).Add(
+                new InvalidOperationException(
+                    "An insertion callback left a corrupted native EF identity after exact rollback cleanup. "
+                    + "Repeated in-place key changes around DetectChanges can invalidate stored hash keys. "
+                    + "Discard the context."));
+        }
+
+        if (errors is not null)
+        {
+            throw new AggregateException(
+                "Insertion identity cleanup could not be verified. Discard the context.",
+                errors);
+        }
     }
 
     /// <summary>Uses normal detachment for tracked entries and removes a never-tracked entry's reference.</summary>
@@ -855,6 +904,7 @@ internal static class NestedSetInsertionTracking
             .GetService<IUpdateAdapterFactory>()
             .Create();
 
+        // ReSharper disable once LoopCanBeConvertedToQuery
         foreach (var key in entry.Metadata.GetKeys())
         {
             var values = key

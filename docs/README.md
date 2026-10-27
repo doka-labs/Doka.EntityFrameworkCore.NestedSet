@@ -52,6 +52,8 @@ to `10.0.0`. See the [changelog](../CHANGELOG.md) for changes and the
 - [Provider and Migration Qualification](qualification/provider-migrations.md)
   records exact local package inputs, actual migrations/replay, retained negatives
   and the published-package/native SQL Server boundaries.
+- [Unicode Identity Qualification](qualification/unicode-identities.md)
+  records length units, strict malformed-text rejection and full native boundaries.
 - [Deployment and Recovery](runbooks/deployment-and-recovery.md) routes schema,
   lock, hierarchy, and partial-operation failures.
 

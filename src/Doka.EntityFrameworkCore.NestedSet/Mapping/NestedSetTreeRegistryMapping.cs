@@ -38,6 +38,13 @@ internal sealed class NestedSetTreeRegistryMapping
         RequireEquivalent(SourceScope, Scope);
         RequireEquivalent(SourceTreeId, TreeId);
 
+        // WHY: Native recognition belongs to the selected model finalizer. Captured Boolean facts keep
+        // lock-request construction independent of live services and preserve compiled-model reuse.
+        ScopeUsesUnicodeScalarLength = NestedSetIdentityLength.CapturedPolicy(
+            hierarchy, NestedSetAnnotationNames.ScopeUnicodeScalarLength);
+        TreeIdUsesUnicodeScalarLength = NestedSetIdentityLength.CapturedPolicy(
+            hierarchy, NestedSetAnnotationNames.TreeIdUnicodeScalarLength);
+
         var tableName = Registry.GetTableName()
             ?? throw new InvalidOperationException("A physical tree-registry table is required.");
 
@@ -55,6 +62,12 @@ internal sealed class NestedSetTreeRegistryMapping
 
     /// <summary>Gets the hierarchy TreeId property.</summary>
     internal IProperty SourceTreeId { get; }
+
+    /// <summary>Gets whether the mapped Scope limit counts Unicode scalar values.</summary>
+    internal bool ScopeUsesUnicodeScalarLength { get; }
+
+    /// <summary>Gets whether the mapped TreeId limit counts Unicode scalar values.</summary>
+    internal bool TreeIdUsesUnicodeScalarLength { get; }
 
     /// <summary>Gets the optional registry Scope property.</summary>
     internal IProperty? Scope { get; }
