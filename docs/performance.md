@@ -27,6 +27,89 @@ pass with unchanged work and allocation budgets.
 
 ## Allocation measurement and Unicode counting
 
+The Unit suite's deterministic allocation budgets run without coverage instrumentation. The
+suite marks its isolated allocation collections and standalone budget controls
+with `Category=Allocation`. CI and RC run that partition once without a
+collector and the complementary Unit cases once with coverage.
+The same partition includes the registration's collectible-adapter lifetime
+controls. The [D-013 instrumentation decision](decisions/D-013-provider-owned-integration-test-projects.md)
+retains Code Coverage 18.11.0 with this mandatory partition. Lifetime assertions
+run against uninstrumented application behavior, with a deliberately retained
+registration as a negative control. Actual xUnit metadata tests protect this
+classification; no lifetime assertion is relaxed or skipped.
+Both partitions are mandatory; result validation rejects missing partitions,
+duplicate case identities, failed cases, and skipped cases. Other provider
+suites retain their ordinary coverage run. Budgets are unchanged, and no
+product behavior depends on whether a collector is present.
+
+### Coverage collector 18.11.0 and unloadability
+
+The 2026-10-26 diagnosis used a framework-only collectible assembly, without
+NestedSet, EF Core or Doka dependencies. On macOS 26.5.2 ARM64 with SDK 10.0.403
+and runtime 10.0.14, the statically instrumented module remained alive after
+ten full GC/finalizer cycles. Capture happened before any assertion or
+`WeakReference.Target` observation. The actual 18.11.0 collector injected two
+independent unloading blockers:
+
+- A strong root through AppDomain `ProcessExit`/`DomainUnload`, an event delegate,
+  its `_methodBase`, and the collectible `LoaderAllocator` reaches the module's
+  static test object.
+- A background thread remains inside the injected `PeriodicFlushLoop`. This is
+  an active method-frame blocker, distinct from the observed strong heap root.
+
+| Independent diagnostic control | Object and load context after GC |
+| --- | --- |
+| No collector | Collected |
+| No collector, intentionally retained object | Alive, as expected |
+| Code Coverage 18.10.1 | Collected |
+| Code Coverage 18.11.0 | Alive |
+| 18.11.0, only injected exit-event registrations removed | Alive; flush frame remains |
+| 18.11.0, only injected flush worker stopped | Alive; event-root path remains |
+| 18.11.0, both diagnostic interventions | Collected |
+
+The interventions are causal controls in that isolated probe, not product
+changes or an application mitigation. The source-only reproduction and raw
+root/stack evidence are retained in the maintainer review archive as
+`finding-codecoverage-18.11.0-collectible-gcroot-2026-10-26.md` and its companion
+directory. Its portable copy reproduced the old collector, unchanged new
+collector and combined-control results. These observations do not establish
+Windows/Linux or dynamic-instrumentation behavior, vendor confirmation, or a
+new hosted release qualification.
+
+The owner retained 18.11.0 because the required uninstrumented partition tests
+ordinary NestedSet ownership without collector-created references. This does
+not repair the collector or qualify unloading in an instrumented host. The two
+GC-lifetime controls contribute no coverage; the complementary Unit cases
+continue to supply instrumented execution evidence.
+
+To run the existing Unit partition contract from a fresh Release build:
+
+```bash
+dotnet build tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests -c Release
+dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests -c Release --no-build --no-restore \
+  --filter "Category=Allocation" --logger "trx;LogFileName=allocations.trx" \
+  --results-directory artifacts/unit-instrumentation-review
+dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests -c Release --no-build --no-restore \
+  --filter "Category!=Allocation" --settings eng/coverage.runsettings --collect:"Code Coverage" \
+  --logger "trx;LogFileName=coverage.trx" --results-directory artifacts/unit-instrumentation-review
+python3 -m eng.release.qualification --verify-results artifacts/unit-instrumentation-review \
+  --project Doka.EntityFrameworkCore.NestedSet.Unit.Tests
+```
+
+Use a new results directory for each comparison. Both invocations and result
+validation must succeed. Do not merge the invocations into one instrumented
+run or treat a lifetime failure as a skip. Commands here describe the existing
+procedure; this documentation change does not report a new test run.
+
+Re-evaluate the decision when the collector, executed runtime, platform or
+instrumentation mode changes; repeat the independent plain/18.10.1/candidate
+controls and the opposing NestedSet lifetime tests. Close the collector finding
+only after the instrumented module collects without removing events or stopping
+its worker. A requirement for instrumented unloading, additional retention
+affecting other tests, or changed partition selection/result validation also
+reopens the decision under D-013. Qualify a replacement or the 18.10.1 fallback
+if the required contract cannot be preserved; do not weaken assertions.
+
 ### Unicode counting contract
 
 The common Unicode counter uses the framework's generic surrogate-range search
@@ -36,6 +119,14 @@ The historical comparison below explains why coverage-only boxing is handled
 by measurement isolation instead of retaining a slower production search.
 
 ### Unicode counting and allocation measurement, 2026-10-26
+
+The final source passed 428 uninstrumented Unit cases and 2,250 complementary
+cases with the actual Code Coverage 18.10.1 collector. Their 2,678 test IDs are
+disjoint, and the reports contain executed lines in all six shipping modules.
+The complete native suites passed 4,307 MySQL/MariaDB, 2,007 PostgreSQL and
+2,039 SQLite cases. Migration and optional SafeMigrations suites passed 203
+and 96 cases. The 2,081 native SQL Server cases excluded by the ARM policy
+still require x64 qualification; local metadata cases do not replace it.
 
 An isolated BenchmarkDotNet 0.15.8 comparison used SDK 10.0.403 and runtime
 10.0.14 on an Apple M2 Max, after the native suites finished. Both cohorts use
@@ -78,6 +169,32 @@ validates completed native ownership once per context scope and returns the
 existing immutable adapter. Actual warmed `Resolve` controls allocate zero
 bytes across 10,000 calls on all five engine profiles, including after a full
 GC. They initialize actual provider service graphs without database I/O.
+
+Under Code Coverage 18.10.1, the generic surrogate-range search
+allocated 96 B per counter call; its uninstrumented execution allocated zero.
+The allocation trace recorded 91 warmed-budget samples of boxed `char` objects,
+24 B each, at that helper, with zero lost events. The temporary typed
+cached-search implementation required zero warm bytes in both modes. It
+covered the complete `D800..DFFF` range and preserved valid-pair counting and
+malformed-surrogate rejection. On the measured .NET 10.0.13 ARM64 runtime,
+initialization allocated 2,104 B, including a temporary `bool[2048]`, and
+retained a compact 32 B predicate; its character input buffer was stack-allocated,
+not a retained 4 KiB array.
+
+The separate uninstrumented BenchmarkDotNet comparison completed 24 scan/count
+cases. Complete counting of the two inputs with 256 UTF-16 code units cost
+about 7-9 ns more; the short ASCII/BMP inputs improved by about 0.3 ns. Other
+timings were mixed. This was an allocation/latency tradeoff, not a universal speedup. That
+Unit suite passed 2,676 cases normally and with coverage, with executed
+lines in all six shipping modules. The full MySQL/MariaDB suite passed 4,307
+cases before the isolated counter refinement; 70 affected native Unicode and
+compiled-model cases passed afterward. This local evidence establishes neither
+hosted release qualification nor native SQL Server execution on ARM. The
+[regression map](regression-coverage.md#provider-specific-identity-lengths)
+links the metadata, exhaustive range, rejection, and zero-allocation controls.
+These counts describe the cached-search source and earlier SDK, not the later
+measurement split or restored generic counter. The cached predicate and its
+initialization buffer are absent from the current implementation.
 
 ## Maintainability comparison on published packages
 

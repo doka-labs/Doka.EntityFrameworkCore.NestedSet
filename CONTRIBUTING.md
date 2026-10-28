@@ -432,6 +432,25 @@ source scope when the public fixture model changes.
 - verify optional SafeMigrations replay/drift separately from ordinary EF
   migration history.
 
+### Coverage and GC-lifetime controls
+
+Keep Code Coverage 18.11.0 with the mandatory Unit execution split in
+[D-013](docs/decisions/D-013-provider-owned-integration-test-projects.md).
+`Category=Allocation` includes allocation budgets and registration GC-lifetime
+controls; run it without a collector in a separate test invocation from
+`Category!=Allocation`. Both partitions must pass, with no skipped controls or
+duplicate case identities. Preserve the released-adapter assertion, deliberately
+retained registration control, and actual xUnit classification guards.
+
+The collector's injected exit-event handlers and flush thread prevent unloading
+on the diagnosed macOS ARM64 static path. Partitioning protects the product
+measurement; it does not fix that tooling defect or promise instrumented
+unloadability. Follow the
+[paired commands and re-evaluation criteria](docs/performance.md#coverage-collector-18110-and-unloadability)
+when changing the collector, runtime, platform, instrumentation or partition
+selection. A new GC-reachability test needs an explicit measurement environment;
+do not relax it to accommodate collector-owned references.
+
 ## Performance evidence
 
 Automated tests may assert deterministic structure, SQL command/update counts,

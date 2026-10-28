@@ -5,7 +5,7 @@ date: 2026-09-25
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
-scope: "EF Core test ownership, fixture-owned engines, and referenced specifications"
+scope: "EF Core test ownership, fixture-owned engines, referenced specifications, and instrumentation boundaries"
 supersedes: []
 superseded-by: []
 amends: []
@@ -64,6 +64,13 @@ must still execute every applicable database case. The test list must retain
 those local cases with visible runtime skips before container startup, and
 metadata-only suites must remain runnable.
 
+Code Coverage 18.11.0 adds a separate measurement boundary. On the examined
+macOS ARM64 static-instrumentation path, an independent collectible assembly
+without NestedSet remains alive through injected AppDomain exit-event handlers
+and an active periodic-flush thread. The same control unloads without coverage
+and with 18.10.1. Running an unloading assertion under that collector would
+measure the combined product and collector lifetime, rather than the product's
+ordinary registration ownership.
 
 ## Decision Drivers
 
@@ -365,10 +372,33 @@ measurement isolation. Collection and
 assembly initialization, cleanup, and discovery are not supported contexts for
 the database helper's contextual fixture lookup.
 
+For Unit instrumentation, retain the approved Test SDK and Code Coverage
+18.11.0 baseline with the existing mandatory uninstrumented measurement
+partition. `Category=Allocation` includes both allocation budgets and the
+registration's GC-lifetime controls; it is an execution partition, not a claim
+that every member measures allocated bytes. Each partition uses a separate
+test invocation. CI and RC run this partition without a collector, then run
+`Category!=Allocation` with coverage. Result validation requires both reports,
+disjoint case identities, and successful execution without skips. The released
+adapter and deliberately retained registration controls keep their original
+weak-reference assertions, protected by actual xUnit metadata guards.
+
+The collector-specific alternatives are:
 
 | Option | Disposition and reason |
 | --- | --- |
+| Keep 18.11.0 and require the uninstrumented partition | Selected: preserves the ordinary application lifetime contract and coverage for the remaining cases, using the existing allocation-measurement boundary. |
+| Return to 18.10.1 | The independent control unloads there, so this is a valid fallback if instrumented unloading becomes required or further collector effects invalidate the remaining tests. This finding alone does not require the downgrade. Allocation measurements still need isolation from instrumentation. |
 | Skip the lifetime controls or relax their assertions | Rejected: would remove the evidence that a NestedSet registration releases its adapter. |
+
+This decision isolates the product measurement; it does not fix Code Coverage
+18.11.0 or qualify unloading in a collector-instrumented host. The collector
+remains qualification tooling, not a shipping runtime dependency. The
+[coverage boundary and control matrix](../performance.md#coverage-collector-18110-and-unloadability)
+record the observed strong event-root chain and the separate active thread
+frame. The local diagnosis covers macOS ARM64, .NET 10.0.14 and static
+instrumentation; it establishes neither a vendor confirmation nor equivalent
+Windows, Linux or dynamic-instrumentation behavior.
 
 ### Consequences
 
@@ -390,6 +420,10 @@ the database helper's contextual fixture lookup.
   positive and negative qualification for shared and local fixture-owned cases.
 - Bad, because local ARM SQL Server database skips leave native x64 CI responsible
   for that part of qualification; metadata and unit success cannot replace it.
+- Good, because mandatory uninstrumented GC controls preserve product lifetime
+  checks without changing assertions to accommodate collector-owned roots.
+- Bad, because those controls do not contribute coverage, and the known
+  collector retention remains relevant to instrumented collectible hosts.
 
 ### Confirmation
 
@@ -483,6 +517,18 @@ filtered run does not establish coverage for a provider introduced later.
 
 - Run `eng/validate-adrs.sh` and the local Markdown link check; neither may
   report stale project or source paths.
+- Run the [paired Unit commands](../performance.md#coverage-collector-18110-and-unloadability).
+  Both partitions must pass; the released-adapter and deliberately live
+  registration controls must retain their opposing weak-reference assertions.
+  Run `RegistrationLifetimeControlsRunWithoutCoverage`; actual xUnit metadata
+  must classify both controls in the required uninstrumented partition.
+  Result validation must reject missing reports, repeated case identities,
+  failures and skips rather than treating the excluded coverage rows as passed.
+- On a collector/runtime/instrumentation change, repeat the independent
+  no-collector, 18.10.1 and candidate-collector unloading controls before changing
+  this boundary. Confirm the actual loaded versions and use a matching DAC for
+  any root capture. An instrumented module must collect without diagnostic event
+  removal or thread interruption before declaring this collector finding fixed.
 
 ## Pros and Cons of the Options
 
@@ -559,6 +605,14 @@ optional SafeMigrations adapter retain their own existing test projects.
 - Microsoft changes the SQL Server container platform boundary, or xUnit changes
   dynamic skip and before-test hook ordering; requalify platform checks and lazy
   fixtures before changing the local ARM execution policy.
+- Code Coverage, the executed runtime, platform or static/dynamic instrumentation
+  path changes: repeat the independent unloading controls and both NestedSet
+  lifetime controls. A vendor fix claim alone does not close the local finding;
+  successful collection without either diagnostic intervention is required.
+- A consumer or test requires unloading with coverage enabled, or additional
+  collector-owned retention/background work invalidates other test results:
+  reassess the 18.11.0 pin and qualify a collector replacement or the verified
+  18.10.1 fallback without weakening product assertions.
 - A new test depends on GC reachability, or CI/RC selection and result validation
   change: verify its required execution environment, actual xUnit classification
   and complete complementary reports before accepting the changed qualification.
@@ -585,9 +639,12 @@ optional SafeMigrations adapter retain their own existing test projects.
 - 2026-10-09: The first split exposed PostgreSQL error 53300 when two 64-writer scenarios overlapped. One type-based collection per server engine preserves the original single-class serialization without reducing writer count, increasing server limits, or disabling other collections. The raw metadata regression also protects this scheduling boundary.
 - 2026-10-09: The owner approved visible runtime skips for SQL Server database cases on local ARM before container startup, while retaining metadata and unit execution. Native Linux x64 CI retains mandatory provider, ordinary migration, and SafeMigrations cases with zero skips; unsupported CI must fail. The policy uses xUnit's runtime skip hook with lazy resources and records no new native CI qualification result or vendor startup correction.
 - 2026-10-25: Comparison and server-plan aggregates became independently discovered scenario rows with lazy class-owned immutable seeds and deterministic aggregate evidence. The comparison seed is separate from resettable sibling rows, while containers remain assembly-owned. Current framework text now follows the central pin; dated xUnit 4.0.1 sources and prior history remain intact. This entry records no new hosted qualification result.
+- 2026-10-26: After the independent GC-root diagnosis, the owner explicitly retained Code Coverage 18.11.0 with mandatory uninstrumented registration-lifetime controls. Recorded the two collector-owned unloading blockers, unchanged positive/negative assertions, downgrade criteria and re-evaluation requirements. The collector remains affected; this documentation update introduces no new product behavior or hosted qualification claim.
 
 ### Implementation References
 
+- [Coverage boundary, control matrix and paired Unit commands](../performance.md#coverage-collector-18110-and-unloadability)
+- [Registration identity and opposing GC-lifetime controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/OptionsExtensionTests.Identity.cs)
 - [Actual xUnit lifetime-partition metadata guards](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/ProviderFixtureIsolationTests.cs)
 - [CI complementary Unit executions](../../.github/workflows/ci.yml)
 - [RC partition execution and result validation](../../eng/release/qualification.py)
@@ -648,6 +705,8 @@ optional SafeMigrations adapter retain their own existing test projects.
 ### Sources
 
 - [Microsoft cooperative assembly unloadability and GC-root diagnosis](https://learn.microsoft.com/en-us/dotnet/standard/assembly/unloadability) (primary source; retrieved 2026-10-26)
+- [Microsoft Code Coverage 18.11.0 package identity](https://www.nuget.org/packages/Microsoft.CodeCoverage/18.11.0) (primary source; retrieved 2026-10-26)
+- [Microsoft Code Coverage 18.10.1 comparison package identity](https://www.nuget.org/packages/Microsoft.CodeCoverage/18.10.1) (primary source; retrieved 2026-10-26)
 - [OS architecture under emulation](https://learn.microsoft.com/en-us/dotnet/api/system.runtime.interopservices.runtimeinformation.osarchitecture?view=net-10.0) (primary source; retrieved 2026-10-09)
 - [Installed xUnit before-test invocation](https://github.com/xunit/xunit/blob/8ed8aa354c7298e157a0fc2dcd61b95df345256a/src/xunit.v3.core/Runners/Core/CoreTestRunner.cs) (primary source; retrieved 2026-10-09)
 - [Installed xUnit class and hook execution order](https://github.com/xunit/xunit/blob/8ed8aa354c7298e157a0fc2dcd61b95df345256a/src/xunit.v3.core/Runners/Base/TestRunner.cs) (primary source; retrieved 2026-10-09)

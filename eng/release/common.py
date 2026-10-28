@@ -11,6 +11,7 @@ from pathlib import Path
 
 REPOSITORY = "doka-labs/Doka.EntityFrameworkCore.NestedSet"
 PACKAGES = ("Doka.NestedSet", "Doka.EntityFrameworkCore.NestedSet")
+CONSUMERS = (("core", (PACKAGES[0],)), ("ef", (PACKAGES[1],)))
 STAGES = ("quality", "tests", "packages", "consumer", "sbom")
 RELEASE_WORKFLOW = ".github/workflows/release-candidate.yml"
 

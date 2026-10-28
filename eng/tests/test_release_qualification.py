@@ -2,15 +2,17 @@
 
 import copy
 import io
+import json
 import os
 import signal
+import subprocess
 import sys
 import tempfile
 import time
 import unittest
 import xml.etree.ElementTree as ET
 import zipfile
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -262,12 +264,15 @@ class StagePrerequisiteTests(QualificationFixture):
         # Arrange
         with patch.object(self.runner, "command") as command, \
                 patch.object(qualification, "verify_results", return_value={}), \
-                patch.object(qualification, "verify_query_plans"):
+                patch.object(qualification, "verify_query_plans"), \
+                patch.object(qualification, "test_projects", return_value=[self.runner.repo / "tests/First.Tests/First.Tests.csproj"]), \
+                patch.object(self.runner, "test_project") as run_project:
             # Act
             self.runner.tests()
 
         # Assert
-        self.assertEqual(["docker", "all-projects"], [call.args[1] for call in command.call_args_list[:2]])
+        self.assertEqual("docker", command.call_args_list[0].args[1])
+        run_project.assert_called_once_with("tests/First.Tests/First.Tests.csproj")
 
 
 class RunIdentityTests(QualificationFixture):
@@ -547,7 +552,7 @@ class PackageLockTests(unittest.TestCase):
     """Qualification requires reviewed shipping locks without imposing locks on every solution project."""
 
     def setUp(self):
-        """Declare two shipping packages and a nonshipping test project without a lockfile."""
+        """Declare every shipping package and a nonshipping test project without a lockfile."""
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.repo = Path(temporary.name) / "repo"
@@ -577,7 +582,7 @@ class PackageLockTests(unittest.TestCase):
 
         # Assert
         self.assertEqual(set(common.PACKAGES), set(records))
-        self.assertEqual(2, len(list((self.output / "locks").rglob("packages.lock.json"))))
+        self.assertEqual(len(common.PACKAGES), len(list((self.output / "locks").rglob("packages.lock.json"))))
         self.assertFalse((self.repo / "tests/Example.Tests/packages.lock.json").exists())
         for package, original in source_locks.items():
             self.assertEqual(original, (self.repo / "src" / package / "packages.lock.json").read_bytes())
@@ -646,14 +651,14 @@ class TestResultTests(unittest.TestCase):
         ET.SubElement(root, "Project", Path=library)
         ET.ElementTree(root).write(self.repo / qualification.SOLUTION)
 
-    def report(self, project, *, name=None, outcomes=("Passed",), duplicate_case=False):
+    def report(self, project, *, name=None, outcomes=("Passed",), duplicate_case=False, identity_prefix=""):
         """Write a minimal correctly namespaced TRX with internally coherent counters."""
         namespace = qualification.TRX["t"]
         root = ET.Element("TestRun", xmlns=namespace)
         definitions = ET.SubElement(root, "TestDefinitions")
         results = ET.SubElement(root, "Results")
         for index, outcome in enumerate(outcomes):
-            identity = "0" if duplicate_case else str(index)
+            identity = identity_prefix + ("0" if duplicate_case else str(index))
             ET.SubElement(definitions, "UnitTest", id=identity, storage=f"/bin/{project}.dll")
             ET.SubElement(results, "UnitTestResult", testId=identity, executionId=identity, outcome=outcome)
 
@@ -677,6 +682,318 @@ class TestResultTests(unittest.TestCase):
         # Assert
         self.assertEqual({"First.Tests", "Second.Tests"}, set(result))
         self.assertTrue(all(value["passed"] == 1 for value in result.values()))
+
+    def run_result_command(self, *arguments):
+        """Exercise the real entrypoint while forbidding qualification or source initialization."""
+        output = io.StringIO()
+        errors = io.StringIO()
+        with patch.object(qualification, "ROOT", self.repo), \
+                patch.object(sys, "argv", ["qualification", *map(str, arguments)]), \
+                patch.object(qualification, "Qualification", side_effect=AssertionError("Qualification was initialized")), \
+                patch.object(qualification, "source_identity", side_effect=AssertionError("Source identity was inspected")), \
+                redirect_stdout(output), redirect_stderr(errors):
+            try:
+                status = qualification.main()
+            except SystemExit as error:
+                status = error.code
+
+        return status, output.getvalue(), errors.getvalue()
+
+    def test_result_command_verifies_solution_without_release_initialization(self):
+        """The read-only mode needs passing results and solution inventory, without version or output."""
+        # Arrange
+        self.report("First.Tests")
+        self.report("Second.Tests")
+        before = {path.relative_to(self.repo): path.read_bytes() for path in self.repo.rglob("*") if path.is_file()}
+
+        # Act
+        status, output, errors = self.run_result_command("--verify-results", self.results)
+
+        # Assert
+        self.assertEqual(0, status, errors)
+        self.assertEqual({"First.Tests", "Second.Tests"}, set(json.loads(output)))
+        self.assertEqual(before, {path.relative_to(self.repo): path.read_bytes()
+                                  for path in self.repo.rglob("*") if path.is_file()})
+
+    def test_result_command_selects_known_assembly_name(self):
+        """CI may verify one owned assembly without requiring results for other solution projects."""
+        # Arrange
+        self.report("First.Tests")
+
+        # Act
+        status, output, errors = self.run_result_command("--verify-results", self.results, "--project", "First.Tests")
+
+        # Assert
+        self.assertEqual(0, status, errors)
+        self.assertEqual({"First.Tests"}, set(json.loads(output)))
+
+    def test_result_module_entrypoint_verifies_actual_solution_assembly(self):
+        """The exact CI module invocation works in a fresh process with real solution inventory."""
+        # Arrange
+        unit = qualification.ALLOCATION_PROJECT
+        self.report(unit, name="allocations.trx", identity_prefix="budget-")
+        self.report(unit, name="coverage.trx", identity_prefix="covered-")
+        command = [sys.executable, "-m", "eng.release.qualification", "--verify-results", str(self.results),
+                   "--project", unit]
+
+        # Act
+        result = subprocess.run(command, cwd=qualification.ROOT, capture_output=True, text=True, check=False)
+
+        # Assert
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(2, json.loads(result.stdout)[unit]["passed"])
+
+    def test_result_command_accepts_complementary_unit_partitions(self):
+        """The same CLI used by CI retains the mandatory disjoint Unit result contract."""
+        # Arrange
+        unit = self.unit_project()
+        self.report(unit, name="allocations.trx", identity_prefix="budget-")
+        self.report(unit, name="coverage.trx", identity_prefix="covered-")
+
+        # Act
+        status, output, errors = self.run_result_command("--verify-results", self.results)
+
+        # Assert
+        self.assertEqual(0, status, errors)
+        self.assertEqual(2, json.loads(output)[unit]["passed"])
+
+    def test_result_command_rejects_missing_unit_partition(self):
+        """A passing covered suite cannot replace the missing uninstrumented budget results."""
+        # Arrange
+        unit = self.unit_project()
+        self.report(unit, name="coverage.trx")
+
+        # Act
+        status, output, errors = self.run_result_command("--verify-results", self.results)
+
+        # Assert
+        self.assertEqual(1, status)
+        self.assertEqual("", output)
+        self.assertIn("tests_partitions", errors)
+
+    def test_result_command_rejects_missing_solution_project(self):
+        """Without a selector the command requires evidence for every executable solution test."""
+        # Arrange
+        self.report("First.Tests")
+
+        # Act
+        status, output, errors = self.run_result_command("--verify-results", self.results)
+
+        # Assert
+        self.assertEqual(1, status)
+        self.assertEqual("", output)
+        self.assertIn("tests_missing", errors)
+
+    def test_result_command_rejects_overlapping_unit_partitions(self):
+        """The command cannot count a repeated Unit case as complementary coverage."""
+        # Arrange
+        unit = self.unit_project()
+        self.report(unit, name="allocations.trx")
+        self.report(unit, name="coverage.trx")
+
+        # Act
+        status, output, errors = self.run_result_command("--verify-results", self.results)
+
+        # Assert
+        self.assertEqual(1, status)
+        self.assertEqual("", output)
+        self.assertIn("tests_duplicate", errors)
+
+    def test_result_command_rejects_failed_case(self):
+        """A failed result is rejected by the entrypoint before a success summary can be printed."""
+        # Arrange
+        self.report("First.Tests", outcomes=("Failed",))
+
+        # Act
+        status, output, errors = self.run_result_command("--verify-results", self.results, "--project", "First.Tests")
+
+        # Assert
+        self.assertEqual(1, status)
+        self.assertEqual("", output)
+        self.assertIn("tests_not_passed", errors)
+
+    def test_result_command_rejects_skipped_case(self):
+        """A skipped result is not accepted merely because its other counters are coherent."""
+        # Arrange
+        self.report("First.Tests", outcomes=("Passed", "NotExecuted"))
+
+        # Act
+        status, output, errors = self.run_result_command("--verify-results", self.results, "--project", "First.Tests")
+
+        # Assert
+        self.assertEqual(1, status)
+        self.assertEqual("", output)
+        self.assertIn("tests_not_passed", errors)
+
+    def test_result_command_rejects_unknown_project(self):
+        """A matching foreign TRX cannot authorize a name outside executable solution inventory."""
+        # Arrange
+        self.report("Foreign.Tests")
+
+        # Act
+        status, output, errors = self.run_result_command("--verify-results", self.results, "--project", "Foreign.Tests")
+
+        # Assert
+        self.assertEqual(1, status)
+        self.assertEqual("", output)
+        self.assertIn("tests_identity", errors)
+
+    def test_result_command_rejects_non_executable_project(self):
+        """A shared specification library cannot be selected as a result-producing test project."""
+        # Arrange
+        self.report("Specification.Tests")
+
+        # Act
+        status, output, errors = self.run_result_command("--verify-results", self.results,
+                                                         "--project", "Specification.Tests")
+
+        # Assert
+        self.assertEqual(1, status)
+        self.assertEqual("", output)
+        self.assertIn("tests_identity", errors)
+
+    def test_result_command_rejects_qualification_arguments(self):
+        """Each release-only option is incompatible with a read-only result check."""
+        variants = (("--version", VERSION), ("--output", "unused"), ("--workspace",),
+                    ("--job", "test"), ("--sample", "FileSystem"), ("--deadline-utc", "1"),
+                    ("--timeout-seconds", "7200"))
+        for arguments in variants:
+            with self.subTest(arguments=arguments):
+                # Arrange
+                command = ("--verify-results", self.results, *arguments)
+
+                # Act
+                status, output, errors = self.run_result_command(*command)
+
+                # Assert
+                self.assertEqual(2, status)
+                self.assertEqual("", output)
+                self.assertIn("incompatible with --verify-results", errors)
+
+    def test_qualification_still_requires_version(self):
+        """Adding the results-only mode does not make release version optional for qualification."""
+        # Arrange
+        arguments = ("--output", "unused")
+
+        # Act
+        status, output, errors = self.run_result_command(*arguments)
+
+        # Assert
+        self.assertEqual(2, status)
+        self.assertEqual("", output)
+        self.assertIn("--version", errors)
+
+    def test_qualification_still_requires_output(self):
+        """Ordinary qualification cannot silently choose a new output location."""
+        # Arrange
+        arguments = ("--version", VERSION)
+
+        # Act
+        status, output, errors = self.run_result_command(*arguments)
+
+        # Assert
+        self.assertEqual(2, status)
+        self.assertEqual("", output)
+        self.assertIn("--output", errors)
+
+    def test_qualification_preserves_normal_dispatch_and_default_timeout(self):
+        """The additional mode does not change existing release argument dispatch or its deadline."""
+        # Arrange
+        output = self.repo / "qualified"
+        arguments = ["qualification", "--version", VERSION, "--output", str(output)]
+        runner = Mock()
+
+        # Act
+        with patch.object(qualification, "ROOT", self.repo), patch.object(sys, "argv", arguments), \
+                patch.object(qualification, "Qualification", return_value=runner) as constructor:
+            status = qualification.main()
+
+        # Assert
+        self.assertEqual(0, status)
+        constructor.assert_called_once_with(self.repo, output, VERSION, False, 7200,
+                                            existing=False, deadline_utc=None)
+        runner.run.assert_called_once_with()
+        runner.run_job.assert_not_called()
+
+    def unit_project(self):
+        """Include the one assembly whose allocation and coverage partitions are complementary."""
+        name = "Doka.EntityFrameworkCore.NestedSet.Unit.Tests"
+        path = f"tests/{name}/{name}.csproj"
+        text_file(self.repo / path, "<Project />")
+        solution = ET.parse(self.repo / qualification.SOLUTION)
+        ET.SubElement(solution.getroot(), "Project", Path=path)
+        solution.write(self.repo / qualification.SOLUTION)
+        self.report("First.Tests")
+        self.report("Second.Tests")
+
+        return name
+
+    def test_complementary_unit_partitions_are_combined(self):
+        """Two disjoint fixed Unit partitions retain every result and both artifact hashes."""
+        # Arrange
+        unit = self.unit_project()
+        self.report(unit, name="allocations.trx", identity_prefix="budget-")
+        self.report(unit, name="coverage.trx", identity_prefix="covered-")
+
+        # Act
+        result = qualification.verify_results(self.repo, self.results)
+
+        # Assert
+        self.assertEqual(2, result[unit]["passed"])
+        self.assertEqual({"allocations.trx", "coverage.trx"},
+                         {report["trx"] for report in result[unit]["reports"]})
+        self.assertTrue(all(report["sha256"] for report in result[unit]["reports"]))
+
+    def test_missing_allocation_partition_is_rejected(self):
+        """An instrumented success cannot hide absent uninstrumented budgets."""
+        # Arrange
+        unit = self.unit_project()
+        self.report(unit, name="coverage.trx")
+
+        # Act
+        error = capture(lambda: qualification.verify_results(self.repo, self.results))
+
+        # Assert
+        self.assertEqual("tests_partitions", error.code)
+
+    def test_missing_coverage_partition_is_rejected(self):
+        """Passing budgets cannot replace the instrumented semantic tests."""
+        # Arrange
+        unit = self.unit_project()
+        self.report(unit, name="allocations.trx")
+
+        # Act
+        error = capture(lambda: qualification.verify_results(self.repo, self.results))
+
+        # Assert
+        self.assertEqual("tests_partitions", error.code)
+
+    def test_duplicate_identity_across_unit_partitions_is_rejected(self):
+        """A filtering mistake cannot run the same case in both modes and inflate totals."""
+        # Arrange
+        unit = self.unit_project()
+        self.report(unit, name="allocations.trx")
+        self.report(unit, name="coverage.trx")
+
+        # Act
+        error = capture(lambda: qualification.verify_results(self.repo, self.results))
+
+        # Assert
+        self.assertEqual("tests_duplicate", error.code)
+
+    def test_unknown_unit_partition_is_rejected(self):
+        """Additional or renamed reports cannot satisfy the fixed measurement contract."""
+        # Arrange
+        unit = self.unit_project()
+        self.report(unit, name="allocations.trx", identity_prefix="budget-")
+        self.report(unit, name="coverage.trx", identity_prefix="covered-")
+        self.report(unit, name="extra.trx", identity_prefix="extra-")
+
+        # Act
+        error = capture(lambda: qualification.verify_results(self.repo, self.results))
+
+        # Assert
+        self.assertEqual("tests_partitions", error.code)
 
     def test_library_report_cannot_replace_executable_suite(self):
         """A result attributed to a non-test library cannot satisfy missing executable coverage."""

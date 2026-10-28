@@ -153,6 +153,33 @@ construction. The [projection ownership controls](../tests/Doka.EntityFrameworkC
 inspect actual cached selectors, exercise forbidden-capture controls and measure
 the real sample's warm construction without database I/O.
 
+The [adapter registration controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/OptionsExtensionTests.Providers.cs)
+verify actual native callbacks, stable repeated selection, distinct service
+identities, and rejection of missing, mismatched, conflicting or opaque adapter
+registrations before model/database I/O. The
+[selected-adapter allocation controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/SelectedAdapterAllocationTests.cs)
+exercise real warmed `Resolve` calls on all five engine profiles, with and
+without a preceding full GC, requiring zero allocated bytes across 10,000 calls.
+The [scoped binding controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/OptionsExtensionTests.Bindings.cs)
+verify once-per-scope native validation, reuse of the exact immutable adapter
+without a wrapper, stable repeated descriptors, and rejection of opaque or
+unvalidated bindings without mutating the service graph.
+The [load-context controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/OptionsExtensionTests.Identity.cs)
+reject equal-named foreign adapter/native assemblies and check collectible
+registration ownership. These replace the removed optional reflected feature
+cache tests; they do not weaken query visibility or endpoint provenance.
+`RegistrationDoesNotRetainACollectibleAdapter` and
+`LiveRegistrationRetainsItsCollectibleAdapter` keep opposing weak-reference
+assertions in the mandatory uninstrumented `Category=Allocation` partition.
+`RegistrationLifetimeControlsRunWithoutCoverage` in the
+[actual xUnit metadata guards](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/ProviderFixtureIsolationTests.cs)
+protects both classifications. The
+[D-013 collector boundary](decisions/D-013-provider-owned-integration-test-projects.md)
+retains 18.11.0 for the complementary covered cases; it neither skips these
+controls nor establishes unloading under an instrumented host. See the
+[independent root/control evidence](performance.md#coverage-collector-18110-and-unloadability)
+for the known collector retention and the criteria for reopening that decision.
+
 The sections below name the source methods behind the matrix. The matrix is a
 selection guide, not a replacement for the full provider suites.
 
@@ -1185,6 +1212,11 @@ from the pure construction measurements. Existing allocation ceilings remain.
   surrogates, converter output, byte limits, custom mappings and bounded
   PostgreSQL aliases. Runtime clones retain their concrete policy; another
   assembly cannot authorize character counting with the same type name.
+- `WarmCharacterCountingDoesNotAllocate` checks ASCII, BMP, supplementary and
+  mixed inputs over 10,000 warmed operations with an exact zero-byte budget.
+  It runs in the mandatory uninstrumented `Category=Allocation` Unit partition;
+  the complementary Unit cases run with coverage. Instrumentation-only boxing
+  is not included in production allocation budgets, and no budget is relaxed.
 - `RuntimeModelRetainsPrimitiveNativeIdentityPolicies` and
   `CapturedIdentityPolicyKeepsBothBooleanDecisions` protect the adapter's
   captured Scope/TreeId decisions. Missing, non-Boolean, namesake-assembly and

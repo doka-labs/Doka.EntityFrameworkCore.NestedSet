@@ -76,6 +76,9 @@ public sealed partial class OptionsExtensionTests
     }
 
     /// <summary>The immutable registration does not globally retain a collectible adapter or its options.</summary>
+    // WHY: Coverage 18.11.0 prevents collectible-module unloading even in an independent control.
+    // The required uninstrumented measurement partition observes the application's actual GC lifetime.
+    [Trait("Category", "Allocation")]
     [Fact]
     public void RegistrationDoesNotRetainACollectibleAdapter()
     {
@@ -92,6 +95,7 @@ public sealed partial class OptionsExtensionTests
     }
 
     /// <summary>A deliberately live registration keeps its adapter reachable, validating the lifetime probe.</summary>
+    [Trait("Category", "Allocation")]
     [Fact]
     public void LiveRegistrationRetainsItsCollectibleAdapter()
     {

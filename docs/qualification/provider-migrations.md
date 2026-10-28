@@ -247,3 +247,11 @@ symbol archives passed inspection. All seven fresh package consumers passed;
 all six SBOMs passed vendor validation and independent verification. The three SQLite sample
 applications completed all scenarios; all 282 engineering contract tests and
 verify-only Roslyn style/IDE0005 checks passed.
+
+The Unit suite also passed all 2,676 cases under Code Coverage 18.10.1, with
+executed lines in every one of the six shipping modules. This repeated suite
+is not counted twice. The [allocation record](../performance.md#provider-split-allocation-controls-2026-10-26)
+retains the counter's measured initialization and latency tradeoff. These local
+results establish neither hosted release/publication evidence nor native SQL
+Server qualification; the skipped database cases remain mandatory on supported
+Linux x64 CI.
