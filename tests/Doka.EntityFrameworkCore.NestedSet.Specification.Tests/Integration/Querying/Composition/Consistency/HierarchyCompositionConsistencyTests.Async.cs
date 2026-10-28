@@ -66,12 +66,20 @@ public abstract partial class HierarchyCompositionConsistencyTests
         });
 
         // Assert
-        var canceled = Assert.IsAssignableFrom<OperationCanceledException>(error);
-        Assert.Equal(cancellation.Token, canceled.CancellationToken);
+        Assert.IsAssignableFrom<OperationCanceledException>(error);
         Assert.False(completed);
         // WHY: EF may call the provider interceptor before the driver checks an already-canceled token.
         // Cancellation promises propagation and no successful result, not zero command dispatch attempts.
         Assert.InRange(probe.CommandCount, 0, 1);
+
+        if (probe.CommandCount != 0)
+        {
+            // WHY: SqlClient can cancel its returned task without preserving the token on its exception.
+            // The actual command boundary establishes forwarding independently of driver exception metadata.
+            Assert.Equal(cancellation.Token, probe.ReaderCancellationToken);
+        }
+
+        Assert.Equal(0, probe.MaterializedNodes);
         Assert.Empty(context.ChangeTracker.Entries());
     }
 

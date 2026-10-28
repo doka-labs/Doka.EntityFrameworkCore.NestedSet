@@ -86,7 +86,21 @@ public abstract partial class HierarchyCompositionTests
 
         // Act
         var started = Stopwatch.GetTimestamp();
-        var actual = await query.ToArrayAsync(CancellationToken.None);
+        int[] actual;
+
+        try
+        {
+            actual = await query.ToArrayAsync(CancellationToken.None);
+        }
+        catch (Exception error)
+        {
+            // WHY: A timeout before successful replay must still retain its exact SQL and estimated plan.
+            await CompositionCapacityProfiles.RetainFailureAsync(
+                context, Engine, $"deep-{shape}-{nodes}", planProbe, error, commandIndex);
+
+            throw;
+        }
+
         var elapsed = Stopwatch.GetElapsedTime(started);
         var queryCommands = probe.CommandCount;
         var materializedNodes = probe.MaterializedNodes;

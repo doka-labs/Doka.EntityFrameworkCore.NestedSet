@@ -9,11 +9,15 @@ internal sealed class CompositionCommandProbe : DbCommandInterceptor
     /// <summary>Gets the number of hierarchy entity instances materialized by the observed context.</summary>
     internal int MaterializedNodes { get; private set; }
 
+    /// <summary>Gets the last asynchronous reader's caller token, or null when no reader was dispatched.</summary>
+    internal CancellationToken? ReaderCancellationToken { get; private set; }
+
     /// <summary>Excludes fixture initialization from the query's command budget.</summary>
     internal void Reset()
     {
         CommandCount = 0;
         MaterializedNodes = 0;
+        ReaderCancellationToken = null;
     }
 
     /// <summary>Counts this feature's entity type rather than relying on another suite's type allowlist.</summary>
@@ -57,6 +61,7 @@ internal sealed class CompositionCommandProbe : DbCommandInterceptor
     )
     {
         CommandCount++;
+        ReaderCancellationToken = cancellationToken;
 
         return ValueTask.FromResult(result);
     }

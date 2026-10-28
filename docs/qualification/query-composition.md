@@ -15,6 +15,75 @@ semantics. [D-018](../decisions/D-018-generic-hierarchy-query-composition.md) an
 [D-019](../decisions/D-019-optional-ancestor-index-and-source-binding.md)
 record the architectural decisions.
 
+## CI correction qualification 2026-10-28
+
+The first hosted run of stable preparation, CI `40668521125` at source
+`7f770a3e4d9e4878dc518c28a4587ff85b119f6f`, failed one MySQL case, one
+PostgreSQL case and 16 SQL Server cases. Its source-quality, build/package,
+engineering, Unit, SQLite, sample and migration lanes passed. These corrections
+are uncommitted successor changes; they are not a successful hosted rerun.
+
+The failures have distinct evidence boundaries:
+
+- Four SQL Server capacity failures stopped in the shared fixture's `Math.Min`
+  translation at EF's default compatibility level 150. Equivalent bounded
+  `CASE` arithmetic keeps that default. SQL translation and native SQLite
+  full/partial-branch controls pass without changing provider compatibility.
+- Four indexed SignalLab failures lacked the SQL Server snapshot prerequisite.
+  Indexed, normal and isolated contexts now share the fixture setup and active
+  entity observer. A separate control deliberately materializes one entity to
+  prove the observer detects it.
+- Two SQL Server cancellation assertions required the exception to retain the
+  caller token. SqlClient 6.1.7 can cancel its task without that exception
+  metadata. Tests still require cancellation and no successful result; the
+  original token is checked directly at command/read boundaries.
+- One ten-million-node SQL Server case timed out in a single payload-seeding
+  `INSERT SELECT`. The fixture now uses existing 100,000-key windows. Four
+  independent SQLite controls verify empty, partial, full and second-batch
+  payloads, including exact key totals. Ordinary query deadlines are unchanged.
+- Five SQL Server capacity reads timed out in actual composed queries. Retained
+  wide plans read about 9.5-10 million index/lookup rows for selective requests.
+  The strict ancestor coordinate relation and scalar parent-existence proof
+  address those SQL shapes. Nine focused coordinate controls pass, including
+  real SQL Server translation and executed SQLite adversarial semantics.
+  This is not proof that SQL Server's optimizer chooses the intended plan;
+  native x64 capacity execution and actual plans remain outstanding.
+- The MySQL query returned all 501,005 expected rows, but the separate
+  instrumented replay was interrupted after about 30 seconds and returned a
+  partial root of 470,220 rows. The replay-only watchdog and warning checks
+  described in the [performance guide](../performance.md#regression-diagnosis)
+  preserve the original result and work assertions. The corrected original
+  native MySQL case passes with complete root cardinality 501,005, 604,007
+  base-table tuples against the unchanged 32,128,384 allowance, and 100,815,239
+  operator tuples against 400,004,000. Two native replay controls independently
+  verify complete execution and rejection of an explicitly interrupted replay.
+- The PostgreSQL 10,000-node `Path` timeout was not reproduced. All eight
+  original deep profiles pass both plain and with the CI coverage settings on
+  the predecessor binary. The successor's full 58-case composition suite also
+  passes. Original and successor path plans observe 30,282 and 30,281 shared
+  buffer hits respectively, with one scalar result and no entity materialization.
+  These local observations neither explain the hosted timeout nor establish a
+  speedup. The original failed query's SQL/estimated plan is now retained if it
+  recurs, including when diagnostic plan capture also fails.
+
+The portable long-path changes additionally pass 36 mapping cases on native
+PostgreSQL and SQLite each: complete and interrupted paths with independent,
+row-correlated and nearest rules over shadow, named-indexer, TPT, binary,
+converted and entity-split models. A focused 663-case Unit composition cohort
+passes. Native SQL Server execution remains required for the changed SQL
+Server strategy, snapshot setup and large workloads. No capacity case is
+excluded, and no semantic, allocation or native-work budget is increased.
+
+The final local Release solution build completes with zero warnings/errors;
+Roslyn style and IDE0005 verify-only checks pass. The final Unit partitions
+pass 2,318 ordinary and 451 uninstrumented allocation cases. The targeted
+native MySQL/MariaDB cohort passes 114 mapping, cancellation, deep-path and
+indexed-report cases; PostgreSQL passes 17 deep-path, cancellation and indexed
+report cases with Code Coverage 18.11.0 and the CI runsettings. These are
+focused cohorts, not complete native provider suites. The separate original
+MySQL failure passes as described above. All quoted local cohorts have zero
+failures/skips; none is native SQL Server or hosted release evidence.
+
 ## Semantic and native-work evidence
 
 The public operations preserve source occurrences, exact Scope/TreeId and

@@ -79,6 +79,19 @@ the narrowly approved registration-removal exception.
 
 ### Fixed
 
+- Preserve portable complete-path proofs through exact visible parent existence
+  per child. SQL Server strict ancestor reads restrict independent structural
+  coordinates before hydrating owners, retaining duplicate-owner occurrences,
+  mapped equality and query filters.
+- Correct shared capacity setup at SQL Server's default compatibility level,
+  batch large payload seeds by primary key, and enable snapshot isolation in
+  indexed SignalLab fixtures. Check cancellation forwarding at the command and
+  reader boundaries rather than requiring a driver-specific exception token.
+- Separate instrumented plan replay from ordinary query deadlines, reject
+  interrupted MySQL plans, and retain failed deep-query SQL and estimated plans.
+  Result, allocation and native-work assertions remain unchanged. See the
+  [CI correction evidence](docs/qualification/query-composition.md#ci-correction-qualification-2026-10-28)
+  for executed checks and remaining native-platform limits.
 - Bound eligible strict ancestor owners by a shared selected source and the
   existing structural index, without requiring generated ancestor schema.
   Complete matched identities before payload hydration on known MySQL for

@@ -1701,6 +1701,30 @@ independent observations. These optional timings introduce no CI/RC gate.
 
 ## Regression diagnosis
 
+Actual-plan replay is a separate instrumented execution. The shared
+`QueryPlanTestSupport.ExplainAsync` uses an explicit context command timeout
+when configured; otherwise its raw diagnostic command has a 120-second
+watchdog. It does not change EF's ordinary query timeout, result or native-work
+budgets. A streamed result can finish while an instrumented execution exceeds
+the ordinary first-response deadline, so replay duration is recorded separately.
+MySQL replay also reads `SHOW WARNINGS` and rejects warning 1317: MySQL can
+return a partial TREE after interruption, as shown by its
+[interruption reporting path](https://github.com/mysql/mysql-server/blob/8.4/sql/sql_class.cc#L2038-L2061).
+A nonempty plan is insufficient;
+the existing complete-root cardinality and work assertions must still pass.
+See [MySQL's EXPLAIN documentation](https://dev.mysql.com/doc/refman/8.4/en/explain.html).
+
+Portable long-path proofs count children with one visible allowed direct
+parent, retaining native key equality, consecutive depth, containment and
+row-dependent rules. SQL Server's strict ancestor strategy restricts distinct
+tree/bound coordinates before joining every visible mapped owner. The
+coordinate boundary excludes the unique node key, which could otherwise let
+the optimizer remove `DISTINCT`. Equal-bound owners are restored rather than
+deduplicated. These SQL shapes do not guarantee physical seeks or bounded
+server work; native execution plans and unchanged capacity guards remain
+required. The [2026-10-28 correction record](qualification/query-composition.md#ci-correction-qualification-2026-10-28)
+separates verified local behavior from outstanding native SQL Server execution.
+
 1. Reproduce on the same controlled environment and stable source.
 2. Compare package DLL hashes, runtime, engine/image, schema, application indexes,
    statistics, topology and selected occurrence counts.

@@ -104,13 +104,16 @@ internal static class QueryPlanTestSupport
             .GetDbConnection()
             .CreateCommand();
 
+        // WHY: An instrumented plan returns its first row only after completing the observed query,
+        // unlike the streamed read. Bound that separate diagnostic wait without changing EF query options.
+        command.CommandTimeout = context.Database.GetCommandTimeout() ?? 120;
         var sql = probe.Commands[index];
         command.CommandText = engine switch
         {
             "PostgreSql" => "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) " + sql,
             // WHY: Const lookups disappear from MySQL's runtime TREE once fetched during optimization.
             // Retain JSON access-path metadata alongside the actual runtime plan to verify those primary-key reads.
-            "MySql" => "EXPLAIN FORMAT=JSON " + sql + "; EXPLAIN ANALYZE FORMAT=TREE " + sql,
+            "MySql" => "EXPLAIN FORMAT=JSON " + sql + "; EXPLAIN ANALYZE FORMAT=TREE " + sql + "; SHOW WARNINGS",
             "MariaDb" => "ANALYZE FORMAT=JSON " + sql,
             "SqlServer" => "SET STATISTICS XML ON; " + sql + "; SET STATISTICS XML OFF;",
             _ => "EXPLAIN QUERY PLAN " + sql,
@@ -126,8 +129,27 @@ internal static class QueryPlanTestSupport
 
         do
         {
+            var mySqlWarnings = engine == "MySql"
+                && reader.FieldCount == 3
+                && reader.GetName(0).Equals("Level", StringComparison.OrdinalIgnoreCase)
+                && reader.GetName(1).Equals("Code", StringComparison.OrdinalIgnoreCase)
+                && reader.GetName(2).Equals("Message", StringComparison.OrdinalIgnoreCase);
+
             while (await reader.ReadAsync(CancellationToken.None))
             {
+                if (mySqlWarnings)
+                {
+                    // WHY: MySQL can return a partial TREE after cancellation instead of throwing.
+                    // Its warning is decisive even when the plan's counters look structurally valid.
+                    if (reader.GetInt32(1) == 1317)
+                    {
+                        throw new InvalidOperationException(
+                            "MySQL query-plan replay was interrupted (warning 1317); partial execution is not complete evidence.");
+                    }
+
+                    continue;
+                }
+
                 // WHY: SQL Server first returns the actual SELECT results, then a separate XML plan result set.
                 if (engine == "SqlServer"
                     && !reader

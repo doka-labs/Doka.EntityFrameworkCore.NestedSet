@@ -23,7 +23,7 @@ public abstract partial class SignalReportTests
         // WHY: Indexed and default reports intentionally use the same physical sample table names.
         // Own this model's database instead of changing the real sample mapping or shared fixture schema.
         await using var database = new ModelCompatibilityDatabase();
-        await using var context = await database.CreateContextAsync<IndexedSignalLabContext>(Engine,
+        await using var context = await CreateContextAsync<IndexedSignalLabContext>(database,
             static options => new IndexedSignalLabContext(options), probe);
 
         var data = await SignalReportDataset.CreateAsync(context, scenario, false, CancellationToken.None, Guid.NewGuid());
@@ -45,6 +45,30 @@ public abstract partial class SignalReportTests
         Assert.Equal(expected.Count, cells.Length);
         Assert.All(cells, cell => Assert.Equal(expected[(cell.AnchorId, cell.ChannelId, cell.Source)], cell));
         AssertReportBoundary(context, probe);
+    }
+
+    /// <summary>Proves that indexed report setup detects entity materialization instead of leaving its guard inert.</summary>
+    [Fact]
+    public async Task IndexedReportSetupObservesMaterialization()
+    {
+        // Arrange
+        var probe = new SignalReportProbe();
+        await using var database = new ModelCompatibilityDatabase();
+        await using var context = await CreateContextAsync<IndexedSignalLabContext>(database,
+            static options => new IndexedSignalLabContext(options), probe);
+
+        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        probe.Reset();
+
+        // Act
+        var node = await context.Nodes.AsNoTracking()
+            .FirstAsync(node => node.TenantId == data.TenantId, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(data.TenantId, node.TenantId);
+        Assert.Equal(1, probe.Entities);
+        Assert.Single(probe.Readers);
+        Assert.Empty(context.ChangeTracker.Entries());
     }
 
     /// <summary>Opts the real sample model into the index without changing its default schema.</summary>

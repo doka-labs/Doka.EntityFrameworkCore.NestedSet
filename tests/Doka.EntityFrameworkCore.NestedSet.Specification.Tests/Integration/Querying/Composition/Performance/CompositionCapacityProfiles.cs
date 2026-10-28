@@ -158,11 +158,15 @@ internal static partial class CompositionCapacityProfiles
                             + ((node.NodeId - 2) % BalancedBranchSize == 0
                                 ? 0L
                                 : (2L * ((node.NodeId - 2) % BalancedBranchSize)) - 1))
+                    // WHY: CASE preserves the partial-branch cap at EF's default SQL Server compatibility;
+                    // Math.Min requires a newer LEAST translation and would fail before fixture I/O.
                     .SetProperty(node => node.End,
                         node => (node.NodeId - 2) % BalancedBranchSize == 0
-                            ? Math.Min(2L * nodes - 1,
-                                1L + (((long)Math.Floor((node.NodeId - 2) / (double)BalancedBranchSize) + 1L)
-                                    * 2L * BalancedBranchSize))
+                            ? 1L + (((long)Math.Floor((node.NodeId - 2) / (double)BalancedBranchSize) + 1L)
+                                * 2L * BalancedBranchSize) < (2L * nodes) - 1
+                                ? 1L + (((long)Math.Floor((node.NodeId - 2) / (double)BalancedBranchSize) + 1L)
+                                    * 2L * BalancedBranchSize)
+                                : (2L * nodes) - 1
                             : 2L + ((long)Math.Floor((node.NodeId - 2) / (double)BalancedBranchSize)
                                     * 2L * BalancedBranchSize)
                                 + (2L * ((node.NodeId - 2) % BalancedBranchSize)))
@@ -301,7 +305,11 @@ internal static partial class CompositionCapacityProfiles
     }
 
     /// <summary>Copies only the requested scalar payload keys with mapped table names and bounded SQL.</summary>
-    private static async Task SeedPayloadAsync(
+    /// <param name="context">The case-owned database with its already seeded hierarchy.</param>
+    /// <param name="nodes">The largest source key in the fixture's dense population.</param>
+    /// <param name="facts">The number of trailing hierarchy keys that receive payload.</param>
+    /// <returns>A task completing after every bounded insert has finished.</returns>
+    internal static async Task SeedPayloadAsync(
         TreeContext context,
         int nodes,
         int facts
@@ -322,14 +330,20 @@ internal static partial class CompositionCapacityProfiles
         var value = sql.DelimitIdentifier(target.FindProperty(nameof(UnrelatedRow.Value))!
             .GetColumnName(targetStore)!);
 
-        var first = nodes - facts + 1;
-        var statement = $"INSERT INTO {sql.DelimitIdentifier(targetStore.Name, targetStore.Schema)} "
-            + $"({targetKey}, {value}) SELECT {sourceKey}, 'fact' "
-            + $"FROM {sql.DelimitIdentifier(sourceStore.Name, sourceStore.Schema)} "
-            + $"WHERE {sourceKey} >= {first.ToString(CultureInfo.InvariantCulture)}";
+        // WHY: A broad ten-million-row fixture must not become one extra unbounded INSERT before
+        // the measured query. Reuse the existing primary-key window size without changing facts or timeouts.
+        for (var first = (long)nodes - facts + 1; first <= nodes; first += NativeMutationBatchSize)
+        {
+            var last = Math.Min((long)nodes, first + NativeMutationBatchSize - 1);
+            var statement = $"INSERT INTO {sql.DelimitIdentifier(targetStore.Name, targetStore.Schema)} "
+                + $"({targetKey}, {value}) SELECT {sourceKey}, 'fact' "
+                + $"FROM {sql.DelimitIdentifier(sourceStore.Name, sourceStore.Schema)} "
+                + $"WHERE {sourceKey} >= {first.ToString(CultureInfo.InvariantCulture)} "
+                + $"AND {sourceKey} <= {last.ToString(CultureInfo.InvariantCulture)}";
 
-        // WHY: Only fixture-owned integer bounds are interpolated; no user input or unquoted identifier enters SQL.
-        await context.Database.ExecuteSqlRawAsync(statement, CancellationToken.None);
+            // WHY: Only fixture-owned integer bounds are interpolated; identifiers use the provider delimiter.
+            await context.Database.ExecuteSqlRawAsync(statement, CancellationToken.None);
+        }
     }
 
     /// <summary>Persists plans and measurements without making machine-dependent duration a gate.</summary>

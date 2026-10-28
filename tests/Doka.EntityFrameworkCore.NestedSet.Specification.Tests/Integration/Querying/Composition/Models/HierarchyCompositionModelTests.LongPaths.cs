@@ -103,10 +103,17 @@ public abstract partial class HierarchyCompositionModelTests
     }
 
     /// <summary>Exercises distance-five and distance-four paths using each model's real mapped key transport.</summary>
-    private static IQueryable<int> QueryLongDepths<TEntity>(NestedSetTree<TEntity, Guid> hierarchy, string filter)
+    /// <typeparam name="TEntity">The actual mapped node type, including named or shadow-backed models.</typeparam>
+    /// <param name="hierarchy">The exact selected tree and optional scope.</param>
+    /// <param name="filter">The independent, endpoint-correlated, or nearest path contract.</param>
+    /// <param name="depthProperty">The configured depth role, independent of misleading conventional CLR members.</param>
+    private static IQueryable<int> QueryLongDepths<TEntity>(
+        NestedSetTree<TEntity, Guid> hierarchy,
+        string filter,
+        string depthProperty = nameof(INestedSetNode<int, Guid>.Depth)
+    )
         where TEntity : class
     {
-        const string depthProperty = nameof(INestedSetNode<int, Guid>.Depth);
         var rows = hierarchy.SelectSubtrees(node => EF.Property<int>(node, depthProperty) <= 1,
                 (upper, node, distance) => new { Upper = upper, Node = node })
             .Where(row => EF.Property<int>(row.Node, depthProperty) == 5);

@@ -2,6 +2,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Features.Queries;
 
 internal sealed partial class NestedSetQuery<TEntity>
 {
+    private static readonly MethodInfo s_countPathChildren = MethodOf(
+        (Expression<Func<IQueryable<TEntity>, long>>)(nodes => nodes.LongCount(node => true)));
+
     /// <summary>Filters rows by a complete visible path and the caller's direct-edge condition.</summary>
     internal IQueryable<TRow> WherePathEdges<TRow>(
         IQueryable<TRow> source,
@@ -113,13 +116,6 @@ internal sealed partial class NestedSetQuery<TEntity>
         LambdaExpression? edgeAllowed
     )
     {
-        _edges ??= NestedSetParentExpressions<TEntity, NestedSetQueryEdge<TEntity>>.Join(
-            _nodes,
-            _descriptor.NodeKey.Resolve(_entityType),
-            _descriptor.Parent.Resolve(_entityType),
-            _keyCollation,
-            s_edgeProjection);
-
         // WHY: Both endpoints already resolve to visible mapped rows in this SQL statement. Rejoining
         // those same rows for a short path repeats large query roots during EF parameter extraction.
         // One edge needs only their native FK equality; two edges need one unknown visible middle row.
@@ -146,6 +142,13 @@ internal sealed partial class NestedSetQuery<TEntity>
             && (edgeAllowed is null
                 || !NestedSetQueryExpressions.References(edgeAllowed.Body, edgeAllowed.Parameters[0])))
         {
+            _edges ??= NestedSetParentExpressions<TEntity, NestedSetQueryEdge<TEntity>>.Join(
+                _nodes,
+                _descriptor.NodeKey.Resolve(_entityType),
+                _descriptor.Parent.Resolve(_entityType),
+                _keyCollation,
+                s_edgeProjection);
+
             // WHY: On valid bounds/depth, a path is complete exactly when none of its children lacks
             // a visible allowed direct parent. Row-independent failures permit a shared bucket proof;
             // row-aware rules below must still retain their own exact joined count.
@@ -156,42 +159,28 @@ internal sealed partial class NestedSetQuery<TEntity>
         }
         else
         {
-            // WHY: Only the joined-count proof consumes these aliases and consecutive-depth nodes.
-            // The failure-relation branch builds its own proof; eager construction would repeat unused
-            // property/method validation there without contributing a node to the submitted query.
-            var edge = Expression.Parameter(typeof(NestedSetQueryEdge<TEntity>), "edge");
-            var parent = Expression.Property(edge, s_edgeParent);
-            var child = Expression.Property(edge, s_edgeChild);
-
-            // WHY: A corrupt Parent may skip a structural level while another edge still makes the
-            // total count equal the endpoint distance. Only consecutive mapped depths form direct edges.
-            var consecutive = Expression.Equal(
-                Expression.Convert(Depth(child), typeof(long)),
-                Expression.Add(Expression.Convert(Depth(parent), typeof(long)), s_oneEdge));
+            var parent = Expression.Parameter(typeof(TEntity), "parent");
+            var child = Expression.Parameter(typeof(TEntity), "child");
+            var allowedParent = Expression.AndAlso(
+                Contains(upper, parent, includeSelf: true),
+                Expression.AndAlso(
+                    Contains(parent, lower, includeSelf: true),
+                    DirectPathEdge(parent, child, row, edgeAllowed)));
 
             Expression allowed = Expression.AndAlso(
                 Contains(upper, child, includeSelf: false),
                 Expression.AndAlso(
                     Contains(child, lower, includeSelf: true),
-                    Expression.AndAlso(
-                        Contains(upper, parent, includeSelf: true),
-                        Contains(parent, lower, includeSelf: true))));
+                    CorrelatedCondition(Any(_nodes, parent, allowedParent))));
 
-            allowed = Expression.AndAlso(allowed, consecutive);
-
-            if (edgeAllowed is not null)
-            {
-                allowed = Expression.AndAlso(
-                    allowed,
-                    NestedSetQueryExpressions.Inline(edgeAllowed, row, parent, child));
-            }
-
-            // WHY: Row-aware rules retain their per-row aggregate; no application input is hoisted into
-            // a shared failure set, and the original joined proof remains portable across EF mappings.
+            // WHY: The mapped parent key is unique, so one visible allowed parent contributes exactly
+            // one edge per child. A scalar parent probe retains native key/collation/depth checks and
+            // exposes the unique lookup instead of a free parent/child range join; actual plans qualify its work.
+            // Row-aware rules still retain their exact per-row count; no caller value is hoisted.
             longPath = Expression.Call(
-                s_countEdges,
-                _edges.Expression,
-                Expression.Quote(Expression.Lambda<Func<NestedSetQueryEdge<TEntity>, bool>>(allowed, edge)));
+                s_countPathChildren,
+                _nodes.Expression,
+                Expression.Quote(Expression.Lambda<Func<TEntity, bool>>(allowed, child)));
         }
 
         // WHY: Wide and depth-two reports need only identity or one/two indexed direct-edge lookups.

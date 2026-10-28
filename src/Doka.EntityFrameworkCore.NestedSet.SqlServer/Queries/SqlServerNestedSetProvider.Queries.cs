@@ -3,6 +3,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.SqlServer;
 internal sealed partial class SqlServerNestedSetProvider
 {
     /// <inheritdoc />
+    internal override bool UsesIndependentAncestorOwners => true;
+
+    /// <inheritdoc />
     internal override bool SupportsTrackedKeyCollection(
         IProperty key
     )

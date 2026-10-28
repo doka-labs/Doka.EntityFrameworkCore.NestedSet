@@ -8,6 +8,11 @@ internal sealed partial class NestedSetQuery<TEntity>
         Expression<Func<TEntity, TEntity, int, TResult>> projection
     )
     {
+        if (_capabilities.CompletedSourceMethod is null)
+        {
+            return SelectCoordinateAncestorPairs(selected, projection);
+        }
+
         if (SelectBoundedIndependentAncestorPairs(selected, projection) is { } bounded)
         {
             return bounded;

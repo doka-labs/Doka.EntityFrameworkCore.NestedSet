@@ -677,6 +677,39 @@ model fixtures and from query construction without I/O.
 
 ## Execution qualification
 
+The [2026-10-28 CI correction record](qualification/query-composition.md#ci-correction-qualification-2026-10-28)
+keeps hosted failures separate from local correction evidence. New long-path
+controls cover complete and missing-parent paths across renamed shadow,
+named-indexer, TPT and binary models, alongside converted and entity-split
+controls. Each independent, row-correlated and nearest variant retains exact
+results, one command, zero entities and an empty tracker. See the
+[shadow](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Composition/Models/HierarchyCompositionModelTests.LongPaths.Shadow.cs),
+[named](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Composition/Models/HierarchyCompositionModelTests.LongPaths.Named.cs),
+[TPT](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Composition/Models/HierarchyCompositionModelTests.LongPaths.Inheritance.cs)
+and [binary](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Composition/Models/HierarchyCompositionModelTests.LongPaths.Binary.cs)
+cases.
+
+The [SQL Server coordinate controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerAncestorBoundsTests.cs)
+check generated SQL and schema-only diagnostics. Their
+[executed semantic controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerAncestorBoundsTests.Semantics.cs)
+use SQLite for duplicate bounds, native text equality, converted keys, hidden
+or foreign identities, empty selections and extreme intervals. They do not
+replace native SQL Server plans. [Fixture translation](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Observation/CapacityFixtureTranslationTests.cs)
+and [payload seeding](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Observation/CapacityPayloadSeedingTests.cs)
+have independent compatibility and batch-boundary controls.
+
+Q24 and C30 assert the original caller token at the observed command/read
+boundary and reject successful or partial cancellation results. A provider may
+cancel its task without copying that token into the resulting exception;
+`OperationCanceledException.CancellationToken` identity is not a separate
+NestedSet contract. [Probe controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Observation/CompositionCommandProbeTests.cs)
+verify cancellation observation and reset. [Replay controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Observation/QueryPlanReplayTests.cs)
+keep ordinary query options intact and reject interrupted MySQL evidence;
+[failure controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Observation/QueryPlanReplayTests.Failures.cs)
+retain the actual query after fixture commands even when estimated-plan capture
+fails. The indexed SignalLab fixture additionally proves that its entity
+materialization observer is active.
+
 The [2026-10-26/27 synthetic comparison](qualification/query-performance.md#synthetic-signal-lab-2026-10-26)
 records completed native read, construction, materializer, MariaDB scale and
 prespecified construction-repeat observations. The four original-before

@@ -260,10 +260,24 @@ public abstract partial class SignalReportTests : ProviderTest
     /// <summary>
     /// Runs one actual sample context in the provider's existing database without duplicating schema setup.
     /// </summary>
-    private async Task<SignalLabContext> CreateContextAsync(SignalReportProbe probe)
+    private Task<SignalLabContext> CreateContextAsync(SignalReportProbe probe)
+        => CreateContextAsync<SignalLabContext>(_fixture, static options => new SignalLabContext(options), probe);
+
+    /// <summary>Creates every sample model with the same observation and snapshot prerequisites.</summary>
+    /// <typeparam name="TContext">The normal or indexed sample context.</typeparam>
+    /// <param name="database">The shared or case-owned fixture database.</param>
+    /// <param name="createContext">Creates the requested context using the fixture's provider options.</param>
+    /// <param name="probe">The context-specific materialization and command observer.</param>
+    /// <returns>The context with live entity observation and the required SQL Server snapshot option.</returns>
+    private async Task<TContext> CreateContextAsync<TContext>(
+        ModelCompatibilityDatabase database,
+        Func<DbContextOptions<TContext>, TContext> createContext,
+        SignalReportProbe probe
+    )
+        where TContext : SignalLabContext
     {
-        var context = await _fixture.CreateContextAsync<SignalLabContext>(Engine,
-            static options => new SignalLabContext(options), probe, TestMaterializationObserver.Instance);
+        var context = await database.CreateContextAsync(Engine,
+            createContext, probe, TestMaterializationObserver.Instance);
 
         TestMaterializationObserver.Instance.Register(context, probe.Materialized);
 

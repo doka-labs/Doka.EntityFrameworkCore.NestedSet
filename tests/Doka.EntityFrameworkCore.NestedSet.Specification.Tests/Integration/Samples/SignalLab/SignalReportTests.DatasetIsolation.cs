@@ -13,16 +13,8 @@ public abstract partial class SignalReportTests
         // earlier scenarios and concurrently executing suites, without disposing the shared fixture.
         await using var owned = new ModelCompatibilityDatabase();
         var probe = new SignalReportProbe();
-        await using var context = await owned.CreateContextAsync<SignalLabContext>(Engine,
-            static options => new SignalLabContext(options), probe, TestMaterializationObserver.Instance);
-
-        TestMaterializationObserver.Instance.Register(context, probe.Materialized);
-
-        if (Engine == "SqlServer")
-        {
-            await context.Database.ExecuteSqlRawAsync("ALTER DATABASE CURRENT SET ALLOW_SNAPSHOT_ISOLATION ON",
-                CancellationToken.None);
-        }
+        await using var context = await CreateContextAsync<SignalLabContext>(owned,
+            static options => new SignalLabContext(options), probe);
 
         var firstTenant = Guid.NewGuid();
         var secondTenant = Guid.NewGuid();

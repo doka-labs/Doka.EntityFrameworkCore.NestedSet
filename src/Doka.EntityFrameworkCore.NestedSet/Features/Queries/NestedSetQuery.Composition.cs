@@ -14,9 +14,6 @@ internal sealed partial class NestedSetQuery<TEntity>
 
     private static readonly ConditionalWeakTable<Type, MethodInfo> s_selectManyMethods = new();
 
-    private static readonly MethodInfo s_countEdges = MethodOf(
-        (Expression<Func<IQueryable<NestedSetQueryEdge<TEntity>>, long>>)(edges => edges.LongCount(edge => true)));
-
     // WHY: Name-based Expression.Call repeatedly scans Queryable's generic overloads during warm
     // report construction. These templates retain only exact public method metadata, never query state.
     private static readonly MethodInfo s_where = MethodOf(
@@ -97,7 +94,7 @@ internal sealed partial class NestedSetQuery<TEntity>
         if (!normalized
             && ancestors
             && _descriptor.AncestorIndexProperty is not null
-            && !_capabilities.UsesIndependentAncestorOwners)
+            && (_capabilities.CompletedSourceMethod is null || _capabilities.OrderedJoinMethod is null))
         {
             NestedSetQueryDiagnostics.AncestorIndexWithoutReader(_context);
         }
