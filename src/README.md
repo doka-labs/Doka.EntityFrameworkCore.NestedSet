@@ -22,7 +22,7 @@ Each adapter's kernel dependency is exact because it implements a private
 integration contract. Keep adapter and kernel versions aligned when updating;
 the kernel's public dependency on `Doka.NestedSet` remains a minimum version.
 
-The 10.x package line targets .NET 10 and EF Core 10. The `10.1.0` source contract
+The 10.x package line targets .NET 10 and EF Core 10. The stable `10.1.0` contract
 changes installation and infrastructure registration from `10.0.0`; existing
 mapping and hierarchy APIs remain in the common package. Install one adapter,
 which brings in both common packages transitively:
@@ -31,9 +31,8 @@ which brings in both common packages transitively:
 dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.1.0
 ```
 
-Use the exact published version from the matching
-[GitHub release](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/releases)
-or NuGet package page. Select the adapter matching the application's EF provider;
+Keep all selected adapters and the common EF package at `10.1.0`.
+Select the adapter matching the application's EF provider;
 `Postgres` is the NestedSet suffix for the Npgsql PostgreSQL integration.
 
 ## Identify and configure a hierarchy

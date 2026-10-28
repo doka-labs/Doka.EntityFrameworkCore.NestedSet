@@ -13,12 +13,11 @@ dotnet package add Doka.EntityFrameworkCore.NestedSet.SqlServer --version 10.1.0
 
 The adapter brings in `Doka.EntityFrameworkCore.NestedSet`, `Doka.NestedSet`,
 and `Microsoft.EntityFrameworkCore.SqlServer` `[10.0.13,11.0.0)` transitively. Use one qualified
-NestedSet version across the application's NestedSet packages. These commands
-describe the `10.1.0` source contract; select the exact published release version
-when installing from NuGet.
+NestedSet version across the application's NestedSet packages. Version `10.1.0`
+is the stable six-package contract.
 
 The adapter requires exactly the matching common EF kernel version, `[10.1.0]`
-for this source contract. Update all selected NestedSet adapters together.
+for this release. Update all selected NestedSet adapters together.
 
 The shipping dependency graph explicitly raises `System.Security.Cryptography.Pkcs`
 to a minimum of `9.0.21`, without an upper bound, for the native SQL Client path.

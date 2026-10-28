@@ -1,1 +1,3 @@
 #nullable enable
+Doka.EntityFrameworkCore.NestedSet.PostgresNestedSetOptionsBuilderExtensions
+static Doka.EntityFrameworkCore.NestedSet.PostgresNestedSetOptionsBuilderExtensions.UseNestedSets(this Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure.NpgsqlDbContextOptionsBuilder! optionsBuilder) -> Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure.NpgsqlDbContextOptionsBuilder!

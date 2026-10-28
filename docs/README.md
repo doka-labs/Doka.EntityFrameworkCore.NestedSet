@@ -5,8 +5,10 @@ guide by the task you need to complete. Feature guides define supported
 behavior, architecture records explain why material decisions exist, and
 runbooks own operational procedures.
 
-These guides describe the `10.1.0` source contract and its compatible additions
-to `10.0.0`. See the [changelog](../CHANGELOG.md) for changes and the
+These guides describe the stable `10.1.0` contract, including query composition
+and the breaking provider-package/registration transition from `10.0.0`.
+See the [upgrade guide](upgrading-provider-packages.md) and
+[changelog](../CHANGELOG.md) for changes, and the
 [support matrix](support-and-qualification.md) for qualified versions.
 
 ## Use NestedSet

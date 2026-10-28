@@ -10,8 +10,7 @@ dependency.
 dotnet package add Doka.NestedSet --version 10.1.0
 ```
 
-These commands describe the `10.1.0` source contract. Select the exact published
-release version when installing from NuGet.
+Version `10.1.0` retains the stable ORM-independent API from `10.0.0`.
 
 For database-backed hierarchies, install the matching
 `Doka.EntityFrameworkCore.NestedSet.MySql`, `.Postgres`, `.Sqlite`, or `.SqlServer`

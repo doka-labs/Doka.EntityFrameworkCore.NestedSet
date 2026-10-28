@@ -1,6 +1,6 @@
 # Upgrade to provider-owned packages
 
-The `10.1.0` source contract changes package installation and infrastructure
+The stable `10.1.0` contract changes package installation and infrastructure
 registration. `Doka.EntityFrameworkCore.NestedSet` remains the common EF kernel;
 its hierarchy facade, entity mapping, structural algorithms, and transaction
 contracts remain shared. `Doka.NestedSet` remains the small ORM-independent
@@ -22,11 +22,10 @@ preserve the removed registration API.
 Install the adapter matching each context's database. It brings the common EF
 kernel, `Doka.NestedSet`, and the matching EF database provider transitively.
 Use one qualified NestedSet version for all NestedSet packages in an application.
-The commands below use this source's `10.1.0` package identity; use the exact
-version of the release being installed.
+The commands below upgrade an application to stable `10.1.0`.
 
 Each adapter depends on exactly that release of the common EF kernel:
-`[10.1.0]` for this source. The adapter implements assembly-internal kernel
+`[10.1.0]` for this release. The adapter implements assembly-internal kernel
 contracts, so a different kernel patch is not an advertised compatible
 combination. Update all selected adapters together, including applications
 using different providers in separate contexts. The public-only dependency

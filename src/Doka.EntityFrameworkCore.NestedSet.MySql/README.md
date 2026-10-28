@@ -13,12 +13,11 @@ dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.1.0
 
 The adapter brings in `Doka.EntityFrameworkCore.NestedSet`, `Doka.NestedSet`,
 and `Doka.EntityFrameworkCore.MySql` `[10.6.2,10.7.0)` transitively. Use one qualified
-NestedSet version across the application's NestedSet packages. These commands
-describe the `10.1.0` source contract; select the exact published release version
-when installing from NuGet.
+NestedSet version across the application's NestedSet packages. Version `10.1.0`
+is the stable six-package contract.
 
 The adapter requires exactly the matching common EF kernel version, `[10.1.0]`
-for this source contract. Update all selected NestedSet adapters together.
+for this release. Update all selected NestedSet adapters together.
 
 The adapter binds Doka's public engine, source-binding, and ordered-join APIs
 directly. Doka 10.6.2 also requires EF Relational below `10.1.0`; intersect

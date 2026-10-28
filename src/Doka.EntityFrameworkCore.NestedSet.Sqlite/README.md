@@ -13,12 +13,11 @@ dotnet package add Doka.EntityFrameworkCore.NestedSet.Sqlite --version 10.1.0
 
 The adapter brings in `Doka.EntityFrameworkCore.NestedSet`, `Doka.NestedSet`,
 and `Microsoft.EntityFrameworkCore.Sqlite` `[10.0.13,11.0.0)` transitively. Use one qualified
-NestedSet version across the application's NestedSet packages. These commands
-describe the `10.1.0` source contract; select the exact published release version
-when installing from NuGet.
+NestedSet version across the application's NestedSet packages. Version `10.1.0`
+is the stable six-package contract.
 
 The adapter requires exactly the matching common EF kernel version, `[10.1.0]`
-for this source contract. Update all selected NestedSet adapters together.
+for this release. Update all selected NestedSet adapters together.
 
 The adapter references the full Microsoft SQLite provider package, including
 its normal native runtime dependency graph. SQLite's single-writer behavior

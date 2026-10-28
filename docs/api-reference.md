@@ -1,16 +1,24 @@
 # API reference
 
-This reference describes the public `10.1.0` source API, including the explicit
+This reference describes the public stable `10.1.0` API, including the explicit
 provider-package/registration break from `10.0.0`. The application keeps its normal
 `DbSet<TEntity>` and obtains hierarchy behavior from the caller-owned context.
 
-The initial `10.0.0` contract is recorded in the shipped baselines for
+The current stable contract is recorded in the shipped baselines for
 [Core](../src/Doka.NestedSet/PublicAPI.Shipped.txt) and
 [EF Core](../src/Doka.EntityFrameworkCore.NestedSet/PublicAPI.Shipped.txt).
-They preserve the historical `10.0.0` declarations. The `10.1.0` source contract
-records additions and the removed options-level registration in the EF package's
-[unshipped API baseline](../src/Doka.EntityFrameworkCore.NestedSet/PublicAPI.Unshipped.txt).
-Each provider adapter has its own callback API baseline. See the
+Each provider adapter records its native callback in its own shipped baseline:
+[MySql](../src/Doka.EntityFrameworkCore.NestedSet.MySql/PublicAPI.Shipped.txt),
+[Postgres](../src/Doka.EntityFrameworkCore.NestedSet.Postgres/PublicAPI.Shipped.txt),
+[Sqlite](../src/Doka.EntityFrameworkCore.NestedSet.Sqlite/PublicAPI.Shipped.txt), and
+[SqlServer](../src/Doka.EntityFrameworkCore.NestedSet.SqlServer/PublicAPI.Shipped.txt).
+Unshipped files are reserved for changes after `10.1.0`.
+
+The historical `10.0.0` declarations remain available in that release's
+[Core baseline](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/blob/v10.0.0/src/Doka.NestedSet/PublicAPI.Shipped.txt) and
+[EF baseline](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/blob/v10.0.0/src/Doka.EntityFrameworkCore.NestedSet/PublicAPI.Shipped.txt).
+SDK package validation still compares the two original package IDs with
+`10.0.0`, with only the approved options-registration removal suppressed. See the
 [breaking registration migration](upgrading-provider-packages.md).
 
 ## Registration and mapping

@@ -18,12 +18,12 @@ preview/11.x are registered inactive. This procedure activates none of them.
 
 ## Release identity
 
-The source uses `VersionPrefix=10.1.0` without a prerelease suffix. Both
-original `PublicAPI.Shipped.txt` files retain the historical `10.0.0` declarations.
-The common EF unshipped file records composition additions and removed
-options-level registration, and each adapter records its native callback API.
-Before stable qualification, promote the reviewed API changes in all affected
-baselines. The breaking transition is documented in the
+The source uses `VersionPrefix=10.1.0` without a prerelease suffix and the
+`## 10.1.0 (2026-10-28)` changelog entry. The reviewed stable APIs are recorded
+in all six shipped baselines; their unshipped files contain no pending changes.
+SDK package validation still compares the two original packages with `10.0.0`
+and retains only the approved options-registration removal exception. The
+breaking transition is documented in the
 [upgrade guide](../upgrading-provider-packages.md).
 Prior release artifacts remain evidence for their exact version, not for the
 changed source or packages.
@@ -32,10 +32,10 @@ Use the reviewed PR and publication sequence below for each release.
 
 Before starting the candidate:
 
-1. Confirm the intended publication date in `CHANGELOG.md` and retain the exact
-   `## 10.1.0 (YYYY-MM-DD)` heading expected by the existing release tooling.
-   Promote the Unreleased entry with the reviewed publication date; do not
-   infer successful publication from source metadata.
+1. Confirm the reviewed `## 10.1.0 (2026-10-28)` entry in `CHANGELOG.md` and
+   retain that exact version/date heading for qualification. If the publication
+   date changes before qualification, update the changelog and this release
+   identity together. Do not change the qualified source afterward.
 2. Review the stable API, package READMEs, provider qualification, and
    [Passing evidence](../openssf-best-practices.md) against the candidate source.
 3. Retain maintainer knowledge/report-history confirmations separately from

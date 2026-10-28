@@ -6,7 +6,8 @@ authority is in [Release governance](release-governance.md).
 The [release-line contract](operations/release-lines.md) governs exact branch
 eligibility, framework ownership, preparation and ongoing servicing.
 
-Version `10.0.0` is the first stable contract. Each version, including the
+Version `10.1.0` is the current stable six-package contract; `10.0.0` is the
+first stable contract. Each version, including the
 earlier `10.0.0-rc.1`, retains its own exact packages and qualification evidence.
 RC archives are never renamed into stable packages.
 

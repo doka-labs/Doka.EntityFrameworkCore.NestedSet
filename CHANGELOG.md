@@ -7,15 +7,18 @@ explicit one-time `10.1.0` exception for the provider-package/registration break
 below. The package major follows the .NET family; `11.x` is reserved for .NET 11.
 This exception does not authorize other breaking minor releases.
 
-## Unreleased
+## 10.1.0 (2026-10-28)
 
-The source version is `10.1.0`. The historical `10.0.0` shipped declarations
-remain recorded; the provider-package and registration transition below is
-explicitly breaking.
+Stable contract for all six NestedSet packages on .NET 10 and EF Core 10.
+The provider-package and registration transition below is explicitly breaking;
+follow the [upgrade guide](docs/upgrading-provider-packages.md) when updating
+from `10.0.0`. The shipped API baselines record the `10.1.0` contract, while SDK
+package validation retains the published `10.0.0` compatibility baseline and
+the narrowly approved registration-removal exception.
 
 ### Added
 
-- Prepare independently qualified framework release lines through the existing
+- Support independently qualified framework release lines through the existing
   parallel six-package pipeline. Keep `main`/10 active and the registered
   maintenance/preview lines inactive; reuse protected publication, retain exact
   candidate bytes, promote stable Latest monotonically, and service active

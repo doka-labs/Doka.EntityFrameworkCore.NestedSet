@@ -42,7 +42,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all"/>
     <None Include="$(MSBuildThisFileDirectory)../LICENSE" Pack="true" PackagePath="/"/>
-    <!-- WHY: Package consumers receive usage guidance without depending on unfinished repository delivery tooling. -->
+    <!-- WHY: The common EF package shares the central usage guide; other packages provide their own README. -->
     <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="/"
           Condition="!Exists('$(MSBuildProjectDirectory)/README.md')"/>
     <None Include="$(MSBuildProjectDirectory)/README.md" Pack="true" PackagePath="/"

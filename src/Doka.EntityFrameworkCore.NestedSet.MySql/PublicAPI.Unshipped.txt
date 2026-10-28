@@ -1,3 +1,1 @@
 #nullable enable
-Doka.EntityFrameworkCore.NestedSet.MySqlNestedSetOptionsBuilderExtensions
-static Doka.EntityFrameworkCore.NestedSet.MySqlNestedSetOptionsBuilderExtensions.UseNestedSets(this Doka.EntityFrameworkCore.MySql.MySqlDbContextOptionsBuilder! optionsBuilder) -> Doka.EntityFrameworkCore.MySql.MySqlDbContextOptionsBuilder!

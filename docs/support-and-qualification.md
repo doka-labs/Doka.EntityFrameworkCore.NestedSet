@@ -66,7 +66,7 @@ baseline; the approved removal of the former options-registration API is
 recorded by a narrowly scoped compatibility suppression. The four new adapter
 IDs have no preceding package to use as a baseline.
 
-Version `10.0.0` is the initial stable contract. The `10.1.0` source includes
+Version `10.0.0` is the initial stable contract. Stable `10.1.0` includes
 generic query composition and the explicitly breaking provider-package/callback
 registration transition described in the [upgrade guide](upgrading-provider-packages.md).
 The owner explicitly kept `10.1.0` for this narrow SemVer exception; package

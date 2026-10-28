@@ -1,1 +1,3 @@
 #nullable enable
+Doka.EntityFrameworkCore.NestedSet.SqlServerNestedSetOptionsBuilderExtensions
+static Doka.EntityFrameworkCore.NestedSet.SqlServerNestedSetOptionsBuilderExtensions.UseNestedSets(this Microsoft.EntityFrameworkCore.Infrastructure.SqlServerDbContextOptionsBuilder! optionsBuilder) -> Microsoft.EntityFrameworkCore.Infrastructure.SqlServerDbContextOptionsBuilder!

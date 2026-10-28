@@ -495,17 +495,22 @@ a successful restore.
 
 `PublicAPI.Shipped.txt` records the reviewed stable release contract.
 `PublicAPI.Unshipped.txt` contains additions for the next stable release,
-including declarations first published in an RC. The initial `10.0.0` contract
-is recorded in the original two shipped baselines. The composition methods and
-removed options-level registration for `10.1.0` remain in the EF package's
-unshipped baseline until release preparation. Each native adapter has its own
-callback API baseline; the pure core has no new declarations. The architectural
+including declarations first published in an RC. The shipped files now record
+the stable `10.1.0` contract: the pure core is unchanged, common EF includes
+query composition, and each native adapter owns its callback API. The removed
+options-level registration is absent from the current baseline; its historical
+`10.0.0` declaration remains in that release tag. SDK package validation retains
+the original `10.0.0` baseline and the narrow approved removal suppression.
+The architectural
 break is recorded in [D-020](docs/decisions/D-020-provider-owned-runtime-packages.md)
 and the [upgrade guide](docs/upgrading-provider-packages.md). The Public API
 analyzer must remain clean.
 
-Before a stable release, move reviewed additions into the shipped file in the
-release-preparation source commit. Removals and signature changes require an
+Before a stable release, move reviewed additions into the shipped file and
+apply approved removals to that current contract in the release-preparation
+source commit. Clear the processed unshipped entries; historical declarations
+remain in their release tags and SDK compatibility baselines. Removals and
+signature changes require an
 explicit compatibility and SemVer decision, tests, docs, changelog, and a MADR
 record when architectural.
 

@@ -3,6 +3,10 @@
 [![CI](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/workflows/ci.yml/badge.svg?event=pull_request)](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/workflows/ci.yml)
 [![NuGet Core](https://img.shields.io/nuget/v/Doka.NestedSet.svg?label=NuGet%20Core)](https://www.nuget.org/packages/Doka.NestedSet)
 [![NuGet EF Core](https://img.shields.io/nuget/v/Doka.EntityFrameworkCore.NestedSet.svg?label=NuGet%20EF%20Core)](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet)
+[![NuGet MySql](https://img.shields.io/nuget/v/Doka.EntityFrameworkCore.NestedSet.MySql.svg?label=NuGet%20MySql)](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet.MySql)
+[![NuGet Postgres](https://img.shields.io/nuget/v/Doka.EntityFrameworkCore.NestedSet.Postgres.svg?label=NuGet%20Postgres)](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet.Postgres)
+[![NuGet Sqlite](https://img.shields.io/nuget/v/Doka.EntityFrameworkCore.NestedSet.Sqlite.svg?label=NuGet%20Sqlite)](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet.Sqlite)
+[![NuGet SqlServer](https://img.shields.io/nuget/v/Doka.EntityFrameworkCore.NestedSet.SqlServer.svg?label=NuGet%20SqlServer)](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet.SqlServer)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/badge)](https://scorecard.dev/viewer/?uri=github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15143/badge)](https://www.bestpractices.dev/projects/15143)
@@ -27,10 +31,10 @@ default, with optional MySQL and SQLite routes and persistent, inspectable resul
 | --- | --- |
 | [`Doka.NestedSet`](https://www.nuget.org/packages/Doka.NestedSet) | Small EF-independent node and bounds contracts |
 | [`Doka.EntityFrameworkCore.NestedSet`](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet) | Shared EF mapping, hierarchy algorithms, queries, mutations, ordering, transactions, and repair |
-| `Doka.EntityFrameworkCore.NestedSet.MySql` | Doka integration for MySQL and MariaDB |
-| `Doka.EntityFrameworkCore.NestedSet.Postgres` | Npgsql integration for PostgreSQL |
-| `Doka.EntityFrameworkCore.NestedSet.Sqlite` | Microsoft SQLite integration |
-| `Doka.EntityFrameworkCore.NestedSet.SqlServer` | Microsoft SQL Server integration |
+| [`Doka.EntityFrameworkCore.NestedSet.MySql`](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet.MySql) | Doka integration for MySQL and MariaDB |
+| [`Doka.EntityFrameworkCore.NestedSet.Postgres`](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet.Postgres) | Npgsql integration for PostgreSQL |
+| [`Doka.EntityFrameworkCore.NestedSet.Sqlite`](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet.Sqlite) | Microsoft SQLite integration |
+| [`Doka.EntityFrameworkCore.NestedSet.SqlServer`](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet.SqlServer) | Microsoft SQL Server integration |
 
 The 10.x package line targets .NET 10 and EF Core 10. Install the adapter for
 the application's database. It brings in the common EF package, `Doka.NestedSet`,
@@ -43,7 +47,7 @@ source remains .NET/EF Core 10; additional release lines are registered inactive
 
 ## Install
 
-This source defines the `10.1.0` package contract, including a breaking
+Version `10.1.0` is the stable six-package contract, including a breaking
 installation and infrastructure-registration change from `10.0.0`. The hierarchy
 API and its data/transaction contracts stay shared. See the
 [upgrade guide](docs/upgrading-provider-packages.md) and [changelog](CHANGELOG.md).
@@ -53,9 +57,8 @@ For Doka MySQL/MariaDB, install the selected adapter:
 dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.1.0
 ```
 
-Use the exact version from the matching
-[GitHub release](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/releases)
-or NuGet package page when installing a published release.
+Keep all selected NestedSet adapters and the common EF package at `10.1.0`.
+Each adapter requires its exact matching common EF kernel version.
 
 The provider qualification matrix is:
 
