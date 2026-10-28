@@ -27,6 +27,9 @@ explicitly breaking.
   [capability and workload table](docs/configuration.md#optional-ancestor-index).
 - Report schema-only ancestor-index reads on adapters without an optimized
   reader through filterable EF diagnostics, once per actual context.
+- Extend the independently synthetic SignalLab and UserGroups samples with
+  connection availability, typed tags, event aggregation, global/membership roles, ambiguity evidence and
+  bounded supervisor chains. Complete report/chain reads share one snapshot.
 
 ### Changed
 
@@ -47,6 +50,10 @@ explicitly breaking.
 - Bind each adapter to the exact common EF package version it was built with.
   Update NestedSet adapters together; their private integration contract is not
   a promise of compatibility with another kernel patch.
+- Reuse request-free supervisor projections while preserving per-request
+  authorization and deferred source values. Replace optional reflected Doka
+  feature discovery and its options/assembly lookup caches with the MySql
+  adapter's directly typed Doka 10.6.2 APIs and exact method identities.
 - Refresh the qualification graph to published Doka 10.6.2 and SafeMigrations
   10.6.0 and EF Core 10.0.14. Preserve shipping
   EF compatibility ranges and database LTS lines. The newer local adapter
@@ -70,6 +77,10 @@ explicitly breaking.
   Preserve the complete walk bag through the required public provider APIs.
   Preserve portable strategies for ineligible sources, model filters, exact identities,
   containment, and mapped endpoint checks.
+- Keep supervisor source selection selective through necessary membership
+  witnesses, then rejoin the original authorized users and groups before
+  candidate decisions. Preserve membership validity, visibility, source status,
+  and occurrence evidence.
 - Count supplementary characters correctly for known Doka/Npgsql character
   mappings after conversion, and reject malformed surrogate sequences before
   registry commands. Preserve binary byte limits and conservative custom mappings.

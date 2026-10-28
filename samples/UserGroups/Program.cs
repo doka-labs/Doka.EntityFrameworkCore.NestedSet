@@ -11,6 +11,10 @@ internal static class Program
         "rollback",
         "rejected",
         "supervisors",
+        "team-supervisors",
+        "group-level-supervisors",
+        "ancestor-selection",
+        "supervisor-chain",
     ];
 
     /// <summary>Validates options before database access and preserves stored results after each run.</summary>
@@ -85,6 +89,15 @@ internal static class Program
 
                         break;
 
+                    case "team-supervisors":
+                    case "group-level-supervisors":
+                    case "ancestor-selection":
+                    case "supervisor-chain":
+                        await GroupSupervisorScenario.RunAsync(
+                            configuration, scenario, command.Details, cancellation.Token);
+
+                        break;
+
                     case "supervisors":
                         await SupervisorScenario.RunAsync(configuration, command.Details, cancellation.Token);
 
@@ -120,7 +133,7 @@ internal static class Program
     ) => SampleConsole.WriteLineAsync(
         "UserGroups sample\n"
         + "  --provider mariadb|mysql|sqlite   Doka MariaDB is the default.\n"
-        + "  --scenario inheritance|commit|rollback|rejected|supervisors|all\n"
+        + "  --scenario inheritance|commit|rollback|rejected|supervisors|team-supervisors|group-level-supervisors|ancestor-selection|supervisor-chain|all\n"
         + "  --inspect                       Read existing results without changing them.\n"
         + "  --reset                         Reset only nestedset_sample_usergroups, then run.\n"
         + "  --details                       Include tenant, tree and structural coordinates.\n"

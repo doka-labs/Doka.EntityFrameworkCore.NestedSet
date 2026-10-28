@@ -4,6 +4,13 @@ Nested sets exchange write amplification for fast ordered hierarchy reads. The
 package keeps client work iterative and bounded, while database range updates
 remain proportional to the affected coordinate suffix in the worst case.
 
+The maintainability, UserGroups, and earlier dated comparisons below identify
+their frozen sources and package graphs.
+They predate the [D-020 provider-package split](decisions/D-020-provider-owned-runtime-packages.md),
+including removal of optional reflected Doka binding. Their measured values
+and test counts remain historical evidence; they do not establish fresh
+performance or qualification of the adapter architecture.
+
 Consumer observations dated 2026-10-25 or earlier also predate the independent
 SignalLab instrument model and its heterogeneous acquisition events. Retained
 numbers describe the frozen predecessor source and workload. Current sample or
@@ -109,6 +116,67 @@ Execute activities are different layers and are not added together. These
 functional setup scopes overlap and include observer/logging overhead, so
 their durations establish no setup speedup or additive throughput result.
 
+## UserGroups allocation follow-up, 2026-10-26
+
+| Complete read, origins / metadata fields | Before B/op | After B/op | Before ms/op | After ms/op |
+| --- | ---: | ---: | ---: | ---: |
+| MariaDB, 1 / 1 | 611808 / 610318 | 585765 / 586140 | 6.239 / 6.200 | 6.125 / 6.229 |
+| MariaDB, 16 / 4 | 617286 / 618310 | 593042 / 590018 | 7.320 / 7.627 | 7.583 / 7.179 |
+| MySQL, 1 / 1 | 610842 / 610461 | 585591 / 586653 | 5.801 / 5.641 | 5.934 / 5.603 |
+| MySQL, 16 / 4 | 617282 / 615733 | 588340 / 589005 | 9.135 / 9.297 | 9.237 / 9.286 |
+
+Complete reads allocate about 24.5-27.8 KB less per operation in these controls,
+4.02-4.51%. Their latency remains mixed: descriptive mean changes are -0.69%
+and -1.24% on MariaDB, +0.84% and +0.49% on MySQL. Individual process confidence
+intervals overlap across cohorts; this is no general read speedup or proof of
+unchanged latency.
+
+| Construction only, origins / metadata fields | Before B/op | After B/op | Before us/op | After us/op |
+| --- | ---: | ---: | ---: | ---: |
+| MariaDB, 1 / 1 | 242448 / 240961 | 217989 / 217299 | 212.616 / 210.761 | 176.135 / 199.259 |
+| MariaDB, 16 / 4 | 243800 / 244001 | 218668 / 218728 | 211.712 / 214.292 | 188.529 / 187.941 |
+| MySQL, 1 / 1 | 241817 / 242974 | 219046 / 218282 | 211.170 / 206.268 | 192.289 / 192.809 |
+| MySQL, 16 / 4 | 244852 / 244745 | 218896 / 219266 | 222.570 / 207.386 | 192.661 / 185.339 |
+
+Construction allocates 23.7-25.7 KB less per call, 9.79-10.51%, with descriptive
+mean-time changes of -11.33% / -11.63% on MariaDB and -7.75% / -12.08% on MySQL.
+These warm observations exclude initialization. The sample retains twelve
+immutable, request-free expression trees per loaded sample assembly; standard
+EF options gain one extension-reference snapshot array and weak-table
+bookkeeping per options instance. Exact retained bytes and cold latency were
+not measured. Per-call savings do not establish a smaller cold footprint.
+
+The [shared projections](../samples/UserGroups/Queries/Supervisors/SupervisorQueries.Projections.cs)
+capture no context, model, request, query or provider extension node. The
+then-current provider-owner reader (`Providers/NestedSetDokaQueryFeatures.cs`,
+replaced by the [typed adapter](../src/Doka.EntityFrameworkCore.NestedSet.MySql/Queries/MySqlNestedSetProvider.Queries.cs))
+snapshots only the exact standard options map's membership. Every lookup still
+reads current provider metadata and validates actual assembly identity; custom
+options and subclasses retain the uncached path. A warm snapshot hit also
+avoids recreating generic type metadata after a full GC. No coordinate cache
+was added: the fresh warm profiles provided no positive named CPU/allocation
+sample for the two coordinate methods. Absence of samples does not prove
+nonexecution or exclude inlining.
+
+The unchanged 224 KiB [construction budget](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/UserGroups/SupervisorProjectionCacheTests.cs)
+rejects the original implementation in all eight engine/request variants and
+passes the new implementation. Capture rejection, reversed deferred request
+execution and changed authorization are separately tested. Two complete Unit
+runs pass 2,691 cases each; the native MariaDB/MySQL selections pass all 500
+UserGroups cases and 36 work/deep-consumer controls, including 100,001 nodes
+at depth 100,000. These functional timings are not comparative benchmarks.
+
+All 32 separate final diagnostic traces contain complete actual-operation
+intervals and zero lost events: 40,960 construction or 1,536 read operations per
+trace. Named provider-owner CPU samples fall from 58-75 to zero in construction
+and 7-12 to zero in reads; sampled allocation stacks also show less repeated
+reflection/expression work. Zero named samples do not prove nonexecution, and
+sample weights are neither exact CPU durations nor bytes per type. GC overlap
+decreases in the construction controls but is mixed for complete reads;
+ThreadPool waits and adjustment events remain observed separately. Host mean
+CPU idle is 51.75-53.20% during plain runs and 51.68-51.93% during profiles,
+with substantial memory compression. These conditions and one process per
+diagnostic cohort/mode limit causal and general latency conclusions.
 
 ## Cost model
 
@@ -910,6 +978,8 @@ owns no result, context or application query cache.
 | Complete path | Visible stored direct edges over the selected upper-to-lower interval |
 | Mixed-direction walk | Every intermediate occurrence and each leg's independent conditions |
 | SignalLab report | Actual metadata predicates, three fact sources, catalog and grouped scalar results |
+| Supervisor selection | Actual role, membership and routing predicates, per-origin reduction |
+| Supervisor chain | Finite snapshot-bound frontier batches, cycle and overflow statuses |
 
 Combining overlapping anchors intentionally repeats occurrences. If there are
 `a` anchors with `r` matching rows each, an unreduced projection can contain
@@ -1003,6 +1073,13 @@ visibility, or final mapped endpoints. See the
 [ordinary strict-source qualification](#ordinary-strict-source-bounds-and-membership-witnesses)
 for its observed work and additional construction cost.
 
+Unranked UserGroups requests retain the inclusive relation only when an explicit
+start group and the membership primary key prove at most one origin. Other
+requests use strict ancestors plus exact authorized self memberships. Necessary
+membership keys select the strict sources, then the original authorized origins
+rejoin before group windows, roles, routing, and path decisions. No count query,
+guessed cardinality, or weakened hierarchy-source guard selects the path.
+
 An additional MySQL LATERAL experiment did not meet the selective-work target:
 one selected row still caused 100,001 owner index tuples to be visited. It was
 not adopted. A public configured-engine API is sufficient to select a supported
@@ -1038,6 +1115,25 @@ each owner materialization. The failed earlier MySQL ten-million run has only
 estimated EXPLAIN evidence, so it supplies no actual before/after latency ratio.
 The successful older MySQL million-node balanced case is a different workload.
 
+Supervisor profiles use necessary membership witnesses and rejoin exact
+authorized origins before all existing group and candidate decisions. Both
+engines completed the ten-million-node capacity case, including full structural
+validation and the mixed/query-consumer assertions. The one-reader supervisor
+observations with 1/16/100/1,000 origins and 1/4/16/16 matching routing fields
+retain source/status rows, all expected evidence, zero entities, and 25
+parameters. MySQL's 1,000-origin/16-field observation still took 1,035.717 ms,
+versus MariaDB's 22.273 ms in that run: its plan repeats requested metadata
+lookups rather than scanning all ten million owners. This is residual work,
+not evidence that routing optimization is exhausted or that one engine is
+universally faster.
+
+The subsequent all-engine matched-pair boundary retained eight targeted native
+walk variants and 86 targeted Unit controls, but failed the actual MariaDB
+UserGroups branched-chain sample. Two diagnostic controls recorded cgroup
+`OOMKilled=true`, exit 137, with the existing 30-second command timeout and the
+same two-CPU/two-GiB container limits. This failed cohort is retained; its narrow
+walk success did not establish complete-consumer viability.
+
 The corrected route adds matched-pair completion only for positively identified
 MySQL, using the existing public engine API. MariaDB and unknown identification
 keep source-only binding, with ordinary source and directed owner hydration.
@@ -1049,6 +1145,12 @@ semantic and sample checks, not final full-suite, ten-million-node plan, or pair
 construction/read/materialization evidence for the changed query. MySQL's
 intermediate-key materialization and possible lost predicate pushdown remain
 part of that separate cost qualification.
+
+Sources: [ordinary envelope construction and rejection controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/IndependentAncestorEnvelopeTests.cs),
+[sparse identity and visibility semantics](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Composition/Models/HierarchyCompositionModelTests.SparseAncestorIdentity.cs),
+[mixed-direction capacity profiles](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Composition/Performance/CompositionCapacityProfiles.Mixed.cs),
+[supervisor witness controls](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Samples/UserGroups/GroupSupervisorTests.OriginWitness.cs),
+and [ten-million-node qualification](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Capacity/CapacityTests.cs).
 
 ### Optional ancestor index and shared-source boundaries
 
@@ -1112,9 +1214,12 @@ adding one criterion must not copy a stored hierarchy or build a new compiler.
 | Added signal scalar criterion of the same pattern | At most 4 KiB additional allocation |
 | SignalLab request snapshot fixture | At most 24 KiB for 20 types, 80 unique criteria and 160 requested criteria |
 | SignalLab empty-total grid fixture | At most 76 bytes per cell plus 2,048 bytes for 6,144 selected cells |
+| Supervisor four-match builder | At most 256 KiB allocated per complete build |
+| Added supervisor scalar match | At most 4 KiB additional allocation |
 | Scalar hierarchy/report projection | No hierarchy entity materialization or tracker growth |
 | Scalar or aggregate composed query terminal | One async reader command, with its caller token |
 | SignalLab validated report | One catalog read and one grouped report read in the same snapshot |
+| Supervisor selection | Server-side ranking/uniqueness and bounded status/evidence transport |
 | Chain frontier | Bounded batch, transport, path-copy and cycle budgets before allocation |
 
 The sample builder tests use the actual sample assemblies. A generic query
@@ -1242,6 +1347,15 @@ the observations. Statement count, exact result bags, DTO/entity counts,
 construction allocation and tracker state are assertions. Elapsed times are
 diagnostic observations, not hardware-dependent release thresholds.
 
+The [consumer capacity adapter](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Composition/Consumers/CompositionConsumerCapacityProfiles.cs)
+uses the actual signal and UserGroups query builders over read-only structural
+views of that same population, with bounded application payload. Its reversible
+identity conversion and tree binding have dedicated unit tests. This proves
+the consumer query's use of a large structure; it does not qualify migration or
+write behavior for `ToView`, nor the storage cost of a large physical period
+table. The ordinary sample migration and provider tests cover the actual
+physical sample schema separately.
+
 The chain observer retains an executed plan for every reader in each 2/4/8-hop
 original-path and expanded-membership profile. Diagnostic replay occurs after
 the measured operation. Each reader's file repeats the whole-chain header;
@@ -1249,6 +1363,14 @@ its elapsed time and logical result count must not be summed as per-reader
 measurements. SQLite EQP describes access shape, not actual operator row counts.
 
 ### Optional paired measurements
+
+`CompositionConstructionBenchmarks` and `CompositionExecutionBenchmarks`
+compare generic expressions with an application-LINQ reference of the same
+semantics. `SignalReportConstructionBenchmarks`, `SignalReportingBenchmarks`,
+`UserGroupSelectionBenchmarks` and `UserGroupChainBenchmarks` call the actual
+sample code. Construction and prepared relational execution are distinct
+measurements. Every reference must return the same statuses, multiplicity,
+dates and branch decisions before its timing is meaningful.
 
 `SignalReportingBenchmarks.Api` measures the actual `ReadAsync`, including request
 snapshot and validation, its shared read snapshot, one catalog reader, ordinal
@@ -1268,6 +1390,15 @@ The chain reference compares bounded application orchestration while sharing
 the structural candidate primitive. It is not an independent reimplementation
 of the entire SQL translation stack. Report that boundary with the result;
 do not attribute every difference to NestedSet's six compositors.
+
+`UserGroupSelectionBenchmarks.Api` measures construction, asynchronous execution
+and application result reconstruction together. Its `Prepared` case builds and
+asynchronously warms the actual selected query outside measurement, then times
+EF execution and scalar materialization. Reconstruction and full reference
+comparison run afterwards. `Reference` reads all eligible evidence and applies
+the same person-selection rule in the application; it is not an independent
+SQL implementation. Prepared execution therefore has a narrower boundary than
+either complete consumer and is reported separately.
 
 ### Provider plan boundaries
 

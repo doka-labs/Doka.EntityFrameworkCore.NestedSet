@@ -3,6 +3,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Samples.UserGroups;
 /// <summary>Defines a tenant-owned set of application privileges.</summary>
 public sealed class Role
 {
+    /// <summary>Gets or sets whether this role definition is visible.</summary>
+    public bool Visible { get; set; } = true;
+
     /// <summary>Gets or sets the role key assigned by the application.</summary>
     public Guid Id { get; set; }
 

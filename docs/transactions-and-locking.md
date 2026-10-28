@@ -104,6 +104,9 @@ One scalar statement retains the provider's configured read semantics; it does
 not automatically strengthen them. Collection loading through split queries
 and applications executing several terminals can require several statements.
 
+The [shared sample helper](../samples/Shared/SampleReadSnapshot.cs) demonstrates
+an explicit policy for a catalog/report pair or an entire supervisor chain:
+
 | Provider | Isolation for a sample-owned read transaction |
 | --- | --- |
 | Doka MySQL/MariaDB and PostgreSQL | RepeatableRead |

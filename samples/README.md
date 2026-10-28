@@ -21,7 +21,7 @@ explains the package and registration boundary.
 | --- | --- | --- |
 | [FileSystem](FileSystem/README.md) | Independent trees, alphabetical siblings, queries, moves, delete semantics, bulk and maintenance | Omitted entirely |
 | [SignalLab](SignalLab/README.md) | Instrument trees, connection availability, typed tags, Any/Nearest owners, and event aggregation over pulse/sweep/burst acquisition formats | Application-selected scope |
-| [UserGroups](UserGroups/README.md) | Tenant isolation, inherited privileges from multiple user groups, supervisor lines with shadow coordinates, and atomic transactions | TenantId |
+| [UserGroups](UserGroups/README.md) | Tenant isolation, privileges, shadow-coordinate user lines, role/metadata-based group supervision, and bounded chains | TenantId |
 
 FileSystem and SignalLab use the optional `NestedSetDbContext` convenience base.
 UserGroups keeps an ordinary `DbContext` and integrates NestedSet into its
@@ -159,7 +159,8 @@ They do not implement a scenario framework or hide hierarchy calls.
 Each project includes separate `Migrations/MySql/` and `Migrations/Sqlite/`
 chains and construct-only design-time factories. Its migrations include
 the structural columns, self-FK, derived indexes and tree registry. UserGroups
-retains its original initial migration per provider. SignalLab owns a separate database and a two-stage
+retains its original initial migration per provider and adds one cohesive
+supervisor-query migration. SignalLab owns a separate database and a two-stage
 synthetic chain per provider: the initial instrument tree, followed by the
 acquisition catalog, tags and heterogeneous event inputs. Tests can upgrade
 between those two stages while preserving instrument payload. Its migrations

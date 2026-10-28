@@ -31,14 +31,18 @@ public abstract partial class HierarchyCompositionCapacityTests : ProviderTest
         await using var setup = database.CreateContext();
         await CapacitySeed.SeedAsync(setup, nodes);
         var observations = new List<CompositionCapacityObservation>();
+        var consumers = new List<CompositionConsumerCapacityObservation>();
 
         // Act
         observations.AddRange(await CompositionCapacityProfiles.MeasureAsync(database, Engine, nodes));
         observations.AddRange(await CompositionCapacityProfiles.MeasureAsync(database, Engine, nodes, broad: true));
+        consumers.AddRange(await CompositionConsumerCapacityProfiles.MeasureAsync(database, Engine, nodes));
         await CompositionCapacityProfiles.BalanceAsync(setup, nodes);
         observations.AddRange(await CompositionCapacityProfiles.MeasureAsync(database, Engine, nodes, balanced: true));
         observations.AddRange(await CompositionCapacityProfiles.MeasureAsync(
             database, Engine, nodes, balanced: true, broad: true));
+        consumers.AddRange(await CompositionConsumerCapacityProfiles.MeasureAsync(
+            database, Engine, nodes, balanced: true));
 
         var validation = await setup.NestedSet<TreeNode>().ForScope(1).InTree(Guid.Empty)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
@@ -48,5 +52,6 @@ public abstract partial class HierarchyCompositionCapacityTests : ProviderTest
         Assert.Equal(nodes, validation.NodeCount);
         Assert.Equal(24, observations.Count);
         CompositionCapacityProfiles.AssertAll(observations, _output);
+        CompositionConsumerCapacityProfiles.AssertAll(consumers, _output);
     }
 }

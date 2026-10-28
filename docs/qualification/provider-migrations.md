@@ -57,6 +57,15 @@ a library, not a tenth executable suite. The former MySQL mixed-direction
 timeouts and Unit lifecycle failure have separate historical receipts; the
 final published runs above pass their retained regression cases.
 
+All 35 actual sample process controls passed: 33 SQLite/MariaDB app/rejection
+checks and two MySQL UserGroups controls. Both package packs, package inspection,
+fresh package consumers, verify-only Roslyn style and IDE0005 checks completed
+successfully. These local results do not establish hosted publication or native
+SQL Server qualification. The [maintainability measurements](../performance.md#maintainability-comparison-on-published-packages)
+separately retain mixed timings, allocation costs and their host limitations.
+All 68 separate diagnostic captures parsed with complete actual-body intervals
+and zero lost events; sampled weights and short-case limits remain explicit.
+
 ## Exact local inputs
 
 The recorded 2026-10-24/25 local qualification used these identities:

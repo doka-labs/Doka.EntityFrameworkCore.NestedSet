@@ -30,6 +30,36 @@ public class UserGroupContext : DbContext
     /// <summary>Gets application grants supplied by roles.</summary>
     public DbSet<RolePrivilege> RolePrivileges => Set<RolePrivilege>();
 
+    /// <summary>Gets the tenant-qualified GroupType application data.</summary>
+    public DbSet<GroupType> GroupTypes => Set<GroupType>();
+
+    /// <summary>Gets the tenant-qualified MembershipRole application data.</summary>
+    public DbSet<MembershipRole> MembershipRoles => Set<MembershipRole>();
+
+    /// <summary>Gets the tenant-qualified UserRole application data.</summary>
+    public DbSet<UserRole> UserRoles => Set<UserRole>();
+
+    /// <summary>Gets the tenant-qualified GroupRelationPeriod application data.</summary>
+    public DbSet<GroupRelationPeriod> GroupRelationPeriods => Set<GroupRelationPeriod>();
+
+    /// <summary>Gets the tenant-qualified UserMetadataDefinition application data.</summary>
+    public DbSet<UserMetadataDefinition> UserMetadataDefinitions => Set<UserMetadataDefinition>();
+
+    /// <summary>Gets the tenant-qualified MembershipMetadataDefinition application data.</summary>
+    public DbSet<MembershipMetadataDefinition> MembershipMetadataDefinitions => Set<MembershipMetadataDefinition>();
+
+    /// <summary>Gets the tenant-qualified GroupMetadataDefinition application data.</summary>
+    public DbSet<GroupMetadataDefinition> GroupMetadataDefinitions => Set<GroupMetadataDefinition>();
+
+    /// <summary>Gets the tenant-qualified UserMetadata application data.</summary>
+    public DbSet<UserMetadata> UserMetadatas => Set<UserMetadata>();
+
+    /// <summary>Gets the tenant-qualified MembershipMetadata application data.</summary>
+    public DbSet<MembershipMetadata> MembershipMetadatas => Set<MembershipMetadata>();
+
+    /// <summary>Gets the tenant-qualified GroupMetadata application data.</summary>
+    public DbSet<GroupMetadata> GroupMetadatas => Set<GroupMetadata>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(
         ModelBuilder modelBuilder
@@ -42,6 +72,7 @@ public class UserGroupContext : DbContext
         }
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(UserGroupContext).Assembly);
+        SupervisorModel.Configure(modelBuilder, Database.ProviderName);
     }
 
     /// <summary>Saves payloads and coordinated hierarchy changes using the existing context base class.</summary>
@@ -53,6 +84,7 @@ public class UserGroupContext : DbContext
         CancellationToken cancellationToken = default
     )
     {
+        SupervisorPayloadValidation.Validate(this);
         StampUpdatedPayloads();
 
         // WHY: Tracker acceptance must wait until both the application's save and the hierarchy work succeed.
@@ -73,6 +105,7 @@ public class UserGroupContext : DbContext
         bool acceptAllChangesOnSuccess
     )
     {
+        SupervisorPayloadValidation.Validate(this);
         StampUpdatedPayloads();
 
         // ReSharper disable once MethodHasAsyncOverload

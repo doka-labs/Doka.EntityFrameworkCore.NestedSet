@@ -1056,6 +1056,14 @@ query construction from asynchronous execution and result reconstruction:
 | Consumer responsibility | Source entry points |
 | --- | --- |
 | SignalLab snapshot and report query | [Read entry point](../samples/SignalLab/Reporting/SignalReportBuilder.cs), [query pipeline](../samples/SignalLab/Reporting/SignalReportBuilder.Query.cs), [domain predicates](../samples/SignalLab/Reporting/SignalReportBuilder.Predicates.cs), [intermediate scalar models](../samples/SignalLab/Reporting/SignalReportBuilder.Models.cs) |
+| Supervisor requests and one-hop decisions | [Application entry points](../samples/UserGroups/Queries/Supervisors/SupervisorQueries.cs), [candidates](../samples/UserGroups/Queries/Supervisors/SupervisorQueries.Candidates.cs), [status query](../samples/UserGroups/Queries/Supervisors/SupervisorQueries.Resolve.cs), [ranking](../samples/UserGroups/Queries/Supervisors/SupervisorQueries.Ranking.cs), [execution and reconstruction](../samples/UserGroups/Queries/Supervisors/SupervisorQueries.Execution.cs), [transport models](../samples/UserGroups/Queries/Supervisors/SupervisorQueries.Models.cs) |
+| Supervisor chains | [Frontier orchestration](../samples/UserGroups/Queries/Supervisors/SupervisorQueries.Chains.cs), [batched transport](../samples/UserGroups/Queries/Supervisors/SupervisorQueries.ChainTransport.cs), [branch advancement](../samples/UserGroups/Queries/Supervisors/SupervisorQueries.ChainBranches.cs), [path and budget state](../samples/UserGroups/Queries/Supervisors/SupervisorQueries.ChainState.cs) |
+
+SignalLab expression fields retain their original owner and initialization order;
+the catalog projection holder keeps its separate lazy initialization. Supervisor
+partials retain one owner and the same visibility, occurrence evidence, routing,
+ambiguity, snapshot, and budget contracts. Tests and benchmarks reference these
+actual sample implementations rather than another copy.
 
 ## Test project ownership
 

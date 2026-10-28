@@ -1,5 +1,10 @@
 # Typed runtime regression coverage
 
+The additive generic query contracts have their own
+[160-contract coverage map](query-composition-regression-coverage.md), including
+the actual signal and UserGroups consumers. This guide retains the existing typed
+runtime, mutation and tracker-restoration contracts.
+
 The historical construction/read qualification (planned documentation: `qualification/query-performance.md#historical-report-construction-and-materialization`)
 adds matched warmup, scalar-binding and exact-bound reuse evidence to that
 composition map. Its positive and rejection tests cover deferred snapshot
@@ -71,6 +76,22 @@ hierarchy before the one operation being assessed.
 
 ## Independent comparison and plan scenarios
 
+`NativeContainsAndBalancedEqualityHaveEquivalentResults` discovers four mapped
+key representations and cardinalities `0`, `1`, `2`, and `64` as 16 separate
+scenario rows per applicable engine. Each row compares native membership,
+balanced equality, and the production filter as one contract. String cases keep
+the actual provider collation expectations; the empty case remains explicit.
+The sample's `CollectionMembershipBindsToEnumerableBeforeProviderNormalization`
+and `TrackedKeyCollectionsBindToEnumerableBeforeProviderNormalization` inspect
+the actual query graphs before EF can normalize C# 14 span overloads.
+`ActualAnchorMembershipSupportsInterpretation` interprets the catalog's real
+predicate with matching, missing, empty and duplicate keys; only the
+SQL-specific `EF.Parameter` marker is removed for that pure CLR check.
+`CatalogCollectionsUseEnumerableAndOriginsRemainQueryable` separately protects
+explicit catalog membership and the unchanged queryable origin subqueries.
+The tests are in the [SignalLab binding partial](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/SignalLab/SignalReportConstructionTests.CollectionBinding.cs)
+and [UserGroups binding suite](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/UserGroups/SupervisorCollectionBindingTests.cs).
+
 `ComparisonSeedIsReusedAcrossContexts` verifies the same immutable seed with
 fresh contexts, and `ResettingSiblingRowsPreservesComparisonSeed` verifies that
 the native-type and collection-mode database can reset without destroying it.
@@ -115,6 +136,22 @@ performs an actual object conversion; its name does not stand in for that path.
 The separate valid-bounds case retains its coordinate-format assertion.
 
 Source: [bounds formatting contracts](../tests/Doka.NestedSet.Tests/Unit/NestedSetBoundsTests.cs).
+
+Ordinary strict ancestor queries and supervisor membership witnesses have
+separate construction, rejection, visibility, identity, and native capacity
+controls in the [composition coverage map](query-composition-regression-coverage.md#ordinary-strict-source-bounds-and-origin-witnesses).
+These checks do not require generated ancestor schema and do not weaken source
+authorization or complete-path semantics. MySQL-only matched-key completion and
+both engines' directed owner hydration retain walk multiplicity; the repeated upward/downward/upward
+cases keep their zero-through-three complete-path variants.
+
+The [deferred supervisor controls](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Samples/UserGroups/GroupSupervisorTests.DeferredOrigins.cs)
+construct two tenant/source/date selections before executing them in reverse
+order. They retain exact candidate evidence and empty/ambiguous source markers,
+and reject source visibility or membership validity changes made after query
+construction. The [projection ownership controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/UserGroups/SupervisorProjectionCacheTests.cs)
+inspect actual cached selectors, exercise forbidden-capture controls and measure
+the real sample's warm construction without database I/O.
 
 The sections below name the source methods behind the matrix. The matrix is a
 selection guide, not a replacement for the full provider suites.

@@ -32,7 +32,7 @@ docker compose -f docker/compose.yml exec -T mariadb bash -s < docker/provision-
 dotnet run --project samples/UserGroups/UserGroups.csproj -c Release
 ```
 
-The first invocation applies the checked-in migration chain and runs all five scenarios. Results remain in
+The first invocation applies the checked-in migration chain and runs all nine scenarios. Results remain in
 `nestedset_sample_usergroups`, including after the process exits. Open that database in Rider using the connection
 settings in the [Docker guide](../../docker/README.md). Each scenario owns a separate tenant key and tree so its expected
 result does not depend on another scenario running first.
@@ -52,10 +52,10 @@ and explains how to inspect or reset it. `--reset` deletes and recreates **only*
 running the selected scenario. A connection-string override naming another database is rejected before reset. No
 automatic cleanup occurs after success or failure.
 
-Inspection refuses an older schema instead of applying migrations as a side effect. The unpublished intermediate
-migrations were replaced by one initial migration per provider. A local database created from an intermediate migration
-does not have a supported in-place upgrade path in this sample; keep its data separately or use `--reset` only when
-intentionally discarding that sample database.
+Inspection refuses an older schema instead of applying migrations as a side effect. Each provider retains its released
+initial migration and adds one coherent migration for group-derived supervisor searches. A local database created from
+an earlier unpublished intermediate migration has no supported in-place upgrade path; keep its data separately or use
+`--reset` only when intentionally discarding that sample database.
 
 The default SQLite file is `artifacts/samples/nestedset_sample_usergroups.sqlite`, relative to the working directory.
 `NESTEDSET_SAMPLE_SQLITE_DIRECTORY` changes its parent directory. Use `NESTEDSET_SAMPLE_CONNECTION_STRING` for a server
@@ -73,7 +73,8 @@ code 0, errors return 1, and cancellation returns 130.
 | `rejected` | Attempt to move Engineering below its descendant API team. | `CycleDetected` is handled explicitly and the complete persisted structure remains unchanged. |
 | `supervisors` | Give Taylor two groups and Morgan none, build a separate supervisor tree, filter ancestors by a business `Position`, then move Taylor beneath another director. | The reporting line and hidden bounds change; Taylor keeps both `logs.read` and `invoices.read` while Morgan has no group-derived grants. |
 
-Every scenario finishes with full validation of its tree. Normal output shows small indented trees and specific results;
+The original mutation scenarios finish with full validation of their trees. The new query scenarios verify their exact
+expected candidates, ranks, chain outcomes, and provenance. Normal output shows small indented trees and specific results;
 `--details` adds tenant/tree identities, node keys, parents, depth, position, and boundaries. Generated group/role keys and
 UTC timestamps can differ between runs; the selected names, relationships, expected permission codes, and tree identities
 are fixed by the scenario.
@@ -232,8 +233,8 @@ The token-only EF overload dispatches to this override. The synchronous override
 API while rejecting changes that require asynchronous hierarchy coordination. All sample workflows use asynchronous
 calls with their cancellation token.
 
-Registration is `options.UseMySql(...).UseNestedSets()` for Doka and `options.UseSqlite(...).UseNestedSets()` for SQLite,
-visible in [SampleDatabaseConfiguration](../Shared/SampleDatabaseConfiguration.cs). Entity configuration is discovered by
+Registration is `options.UseMySql(..., mysql => mysql.UseNestedSets())` through `.MySql` and
+`options.UseSqlite(..., sqlite => sqlite.UseNestedSets())` through `.Sqlite`, visible in [SampleDatabaseConfiguration](../Shared/SampleDatabaseConfiguration.cs). Entity configuration is discovered by
 `ApplyConfigurationsFromAssembly`. Normal tracked payload changes use `Groups` or `Users` and `SaveChangesAsync`;
 creating or moving hierarchy nodes uses `context.NestedSet<UserGroup>().ForScope(tenantId)` or
 `context.NestedSet<User>().ForScope(tenantId)`.
@@ -272,10 +273,18 @@ sample runner abstraction.
 
 ## Migrations and indexes
 
-The Doka and SQLite contexts share the same application model but each owns one checked-in `InitialUserGroups`
-migration under `Migrations/MySql` and `Migrations/Sqlite`. `UserGroupSqliteContext` selects the SQLite migration; it is
+The Doka and SQLite contexts share the same application model. Each preserves its checked-in `InitialUserGroups`
+migration and adds one `GroupSupervisorQueries` migration under `Migrations/MySql` and `Migrations/Sqlite`.
+`UserGroupSqliteContext` selects the SQLite migration chain; it is
 a provider-routing type rather than a required application base class. The design-time factories construct options
 without connecting, migrating, seeding, or resetting a database.
+
+The feature migration explicitly keeps existing users, groups, roles, and
+memberships visible, with equal membership priority `0`. Existing groups remain
+unclassified and existing memberships retain unrestricted dates. The
+[provider migration regressions](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Samples/UserGroups/GroupSupervisorTests.Migrations.cs)
+check fresh schema creation, preservation of old coordinates and grants, and
+the actual sample scenario against the migrated Doka and SQLite schemas.
 
 Each initial migration creates the group and supervisor trees, their separate registries, roles, privileges, and the
 user-to-group join table together. The public business `User.Position` maps as text; the shadow
@@ -294,3 +303,232 @@ indexes. SafeMigrations is optional and is not required to run this sample or ap
 The sample uses `MigrateAsync` throughout; it does not mix migration-owned schemas with `EnsureCreated`. Further details
 are in the repository's [migration guide](../../docs/migrations.md) and
 [transaction contract](../../docs/transactions-and-locking.md).
+
+## Group-derived supervisor queries
+
+The four additional console scenarios use the same ordinary `Groups`, `Users`, and
+`UserGroupMemberships` sets. They add application classifications, exact membership
+roles, optional tenant-wide user roles, typed routing values, and direct-edge
+validity periods. NestedSet itself contains no user, role, or supervisor policy.
+The direct `User.SupervisorId` hierarchy above remains an independent example.
+
+```sh
+dotnet run --project samples/UserGroups/UserGroups.csproj -c Release -- --provider sqlite --reset --scenario team-supervisors
+dotnet run --project samples/UserGroups/UserGroups.csproj -c Release -- --provider sqlite --reset --scenario group-level-supervisors
+dotnet run --project samples/UserGroups/UserGroups.csproj -c Release -- --provider sqlite --reset --scenario ancestor-selection
+dotnet run --project samples/UserGroups/UserGroups.csproj -c Release -- --provider sqlite --reset --scenario supervisor-chain
+```
+
+| Scenario | Explicit consumer choice |
+| --- | --- |
+| `team-supervisors` | Include the own team or start above it; local, global, or either role; retain every origin, report ambiguity, or choose a unique business priority. |
+| `group-level-supervisors` | Find a group by application `TypeId` and exact routing owners; distinguish the first eligible group from selecting a type group before validating its people. |
+| `ancestor-selection` | Contrast structural distance, eligible group number, and person rank. Two leads in one group count as one group and two people. |
+| `supervisor-chain` | Advance strictly above the previous found group, or explicitly expand every membership of the selected person; retain initial routing or use the current subject. |
+
+Output uses the shared fixture names, for example `Anna/G4 -> Ben/G2`, and labels each origin separately.
+The group-path/type legend explains these labels before each workflow. `--details` adds the actual keys,
+tenant/tree identities, and original/current hop provenance; rendering performs no additional database lookups.
+
+A search starts from a user key; it does not load the user or the start groups first:
+
+```csharp
+var request = new SupervisorRequest
+{
+    SourceUserId = userId,
+    StartGroupId = null, // Every visible own membership, retaining separate origins.
+    SearchStart = SearchStart.ParentsOnly,
+    Roles = new EitherRole(managerRoleId),
+    Groups = new NthEligibleGroup([], 1),
+    Matches =
+    [
+        new MetadataMatch(
+            MetadataOwner.SourceUser, "Route",
+            MetadataOwner.CandidateMembership, "Route"),
+    ],
+    OnDay = new DateOnly(2026, 10, 16),
+};
+
+var deferred = SupervisorQueries.Candidates(context, tenantId, request);
+var result = await SupervisorQueries.ResolveAsync(
+    context, tenantId, request,
+    SupervisorSelection.RequireUnique, cancellationToken);
+```
+
+The [main partial](Queries/Supervisors/SupervisorQueries.cs) exposes candidates,
+resolution and both chain workflows. Their implementation remains in the same
+type, organized by responsibility:
+
+| Source | Responsibility |
+| --- | --- |
+| [Candidates](Queries/Supervisors/SupervisorQueries.Candidates.cs) | Compose visible origins, group windows, memberships and routing sources. |
+| [Resolution](Queries/Supervisors/SupervisorQueries.Resolve.cs) and [ranking](Queries/Supervisors/SupervisorQueries.Ranking.cs) | Build scalar status/evidence rows and server-selected person witnesses. |
+| [Fixed projections](Queries/Supervisors/SupervisorQueries.Projections.cs) | Share immutable key, path, aggregate and result expressions without retaining request values or query roots. |
+| [Execution](Queries/Supervisors/SupervisorQueries.Execution.cs) | Read the scalar query asynchronously and reconstruct complete outcomes. |
+| [Chains](Queries/Supervisors/SupervisorQueries.Chains.cs) and [transport](Queries/Supervisors/SupervisorQueries.ChainTransport.cs) | Advance logical frontiers and execute bounded physical batches. |
+| [Branch decisions](Queries/Supervisors/SupervisorQueries.ChainBranches.cs) and [state](Queries/Supervisors/SupervisorQueries.ChainState.cs) | Preserve per-path provenance, cycle detection and physical/logical budgets. |
+| [Models](Queries/Supervisors/SupervisorQueries.Models.cs) | Keep the existing nested query and transport shapes. |
+
+`Candidates` constructs a normal deferred `IQueryable<SupervisorCandidate>` with
+no I/O. `ResolveAsync` executes one async scalar reader containing source status,
+per-origin status, and only the selected evidence. `RequireUnique` counts distinct
+people on the server; it does not load thousands of candidates to discover
+ambiguity. `All` deliberately returns every requested candidate. There is no
+correlated `SingleOrDefault` used as a uniqueness check.
+
+The strict ancestor route first selects necessary source group keys from the
+same tenant, source user, optional start group, and the requested membership-date
+predicate when `OnDay` is supplied.
+These membership witnesses retain membership visibility but do not authorize a
+user or group. The sample rejoins the original visible-user/visible-group
+`Origins` relation by tenant and start group before group windows and the
+existing candidate role, routing, and complete-path checks. The fixed source
+user and membership primary key preserve one origin occurrence per own group.
+Hidden or missing origins cannot become candidates; a supplied `OnDay` also
+rejects future and expired source memberships.
+
+Both users and groups are mapped hierarchies in this sample. Their full
+authorization relation therefore stays out of the independent source-key
+predicate; NestedSet's hierarchy-source guard remains unchanged. The explicit
+single-origin inclusive branch continues to use authorized origins directly.
+`Candidates` and `ResolveAsync` preserve the same occurrence evidence and empty
+origin statuses; a necessary membership key never bypasses authorization.
+
+Fixed projections contain only their lambda parameters and literal values. Each
+call still constructs its own membership selection and exact authorized origins.
+An origin marker or a single-group outcome reads its source user from that exact
+membership, including when the outcome is empty or ambiguous. Cached expression
+shapes do not cache an authorization result, an application request or a context.
+
+On eligible Doka providers, positively identified MySQL additionally completes
+matched ancestor identities before hydrating mapped users/groups. MariaDB and
+unknown engine identification retain source-only binding. Both routes preserve
+repeated walk occurrences and direct final owner hydration. This uses existing
+engine-identification, source-binding, and ordered-join capabilities without an
+additional sample option or generated ancestor index. Missing capabilities keep
+the established query route. The authorization rejoin and all later business
+decisions remain required on either route.
+
+For `All`, the same reader contains a separate marker for every visible origin
+and the complete candidate evidence. This keeps empty origins explicit without
+joining every origin to a materialized evidence bag. Markers count as real rows
+against chain read and overflow budgets; they never become candidate evidence.
+
+| Group rule | Selection before person ranking |
+| --- | --- |
+| `AllEligibleGroups(types)` | Retain every group satisfying the complete role, routing, and path rule; an empty type list permits every type. |
+| `NthEligibleGroup(types, n)` | Select the one-based qualifying group per origin. Several people in that group still occupy one group position. |
+| `NthTypeGroupThenValidate(type, n)` | Select the one-based visible group of that type first, then validate that exact group's people and path. Rejection never falls back to a farther group. |
+
+`SearchStart` applies before these group ranks. Structural edge distance, eligible-group number, person rank, and
+successful chain-hop number remain different quantities. Type-first selection ranks only the visible structural
+groups before checking their people, routing and complete paths. Application conditions cannot change which
+type group wins, including when its nearest membership or role grant is hidden or expired.
+
+`SourceNotFound`, `NoVisibleMemberships`, and `Completed` are different request
+outcomes. Each evaluated membership produces `Found`, `NotFound`, or `Ambiguous`.
+A technical user ID never resolves a leadership tie. `HighestBusinessPriority`
+uses the smallest required membership priority; equal best priorities remain
+ambiguous. `NthPerson(n)` gives tied people all their occupied rank slots.
+
+Server ranking first reduces occurrences to one distance/priority rank per
+person and origin. It chooses the requested rank once per origin, then checks
+all people occupying that rank. A unique result rejoins every original
+occurrence of that person; rank reduction does not replace evidence or choose
+a continuation by technical ID. The pure application reducer uses one
+canonical record per person and sorts that smaller set, retaining the same
+evidence and continuation rules.
+
+For a cross-membership single person, call `SelectAcrossOrigins` explicitly with
+`RequireUniquePerson` or `FromPrioritizedOrigin(groupIds)`. Origin preference is
+application policy. The first present preferred origin remains authoritative even
+when it has no supervisor or an ambiguous result; a later origin cannot hide that
+outcome. Every supporting membership path remains available as evidence.
+
+### Visibility, typed routing, and date boundaries
+
+Roles on `UserGroupRole` remain privilege grants and do not identify individual
+managers. `MembershipRole` belongs to the exact `(TenantId, UserId, UserGroupId)`;
+`UserRole` belongs to `(TenantId, UserId)`. Either still requires a visible candidate
+membership in the actual found group. Hidden users, roles, memberships, or groups
+are excluded without bypassing application filters.
+
+The fictional routing catalog demonstrates `Route`, `ManagerRoute`,
+`ChannelClass`, and `RoutingZone`, all scalar text fields. The capacity profile
+also uses twelve explicit fields: `Lane`, `Cluster`, `Protocol`, `Mode`,
+`Profile`, `Phase`, `Zone`, `Port`, `Rack`, `Batch`, `Firmware`, and
+`DeviceProfile`. These qualify sixteen simultaneous criteria; the finite
+catalog is not a general metadata subsystem. Source and candidate owners are explicit:
+user, exact membership, or group. Definitions and values use separate concrete
+owner tables with real tenant-qualified foreign keys. Group and membership
+values additionally name a permitted group-type definition. Queries verify that
+this type matches the actual group classification. Multiple matches apply to the
+same candidate; one candidate's channel classification cannot combine with
+another candidate's routing zone. Missing, null, and empty values never match. Routing values use exact,
+case-sensitive ASCII comparisons with no Unicode normalization. Leading and trailing spaces are significant;
+the single-space string is neither empty nor trimmed. The scalar save guard rejects non-ASCII values and unsupported
+sample catalog fields/types. A routing value is not authorization.
+
+Binary collations alone do not make trailing spaces significant on every supported database:
+[MySQL's PAD SPACE rules](https://dev.mysql.com/doc/refman/8.4/en/charset-binary-collations.html#charset-binary-collations-trailing-space-comparisons),
+[MariaDB's VARCHAR comparisons](https://mariadb.com/docs/server/reference/data-types/string-data-types/varchar#trailing-spaces),
+and [SQL Server's comparison padding](https://learn.microsoft.com/en-us/sql/t-sql/language-elements/string-comparison-assignment?view=sql-server-ver16#remarks)
+document that distinction. The query appends the same nonempty `|` suffix to both scalar operands, making trailing
+spaces internal before comparison under the configured binary collation. This is a residual predicate after the
+tenant/owner/field key lookup, not a promised index on transformed values. Request IDs and field codes use ordinary
+EF command parameters. The static expression templates retain only owner flags; contexts, models, request values,
+and query roots are bound per call.
+
+The query validates a complete visible direct-parent path before eligible-group
+ranking. A requested `OnDay` also requires each stored `parent -> child` edge to
+have an inclusive valid `GroupRelationPeriod`. An expired edge blocks all farther
+ancestors for that origin. Other origins remain independent. Self has an empty
+structural path, but membership and role validity still apply. No date is inferred
+from the current clock, and current tree topology is not historical topology.
+
+### Finite chains and explicit memory bounds
+
+Both chain methods accept a finite list of `SupervisorStep` values. Every step
+names its search boundary, group rule, role rule, metadata matches, date, and person
+selection. `FollowOriginalPathAsync` advances the cursor to the found group and
+requires `ParentsOnly` after hop one. `FollowAllMembershipsAsync` explicitly expands
+the found person's current memberships; a new own membership can introduce a
+new tree, while the tenant stays fixed. Initial and current routing subjects are
+explicit alternatives, never silent defaults.
+
+All hops run sequentially inside one qualified read snapshot. Doka and PostgreSQL
+use Repeatable Read, SQLite uses Serializable, and SQL Server requires Snapshot
+(or an adequate caller Serializable transaction). SQL Server's database owner
+must enable `ALLOW_SNAPSHOT_ISOLATION`; the sample does not alter database
+configuration. An inadequate existing transaction is rejected before the first
+reader. Cancellation propagates as cancellation, never as `NotFound`.
+
+The mandatory `MaxFrontierStates`, `MaxVisitedStates`, and `MaxResultRows` limits are
+checked before reader buffering, logical fan-out, or path copies. Distinct physical
+searches are combined in bounded batches of four states; identical searches share
+one result while their origins and visited person paths remain independent.
+`MaxResultRows` accepts `1..int.MaxValue - 1`: the query requests one additional
+row to distinguish an exact result from overflow in a single reader. `int.MaxValue`
+is rejected before I/O because its overflow probe cannot be represented by `Take`.
+The transport counts every source, origin and evidence row. `All` uses a separate
+origin marker followed by that origin's evidence; other selections use combined
+origin/evidence rows, including one row for an empty or ambiguous origin. These
+real transport rows count toward the same limits as returned people.
+
+A repeated person ends only its own branch as `CycleDetected`; convergence from
+unrelated origins is valid. `LimitExceeded` marks the result incomplete and the
+normal CLI exits with an error for an unexpected limit. The chain scenario also verifies and labels one intentionally
+insufficient budget as an expected rejection. The fixed overflow diagnostic does not copy an
+already exhausted path.
+
+The transport applies a server-side overflow probe after the business selection and before enumeration. This also
+bounds [EF's internal buffering under retrying execution strategies](https://learn.microsoft.com/en-us/ef/core/performance/efficient-querying#internal-buffering-by-ef),
+which otherwise occurs before the application's asynchronous reader loop. It bounds returned rows and memory;
+it does not cap server-side scans or sorting. Provider execution plans and the actual large structural fixtures
+qualify that separate work.
+
+The released initial migrations remain intact. One additive `GroupSupervisorQueries`
+migration per sample provider adds this application data and preserves existing
+rows' visible state. The query, status, role, pruning, chain, fan-in, and allocation
+contracts are exercised against the actual sample builders in the shared provider
+suite; pure request and reduction rules run once in the unit project.

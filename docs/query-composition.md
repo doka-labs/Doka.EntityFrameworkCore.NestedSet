@@ -357,6 +357,11 @@ nearest-owner checks still have data-dependent database costs: use the
 [performance guide](performance.md), actual plans, and a representative result
 cardinality rather than treating nested sets as constant-cost queries.
 
+The [SignalLab](../samples/SignalLab/README.md) and
+[UserGroups](../samples/UserGroups/README.md) samples demonstrate domain-specific
+temporal paths, metadata filters, role selection, reduction, and bounded chains.
+Those policies remain outside the library.
+
 ## Primary-source boundaries
 
 Collection predicates over captured arrays use explicit `Enumerable.Contains(ids, node.Id)`.
