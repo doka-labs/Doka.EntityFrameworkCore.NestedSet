@@ -79,8 +79,13 @@ the narrowly approved registration-removal exception.
 
 ### Fixed
 
-- Project SQL Server's nearest decision once with its existing depth ordering
-  and hydrate ancestor owners by conditional native keys. Refresh fixture
+- Share SQL Server's row-independent long-path failure evidence through local
+  grouped coordinates, and separate unresolved supervisor markers from complete
+  unique-person evidence. Guard actual iterator output and pre-filter reads
+  against cardinality-derived budgets; retain native x64 qualification.
+- Project SQL Server's nearest decision once in equivalent descending coordinate order
+  and hydrate ancestor owners by conditional native keys. Collapse excluded
+  leaf coordinates per tree before hydration. Refresh fixture
   statistics individually with unchanged `FULLSCAN` accuracy and deadlines;
   retain the explicit native capacity qualification boundary.
 - Select PostgreSQL's nearest-owner decision once while preserving `Depth`

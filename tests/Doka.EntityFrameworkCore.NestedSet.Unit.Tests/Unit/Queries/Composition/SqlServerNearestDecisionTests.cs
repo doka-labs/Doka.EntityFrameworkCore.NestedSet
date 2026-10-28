@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-/// <summary>Protects SQL Server's depth-ordered projected nearest selection at the default compatibility level.</summary>
+/// <summary>Protects SQL Server's coordinate-ordered projected nearest selection at the default compatibility level.</summary>
 public sealed class SqlServerNearestDecisionTests
 {
     private readonly ITestOutputHelper _output;
@@ -19,7 +19,7 @@ public sealed class SqlServerNearestDecisionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task NearestDecisionSelectsDepthOnceWithoutIo(bool rowAware)
+    public async Task NearestDecisionSelectsCoordinateOnceWithoutIo(bool rowAware)
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -41,14 +41,18 @@ public sealed class SqlServerNearestDecisionTests
         // Act
         var sql = nearest.Select(row => row.Node.Id).ToQueryString();
         _output.WriteLine(sql);
-        var selections = Regex.Matches(sql, "ORDER BY [^\\r\\n]*\\[Depth\\] DESC");
+        var selections = Regex.Matches(sql, "ORDER BY [^\\r\\n]*\\[Left\\] DESC");
 
         // Assert
         Assert.Single(selections);
         Assert.Contains("SELECT TOP(1) CASE", sql, StringComparison.Ordinal);
-        Assert.Single(Regex.Matches(sql, @"COUNT_BIG\(\*\)"));
+        // WHY: A row-aware candidate changes owner selection, not structural edge eligibility.
+        // Its selected owner's path can still share the same row-independent failure summaries.
+        Assert.Contains("GROUP BY", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("COUNT_BIG(*)", sql, StringComparison.Ordinal);
         Assert.DoesNotContain("SUM(", sql, StringComparison.Ordinal);
-        Assert.DoesNotContain("[Left] DESC", sql, StringComparison.Ordinal);
+        Assert.DoesNotMatch(@"MAX\s*\(\s*CASE", sql);
+        Assert.DoesNotContain("[Depth] DESC", sql, StringComparison.Ordinal);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
         Assert.Empty(context.ChangeTracker.Entries());

@@ -6,7 +6,12 @@ internal sealed partial class SqlServerNestedSetProvider
     internal override bool UsesIndependentAncestorOwners => true;
 
     /// <inheritdoc />
-    internal override NestedSetNearestQueryStrategy NearestQueryStrategy => NestedSetNearestQueryStrategy.ProjectedDepth;
+    // WHY: Valid ancestors form one nested chain, so descending Left selects the same nearest
+    // candidate as descending Depth and exposes the existing coordinate-index order without a depth sort.
+    internal override NestedSetNearestQueryStrategy NearestQueryStrategy => NestedSetNearestQueryStrategy.ProjectedLeft;
+
+    /// <inheritdoc />
+    internal override NestedSetPathFailureStrategy PathFailureStrategy => NestedSetPathFailureStrategy.RelationalWidth;
 
     /// <inheritdoc />
     internal override bool SupportsTrackedKeyCollection(

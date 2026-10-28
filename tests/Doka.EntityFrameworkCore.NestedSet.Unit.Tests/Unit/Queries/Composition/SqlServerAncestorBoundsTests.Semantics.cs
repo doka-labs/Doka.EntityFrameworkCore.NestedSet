@@ -162,27 +162,42 @@ public sealed partial class SqlServerAncestorBoundsTests
     };
 
     /// <summary>Combines an operator-free converted key with database-native case-insensitive tree identity.</summary>
-    private sealed class CoordinateBoundsContext(DbContextOptions<CoordinateBoundsContext> options) : DbContext(options)
+    private sealed class CoordinateBoundsContext(DbContextOptions<CoordinateBoundsContext> options, bool scoped = true)
+        : DbContext(options)
     {
         /// <inheritdoc />
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             var node = modelBuilder.Entity<CoordinateBoundsNode>();
             var converter = new ValueConverter<BoundsKey, int>(key => key.Value, value => new BoundsKey(value));
-            node.HasKey(entity => new { entity.Scope, entity.Id });
+            if (scoped)
+            {
+                node.HasKey(entity => new { entity.Scope, entity.Id });
+            }
+            else
+            {
+                node.HasKey(entity => entity.Id);
+            }
+
             node.Property(entity => entity.Id).HasConversion(converter).ValueGeneratedNever();
             node.Property(entity => entity.ParentId).HasConversion(converter);
             node.Property(entity => entity.TreeId).HasMaxLength(40)
                 .UseCollation(Database.IsSqlServer() ? "Latin1_General_100_BIN2" : "NOCASE");
             node.HasQueryFilter(entity => entity.Visible);
-            node.HasNestedSet(hierarchy => hierarchy
-                .HasNodeKey(entity => entity.Id)
-                .HasScope(entity => entity.Scope)
-                .HasTreeId(entity => entity.TreeId)
-                .HasParent(entity => entity.ParentId)
-                .HasBounds(entity => entity.Left, entity => entity.Right)
-                .HasDepth(entity => entity.Depth)
-                .HasPosition(entity => entity.Position));
+            node.HasNestedSet(hierarchy =>
+            {
+                hierarchy.HasNodeKey(entity => entity.Id)
+                    .HasTreeId(entity => entity.TreeId)
+                    .HasParent(entity => entity.ParentId)
+                    .HasBounds(entity => entity.Left, entity => entity.Right)
+                    .HasDepth(entity => entity.Depth)
+                    .HasPosition(entity => entity.Position);
+
+                if (scoped)
+                {
+                    hierarchy.HasScope(entity => entity.Scope);
+                }
+            });
         }
     }
 

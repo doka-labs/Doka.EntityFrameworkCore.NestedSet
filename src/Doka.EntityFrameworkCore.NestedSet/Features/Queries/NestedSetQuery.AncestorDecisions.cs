@@ -94,9 +94,10 @@ internal sealed partial class NestedSetQuery<TEntity>
                     Expression.AndAlso(Contains(owner, lower, includeSelf: false), selected.Body),
                     owner)));
 
-        // WHY: PostgreSQL retains its existing Depth ordering, including repairable intervals.
+        // WHY: PostgreSQL retains the Depth ordering of its measured broad-payload correction.
         // Projecting the decision once removes two scalar key sorts and their owner rejoin whose
-        // inactive subplans distorted broad join estimates. Doka/SQLite keep their qualified Left path.
+        // inactive subplans distorted broad join estimates. On valid ancestor chains, descending Left
+        // is equivalent; the other adapters use that existing coordinate order without a separate depth sort.
         var ordered = _capabilities.NearestQueryStrategy == NestedSetNearestQueryStrategy.ProjectedDepth
             ? Expression.Call(s_orderByDepth, candidates,
                 Expression.Quote(Expression.Lambda<Func<TEntity, int>>(Depth(owner), owner)))

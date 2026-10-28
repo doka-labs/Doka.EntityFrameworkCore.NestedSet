@@ -200,60 +200,41 @@ internal static partial class SupervisorQueries
             return sourceRows.Concat(singleGroupRows);
         }
 
-        // WHY: Keep complete evidence separate from the outcome LEFT JOIN. Otherwise, MySQL joined every
-        // membership of a proven unique person to every origin before applying its structural rank and path.
-        // Source/member keys and EXISTS predicates make (origin, found group, person) unique; DISTINCT retains
-        // all valid occurrences, including the same person in different found groups.
+        // WHY: Only missing and ambiguous origins need status markers. Successful origins already carry their
+        // complete status in each evidence row, so splitting the branches adds no physical transport rows.
+        var unresolvedRows = outcomes
+            .Where(outcome => outcome.PersonId == null)
+            .Select(s_singleGroupRowProjection);
+
+        // WHY: Keep the independent evidence barrier that prevents MySQL from joining every membership of
+        // a unique person to every origin before routing and path checks. Projecting the exact source/tree
+        // keys preserves every original occurrence without admitting evidence from another origin.
         var admittedEvidence = candidates
-            .Select(candidate => new
-            {
-                candidate.StartGroupId,
-                CandidateUserId = (int?)candidate.CandidateUserId,
-                FoundGroupId = (int?)candidate.FoundGroupId,
-                Distance = (int?)candidate.Distance,
-                LeadershipPriority = (int?)candidate.LeadershipPriority,
-            })
+            .Select(s_evidenceRowProjection)
             .Distinct();
 
-        // WHY: Join the outcome only once, then null-extend its admitted evidence. An ambiguous 10,000-person
-        // fan-in emits one outcome row; a unique person retains every original occurrence for cursor selection.
-        var joined = outcomes.GroupJoin(
-            admittedEvidence,
-            outcome => new
-            {
-                StartGroupId = outcome.Origin.Group.Id,
-                outcome.PersonId
-            },
+        var uniquePeople = witnesses.Where(witness => witness.Minimum != null && witness.Minimum == witness.Maximum);
+
+        // WHY: An independent inner join admits complete occurrences after server-side person reduction.
+        // Null-extending all-origin evidence from each outcome put the full candidate relation underneath
+        // every origin on SQL Server. Missing/ambiguous markers remain in the separate branch above.
+        var resolvedEvidence = admittedEvidence.Join(
+            uniquePeople,
             candidate => new
             {
                 candidate.StartGroupId,
-                PersonId = candidate.CandidateUserId
+                PersonId = (int?)candidate.CandidateUserId,
             },
-            (outcome, matching) => new
+            witness => new
             {
-                outcome,
-                matching,
-            });
+                witness.StartGroupId,
+                PersonId = witness.Minimum,
+            },
+            (candidate, witness) => candidate);
 
-        var originRows = joined.SelectMany(
-            row => row.matching.DefaultIfEmpty(),
-            (row, candidate) => new SupervisorReadRow
-            {
-                Kind = 1,
-                CatalogValid = false,
-                StateOrdinal = 0,
-                HasEvidence = candidate!.CandidateUserId != null,
-                Count = row.outcome.Count,
-                SourceUserId = source,
-                StartGroupId = row.outcome.Origin.Group.Id,
-                StartTreeId = row.outcome.Origin.Group.TreeId,
-                FoundGroupId = candidate.FoundGroupId ?? 0,
-                CandidateUserId = candidate.CandidateUserId ?? 0,
-                Distance = candidate.Distance ?? 0,
-                LeadershipPriority = candidate.LeadershipPriority ?? 0,
-            });
-
-        return sourceRows.Concat(originRows);
+        return sourceRows
+            .Concat(unresolvedRows)
+            .Concat(resolvedEvidence);
     }
 
     /// <summary>Collects only requested fields for one explicit physical owner catalog.</summary>

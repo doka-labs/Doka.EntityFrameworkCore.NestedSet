@@ -1716,7 +1716,31 @@ See [MySQL's EXPLAIN documentation](https://dev.mysql.com/doc/refman/8.4/en/expl
 
 Portable long-path proofs count children with one visible allowed direct
 parent, retaining native key equality, consecutive depth, containment and
-row-dependent rules. SQL Server's strict ancestor strategy projects a native
+row-dependent rules. SQL Server uses shared failure summaries for
+row-independent long-path rules: its adaptive width is a relational singleton
+aggregate, joined before grouping. Group keys contain only local columns;
+outer path limits are applied afterwards through existence predicates. This
+avoids subqueries in `GROUP BY` and aggregates mixing outer and local columns.
+MySQL/MariaDB retain their separately qualified scalar-width form; row-dependent
+rules retain their exact per-occurrence count.
+
+SQL Server selects the nearest strict ancestor in descending `Left` order.
+For the required valid bounds/depth model, ancestors form one nested chain:
+greater depth has strictly greater `Left`. Filtering that chain does not alter
+this equivalence. The selected owner still precedes its value and complete-path
+checks, with no fallback after rejection. This uses the existing coordinate-order
+primitive and index order; it removes the separate depth-sort expression, without
+guaranteeing a particular native access path. PostgreSQL retains the depth order
+of its separately measured broad-payload correction.
+
+Supervisor resolution separates missing/ambiguous origin markers from complete
+unique-person evidence with `UNION ALL`. The evidence relation retains its
+independent `DISTINCT` boundary and joins the grouped unique-person witnesses
+through an inner join. The server still decides ambiguity, and an admitted
+person retains every occurrence on that origin's path. No additional status
+row is sent for a successful origin and the reader count is unchanged.
+
+SQL Server's strict ancestor strategy projects a native
 owner key conditionally on nonleaf eligibility inside the independent
 `DISTINCT` relation, then hydrates by exact key/tree equality. A bare unique key
 could let the optimizer remove `DISTINCT`; coordinate-only hydration proved
@@ -1725,6 +1749,28 @@ and occurrences. These SQL shapes do not guarantee physical seeks or bounded
 server work; native execution plans and unchanged capacity guards remain
 required. The [2026-10-28 correction record](qualification/query-composition.md#ci-correction-qualification-2026-10-28)
 separates verified local behavior from outstanding native SQL Server execution.
+
+Excluded owner intervals share `(NULL, Tree, 0, 0)` in that private relation.
+Keeping each excluded leaf's real coordinates retained a population-sized
+`DISTINCT` result even when only one root was eligible. The
+[actual-relation cardinality controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerAncestorBoundsTests.Cardinality.cs)
+count the production relation asynchronously: one root and 100 leaves yield
+two classes per tree instead of 101. Eligible key zero, original bounds and
+equal-bound owner occurrences remain unchanged. The excluded zero interval
+cannot pass strict containment, and its NULL key cannot hydrate a required key.
+
+The mixed-direction, deep-path and supervisor capacity profiles additionally
+read SQL Server's actual Showplan counters. They sum `ActualRows` and reported
+`ActualRowsRead` across each operator's threads, without multiplying by
+`ActualExecutions`: these SQL Server counters are already cumulative. The
+existing `ForPaths` allowance admits one population validation plus independently
+required selected path evidence. Nearest-self checks require no edges, strict
+nearest-parent checks require one, and full root paths use their exact chain
+lengths. Correct final aggregates cannot conceal repeated population reads.
+The [native counter controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/CompositionSqlServerPlanWorkTests.cs)
+include the observed 95,050-output/10,000,100-read adverse plan and malformed,
+empty, parallel-thread and estimated-only evidence. These guards do not
+establish that a changed SQL Server query has passed native execution.
 
 PostgreSQL's nearest decision uses one depth-ordered owner projection rather
 than two scalar-key selections and a subsequent owner lookup. This preserves

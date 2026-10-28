@@ -64,6 +64,18 @@ internal static partial class CompositionCapacityProfiles
 
             observations.Add(observation);
             await WriteAsync(engine, observation, planProbe.Commands[0]);
+
+            if (engine == "SqlServer")
+            {
+                // WHY: Independent adjacency gives one upward edge and one downward edge, or two
+                // downward edges for a balanced branch origin. One population pass is allowed;
+                // reading the entire owner population again for every origin is not requested work.
+                var requiredEdges = expected.Sum(row => balanced && (row.Anchor - 2) % BalancedBranchSize == 0
+                    ? 3L : 2L);
+
+                CompositionSqlServerPlanWork.AssertWithinBudget(plan,
+                    CompositionPlanWorkBudget.ForPaths(nodes, origins, requiredEdges), profile);
+            }
         }
 
         return observations;

@@ -209,6 +209,17 @@ internal static partial class CompositionConsumerCapacityProfiles
 
         await WriteAsync(engine, observation, planProbe.Commands[0]);
 
+        if (engine == "SqlServer")
+        {
+            // WHY: The fixture has one eligible root manager. Its complete evidence needs these exact
+            // adjacency lengths; recomposing every other origin inside each origin is accidental work.
+            var requiredEdges = Enumerable.Range(data.Nodes - origins + 1, origins)
+                .Sum(key => (long)Depth(key, balanced, deep));
+
+            CompositionSqlServerPlanWork.AssertWithinBudget(plan,
+                CompositionPlanWorkBudget.ForPaths(data.Nodes, origins, requiredEdges), profile);
+        }
+
         return observation;
     }
 

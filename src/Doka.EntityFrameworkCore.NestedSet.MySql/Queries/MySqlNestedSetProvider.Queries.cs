@@ -17,7 +17,7 @@ internal sealed partial class MySqlNestedSetProvider
     internal override NestedSetNearestQueryStrategy NearestQueryStrategy => NestedSetNearestQueryStrategy.ProjectedLeft;
 
     /// <inheritdoc />
-    internal override bool UsesQueryFailureRelation => true;
+    internal override NestedSetPathFailureStrategy PathFailureStrategy => NestedSetPathFailureStrategy.ScalarWidth;
 
     /// <inheritdoc />
     internal override bool UsesPartitionedNearestDecision => true;

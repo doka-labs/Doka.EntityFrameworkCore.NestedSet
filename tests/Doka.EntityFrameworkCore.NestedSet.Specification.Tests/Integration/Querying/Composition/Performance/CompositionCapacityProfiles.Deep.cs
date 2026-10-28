@@ -142,6 +142,21 @@ internal static partial class CompositionCapacityProfiles
 
         await WriteAsync(engine, observation, planProbe.Commands[0]);
 
+        if (engine == "SqlServer")
+        {
+            // WHY: Independent chain adjacency gives the exact sum of selected leg lengths. Include
+            // one population validation, but never a full child-population scan for each selected fact.
+            var sumFactKeys = ((long)firstFact + lastFact) * facts / 2;
+            var requiredEdges = shape is "Path" or "Overlap" or "RootOwner"
+                ? (anchors * sumFactKeys) - ((long)facts * anchors * (anchors + 1) / 2)
+                : strict ? (long)anchors * facts : 0L;
+
+            // WHY: A nearest self candidate proves no edges; a strict nearest parent proves one.
+            // Granting either the full root-path allowance could conceal population-sized rescans.
+            CompositionSqlServerPlanWork.AssertWithinBudget(plan,
+                CompositionPlanWorkBudget.ForPaths(100_001, anchors * facts, requiredEdges), profile);
+        }
+
         return observation;
     }
 }

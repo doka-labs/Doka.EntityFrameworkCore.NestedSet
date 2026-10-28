@@ -10,7 +10,8 @@ internal sealed partial class NestedSetQuery<TEntity>
     {
         var owner = Expression.Parameter(typeof(TEntity), "owner");
         var key = NestedSetExpressions.Property(owner, _descriptor.NodeKey.Resolve(_entityType), typeof(object));
-        var conditionalKey = Expression.Condition(NonLeafBounds(owner), key, Expression.Constant(null, typeof(object)));
+        var eligible = NonLeafBounds(owner);
+        var conditionalKey = Expression.Condition(eligible, key, Expression.Constant(null, typeof(object)));
         var coordinate = Expression.Lambda<Func<TEntity, AncestorBounds>>(
             Expression.MemberInit(
                 Expression.New(typeof(AncestorBounds)),
@@ -25,6 +26,9 @@ internal sealed partial class NestedSetQuery<TEntity>
         // native key retains nonleaf classification while permitting an exact mapped-key hydration.
         // Every eligible owner keeps its own key, including owners sharing corrupt equal bounds.
         // Eligibility stays inside CASE: repeating it in WHERE would make the key branch unconditional.
+        // WHY: Excluded intervals also share zero coordinates, so all leaves of one tree collapse
+        // into one nonmatching class. Retaining their actual bounds kept the relation population-sized
+        // even when only one root could be an ancestor. The NULL key cannot hydrate any required key.
         var coordinates = _nodes.Select(coordinate).Distinct();
         var collection = Expression.Lambda<Func<TEntity, IEnumerable<AncestorBounds>>>(
             coordinates.Expression,
@@ -79,8 +83,9 @@ internal sealed partial class NestedSetQuery<TEntity>
         MemberAssignment Coordinate(string member, NestedSetPropertyDescriptor descriptor, Type? marker = null)
         {
             var property = descriptor.Resolve(_entityType);
-            var value = marker is null
-                ? NestedSetExpressions.QueryProperty(owner, property)
+            Expression value = marker is null
+                ? Expression.Condition(eligible,
+                    NestedSetExpressions.QueryProperty(owner, property), Expression.Constant(0L))
                 : NestedSetExpressions.Property(owner, property, marker);
 
             return Expression.Bind(typeof(AncestorBounds).GetProperty(member)!, value);
@@ -96,10 +101,10 @@ internal sealed partial class NestedSetQuery<TEntity>
         /// <summary>Gets the native mapped tree role used by the structural and hydration joins.</summary>
         public required object Tree { get; init; }
 
-        /// <summary>Gets the independent left bound.</summary>
+        /// <summary>Gets the eligible interval's left bound, or zero for an excluded class.</summary>
         public long Left { get; init; }
 
-        /// <summary>Gets the independent right bound.</summary>
+        /// <summary>Gets the eligible interval's right bound, or zero for an excluded class.</summary>
         public long Right { get; init; }
     }
 

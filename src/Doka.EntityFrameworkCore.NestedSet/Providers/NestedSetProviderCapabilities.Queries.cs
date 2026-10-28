@@ -13,8 +13,8 @@ internal abstract partial class NestedSetProviderCapabilities
     /// <summary>Gets the qualified nearest-owner ordering and scalar decision boundary.</summary>
     internal abstract NestedSetNearestQueryStrategy NearestQueryStrategy { get; }
 
-    /// <summary>Gets whether row-independent path failures use a separate structural relation.</summary>
-    internal virtual bool UsesQueryFailureRelation => false;
+    /// <summary>Gets the selected invalid-child SQL form for row-independent complete-path proofs.</summary>
+    internal virtual NestedSetPathFailureStrategy PathFailureStrategy => NestedSetPathFailureStrategy.None;
 
     /// <summary>Gets whether row-independent nearest lookup uses shared coordinate partitions.</summary>
     internal virtual bool UsesPartitionedNearestDecision => false;

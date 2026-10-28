@@ -163,6 +163,18 @@ construction. The [projection ownership controls](../tests/Doka.EntityFrameworkC
 inspect actual cached selectors, exercise forbidden-capture controls and measure
 the real sample's warm construction without database I/O.
 
+The [independent supervisor evidence controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/UserGroups/SupervisorEvidenceJoinTests.cs)
+combine missing, ambiguous and unique origins in one read. Shared winners,
+multiple found-group occurrences, duplicate role/period witnesses, hidden users
+and blocked intermediate edges retain exact evidence, cursors and physical
+transport rows. SQL Server translation checks protect independent marker and
+inner-joined evidence branches; SQLite executes the behavioral controls.
+The [SQL Server native-work controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/CompositionSqlServerPlanWorkTests.cs)
+protect parsing of actual per-thread output and pre-filter reads. Existing
+mixed, deep and supervisor capacity profiles apply the original cardinality-based
+path allowance to both observations. Their final native x64 execution is a
+separate qualification requirement.
+
 The [adapter registration controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/OptionsExtensionTests.Providers.cs)
 verify actual native callbacks, stable repeated selection, distinct service
 identities, and rejection of missing, mismatched, conflicting or opaque adapter

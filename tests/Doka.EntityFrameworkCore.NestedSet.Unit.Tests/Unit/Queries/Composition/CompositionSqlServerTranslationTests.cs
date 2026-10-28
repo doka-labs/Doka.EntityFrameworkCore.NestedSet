@@ -47,7 +47,8 @@ public sealed class CompositionSqlServerTranslationTests
 
         // Assert
         Assert.Contains("SELECT", sql, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("COUNT_BIG(", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(shape == "mixed", sql.Contains("COUNT_BIG(", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(shape != "mixed", sql.Contains("GROUP BY", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain("APPLY", sql, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);

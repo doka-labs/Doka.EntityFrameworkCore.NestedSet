@@ -138,7 +138,7 @@ internal sealed partial class NestedSetQuery<TEntity>
 
         Expression longPath;
 
-        if (_capabilities.UsesQueryFailureRelation
+        if (_capabilities.PathFailureStrategy != NestedSetPathFailureStrategy.None
             && (edgeAllowed is null
                 || !NestedSetQueryExpressions.References(edgeAllowed.Body, edgeAllowed.Parameters[0])))
         {

@@ -127,13 +127,13 @@ duration gate is introduced. The
 use the existing actual-plan parser and work budgets; a negative Unit control
 rejects the five-billion-tuple extrapolated bad shape with that same budget.
 
-The SQL Server successor still reads population-sized owner/child ranges per
+The CI25 SQL Server source still reads population-sized owner/child ranges per
 source in successful neighboring profiles. The initial coordinate-only
 `DISTINCT` shape does not establish the intended materialization order and is
 not a qualified performance fix. Those native failures remain open until
 their corrected source passes supported x64 execution with actual plans.
 
-The current SQL Server candidate preserves `Depth DESC` while projecting its
+The initial SQL Server candidate preserved `Depth DESC` while projecting its
 nearest-owner decision once. The now-unused scalar-key route and exclusive
 method templates were removed; all four adapters explicitly select one of the
 two consumed depth/left orderings. Its ancestor relation retains nonleaf
@@ -142,7 +142,7 @@ instead of three bound coordinates. Fifteen SQL-translation and executed
 portable semantic controls pass, as do 682 broader Unit/provider controls.
 The final cleaned core also passes 22 PostgreSQL cases including both original
 Medium populations and native work guards. These results do not establish the
-SQL Server candidate's physical plan or bound the remaining deep child scans.
+initial SQL Server candidate's physical plan or bound the deep child scans.
 
 The ten-million-node setup correction enumerates the case-owned table's real
 `sys.stats` entries and updates each one with `FULLSCAN`, retaining the ordinary
@@ -150,6 +150,64 @@ command deadline. Thirty replay/cleanup/statistics controls pass, including
 bound object identity, escaped identifiers, default and explicit deadlines,
 and catalog/read/update failures. An individual scan and the full native
 ten-million-node case remain subject to x64 verification.
+
+### SQL Server follow-up corrections
+
+The independent owner relation also collapses excluded coordinates, not only
+their key: `(NULL, Tree, 0, 0)` represents all excluded intervals of one tree.
+Eligible owners retain their native identity and original bounds. Direct counts
+of the actual production relation fail before this change at 101/202 classes
+for one/two trees, then pass at two/four classes with the same 100 leaves per
+tree. Existing zero-key, visibility, converted-identity, extreme-bound and
+equal-bound-owner semantic controls remain required. This reduction is an
+executed logical-cardinality result, not a native SQL Server seek guarantee.
+
+The follow-up replaces independent-rule long-path child counts with shared
+invalid-child summaries. A relational singleton computes adaptive width before
+grouping; summary keys and `MAX` operands contain local columns only. Separate
+existence predicates apply the outer path limits. Row-dependent rules retain
+their exact count and native parent comparison. MySQL/MariaDB retain their
+existing scalar-width strategy. The
+[direct helper controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerAncestorBoundsTests.RelationalPaths.cs)
+execute the new classifier and relation on SQLite with scoped/unscoped,
+converted, hidden/missing parent, blocked edge and partition-boundary cases.
+
+SQL Server now uses the existing descending-`Left` nearest-owner strategy.
+Valid ancestor intervals form one nested chain, so their depth order is the
+same coordinate order even with nonmonotonic keys or filtered candidates.
+Nearest-before-value/path rejection is unchanged. This addresses the separate
+depth-sort expression still present in the initial single-projection candidate;
+PostgreSQL retains its independently measured depth strategy.
+
+The UserGroups consumer reads missing/ambiguous markers independently from
+complete unique-person evidence. Evidence retains its `DISTINCT` boundary and
+joins the grouped unique-person witnesses through an inner join. The status
+and evidence branches use one `UNION ALL` reader with unchanged physical row
+budgets, complete occurrences and per-origin isolation.
+
+The existing mixed, deep and supervisor capacity profiles additionally inspect
+SQL Server's cumulative per-thread `ActualRows` and `ActualRowsRead`, without
+multiplying by executions. They use the existing `ForPaths` allowance derived
+from the population and independent selected adjacency. Five retained adverse
+CI25 plans exceed this allowance, including 100,000,000 owner reads against
+206,000 permitted tuples and 10,000,100 child reads against 390,302. These are
+old-plan counterexamples, not executions of the corrected source. The guard
+bounds the largest operator; it is not a total CPU, total I/O or latency limit.
+
+The final local follow-up uses a fresh complete Release build with zero
+warnings/errors. All 5,820 selected executions pass without skips: 451
+uninstrumented allocation/lifetime controls, 2,422 complementary Unit cases
+with Code Coverage, 1,480 native MySQL/MariaDB cases, 735 native PostgreSQL
+cases and 732 SQLite cases. The native selections include affected semantic,
+mapping and sample contracts; MySQL/MariaDB and PostgreSQL additionally execute
+the original medium and large consumer capacity profiles. Style and unused-import
+verification pass. All 1,873 captured source/configuration hashes remain unchanged
+through these runs. These are local follow-up results, not a hosted CI result.
+
+Generated SQL, portable execution and other native engines cannot establish
+SQL Server's selected access path. All eight affected SQL Server capacity
+cases and their actual plans still require supported x64 execution of this
+source. No command deadline, index, query hint or acceptance budget was raised.
 
 ## Semantic and native-work evidence
 
