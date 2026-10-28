@@ -12,7 +12,7 @@ is enough.
 
 | Contract | Disposition | Impact and evidence |
 | --- | --- | --- |
-| Public APIs and the two package contracts |  |  |
+| Public APIs and the six package contracts |  |  |
 | Tree identity, bounds, ordering, and data integrity |  |  |
 | Transactions, retries, cancellation, and concurrency |  |  |
 | Provider, migration, and supported-version behavior |  |  |

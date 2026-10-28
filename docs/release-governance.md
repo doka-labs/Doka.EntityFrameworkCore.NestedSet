@@ -20,30 +20,49 @@ history and organization access do not demonstrate.
 
 ## Version policy
 
-Both package IDs publish one identical canonical version:
+All six package IDs publish one identical canonical version:
 
 - `Doka.NestedSet`;
-- `Doka.EntityFrameworkCore.NestedSet`.
+- `Doka.EntityFrameworkCore.NestedSet`;
+- `Doka.EntityFrameworkCore.NestedSet.MySql`;
+- `Doka.EntityFrameworkCore.NestedSet.Postgres`;
+- `Doka.EntityFrameworkCore.NestedSet.Sqlite`; and
+- `Doka.EntityFrameworkCore.NestedSet.SqlServer`.
 
 Accepted release versions are `X.Y.Z-rc.N` and `X.Y.Z`, without a leading `v`
 or build metadata. The source tag is `v<version>`. NuGet versions are never
-reused or repointed.
+reused or repointed. The package major follows the .NET family: `10.x` targets
+.NET 10 and `11.x` is reserved for .NET 11.
+
+The owner explicitly retained `10.1.0` for the provider-package and registration
+break in [D-020](decisions/D-020-provider-owned-runtime-packages.md). This is a
+narrow, documented exception to SemVer's major-version treatment of breaking
+changes, not permission for unrelated breaking changes in future minor releases.
+The upgrade guide and changelog must identify the removed options-level API and
+selected-adapter installation. Consumers must review/pin their qualified graph
+rather than infer compatibility solely from the unchanged package major.
 
 An RC communicates a candidate public contract. A stable release communicates
 the reviewed stable contract and moves the public API additions from
 `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt` in the source commit before
 qualification.
 
-For the first stable `10.0.0`, the accepted Core and EF declarations are in
-their shipped files and both unshipped files contain only the nullable
-directive. The source version is `10.0.0` without a prerelease suffix.
+The initial `10.0.0` Core and EF declarations remain the shipped compatibility
+baseline. The `10.1.0` feature source records EF query additions, the explicitly
+removed options-level registration, and new adapter callback APIs in the
+respective unshipped files until stable release review promotes them. The
+provider-package/registration break is approved in
+[D-020](decisions/D-020-provider-owned-runtime-packages.md) and documented in
+the [upgrade guide](upgrading-provider-packages.md). The source uses
+`VersionPrefix=10.1.0` without a prerelease suffix; its presence is not evidence
+that packages have been published.
 
 ## Entry conditions
 
 - Exact source is reviewed and current on protected `main`.
 - Worktree is clean and dependency locks match source.
 - Version and dated changelog entry are reviewed.
-- Both package IDs are unused at that version.
+- All six package IDs are unused at that version.
 - Public API baselines and compatibility impact are correct.
 - Required provider, migration, package, SBOM, and consumer checks pass.
 - No unresolved security or data-integrity blocker applies.
@@ -97,7 +116,7 @@ The release record includes:
 - primary and symbol package SHA-256 hashes;
 - locked dependency evidence;
 - full test and provider results;
-- coverage for every executable test project, executed lines in both shipping
+- coverage for every executable test project, executed lines in all six shipping
   modules across the reports, every required query plan, and all three samples;
 - package-only consumer results with matching primary-package hashes;
 - per-package SPDX 2.2 SBOMs;
@@ -132,7 +151,7 @@ See [rerun boundaries](release-process.md#recovery). Recovery after sealing
 retains the original candidate artifact IDs, bytes, and attestation/publication
 controls.
 
-NuGet publication across two package IDs is not atomic. Recovery uses only the
+NuGet publication across six package IDs is not atomic. Recovery uses only the
 same failed publish job and candidate. Already visible matching packages may be
 skipped; conflicting public content is terminal. The GitHub release remains a
 draft until public packages are verified.

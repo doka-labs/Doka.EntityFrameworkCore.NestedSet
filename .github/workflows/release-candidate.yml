@@ -667,17 +667,53 @@ jobs:
           subject-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.${{ inputs.version }}.nupkg
           sbom-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.spdx.json
 
+      - name: Attest MySQL adapter SBOM
+        id: mysql-sbom
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.MySql.${{ inputs.version }}.nupkg
+          sbom-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.MySql.spdx.json
+
+      - name: Attest PostgreSQL adapter SBOM
+        id: postgres-sbom
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.Postgres.${{ inputs.version }}.nupkg
+          sbom-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.Postgres.spdx.json
+
+      - name: Attest SQLite adapter SBOM
+        id: sqlite-sbom
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.Sqlite.${{ inputs.version }}.nupkg
+          sbom-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.Sqlite.spdx.json
+
+      - name: Attest SQL Server adapter SBOM
+        id: sqlserver-sbom
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.SqlServer.${{ inputs.version }}.nupkg
+          sbom-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.SqlServer.spdx.json
+
       - name: Materialize and verify portable signed bundles
         env:
           PROVENANCE_BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
           CORE_BUNDLE: ${{ steps.core-sbom.outputs.bundle-path }}
           EF_BUNDLE: ${{ steps.ef-sbom.outputs.bundle-path }}
+          MYSQL_BUNDLE: ${{ steps.mysql-sbom.outputs.bundle-path }}
+          POSTGRES_BUNDLE: ${{ steps.postgres-sbom.outputs.bundle-path }}
+          SQLITE_BUNDLE: ${{ steps.sqlite-sbom.outputs.bundle-path }}
+          SQLSERVER_BUNDLE: ${{ steps.sqlserver-sbom.outputs.bundle-path }}
         shell: bash
         run: |
           mkdir -p artifacts/provenance
           cp "$PROVENANCE_BUNDLE" artifacts/provenance/release-provenance.jsonl
           cp "$CORE_BUNDLE" artifacts/provenance/sbom-Doka.NestedSet.jsonl
           cp "$EF_BUNDLE" artifacts/provenance/sbom-Doka.EntityFrameworkCore.NestedSet.jsonl
+          cp "$MYSQL_BUNDLE" artifacts/provenance/sbom-Doka.EntityFrameworkCore.NestedSet.MySql.jsonl
+          cp "$POSTGRES_BUNDLE" artifacts/provenance/sbom-Doka.EntityFrameworkCore.NestedSet.Postgres.jsonl
+          cp "$SQLITE_BUNDLE" artifacts/provenance/sbom-Doka.EntityFrameworkCore.NestedSet.Sqlite.jsonl
+          cp "$SQLSERVER_BUNDLE" artifacts/provenance/sbom-Doka.EntityFrameworkCore.NestedSet.SqlServer.jsonl
           python3 -m eng.release.publication attest-verify \
             --candidate artifacts/candidate \
             --provenance artifacts/provenance
@@ -765,46 +801,40 @@ jobs:
         with:
           user: ${{ secrets.NUGET_USER }}
 
-      # WHY: A symbol-service failure must not block the dependent EF primary package.
-      - name: Publish Core package
+      # WHY: Manifest order places dependencies before adapters; every primary must precede every symbol upload.
+      - name: Publish primary packages
         env:
           NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         shell: bash
-        run: >-
-          dotnet nuget push "artifacts/packages/Doka.NestedSet.$CANDIDATE_VERSION.nupkg"
-          --source https://api.nuget.org/v3/index.json
-          --api-key "$NUGET_API_KEY"
-          --no-symbols --skip-duplicate --timeout 300
+        run: |
+          packages="$(jq -er '[.packages[].nupkg] |
+            if length > 0 and all(.[]; type == "string" and length > 0)
+            then .[] else error("Missing primary package filenames") end' artifacts/candidate/package-manifest.json)"
+          while IFS= read -r package; do
+            echo "::group::Publish $package"
+            dotnet nuget push "artifacts/packages/$package" \
+              --source https://api.nuget.org/v3/index.json \
+              --api-key "$NUGET_API_KEY" \
+              --no-symbols --skip-duplicate --timeout 300
+            echo "::endgroup::"
+          done <<< "$packages"
 
-      - name: Publish EF package
+      - name: Publish symbol packages
         env:
           NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         shell: bash
-        run: >-
-          dotnet nuget push "artifacts/packages/Doka.EntityFrameworkCore.NestedSet.$CANDIDATE_VERSION.nupkg"
-          --source https://api.nuget.org/v3/index.json
-          --api-key "$NUGET_API_KEY"
-          --no-symbols --skip-duplicate --timeout 300
-
-      - name: Publish Core symbols
-        env:
-          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
-        shell: bash
-        run: >-
-          dotnet nuget push "artifacts/packages/Doka.NestedSet.$CANDIDATE_VERSION.snupkg"
-          --source https://api.nuget.org/v3/index.json
-          --api-key "$NUGET_API_KEY"
-          --skip-duplicate --timeout 300
-
-      - name: Publish EF symbols
-        env:
-          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
-        shell: bash
-        run: >-
-          dotnet nuget push "artifacts/packages/Doka.EntityFrameworkCore.NestedSet.$CANDIDATE_VERSION.snupkg"
-          --source https://api.nuget.org/v3/index.json
-          --api-key "$NUGET_API_KEY"
-          --skip-duplicate --timeout 300
+        run: |
+          packages="$(jq -er '[.packages[].snupkg] |
+            if length > 0 and all(.[]; type == "string" and length > 0)
+            then .[] else error("Missing symbol package filenames") end' artifacts/candidate/package-manifest.json)"
+          while IFS= read -r package; do
+            echo "::group::Publish $package"
+            dotnet nuget push "artifacts/packages/$package" \
+              --source https://api.nuget.org/v3/index.json \
+              --api-key "$NUGET_API_KEY" \
+              --skip-duplicate --timeout 300
+            echo "::endgroup::"
+          done <<< "$packages"
 
       - name: Verify signed public packages and indexed Portable PDBs
         run: >-

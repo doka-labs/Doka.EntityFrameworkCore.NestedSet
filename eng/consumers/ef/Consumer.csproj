@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup Label="Exact candidate root">
+    <PackageReference Include="Doka.EntityFrameworkCore.NestedSet" Version="[$(CandidateVersion)]"/>
+  </ItemGroup>
+</Project>

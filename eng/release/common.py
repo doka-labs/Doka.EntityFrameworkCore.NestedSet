@@ -10,8 +10,18 @@ from datetime import date
 from pathlib import Path
 
 REPOSITORY = "doka-labs/Doka.EntityFrameworkCore.NestedSet"
-PACKAGES = ("Doka.NestedSet", "Doka.EntityFrameworkCore.NestedSet")
-CONSUMERS = (("core", (PACKAGES[0],)), ("ef", (PACKAGES[1],)))
+PACKAGES = ("Doka.NestedSet", "Doka.EntityFrameworkCore.NestedSet",
+            "Doka.EntityFrameworkCore.NestedSet.MySql", "Doka.EntityFrameworkCore.NestedSet.Postgres",
+            "Doka.EntityFrameworkCore.NestedSet.Sqlite", "Doka.EntityFrameworkCore.NestedSet.SqlServer")
+PROVIDER_PACKAGES = {
+    "Doka.EntityFrameworkCore.NestedSet.MySql": "Doka.EntityFrameworkCore.MySql",
+    "Doka.EntityFrameworkCore.NestedSet.Postgres": "Npgsql.EntityFrameworkCore.PostgreSQL",
+    "Doka.EntityFrameworkCore.NestedSet.Sqlite": "Microsoft.EntityFrameworkCore.Sqlite",
+    "Doka.EntityFrameworkCore.NestedSet.SqlServer": "Microsoft.EntityFrameworkCore.SqlServer",
+}
+CONSUMERS = tuple((name, (package,)) for name, package in zip(
+    ("core", "ef", "mysql", "postgres", "sqlite", "sqlserver"), PACKAGES, strict=True)) + (
+    ("filesystem", ("Doka.EntityFrameworkCore.NestedSet.MySql", "Doka.EntityFrameworkCore.NestedSet.Sqlite")),)
 STAGES = ("quality", "tests", "packages", "consumer", "sbom")
 RELEASE_WORKFLOW = ".github/workflows/release-candidate.yml"
 

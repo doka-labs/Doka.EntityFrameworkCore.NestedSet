@@ -30,7 +30,11 @@ body:
       options:
         - Doka.NestedSet
         - Doka.EntityFrameworkCore.NestedSet
-        - Both packages
+        - Doka.EntityFrameworkCore.NestedSet.MySql
+        - Doka.EntityFrameworkCore.NestedSet.Postgres
+        - Doka.EntityFrameworkCore.NestedSet.Sqlite
+        - Doka.EntityFrameworkCore.NestedSet.SqlServer
+        - Multiple packages
         - Not yet determined
     validations:
       required: true

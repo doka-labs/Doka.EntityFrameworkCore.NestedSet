@@ -1,5 +1,5 @@
 name: Bug report
-description: Report reproducible behavior in Doka.NestedSet or Doka.EntityFrameworkCore.NestedSet.
+description: Report reproducible behavior in NestedSet core or database adapter packages.
 title: "bug: "
 labels: []
 assignees: []
@@ -30,7 +30,11 @@ body:
       options:
         - Doka.NestedSet
         - Doka.EntityFrameworkCore.NestedSet
-        - Both packages
+        - Doka.EntityFrameworkCore.NestedSet.MySql
+        - Doka.EntityFrameworkCore.NestedSet.Postgres
+        - Doka.EntityFrameworkCore.NestedSet.Sqlite
+        - Doka.EntityFrameworkCore.NestedSet.SqlServer
+        - Multiple packages
         - Not yet determined
     validations:
       required: true

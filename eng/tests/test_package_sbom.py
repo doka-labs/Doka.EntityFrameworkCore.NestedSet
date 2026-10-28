@@ -7,8 +7,10 @@ import os
 import subprocess
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 SPEC = importlib.util.spec_from_file_location("package_sbom", Path(__file__).parents[1] / "verify-package-sbom.py")
 SBOM = importlib.util.module_from_spec(SPEC)
@@ -249,16 +251,17 @@ class PackageSbomTests(unittest.TestCase):
         self.assertRegex(str(error), "one unmodified shipping archive")
 
     def test_nuspec_identity_controls_shipping_inventory(self):
-        """Both actual candidate identities are required even when files have plausible names."""
+        """Every actual candidate identity is required even when files have plausible names."""
         # Arrange
-        core = self.make_archive("Doka.NestedSet", self.version)
+        archives = {name: self.make_archive(name, self.version) for name in SBOM.SHIPPING_PACKAGES
+                    if name != self.name}
 
         # Act
         result = SBOM.shipping_archives(self.directory, self.version)
 
         # Assert
-        self.assertEqual({self.name, "Doka.NestedSet"}, set(result))
-        self.assertEqual(core.resolve(), result["Doka.NestedSet"])
+        self.assertEqual(set(SBOM.SHIPPING_PACKAGES), set(result))
+        self.assertEqual(archives["Doka.NestedSet"].resolve(), result["Doka.NestedSet"])
 
     def test_wrong_candidate_version_is_rejected(self):
         """Candidate identity inspection rejects a mismatching requested release."""
@@ -405,6 +408,65 @@ class PackageSbomTests(unittest.TestCase):
         # Assert
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual([], list(temporary.iterdir()))
+
+    def test_consumer_restore_isolates_producer_outputs_and_preserves_vendor_environment(self):
+        """Producer MSBuild settings cannot redirect assets or repair the isolated shipping graph."""
+        # Arrange
+        work = self.directory / "work"
+        record = self.directory / "record"
+        feed = self.directory / "feed"
+        repo = self.directory / "repo"
+        for directory in (work, record, feed, repo):
+            directory.mkdir()
+
+        (repo / "global.json").write_text('{"sdk":{"version":"10.0.401"}}', encoding="ascii")
+        overrides = {key: str(self.directory / "producer" / key) for key in (
+            "ArtifactsPath", "UseArtifactsOutput", "BaseIntermediateOutputPath", "BaseOutputPath",
+            "MSBuildProjectExtensionsPath", "DirectoryPackagesPropsPath", "RestorePackagesPath",
+            "NestedSetReleaseLockRoot", "NuGetLockFilePath", "RestoreLockedMode")}
+
+        vendor = {"TMPDIR": str(self.directory / "vendor-scratch"),
+                  "DOTNET_BUNDLE_EXTRACT_BASE_DIR": str(self.directory / "vendor-bundle")}
+
+        def sdk_restore(arguments, **settings):
+            """Model the observed SDK redirection while keeping every artifact inside the test directory."""
+            environment = settings.get("env")
+            effective = os.environ if environment is None else environment
+            output = (Path(effective["ArtifactsPath"]) / "redirected-assets" if "ArtifactsPath" in effective
+                      else Path(settings["cwd"]) / "obj")
+            output.mkdir(parents=True)
+            (output / "project.assets.json").write_text("{}", encoding="ascii")
+
+            return subprocess.CompletedProcess(arguments, 0)
+
+        # Act
+        with patch.dict(os.environ, {**overrides, **vendor}), \
+                patch.object(SBOM.subprocess, "run", side_effect=sdk_restore) as process:
+            consumer = SBOM.prepare_consumer(work, record, self.name, self.version, feed, repo)
+
+        # Assert
+        self.assertEqual(work / "consumer", consumer)
+        self.assertTrue((consumer / "obj/project.assets.json").is_file())
+        self.assertFalse((Path(overrides["ArtifactsPath"]) / "redirected-assets").exists())
+        self.assertEqual(1, process.call_count)
+        command = process.call_args.args[0]
+        environment = process.call_args.kwargs["env"]
+
+        self.assertFalse(set(overrides) & set(environment))
+        self.assertEqual(vendor, {key: environment[key] for key in vendor})
+        self.assertEqual(str(work / "packages"), command[command.index("--packages") + 1])
+        self.assertIn("-p:ImportDirectoryBuildProps=false", command)
+        self.assertIn("-p:ImportDirectoryBuildTargets=false", command)
+        self.assertIn("-p:ManagePackageVersionsCentrally=false", command)
+        references = ET.parse(consumer / "Consumer.csproj").findall(".//PackageReference")
+
+        self.assertEqual([(self.name, f"[{self.version}]")],
+                         [(item.get("Include"), item.get("Version")) for item in references])
+        self.assertFalse((consumer / "Directory.Packages.props").exists())
+        patterns = ET.parse(consumer / "NuGet.Config").findall(
+            ".//packageSource[@key='local']/package")
+
+        self.assertEqual(set(SBOM.SHIPPING_PACKAGES), {item.get("pattern") for item in patterns})
 
 
 if __name__ == "__main__":

@@ -112,7 +112,7 @@ criterion instead of adding artificial product instrumentation for a badge.
 
 The Passing definition permits an automated suite with at least 80% **branch**
 coverage as dynamic-analysis evidence. The existing collector emits Cobertura
-for the two shipping modules. A configured coverage check, line percentage, or
+for all six shipping modules. A configured coverage check, line percentage, or
 test count alone is not that evidence. The dated measured results and source
 comparison are in [Passing evidence](../openssf-best-practices.md#measured-analysis-evidence).
 Refresh those results for a changed runtime before making a release claim.

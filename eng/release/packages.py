@@ -16,9 +16,11 @@ from pathlib import Path, PurePosixPath
 
 try:
     from .common import PACKAGES as PACKAGE_IDS
+    from .common import PROVIDER_PACKAGES
     from .common import read_json, sha256, write_json
 except ImportError:
     from common import PACKAGES as PACKAGE_IDS
+    from common import PROVIDER_PACKAGES
     from common import read_json, sha256, write_json
 
 REPOSITORY = "https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet"
@@ -108,30 +110,38 @@ def dependencies(record):
     return result
 
 
-def bounded_dependency_range(value):
-    """Normalize only NuGet's comma spacing while retaining exact inclusive/exclusive version bounds."""
+def dependency_range(name, value):
+    """Normalize reviewed ranges, including the framework security package's minimum-only contract."""
+    if name == "System.Security.Cryptography.Pkcs":
+        # WHY: This floor repairs SqlClient's transitive security dependency. No known incompatibility
+        # justifies blocking a consumer's newer framework package with an arbitrary upper bound.
+        minimum = re.fullmatch(r"(?:([0-9]+\.[0-9]+\.[0-9]+)|\[([0-9]+\.[0-9]+\.[0-9]+),\s*\))", value or "")
+        require(minimum is not None, "PKCS must declare only an inclusive security minimum")
+
+        return (minimum.group(1) or minimum.group(2), None)
+
     match = re.fullmatch(r"\[([0-9]+\.[0-9]+\.[0-9]+),\s*([0-9]+\.[0-9]+\.[0-9]+)\)", value or "")
-    require(match is not None, "EF dependency must declare a bounded inclusive-floor/exclusive-major range")
+    require(match is not None, "Dependency must declare a bounded inclusive-floor/exclusive-upper range")
 
     return match.groups()
 
 
-def ef_dependency_contract():
-    """Read the shipping project's direct EF references and its source-controlled central version overrides."""
-    project = ET.parse(ROOT / f"src/{PACKAGE_IDS[1]}/{PACKAGE_IDS[1]}.csproj")
+def dependency_contract(package_id):
+    """Read one shipping project's direct dependencies and exact central compatibility overrides."""
+    project = ET.parse(ROOT / f"src/{package_id}/{package_id}.csproj")
     direct = {item.get("Include") for item in project.findall(".//PackageReference")}
     configuration = ET.parse(ROOT / "Directory.Packages.props")
-    condition = f"'$(MSBuildProjectName)' == '{PACKAGE_IDS[1]}'"
+    condition = f"'$(MSBuildProjectName)' == '{package_id}'"
     groups = [group for group in configuration.findall("ItemGroup") if group.get("Condition") == condition]
-    require(len(groups) == 1, "Missing unambiguous shipping EF version override group")
+    require(len(groups) == 1, f"Missing unambiguous shipping version override group for {package_id}")
     items = groups[0].findall("PackageVersion")
     overrides = {item.get("Update"): item.get("Version") for item in items}
     require(len(overrides) == len(items) and set(overrides) == direct,
-            "Shipping EF dependency references and version overrides disagree")
+            f"Shipping dependency references and version overrides disagree for {package_id}")
 
-    # WHY: Source builds restore the reviewed EF patch, while published packages allow the validated EF major.
-    # Compare the actual packaging overrides, not the development Include versions used by test projects.
-    return {name: bounded_dependency_range(version) for name, version in overrides.items()}
+    # WHY: Packaging compatibility ranges differ from the exact development versions used by qualification.
+    # Each adapter owns one native provider; the common EF package must not acquire those dependencies.
+    return {name: dependency_range(name, version) for name, version in overrides.items()}
 
 
 def verify_layout(entries, package_id, symbol_package):
@@ -249,8 +259,8 @@ def _verify_packages(package_dir, version, source_commit=None, sealed_manifest=N
     require(package_dir.is_dir(), "Package directory does not exist")
     actual = {path.name for path in package_dir.iterdir()
               if sealed_manifest is None or path.suffix.lower() in (".nupkg", ".snupkg")}
-    require(actual == expected, f"Expected exactly two primary and two symbol archives; got {sorted(actual)}")
-    ef_dependencies = ef_dependency_contract()
+    require(actual == expected,
+            f"Expected exactly {len(PACKAGE_IDS)} primary and {len(PACKAGE_IDS)} symbol archives; got {sorted(actual)}")
     packages = []
 
     for package_id in PACKAGE_IDS:
@@ -279,12 +289,33 @@ def _verify_packages(package_dir, version, source_commit=None, sealed_manifest=N
         if package_id == PACKAGE_IDS[0]:
             require(not declared, "Core package must remain dependency-free")
         else:
-            binding = declared.pop(PACKAGE_IDS[0], None)
-            require(binding in (version, f"[{version}]", f"[{version}, {version}]"),
-                    "EF package must bind the candidate Core version")
-            require(set(declared) == set(ef_dependencies), "Unexpected EF dependency closure")
-            require({name: bounded_dependency_range(value) for name, value in declared.items()} == ef_dependencies,
-                    "EF dependency range differs from the shipping contract")
+            parent = PACKAGE_IDS[0] if package_id == PACKAGE_IDS[1] else PACKAGE_IDS[1]
+            binding = declared.pop(parent, None)
+            # WHY: Adapters override kernel internals. Public ORM APIs allow newer versions, but the
+            # private adapter ABI must be exactly the release that produced both assemblies.
+            compatible = (binding == version or re.fullmatch(r"\[" + re.escape(version) + r",\s*\)", binding or "")) \
+                if package_id == PACKAGE_IDS[1] else binding == f"[{version}]"
+            require(compatible,
+                    f"{package_id} must declare the candidate {parent} dependency version")
+            expected_dependencies = dependency_contract(package_id)
+
+            if package_id == PACKAGE_IDS[1]:
+                require(set(expected_dependencies) == {"Microsoft.EntityFrameworkCore",
+                                                       "Microsoft.EntityFrameworkCore.Relational"},
+                        "Common EF package must reference only EF Core and Relational")
+            else:
+                allowed = {PROVIDER_PACKAGES[package_id]}
+                if package_id.endswith(".SqlServer"):
+                    # WHY: The actual SqlClient graph requests older PKCS; the shipping adapter owns this
+                    # reviewed security floor rather than relying on qualification's transitive pinning.
+                    allowed.add("System.Security.Cryptography.Pkcs")
+
+                require(set(expected_dependencies) == allowed,
+                        "Adapter must reference only its selected native provider and owned security floor")
+
+            require(set(declared) == set(expected_dependencies), "Unexpected shipping dependency closure")
+            require({name: dependency_range(name, value) for name, value in declared.items()}
+                    == expected_dependencies, "Dependency range differs from the shipping contract")
 
         license_node = primary_metadata.find("{*}license")
         require(license_node is not None and license_node.get("type") == "expression" and license_node.text == "MIT",
@@ -349,7 +380,7 @@ def verified_manifest(package_dir, version, manifest, source_commit=None):
             require(isinstance(digest, str) and re.fullmatch(r"[0-9a-f]{64}", digest), "Invalid package manifest hash")
 
     # WHY: Candidate artifact roots also contain their authenticated manifest, SBOMs, and qualification evidence.
-    # The caller verifies that outer inventory; this function requires exactly the four package archives within it.
+    # The caller verifies that outer inventory; this function requires every primary and symbol archive within it.
     return _verify_packages(Path(package_dir), version, source_commit, value)
 
 

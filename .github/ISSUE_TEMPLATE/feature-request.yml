@@ -8,7 +8,7 @@ body:
     attributes:
       value: |
         Describe the consumer problem before choosing an API or algorithm.
-        Requests are evaluated against the two package boundaries, tree
+        Requests are evaluated against the shared hierarchy contracts and provider boundaries, tree
         invariants, supported providers, maintainability, and runtime cost.
 
         Use the private [security process](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/security/policy)

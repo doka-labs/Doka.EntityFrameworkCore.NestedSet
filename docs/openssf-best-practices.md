@@ -31,7 +31,7 @@ the assessment. Do not select N/A merely because this is a new project.
 | `license_location` | MUST | Met: root [LICENSE](../LICENSE) and shipping package license metadata |
 | `documentation_basics` | MUST | Met: [Getting Started](getting-started.md), samples, configuration, and operations |
 | `documentation_interface` | MUST | Met: [API Reference](api-reference.md), operation contracts, and package XML documentation |
-| `sites_https` | MUST | Met: GitHub, OpenSSF, and both published NuGet package routes use HTTPS |
+| `sites_https` | MUST | Met: GitHub, OpenSSF, and published NuGet package routes use HTTPS |
 | `discussion` | MUST | Met: public [issues](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/issues) and PR discussions have searchable, addressable browser access |
 | `english` | SHOULD | Met: public documentation and contribution/reporting paths accept US English |
 | `maintained` | MUST | Met: active [commit history](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/commits/main/) and [roadmap](../ROADMAP.md) |
@@ -44,7 +44,7 @@ the assessment. Do not select N/A merely because this is a new project.
 | `repo_track` | MUST | Met: Git records content, authors, and timestamps |
 | `repo_interim` | MUST | Met: Git history contains development changes between release boundaries |
 | `repo_distributed` | SUGGESTED | Met: Git is distributed version control |
-| `version_unique` | MUST | Met: [Release governance](release-governance.md) assigns both packages one immutable unique version per release |
+| `version_unique` | MUST | Met: [Release governance](release-governance.md) assigns all six shipping packages one immutable unique version per release |
 | `version_semver` | SUGGESTED | Met: [Changelog](../CHANGELOG.md) and governance use SemVer; published 10.0.0-rc.1 precedes stable 10.0.0 |
 | `version_tags` | SUGGESTED | Met for the published RC: immutable [v10.0.0-rc.1 release](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/releases/tag/v10.0.0-rc.1) identifies that version; stable v10.0.0 requires its own reviewed signed tag |
 | `release_notes` | MUST | Met for the published RC: its release contains release-notes.md; the [10.0.0 notes](../CHANGELOG.md) describe stable behavior and accompany its release through the same process |
@@ -157,7 +157,7 @@ Read-only API checks on 2026-10-01 confirmed a public MIT repository, private
 vulnerability reporting, release immutability, secret scanning, push protection,
 zero secret alerts, and no project advisories or releases. These remain dated
 historical observations. A new public readback on 2026-10-06 confirms the
-published immutable RC release and both NuGet package identities at
+published immutable initial two-package RC release and its NuGet identities at
 `10.0.0-rc.1`. Each release's qualification and publication receipts establish
 its own state. Follow
 [Repository settings](runbooks/repository-settings.md) to recheck controls;

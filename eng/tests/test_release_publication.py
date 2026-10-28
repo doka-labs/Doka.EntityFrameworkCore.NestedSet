@@ -319,14 +319,14 @@ class PublicationTests(unittest.TestCase):
         return release.publish_release(self.candidate, self.provenance, self.readback, self.output, **self.options)
 
     def test_stage_verifies_every_signature_before_first_remote_write(self):
-        """All five provenance subjects and both SBOM signatures guard draft creation."""
+        """Every provenance subject and per-package SBOM signature guards draft creation."""
         # Act
         result = self.stage()
 
         # Assert
         first_write = self.hosted.calls.index(self.hosted.writes[0])
         verification = [call for call in self.hosted.calls[:first_write] if call[:3] == ["gh", "attestation", "verify"]]
-        self.assertEqual(7, len(verification))
+        self.assertEqual(1 + 3 * len(release.PACKAGES), len(verification))
         self.assertTrue(all("--deny-self-hosted-runners" in call and "--source-digest" in call
                             for call in verification))
         self.assertEqual("staged", result["state"])

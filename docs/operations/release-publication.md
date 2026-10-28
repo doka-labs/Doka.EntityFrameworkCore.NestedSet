@@ -6,28 +6,32 @@ start one untagged candidate, wait for qualification and attestations, create
 the signed tag, and approve the same waiting publication job. Run each command
 separately and stop on the first failure.
 
-The package set is `Doka.NestedSet` and `Doka.EntityFrameworkCore.NestedSet` at
-one version: two primary packages and two symbol packages. Evidence requirements
+The package set is `Doka.NestedSet`, `Doka.EntityFrameworkCore.NestedSet`, and
+its `.MySql`, `.Postgres`, `.Sqlite`, and `.SqlServer` adapters at one version:
+six primary packages and six symbol packages. Evidence requirements
 are defined in [Release governance](../release-governance.md) and
 [Release process](../release-process.md).
 
 ## Release identity
 
-Version `10.0.0` is the first stable release. The source uses
-`VersionPrefix=10.0.0` without a prerelease suffix. Both
-`PublicAPI.Shipped.txt` files contain the reviewed initial API; their unshipped
-files retain only the nullable directive. The first RC, `10.0.0-rc.1`, is
-already published on GitHub and NuGet. Its immutable release remains evidence
-for that version, not for the changed stable source or packages.
+The source uses `VersionPrefix=10.1.0` without a prerelease suffix. Both
+original `PublicAPI.Shipped.txt` files retain the historical `10.0.0` declarations.
+The common EF unshipped file records composition additions and removed
+options-level registration, and each adapter records its native callback API.
+Before stable qualification, promote the reviewed API changes in all affected
+baselines. The breaking transition is documented in the
+[upgrade guide](../upgrading-provider-packages.md).
+Prior release artifacts remain evidence for their exact version, not for the
+changed source or packages.
 
 Use the reviewed PR and publication sequence below for each release.
 
 Before starting the candidate:
 
 1. Confirm the intended publication date in `CHANGELOG.md` and retain the exact
-   `## 10.0.0 (YYYY-MM-DD)` heading expected by the existing release tooling.
-   The release date is `2026-10-09`; update it through review if publication
-   takes place on a later day.
+   `## 10.1.0 (YYYY-MM-DD)` heading expected by the existing release tooling.
+   Promote the Unreleased entry with the reviewed publication date; do not
+   infer successful publication from source metadata.
 2. Review the stable API, package READMEs, provider qualification, and
    [Passing evidence](../openssf-best-practices.md) against the candidate source.
 3. Retain maintainer knowledge/report-history confirmations separately from
@@ -79,7 +83,7 @@ starting the release:
 | Workflow file | `release-candidate.yml` |
 | Environment | `nuget` |
 
-The selected NuGet owner must be allowed to publish both package IDs. Do not
+The selected NuGet owner must be allowed to publish all six package IDs. Do not
 store a long-lived NuGet API key. The protected publication job uses
 `NuGet/login` only after candidate, tag, provenance, package, and draft-release
 checks pass.
@@ -148,17 +152,17 @@ availability, or signing-authority checks in the hosted workflow.
 In GitHub Actions, start **Release candidate**. Select branch `main` and enter:
 
 ```text
-version: 10.0.0
+version: 10.1.0
 ```
 
-Use `10.0.0` for this stable release. Other release versions use
+Use `10.1.0` for this stable release. Other release versions use
 `X.Y.Z-rc.N` or `X.Y.Z`, without a leading `v`. Wait for:
 
 1. `Verify source and unused version`;
 2. independent `C# style and unused imports`, `Release engineering regression
    tests`, and `Build exact candidate and inspect packages` jobs;
 3. all nine `RC / ...` test cells, three `RC / SQLite sample / ...` cells,
-   `Verify exact package consumers`, and `Generate and verify both SBOMs`;
+   `Verify exact package consumers`, and the six-package SBOM verification job;
 4. `Qualify exact release candidate`; and
 5. `Sign and verify candidate provenance`.
 
@@ -227,9 +231,9 @@ The same workflow run then:
 3. creates or resumes a matching draft GitHub release and verifies its exact
    candidate and provenance assets;
 4. obtains a short-lived NuGet credential;
-5. publishes both primary packages in dependency order (Core, EF), then both
-   symbol packages (Core, EF), with duplicate tolerance;
-6. reads both primary packages and their Portable PDBs back, verifies NuGet
+5. publishes all six primary packages in dependency order (pure core, common EF,
+   MySql, Postgres, Sqlite, SqlServer), then all six symbol packages in that order;
+6. reads all six primary packages and their Portable PDBs back, verifies NuGet
    repository signatures, and compares signed package contents with the
    qualified candidate;
 7. publishes and verifies the immutable GitHub release; and
@@ -250,17 +254,17 @@ gh release view "${release_tag}" \
 ```
 
 The release must be published and immutable, identify the exact tag, have the
-correct prerelease state, and contain exactly thirteen assets:
+correct prerelease state, and contain exactly twenty-nine assets:
 
-- two `.nupkg` files;
-- two `.snupkg` files;
-- `Doka.NestedSet.spdx.json` and `Doka.EntityFrameworkCore.NestedSet.spdx.json`;
+- six `.nupkg` files and six `.snupkg` files;
+- six `<package-id>.spdx.json` documents, one per primary package;
 - `candidate.json`, `package-manifest.json`, `qualification-evidence.zip`, and
   `release-notes.md`; and
-- `release-provenance.jsonl`, `sbom-Doka.NestedSet.jsonl`, and
-  `sbom-Doka.EntityFrameworkCore.NestedSet.jsonl`.
+- `release-provenance.jsonl` plus six `sbom-<package-id>.jsonl` bundles.
 
-Confirm both NuGet package pages, signature verification, and symbol readback.
+The package IDs and dependency order are listed in
+[Release process](../release-process.md#release-identity). Confirm all six NuGet
+package pages, signature verification, and symbol readback.
 Inspect `publication-<run-id>-<attempt>` for package availability, draft,
 NuGet readback, immutable-release, and completion receipts. RC releases must
 be prereleases and must not be latest; stable releases must be latest.

@@ -79,7 +79,7 @@ class ReadbackTests(unittest.TestCase):
         return next(url for url in self.responses if url.endswith(".pdb"))
 
     def test_signed_packages_and_exact_public_symbols_complete(self):
-        """Completion requires both signature checks and raw PDB checksums with protocol headers."""
+        """Completion requires every signature check and raw PDB checksum with protocol headers."""
         # Arrange
         expected_header = "SHA256:" + "b" * 64
 
@@ -88,7 +88,7 @@ class ReadbackTests(unittest.TestCase):
 
         # Assert
         self.assertTrue(result["success"])
-        self.assertEqual(2, self.verifier.call_count)
+        self.assertEqual(len(packages.PACKAGE_IDS), self.verifier.call_count)
         self.assertTrue(all(row["signatureVerified"] for row in result["packages"]))
         symbol_calls = [call for call in self.calls if call[0].endswith(".pdb")]
         self.assertTrue(all(call[1] == {"SymbolChecksumValidationSupported": "1", "SymbolChecksum": expected_header}
@@ -137,7 +137,7 @@ class ReadbackTests(unittest.TestCase):
         # Assert
         self.assertTrue(result["success"])
         self.assertEqual(2, sum(call[0] == url for call in self.calls))
-        self.assertEqual(2, sum(call[0].endswith(".nupkg") for call in self.calls))
+        self.assertEqual(len(packages.PACKAGE_IDS), sum(call[0].endswith(".nupkg") for call in self.calls))
 
     def test_ef_indexing_first_preserves_dependency_order_in_completion_receipt(self):
         """Feed indexing order must not change the package order authenticated by the publication gate."""
@@ -163,7 +163,7 @@ class ReadbackTests(unittest.TestCase):
 
         # Assert
         self.assertTrue(result["success"])
-        self.assertEqual(2, self.verifier.call_count)
+        self.assertEqual(len(packages.PACKAGE_IDS), self.verifier.call_count)
         self.assertIn("Repository signature pending", result["events"][0]["pending"][0])
 
     def test_invalid_signature_is_terminal(self):
@@ -235,8 +235,8 @@ class ReadbackTests(unittest.TestCase):
         self.assertRegex(str(error), "HTTP 403")
         self.assertEqual(0, self.now)
 
-    def test_unused_preflight_requires_both_ids_absent(self):
-        """One absent identity does not authorize reuse of an existing second package."""
+    def test_unused_preflight_requires_all_ids_absent(self):
+        """One absent identity does not authorize reuse of any existing shipping package."""
         # Arrange
         self.responses[self.primary_url()] = [(404, b"")]
 
@@ -247,7 +247,7 @@ class ReadbackTests(unittest.TestCase):
         self.assertRegex(str(error), "Cannot establish unused version")
 
     def test_unused_preflight_accepts_only_complete_absence(self):
-        """A new version may proceed only after both package URLs return 404."""
+        """A new version may proceed only after every shipping package URL returns 404."""
         # Arrange
         for url in self.responses:
             self.responses[url] = [(404, b"")]
@@ -256,7 +256,7 @@ class ReadbackTests(unittest.TestCase):
         result = nuget.check_unused_version("0.1.0-dev", fetcher=self.fetch)
 
         # Assert
-        self.assertEqual(["absent", "absent"], [row["state"] for row in result["packages"]])
+        self.assertEqual(["absent"] * len(packages.PACKAGE_IDS), [row["state"] for row in result["packages"]])
 
     def test_same_candidate_retry_accepts_matching_signed_payloads(self):
         """Already published bytes remain reusable only after canonical payload equality."""
@@ -267,7 +267,7 @@ class ReadbackTests(unittest.TestCase):
         result = nuget.check_availability(self.directory, version, True, fetcher=self.fetch)
 
         # Assert
-        self.assertEqual(["matching", "matching"], [row["state"] for row in result["packages"]])
+        self.assertEqual(["matching"] * len(packages.PACKAGE_IDS), [row["state"] for row in result["packages"]])
 
     def test_availability_transport_failure_is_not_absence(self):
         """A failed lookup cannot authorize an irreversible package identity."""
@@ -335,7 +335,7 @@ class ReadbackTests(unittest.TestCase):
 
         # Assert
         self.assertTrue(result["success"])
-        self.assertEqual(2, self.verifier.call_count)
+        self.assertEqual(len(packages.PACKAGE_IDS), self.verifier.call_count)
 
     def test_manifest_availability_requires_no_metadata_helper_execution(self):
         """Pre-push retry checks preserve byte binding without rebuilding the qualification tool."""
@@ -347,7 +347,7 @@ class ReadbackTests(unittest.TestCase):
             result = nuget.check_availability(self.directory, "0.1.0-dev", True, manifest=manifest, fetcher=self.fetch)
 
         # Assert
-        self.assertEqual(["matching", "matching"], [row["state"] for row in result["packages"]])
+        self.assertEqual(["matching"] * len(packages.PACKAGE_IDS), [row["state"] for row in result["packages"]])
 
 
 if __name__ == "__main__":

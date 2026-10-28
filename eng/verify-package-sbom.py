@@ -4,6 +4,7 @@ import argparse
 import base64
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -13,7 +14,8 @@ import zipfile
 from pathlib import Path
 from urllib.parse import unquote
 
-SHIPPING_PACKAGES = ("Doka.NestedSet", "Doka.EntityFrameworkCore.NestedSet")
+sys.path.insert(0, str(Path(__file__).resolve().parent / "release"))
+from common import PACKAGES as SHIPPING_PACKAGES
 TOOL_VERSION = "4.1.5"
 MANIFEST_PATH = Path("_manifest/spdx_2.2/manifest.spdx.json")
 FORBIDDEN_PREFIXES = ("xunit", "nunit", "mstest", "testcontainers", "coverlet", "benchmarkdotnet")
@@ -121,7 +123,7 @@ def verify_shipping_bindings(assets, archives, cache=None):
 
 
 def shipping_archives(package_dir, version):
-    """Require exactly the two candidate shipping identities at the requested version."""
+    """Require the complete candidate shipping inventory at the requested version."""
     result = {}
 
     for archive in sorted(package_dir.glob("*.nupkg")):
@@ -131,7 +133,7 @@ def shipping_archives(package_dir, version):
         require(actual_version == version, f"Candidate version mismatch for {name}: {actual_version}")
         result[name] = archive.resolve()
 
-    require(set(result) == set(SHIPPING_PACKAGES), "Both shipping NuGet archives are required")
+    require(set(result) == set(SHIPPING_PACKAGES), "All shipping NuGet archives are required")
 
     return result
 
@@ -224,10 +226,11 @@ def verify_vendor(report):
             "Vendor report did not validate exactly one unmodified shipping archive")
 
 
-def run_logged(arguments, log, cwd):
-    """Keep complete native-tool output and fail visibly when a command fails."""
+def run_logged(arguments, log, cwd, environment=None):
+    """Keep native-tool output and optionally isolate a restore without changing the tool environment."""
     with log.open("w", encoding="utf-8") as stream:
-        result = subprocess.run(arguments, cwd=cwd, stdout=stream, stderr=subprocess.STDOUT, check=False)
+        result = subprocess.run(arguments, cwd=cwd, env=environment,
+                                stdout=stream, stderr=subprocess.STDOUT, check=False)
 
     if result.returncode:
         raise RuntimeError(f"Command failed ({result.returncode}); see {log}")
@@ -260,10 +263,18 @@ def prepare_consumer(work, archive, name, version, feed, repo):
 
     ET.SubElement(ET.SubElement(mapping, "packageSource", {"key": "nuget"}), "package", {"pattern": "*"})
     ET.ElementTree(config).write(consumer / "NuGet.Config", encoding="utf-8", xml_declaration=True)
+    environment = os.environ.copy()
+    # WHY: Producer output/cache/CPM overrides can redirect assets out of this consumer's normal obj folder
+    # or repair its package graph. Keep the vendor scratch/runtime settings, but restore only this candidate.
+    for key in ("ArtifactsPath", "UseArtifactsOutput", "BaseIntermediateOutputPath", "BaseOutputPath",
+                "MSBuildProjectExtensionsPath", "DirectoryPackagesPropsPath", "RestorePackagesPath",
+                "NestedSetReleaseLockRoot", "NuGetLockFilePath", "RestoreLockedMode"):
+        environment.pop(key, None)
+
     run_logged(["dotnet", "restore", "Consumer.csproj", "--configfile", "NuGet.Config", "--packages",
                 str(work / "packages"), "--disable-parallel", "--disable-build-servers", "-m:1", "/nodeReuse:false",
                 "-p:ImportDirectoryBuildProps=false", "-p:ImportDirectoryBuildTargets=false",
-                "-p:ManagePackageVersionsCentrally=false"], archive / "restore.log", consumer)
+                "-p:ManagePackageVersionsCentrally=false"], archive / "restore.log", consumer, environment)
 
     return consumer
 

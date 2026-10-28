@@ -94,8 +94,8 @@ Configure one NuGet.org trusted publishing policy for:
 - workflow file: `release-candidate.yml` (NuGet.org asks for the filename only;
   the repository path is `.github/workflows/release-candidate.yml`);
 - environment: `nuget`; and
-- both package IDs: `Doka.NestedSet` and
-  `Doka.EntityFrameworkCore.NestedSet`.
+- all six package IDs: `Doka.NestedSet`, `Doka.EntityFrameworkCore.NestedSet`,
+  and its `.MySql`, `.Postgres`, `.Sqlite`, and `.SqlServer` adapters.
 
 The workflow uses the pinned official `NuGet/login` action to exchange the
 GitHub OIDC identity for a short-lived credential. No long-lived NuGet API key
@@ -162,7 +162,7 @@ operator system. Do not copy access tokens or full secret values into evidence.
 - [ ] CodeQL default setup and repository security features are enabled.
 - [ ] `nuget` environment approval is configured.
 - [ ] NuGet trusted publishing matches repository, workflow, environment, and
-      both package IDs.
+      all six package IDs.
 - [ ] Release signer principal and public key are reviewed.
 - [ ] Immutable release and tag controls are active.
 - [ ] A release candidate was qualified on exact current `main`.

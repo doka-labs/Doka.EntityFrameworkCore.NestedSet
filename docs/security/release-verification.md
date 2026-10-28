@@ -62,10 +62,9 @@ gh release download "${release_tag}" \
 
 The release must contain exactly one of each candidate asset:
 
-- `Doka.NestedSet.<version>.nupkg` and `.snupkg`;
-- `Doka.EntityFrameworkCore.NestedSet.<version>.nupkg` and `.snupkg`;
-- `Doka.NestedSet.spdx.json`;
-- `Doka.EntityFrameworkCore.NestedSet.spdx.json`;
+- one `<package-id>.<version>.nupkg`, `.snupkg`, and `<package-id>.spdx.json`
+  for each of `Doka.NestedSet`, `Doka.EntityFrameworkCore.NestedSet`,
+  `Doka.EntityFrameworkCore.NestedSet.MySql`, `.Postgres`, `.Sqlite`, and `.SqlServer`;
 - `candidate.json`, `package-manifest.json`, `qualification-evidence.zip`, and
   `release-notes.md`;
 - `release-provenance.jsonl`; and
@@ -96,7 +95,14 @@ target = Path(sys.argv[2])
 expected_version = sys.argv[3]
 expected_commit = sys.argv[4]
 
-packages = ("Doka.NestedSet", "Doka.EntityFrameworkCore.NestedSet")
+packages = (
+    "Doka.NestedSet",
+    "Doka.EntityFrameworkCore.NestedSet",
+    "Doka.EntityFrameworkCore.NestedSet.MySql",
+    "Doka.EntityFrameworkCore.NestedSet.Postgres",
+    "Doka.EntityFrameworkCore.NestedSet.Sqlite",
+    "Doka.EntityFrameworkCore.NestedSet.SqlServer",
+)
 required_candidate = {
     "package-manifest.json",
     "qualification-evidence.zip",
@@ -159,7 +165,7 @@ Inspect `qualification-evidence.zip` against the
 parallel qualification retains the source/tooling results, canonical build and
 package inventory, nine executable test-project results with per-project
 coverage, all required query plans, three compiled SQLite samples, consumers,
-and both SBOM checks. GitHub's direct job dependencies require success, scalar
+and all six SBOM checks. GitHub's direct job dependencies require success, scalar
 producer artifact IDs select non-matrix outputs, and test/sample artifact names
 select the current run and attempt. Evidence uploads retain hidden files, and
 the pinned download action checks artifact digests. Existing source, version,
@@ -187,11 +193,7 @@ Verify every primary and symbol package with the portable provenance bundle and
 pin the repository, workflow, source, and hosted runner:
 
 ```sh
-for artifact in \
-  "${verified_root}/Doka.NestedSet.${release_version}.nupkg" \
-  "${verified_root}/Doka.NestedSet.${release_version}.snupkg" \
-  "${verified_root}/Doka.EntityFrameworkCore.NestedSet.${release_version}.nupkg" \
-  "${verified_root}/Doka.EntityFrameworkCore.NestedSet.${release_version}.snupkg"; do
+for artifact in "${verified_root}"/*.nupkg "${verified_root}"/*.snupkg; do
   gh attestation verify "${artifact}" \
     --bundle "${verified_root}/release-provenance.jsonl" \
     --repo "${repository}" \
@@ -208,7 +210,13 @@ predicate. Also compare the decoded predicate with the downloaded SPDX JSON;
 signature success alone does not show that the expected SBOM was selected.
 
 ```sh
-for package in Doka.NestedSet Doka.EntityFrameworkCore.NestedSet; do
+for package in \
+  Doka.NestedSet \
+  Doka.EntityFrameworkCore.NestedSet \
+  Doka.EntityFrameworkCore.NestedSet.MySql \
+  Doka.EntityFrameworkCore.NestedSet.Postgres \
+  Doka.EntityFrameworkCore.NestedSet.Sqlite \
+  Doka.EntityFrameworkCore.NestedSet.SqlServer; do
   verified_sbom="$(gh attestation verify \
     "${verified_root}/${package}.${release_version}.nupkg" \
     --bundle "${verified_root}/sbom-${package}.jsonl" \
@@ -293,10 +301,10 @@ done
 - provenance names the protected release workflow on `main`, exact source
   commit, and a GitHub-hosted runner;
 - each SBOM signature and predicate matches its package and SPDX document;
-- both public primary packages have valid NuGet repository signatures;
+- all six public primary packages have valid NuGet repository signatures;
 - public package contents match the qualified candidates except for the NuGet
   signature entry;
-- both symbol packages expose the expected Portable PDBs; and
+- all six symbol packages expose the expected Portable PDBs; and
 - the GitHub release is published, immutable, and contains the exact complete
   asset set.
 

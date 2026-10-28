@@ -42,13 +42,20 @@ class CandidateManifestTests(QualificationFixture):
     def test_complete_candidate_is_accepted(self):
         """The positive fixture exercises the same full inventory as negative cases."""
         # Arrange
-        expected = set(self.candidate.iterdir())
+        packages = {"Doka.NestedSet", "Doka.EntityFrameworkCore.NestedSet",
+                    "Doka.EntityFrameworkCore.NestedSet.MySql", "Doka.EntityFrameworkCore.NestedSet.Postgres",
+                    "Doka.EntityFrameworkCore.NestedSet.Sqlite", "Doka.EntityFrameworkCore.NestedSet.SqlServer"}
+        expected = {"candidate.json", "package-manifest.json", "qualification-evidence.zip", "release-notes.md"}
+        expected.update(f"{name}.{VERSION}.{suffix}" for name in packages for suffix in ("nupkg", "snupkg"))
+        expected.update(f"{name}.spdx.json" for name in packages)
 
         # Act
         manifest = common.load_candidate(self.candidate)
+        actual = {path.name for path in self.candidate.iterdir()}
 
         # Assert
-        self.assertEqual(10, len(expected))
+        self.assertEqual(expected, actual)
+        self.assertEqual(expected - {"candidate.json"}, set(manifest["files"]))
         self.assertEqual(COMMIT, manifest["source"]["commit"])
         self.assertTrue(manifest["publishable"])
 
@@ -636,8 +643,29 @@ class WorkflowBoundaryTests(unittest.TestCase):
         self.assertEqual(len(names), len(set(names)))
         self.assertIn("--provider sqlite --reset", self.ci["samples"])
 
+    def test_ci_runs_allocation_budgets_before_coverage_with_complementary_filters(self):
+        """Only Unit separates native allocation measurements; no test category is silently skipped."""
+        # Arrange
+        tests = self.ci["tests"]
+
+        # Act
+        allocation = tests.index("name: Measure Unit allocations without instrumentation")
+        coverage = tests.index("name: Run tests with coverage")
+        verify = tests.index("name: Verify complementary Unit result partitions")
+
+        # Assert
+        self.assertLess(allocation, coverage)
+        self.assertLess(coverage, verify)
+        self.assertIn("if: matrix.id == 'ef-unit'", tests[allocation:coverage])
+        self.assertIn('--filter "Category=Allocation"', tests[allocation:coverage])
+        self.assertIn('filter=(--filter "Category!=Allocation")', tests[coverage:verify])
+        self.assertIn("python3 -m eng.release.qualification", tests[verify:])
+        self.assertIn("--verify-results artifacts/ci-tests/ef-unit", tests[verify:])
+        self.assertIn("--project Doka.EntityFrameworkCore.NestedSet.Unit.Tests", tests[verify:])
+        self.assertNotIn("python3 -c", tests[verify:].split("      - name:", 1)[0])
+
     def test_ci_coverage_waits_for_complete_test_evidence(self):
-        """The existing two-module verifier reads isolated reports from the current run attempt."""
+        """The shipping-module verifier reads isolated reports from the current run attempt."""
         # Arrange
         tests = self.ci["tests"]
         coverage = self.ci["coverage"]
@@ -864,20 +892,162 @@ class WorkflowBoundaryTests(unittest.TestCase):
         self.assertEqual(["${{ needs.qualify.outputs.artifact-id }}", "${{ needs.attest.outputs.artifact-id }}"], download_ids)
         self.assertNotRegex(publish, r"\bdotnet (?:build|restore|pack)\b")
 
+    def publish_steps(self):
+        """Read the two actual manifest-driven publication steps, including their scoped environment."""
+        return re.findall(r"^      - name: Publish (?:primary|symbol) packages\n(.*?)(?=^      - name:|\Z)",
+                          self.release["publish"], re.MULTILINE | re.DOTALL)
+
+    def run_publish(self, *, manifest=None, failure=None):
+        """Execute real YAML Bash with real jq and a recording dotnet stub that cannot publish."""
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            records = [{"id": package, "version": VERSION,
+                        "nupkg": f"{package}.{VERSION}.nupkg", "snupkg": f"{package}.{VERSION}.snupkg"}
+                       for package in common.PACKAGES]
+            text_file(root / "artifacts/candidate/package-manifest.json",
+                      json.dumps({"packages": records}) if manifest is None else manifest)
+            stub = root / "bin/dotnet"
+            text_file(stub, f"#!{sys.executable}\n"
+                      "import json, os, sys\n"
+                      "with open(os.environ['PUSH_LOG'], 'a', encoding='ascii') as stream:\n"
+                      "    stream.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+                      "sys.exit(31 if sys.argv[3].endswith(os.environ.get('FAIL_PACKAGE', '!')) else 0)\n")
+            stub.chmod(0o755)
+            log = root / "pushes.jsonl"
+            commands = [textwrap.dedent(step.split("        run: |\n", 1)[1]) for step in self.publish_steps()]
+            result = subprocess.run(["bash", "-eo", "pipefail", "-c", "\n\n".join(commands)], cwd=root,
+                                    env={**os.environ, "PATH": f"{stub.parent}{os.pathsep}{os.environ['PATH']}",
+                                         "PUSH_LOG": str(log), "NUGET_API_KEY": "offline-stub-key",
+                                         "FAIL_PACKAGE": failure or "!"},
+                                    capture_output=True, text=True, check=False)
+            calls = [json.loads(line) for line in log.read_text(encoding="ascii").splitlines()] if log.exists() else []
+
+            return result, calls
+
     def test_primary_packages_precede_all_symbols(self):
-        """A symbol upload failure cannot block the dependent EF primary package."""
+        """The actual YAML loops retain dependency order, every push argument, and per-package logs."""
         # Arrange
-        publish = self.release["publish"]
-        expected = [f"{package}.$CANDIDATE_VERSION.{extension}"
+        expected = [f"{package}.{VERSION}.{extension}"
                     for extension in ("nupkg", "snupkg") for package in common.PACKAGES]
+        arguments = [["nuget", "push", f"artifacts/packages/{name}",
+                      "--source", "https://api.nuget.org/v3/index.json", "--api-key", "offline-stub-key",
+                      *(["--no-symbols"] if name.endswith(".nupkg") else []),
+                      "--skip-duplicate", "--timeout", "300"] for name in expected]
 
         # Act
-        uploads = re.findall(r'dotnet nuget push "artifacts/packages/([^\"]+)"', publish)
+        result, calls = self.run_publish()
 
         # Assert
-        self.assertEqual(expected, uploads)
-        self.assertEqual(4, publish.count("--skip-duplicate"))
-        self.assertEqual(2, publish.count("--no-symbols"))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(arguments, calls)
+        self.assertEqual(12, result.stdout.count("::group::"))
+        self.assertEqual(12, result.stdout.count("::endgroup::"))
+        self.assertTrue(all(name in result.stdout for name in expected))
+
+    def test_publish_credentials_are_limited_to_two_manifest_loops(self):
+        """Only the two publication steps receive the temporary credential."""
+        # Arrange
+        publish = self.release["publish"]
+
+        # Act
+        steps = self.publish_steps()
+
+        # Assert
+        self.assertEqual(2, len(steps))
+        self.assertEqual(2, publish.count("NUGET_API_KEY:"))
+        self.assertTrue(all("NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}" in step for step in steps))
+        self.assertTrue(all("artifacts/candidate/package-manifest.json" in step for step in steps))
+        self.assertTrue(all("shell: bash" in step for step in steps))
+
+    def test_first_primary_push_failure_stops_publication(self):
+        """A failing first primary prevents every later primary and symbol call."""
+        # Arrange
+        failure = f"{common.PACKAGES[0]}.{VERSION}.nupkg"
+
+        # Act
+        result, calls = self.run_publish(failure=failure)
+
+        # Assert
+        self.assertEqual(31, result.returncode)
+        self.assertEqual([f"artifacts/packages/{failure}"], [call[2] for call in calls])
+
+    def test_late_primary_push_failure_prevents_symbol_publication(self):
+        """A late primary failure cannot advance to the symbol step."""
+        # Arrange
+        failure = f"{common.PACKAGES[-1]}.{VERSION}.nupkg"
+
+        # Act
+        result, calls = self.run_publish(failure=failure)
+
+        # Assert
+        self.assertEqual(31, result.returncode)
+        self.assertEqual(6, len(calls))
+        self.assertTrue(all(call[2].endswith(".nupkg") for call in calls))
+
+    def test_late_symbol_push_failure_stops_remaining_symbols(self):
+        """Successful primaries do not hide a later symbol upload failure."""
+        # Arrange
+        failure = f"{common.PACKAGES[-2]}.{VERSION}.snupkg"
+
+        # Act
+        result, calls = self.run_publish(failure=failure)
+
+        # Assert
+        self.assertEqual(31, result.returncode)
+        self.assertEqual(11, len(calls))
+        self.assertEqual(f"artifacts/packages/{failure}", calls[-1][2])
+
+    def test_empty_package_manifest_fails_before_publication(self):
+        """An empty list cannot turn the publication step into a false success."""
+        # Arrange
+        manifest = '{"packages": []}'
+
+        # Act
+        result, calls = self.run_publish(manifest=manifest)
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+        self.assertEqual([], calls)
+
+    def test_malformed_package_manifest_fails_before_publication(self):
+        """jq errors propagate before the first package reaches dotnet."""
+        # Arrange
+        manifest = '{"packages": ['
+
+        # Act
+        result, calls = self.run_publish(manifest=manifest)
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+        self.assertEqual([], calls)
+
+    def test_missing_package_filename_fails_before_publication(self):
+        """A missing filename cannot be emitted as a literal null package path."""
+        # Arrange
+        manifest = '{"packages": [{"nupkg": null}, {"nupkg": "later.nupkg"}]}'
+
+        # Act
+        result, calls = self.run_publish(manifest=manifest)
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+        self.assertEqual([], calls)
+
+    def test_missing_symbol_filename_stops_before_symbol_publication(self):
+        """A malformed symbol list cannot partially publish the available symbol entries."""
+        # Arrange
+        records = [{"nupkg": f"{package}.{VERSION}.nupkg", "snupkg": f"{package}.{VERSION}.snupkg"}
+                   for package in common.PACKAGES]
+        records[0]["snupkg"] = None
+        manifest = json.dumps({"packages": records})
+
+        # Act
+        result, calls = self.run_publish(manifest=manifest)
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+        self.assertEqual(6, len(calls))
+        self.assertTrue(all(call[2].endswith(".nupkg") for call in calls))
 
     def test_publication_budget_covers_delayed_nuget_indexing(self):
         """A full public readback window must fit inside the protected job with publication headroom."""
@@ -893,7 +1063,7 @@ class WorkflowBoundaryTests(unittest.TestCase):
         self.assertEqual(180, job_minutes)
         self.assertGreater(job_minutes * 60 - readback_seconds, 2400)
 
-    def test_attestation_covers_manifest_symbols_and_both_sboms(self):
+    def test_attestation_covers_manifest_symbols_and_all_sboms(self):
         """Primary archives alone are not the complete provenance boundary."""
         # Arrange
         attest = self.release["attest"]

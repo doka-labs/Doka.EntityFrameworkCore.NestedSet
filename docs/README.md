@@ -77,7 +77,7 @@ to `10.0.0`. See the [changelog](../CHANGELOG.md) for changes and the
 - [Secure Development](security/secure-development.md) defines security review,
   analysis evidence, dependency handling, and private vulnerability follow-up.
 - [Release Process](release-process.md) defines qualification and publication
-  evidence for both packages.
+  evidence for all six shipping packages.
 - [Release Governance](release-governance.md) defines release authority,
   evidence, servicing, and compatibility policy.
 - [Release Publication](operations/release-publication.md) is the operator

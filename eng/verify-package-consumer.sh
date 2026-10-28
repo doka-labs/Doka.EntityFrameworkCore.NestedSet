@@ -3,7 +3,7 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 exec python3 - "$repo_root" "$@" <<'PYTHON'
-"""Consume exact candidate archives through two independent fresh package caches."""
+"""Consume every exact candidate through an independent, selected-package-only cache."""
 import argparse
 import hashlib
 import json
@@ -17,6 +17,10 @@ import xml.etree.ElementTree as ET
 
 
 root = Path(sys.argv[1])
+sys.path.insert(0, str(root / "eng/release"))
+from common import CONSUMERS, PROVIDER_PACKAGES
+import packages
+
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--package-dir", type=Path)
 parser.add_argument("--version")
@@ -56,7 +60,6 @@ def digest(path):
     with path.open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
-
 try:
     # WHY: The no-argument developer convenience may pack; an explicit RC always uses the supplied sealed bytes.
     if not explicit:
@@ -66,12 +69,10 @@ try:
         args.version = result.stdout.strip()
         args.package_dir = output / "feed"
 
-        for name in ("Doka.NestedSet", "Doka.EntityFrameworkCore.NestedSet"):
+        for name in packages.PACKAGE_IDS:
             run(["dotnet", "pack", str(root / "src" / name / (name + ".csproj")), "--configuration", "Release",
                  "--no-restore", "--output", str(args.package_dir)], output, "pack-" + name)
 
-    sys.path.insert(0, str(root / "eng/release"))
-    import packages
     import re
 
     if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?", args.version):
@@ -91,53 +92,19 @@ try:
     receipt["candidateSha256"] = initial_hashes
     sdk = json.loads((root / "global.json").read_text())["sdk"]["version"]
 
-    for kind, package_id in (("core", "Doka.NestedSet"), ("ef", "Doka.EntityFrameworkCore.NestedSet")):
+    # WHY: These are ordinary reviewed C# projects. Copying keeps restore evidence and generated
+    # outputs separate from source, while linked FileSystem code remains the actual maintained sample.
+    consumers = root / "eng/consumers"
+    for name in ("Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props"):
+        shutil.copyfile(consumers / name, output / name)
+    shutil.copyfile(root / "global.json", output / "global.json")
+    shutil.copytree(consumers / "Shared", output / "Shared")
+
+    for kind, direct_packages in CONSUMERS:
         directory = output / kind
-        directory.mkdir()
+        shutil.copytree(consumers / kind, directory)
         runtime = Path(scratch.name) / kind
         cache = runtime / "packages"
-        shutil.copyfile(root / "global.json", directory / "global.json")
-        shutil.copyfile(root / "Directory.Packages.props", directory / "Directory.Packages.props")
-
-        # WHY: An output beneath this checkout must not inherit the repository's project/artifact settings.
-        (directory / "Directory.Build.props").write_text("<Project />\n", encoding="ascii")
-        (directory / "Directory.Build.targets").write_text("<Project />\n", encoding="ascii")
-        project = ET.Element("Project", Sdk="Microsoft.NET.Sdk")
-        properties = ET.SubElement(project, "PropertyGroup")
-
-        for name, value in {"OutputType": "Exe", "TargetFramework": "net10.0", "Nullable": "enable",
-                            "ImplicitUsings": "disable", "TreatWarningsAsErrors": "true", "NuGetAudit": "true",
-                            "NuGetAuditMode": "all", "NuGetAuditLevel": "low",
-                            "RestorePackagesWithLockFile": "true"}.items():
-            ET.SubElement(properties, name).text = value
-
-        items = ET.SubElement(project, "ItemGroup")
-        ET.SubElement(items, "PackageVersion", Include=package_id, Version=f"[{args.version}]")
-        ET.SubElement(items, "PackageReference", Include=package_id)
-
-        if kind == "ef":
-            ET.SubElement(items, "PackageReference", Include="Microsoft.EntityFrameworkCore.Sqlite")
-            ET.SubElement(items, "PackageReference", Include="Doka.EntityFrameworkCore.MySql")
-
-            # WHY: Compile the actual sample and its provider migrations against the candidate package, not a source reference.
-            for relative in ("samples/FileSystem", "samples/Shared"):
-                sample_root = root / relative
-
-                for source in sample_root.rglob("*.cs"):
-                    target = directory / sample_root.name / source.relative_to(sample_root)
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copyfile(source, target)
-        else:
-            (directory / "Program.cs").write_text(
-                'var root = new Doka.NestedSet.NestedSetBounds(1, 6);\n'
-                'var child = new Doka.NestedSet.NestedSetBounds(2, 3);\n\n'
-                'if (!root.Contains(child) || root.DescendantCount != 2 || !child.IsLeaf)\n'
-                '{\n    throw new System.InvalidOperationException("Core package bounds contract failed.");\n}\n\n'
-                'await System.Console.Out.WriteLineAsync(\n'
-                '    System.MemoryExtensions.AsMemory("Core package bounds and containment verified."),\n'
-                '    System.Threading.CancellationToken.None);\n', encoding="ascii")
-
-        ET.ElementTree(project).write(directory / "Consumer.csproj", encoding="unicode")
         config = ET.Element("configuration")
         sources = ET.SubElement(config, "packageSources")
         ET.SubElement(sources, "clear")
@@ -153,12 +120,21 @@ try:
         ET.SubElement(remote, "package", pattern="*")
         ET.ElementTree(config).write(directory / "NuGet.Config", encoding="unicode")
         environment = os.environ.copy()
+        # WHY: Producer-local MSBuild overrides must not redirect this consumer to a shared output/cache
+        # or replace its intentionally independent package policy with the repository's central props.
+        for name in ("ArtifactsPath", "UseArtifactsOutput", "DirectoryPackagesPropsPath", "RestorePackagesPath",
+                     "DirectoryBuildPropsPath", "DirectoryBuildTargetsPath", "CentralPackageTransitivePinningEnabled",
+                     "NestedSetReleaseLockRoot", "NuGetLockFilePath", "RestoreLockedMode"):
+            environment.pop(name, None)
+
         environment["NUGET_PACKAGES"] = str(cache)
         environment["NUGET_HTTP_CACHE_PATH"] = str(runtime / "http-cache")
         environment["DOTNET_CLI_HOME"] = str(runtime / "dotnet-home")
         environment["BaseIntermediateOutputPath"] = str(runtime / "obj") + os.sep
         environment["BaseOutputPath"] = str(runtime / "bin") + os.sep
-        command = ["dotnet", "restore", "Consumer.csproj", "--configfile", "NuGet.Config", "--packages", str(cache)]
+        properties = [f"-p:CandidateVersion={args.version}", f"-p:RepositoryRoot={root}"]
+        command = ["dotnet", "restore", "Consumer.csproj", *properties,
+                   "--configfile", "NuGet.Config", "--packages", str(cache)]
         run(command, directory, "restore", environment)
         run(command + ["--locked-mode"], directory, "restore-locked", environment)
         assets_path = runtime / "obj/project.assets.json"
@@ -167,7 +143,23 @@ try:
         shutil.copyfile(assets_path, retained_assets)
         assets = json.loads(assets_path.read_text())
         libraries = assets["libraries"]
-        expected_ids = {"Doka.NestedSet"} if kind == "core" else set(packages.PACKAGE_IDS)
+        expected_ids = {"Doka.NestedSet"}
+        if kind != "core":
+            expected_ids.add("Doka.EntityFrameworkCore.NestedSet")
+        expected_ids.update(direct_packages)
+
+        # WHY: The isolated roots install one adapter; FileSystem explicitly needs two. No undeclared adapter
+        # may hide a missing dependency or accidentally make another provider's registration available.
+        restored_candidates = {name for name in packages.PACKAGE_IDS
+                               if any(key.rsplit("/", 1)[0].lower() == name.lower() for key in libraries)}
+        if restored_candidates != expected_ids:
+            raise ValueError("Consumer restored missing or foreign candidate packages")
+
+        restored_native = {name for name in PROVIDER_PACKAGES.values()
+                           if any(key.rsplit("/", 1)[0].lower() == name.lower() for key in libraries)}
+        expected_native = {PROVIDER_PACKAGES[name] for name in direct_packages if name in PROVIDER_PACKAGES}
+        if restored_native != expected_native:
+            raise ValueError("Consumer restored missing or foreign native providers")
         restored = {}
 
         for name in expected_ids:
@@ -187,10 +179,10 @@ try:
         if kind == "core" and set(libraries) != {f"Doka.NestedSet/{args.version}"}:
             raise ValueError("Core-only consumer unexpectedly restored external dependencies")
 
-        run_arguments = ["--", "--provider", "sqlite", "--reset"] if kind == "ef" else []
+        run_arguments = ["--", "--provider", "sqlite", "--reset"] if kind == "filesystem" else []
         environment["NESTEDSET_SAMPLE_SQLITE_DIRECTORY"] = str(runtime / "sample-data")
         run(["dotnet", "run", "--project", "Consumer.csproj", "--configuration", "Release", "--no-restore",
-             *run_arguments],
+             *properties, *run_arguments],
             directory, "run", environment)
         lock = directory / "packages.lock.json"
 
@@ -205,9 +197,9 @@ try:
     if {name: digest(path) for name, path in archives.items()} != initial_hashes:
         raise ValueError("Candidate archives changed during consumer verification")
 
-    receipt["success"] = len(receipt["consumers"]) == 2
+    receipt["success"] = len(receipt["consumers"]) == len(CONSUMERS)
     save()
-    print(f"[PASS] Both exact-package consumers verified; evidence: {output}")
+    print(f"[PASS] All exact-package consumers verified; evidence: {output}")
 except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
     receipt["error"] = str(error)
     save()

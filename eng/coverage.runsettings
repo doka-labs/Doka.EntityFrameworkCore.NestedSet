@@ -11,6 +11,10 @@
               <Include>
                 <ModulePath>.*Doka\.NestedSet\.dll$</ModulePath>
                 <ModulePath>.*Doka\.EntityFrameworkCore\.NestedSet\.dll$</ModulePath>
+                <ModulePath>.*Doka\.EntityFrameworkCore\.NestedSet\.MySql\.dll$</ModulePath>
+                <ModulePath>.*Doka\.EntityFrameworkCore\.NestedSet\.Postgres\.dll$</ModulePath>
+                <ModulePath>.*Doka\.EntityFrameworkCore\.NestedSet\.Sqlite\.dll$</ModulePath>
+                <ModulePath>.*Doka\.EntityFrameworkCore\.NestedSet\.SqlServer\.dll$</ModulePath>
               </Include>
             </ModulePaths>
           </CodeCoverage>

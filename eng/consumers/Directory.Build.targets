@@ -1,0 +1,5 @@
+<Project>
+  <Target Name="RequireCandidateVersion" BeforeTargets="CollectPackageReferences;CoreCompile">
+    <Error Condition="'$(CandidateVersion)' == ''" Text="Specify the exact candidate with -p:CandidateVersion=X.Y.Z."/>
+  </Target>
+</Project>

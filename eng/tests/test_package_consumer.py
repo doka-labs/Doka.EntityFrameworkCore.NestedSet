@@ -6,10 +6,12 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from test_release_packages import make_packages
+from eng.release.common import CONSUMERS
 
 SDK_FIXTURE = r'''#!/usr/bin/env python3
 import json
@@ -21,16 +23,31 @@ import xml.etree.ElementTree as ET
 
 args = sys.argv[1:]
 directory = Path.cwd()
+for name in ("ArtifactsPath", "UseArtifactsOutput", "DirectoryPackagesPropsPath", "RestorePackagesPath",
+             "DirectoryBuildPropsPath", "DirectoryBuildTargetsPath", "CentralPackageTransitivePinningEnabled",
+             "NestedSetReleaseLockRoot", "NuGetLockFilePath", "RestoreLockedMode"):
+    if name in os.environ:
+        print("Producer override leaked into the consumer", name)
+        sys.exit(92)
+
 with Path(os.environ["CONSUMER_COMMAND_LOG"]).open("a") as stream:
     stream.write(json.dumps(args) + "\n")
 
 if args[0] == "restore":
     project = ET.parse(directory / "Consumer.csproj")
-    reference = project.find(".//PackageVersion")
+    references = project.findall(".//PackageReference")
+    reference = references[0]
     name = reference.get("Include")
-    version = reference.get("Version").strip("[]")
+    version = next(value.split("=", 1)[1] for value in args if value.startswith("-p:CandidateVersion="))
     feed = Path(ET.parse(directory / "NuGet.Config").find(".//add[@key='candidate']").get("value"))
-    ids = ["Doka.NestedSet"] if name == "Doka.NestedSet" else ["Doka.NestedSet", name]
+    ids = ["Doka.NestedSet"]
+    if name != "Doka.NestedSet":
+        ids.append("Doka.EntityFrameworkCore.NestedSet")
+    for item in references:
+        if item.get("Include") not in ids:
+            ids.append(item.get("Include"))
+    if directory.name == "mysql" and os.environ.get("CONSUMER_FOREIGN_ADAPTER"):
+        ids.append("Doka.EntityFrameworkCore.NestedSet.Postgres")
     libraries = {}
 
     for package in ids:
@@ -45,12 +62,26 @@ if args[0] == "restore":
 
         libraries[f"{package}/{version}"] = {"type": "package"}
 
+    providers = {
+        "mysql": "Doka.EntityFrameworkCore.MySql",
+        "postgres": "Npgsql.EntityFrameworkCore.PostgreSQL",
+        "sqlite": "Microsoft.EntityFrameworkCore.Sqlite",
+        "sqlserver": "Microsoft.EntityFrameworkCore.SqlServer",
+    }
+    if directory.name in providers:
+        libraries[providers[directory.name] + "/10.0.0"] = {"type": "package"}
+    if directory.name == "filesystem":
+        libraries["Doka.EntityFrameworkCore.MySql/10.0.0"] = {"type": "package"}
+        libraries["Microsoft.EntityFrameworkCore.Sqlite/10.0.0"] = {"type": "package"}
+    if directory.name == "mysql" and os.environ.get("CONSUMER_FOREIGN_PROVIDER"):
+        libraries["Npgsql.EntityFrameworkCore.PostgreSQL/10.0.0"] = {"type": "package"}
+
     intermediate = Path(os.environ["BaseIntermediateOutputPath"])
     intermediate.mkdir(parents=True, exist_ok=True)
     (intermediate / "project.assets.json").write_text(json.dumps({"libraries": libraries}))
     (directory / "packages.lock.json").write_text(json.dumps({"version": 1, "dependencies": libraries}))
 elif args[0] == "run":
-    if os.environ.get("CONSUMER_RUN_FAILURE"):
+    if os.environ.get("CONSUMER_RUN_FAILURE") or os.environ.get("CONSUMER_RUN_FAILURE_KIND") == directory.name:
         print("Consumer fixture failed")
         sys.exit(42)
 
@@ -82,6 +113,11 @@ class ConsumerTests(unittest.TestCase):
         self.environment = os.environ.copy()
         self.environment["PATH"] = str(tools) + os.pathsep + self.environment["PATH"]
         self.environment["CONSUMER_COMMAND_LOG"] = str(self.command_log)
+        self.environment["DirectoryPackagesPropsPath"] = str(self.directory / "wrong-production-policy.props")
+        self.environment["RestorePackagesPath"] = str(self.directory / "stale-shared-cache")
+        self.environment["DirectoryBuildPropsPath"] = str(self.directory / "wrong-producer.props")
+        self.environment["DirectoryBuildTargetsPath"] = str(self.directory / "wrong-producer.targets")
+        self.environment["CentralPackageTransitivePinningEnabled"] = "true"
         self.command = ["bash", str(Path(__file__).parents[1] / "verify-package-consumer.sh"),
                         "--package-dir", str(self.feed), "--version", "0.1.0-dev", "--output", str(self.output)]
 
@@ -90,10 +126,10 @@ class ConsumerTests(unittest.TestCase):
         return subprocess.run(self.command, env=self.environment, capture_output=True, text=True,
                               check=False, timeout=30)
 
-    def test_explicit_candidate_never_repacks_and_uses_two_independent_caches(self):
-        """Both consumer roots execute separately against exactly the supplied candidate archives."""
+    def test_explicit_candidate_never_repacks_and_uses_independent_selected_package_caches(self):
+        """Every shipping package executes separately against its own exact candidate dependency closure."""
         # Arrange
-        expected_commands = ["restore", "restore", "run"] * 2
+        expected_commands = ["restore", "restore", "run"] * len(CONSUMERS)
 
         # Act
         result = self.execute()
@@ -104,17 +140,104 @@ class ConsumerTests(unittest.TestCase):
         self.assertEqual(expected_commands, commands)
         receipt = json.loads((self.output / "result.json").read_text())
         self.assertTrue(receipt["success"])
-        self.assertEqual(["core", "ef"], [row["name"] for row in receipt["consumers"]])
-        self.assertTrue((self.output / "core/project.assets.json").is_file())
-        self.assertTrue((self.output / "ef/project.assets.json").is_file())
+        self.assertEqual([name for name, _ in CONSUMERS], [row["name"] for row in receipt["consumers"]])
+        for name, package_ids in CONSUMERS:
+            self.assertTrue((self.output / name / "project.assets.json").is_file())
+            project = ET.parse(self.output / name / "Consumer.csproj")
+            references = project.findall(".//PackageReference")
+            self.assertEqual([(package_id, "[$(CandidateVersion)]") for package_id in package_ids],
+                             [(item.get("Include"), item.get("Version")) for item in references])
+            self.assertEqual([], project.findall(".//ProjectReference"))
+
+        properties = (self.output / "Directory.Packages.props").read_text()
+        self.assertIn("<ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>", properties)
+        self.assertNotIn("TransitivePinning", properties)
+        self.assertTrue(all("-p:CandidateVersion=0.1.0-dev" in json.loads(line)
+                            for line in self.command_log.read_text().splitlines()))
+
         self.assertEqual([], list(self.output.rglob("*.nupkg")))
         restores = [json.loads(line) for line in self.command_log.read_text().splitlines()
                     if json.loads(line)[0] == "restore"]
         caches = {command[command.index("--packages") + 1] for command in restores}
-        self.assertEqual(2, len(caches))
+        self.assertEqual(len(CONSUMERS), len(caches))
         self.assertTrue(all(not Path(cache).exists() for cache in caches))
         ef_project = (self.output / "ef/Consumer.csproj").read_text()
         self.assertNotIn('PackageReference Include="Doka.NestedSet"', ef_project)
+
+    def test_existing_sample_is_linked_without_duplicate_source_or_project_dependencies(self):
+        """The full packed sample compiles maintained source through an ordinary consumer project."""
+        # Arrange
+        root = Path(__file__).parents[2]
+
+        # Act
+        result = self.execute()
+
+        # Assert
+        self.assertEqual(0, result.returncode, result.stderr)
+        project = ET.parse(self.output / "filesystem/Consumer.csproj")
+        self.assertEqual([], project.findall(".//ProjectReference"))
+        self.assertEqual(["$(RepositoryRoot)/samples/FileSystem/**/*.cs", "$(RepositoryRoot)/samples/Shared/*.cs"],
+                         [node.get("Include") for node in project.findall(".//Compile")])
+        self.assertEqual([], list((self.output / "filesystem").rglob("*.cs")))
+        self.assertIn(f"-p:RepositoryRoot={root}",
+                      json.loads(self.command_log.read_text().splitlines()[-1]))
+
+    def test_invalid_candidate_version_is_rejected_before_sdk_execution(self):
+        """Ordinary MSBuild properties never turn untrusted input into a floating package selection."""
+        # Arrange
+        self.command[self.command.index("--version") + 1] = "10.*"
+
+        # Act
+        result = self.execute()
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+        self.assertFalse(self.command_log.exists())
+        self.assertIn("Invalid package version", json.loads((self.output / "result.json").read_text())["error"])
+
+    def test_foreign_adapter_cannot_hide_in_selected_provider_consumer(self):
+        """A passing all-provider build cannot replace the selected adapter's isolated dependency closure."""
+        # Arrange
+        self.environment["CONSUMER_FOREIGN_ADAPTER"] = "1"
+
+        # Act
+        result = self.execute()
+
+        # Assert
+        receipt = json.loads((self.output / "result.json").read_text())
+        self.assertNotEqual(0, result.returncode)
+        self.assertFalse(receipt["success"])
+        self.assertIn("foreign candidate packages", receipt["error"])
+        self.assertEqual(["core", "ef"], [row["name"] for row in receipt["consumers"]])
+
+    def test_foreign_native_provider_is_rejected_before_execution(self):
+        """An adapter consumer cannot obtain its configuration from a second provider's package."""
+        # Arrange
+        self.environment["CONSUMER_FOREIGN_PROVIDER"] = "1"
+
+        # Act
+        result = self.execute()
+
+        # Assert
+        receipt = json.loads((self.output / "result.json").read_text())
+        self.assertNotEqual(0, result.returncode)
+        self.assertFalse(receipt["success"])
+        self.assertIn("foreign native providers", receipt["error"])
+
+    def test_packed_sample_failure_does_not_report_partial_success(self):
+        """The actual packed sample remains required after all six isolated package probes passed."""
+        # Arrange
+        self.environment["CONSUMER_RUN_FAILURE_KIND"] = "filesystem"
+
+        # Act
+        result = self.execute()
+
+        # Assert
+        receipt = json.loads((self.output / "result.json").read_text())
+        self.assertNotEqual(0, result.returncode)
+        self.assertFalse(receipt["success"])
+        self.assertEqual([name for name, _ in CONSUMERS[:-1]], [row["name"] for row in receipt["consumers"]])
+        self.assertIn("run failed", receipt["error"])
 
     def test_restored_cache_byte_mismatch_fails_before_execution(self):
         """A stale same-version cache cannot produce a passing package consumer receipt."""
