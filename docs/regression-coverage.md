@@ -13,6 +13,16 @@ separate from semantic coverage and do not become release gates.
 Its retained numbers describe predecessor sources. Current SignalLab test links
 identify the corresponding technical contracts, not new measurement evidence.
 
+`DenseStreamedGridRetainsBoundedTemporaryState` retains its 880,000-byte budget
+for 6,144 cells in Debug and Release. Its prepared test reader returns completed
+`ValueTask` instances for ordinary rows; per-row Debug state-machine allocations
+must not be attributed to the report accumulator. EOF cancellation, late read
+failures, disposal and duplicate precedence retain their existing tests.
+`PreparedReaderReturnsCancellationWithoutThrowingSynchronously` additionally
+checks cancellation through the returned read before any row is exposed.
+See the [dense-grid control](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/SignalLab/SignalReportValidationTests.DenseGridResources.cs)
+and [reader contracts](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/SignalLab/SignalReportValidationTests.ReaderContracts.cs).
+
 The subsequent [query-template reuse qualification](qualification/query-performance.md#historical-report-construction-and-materialization)
 adds `CompositionAnyConstructionTests`, projection/capture and collection-policy
 cases in `SignalReportConstructionTests`, and actual warmed SQLite template-reuse
@@ -1214,6 +1224,8 @@ from the pure construction measurements. Existing allocation ceilings remain.
   assembly cannot authorize character counting with the same type name.
 - `WarmCharacterCountingDoesNotAllocate` checks ASCII, BMP, supplementary and
   mixed inputs over 10,000 warmed operations with an exact zero-byte budget.
+  Both Debug and Release exercise the same immutable surrogate search;
+  unoptimized generic-helper boxing must not change that budget.
   It runs in the mandatory uninstrumented `Category=Allocation` Unit partition;
   the complementary Unit cases run with coverage. Instrumentation-only boxing
   is not included in production allocation budgets, and no budget is relaxed.
@@ -1225,7 +1237,7 @@ from the pure construction measurements. Existing allocation ceilings remain.
 - `EveryNonSurrogateCodeUnitCountsOnce` covers every BMP code unit outside
   `D800..DFFF`. `EverySurrogateCodeUnitCountsInsideValidPairs` covers every high
   and low surrogate in a valid pair; `EveryUnpairedSurrogateCodeUnitIsRejected`
-  rejects every unpaired surrogate. These exercise the actual generic
+  rejects every unpaired surrogate. These exercise the actual cached
   surrogate-range search and common counter, including both ends and interior
   of the range. Positive/negative Unicode semantics remain in the covered
   partition rather than being omitted with the allocation budget.

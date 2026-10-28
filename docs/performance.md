@@ -112,11 +112,17 @@ if the required contract cannot be preserved; do not weaken assertions.
 
 ### Unicode counting contract
 
-The common Unicode counter uses the framework's generic surrogate-range search
-without an additional cached predicate or initialization buffer. Exhaustive
-code-unit and malformed-surrogate controls retain its scalar-counting contract.
-The historical comparison below explains why coverage-only boxing is handled
-by measurement isolation instead of retaining a slower production search.
+The common Unicode counter reuses one immutable framework `SearchValues<char>`
+for the complete surrogate range. Its bounded initialization runs once; warmed
+counting allocates no buffers or boxes in Debug or Release. Exhaustive code-unit
+and malformed-surrogate controls retain its scalar-counting contract.
+
+On 2026-10-28, an ordinary uninstrumented Debug run reproduced 96 bytes per
+call in the generic `IndexOfAnyInRange<char>` helper. This was therefore not
+limited to coverage instrumentation. The cached search preserves the exact
+zero-byte warm contract in both build configurations. The historical comparison
+below retains its latency tradeoff; this change does not establish a universal
+speedup. Allocation budgets still run without profiler instrumentation.
 
 ### Unicode counting and allocation measurement, 2026-10-26
 
@@ -1019,6 +1025,11 @@ The [performance qualification](qualification/query-performance.md) separates
 construction, full reads, materialization and the isolated EF ownership
 experiment. The [benchmark regression project](../tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests.csproj)
 runs in Debug and Release; Debug rejects actual measurements before resources.
+Functional lifecycle tests validate workload structure independently of the
+test build's JIT optimization status. A separate control verifies that the real
+configuration retains BenchmarkDotNet's critical optimization validator: Debug
+assemblies fail measurement eligibility and Release assemblies pass it. No
+production validator is disabled to make functional tests pass in Rider.
 
 ## Query composition and actual consumer profiles
 

@@ -108,7 +108,6 @@ public sealed class ConsumerReferenceTests
         using var native = BenchmarkConverter.TypeToBenchmarks(
             typeof(SignalReportConstructionBenchmarks),
             configuration);
-        var validation = new ValidationParameters(native.BenchmarksCases, native.Config);
         await using var benchmark = new SignalReportConstructionBenchmarks
         {
             Anchors = 16,
@@ -119,12 +118,7 @@ public sealed class ConsumerReferenceTests
         // Act
         var actual = benchmark.Api();
         var reference = benchmark.Reference();
-        var errors = native
-            .Config
-            .GetValidators()
-            .SelectMany(validator => validator.Validate(validation))
-            .Where(error => error.IsCritical)
-            .ToArray();
+        var errors = BenchmarkValidationTestSupport.StructuralErrors(native);
 
         // Assert
         Assert.False(selected.RequiresDatabase);

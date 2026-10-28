@@ -22,17 +22,29 @@ public sealed partial class SignalReportValidationTests
         public T Current => rows[_index - 1];
 
         /// <summary>Reads all supplied rows before applying the selected EOF failure or cancellation.</summary>
-        public async ValueTask<bool> MoveNextAsync()
+        public ValueTask<bool> MoveNextAsync()
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return ValueTask.FromCanceled<bool>(cancellationToken);
+            }
+
             if (_index < rows.Count)
             {
                 _index++;
                 probe.ReadCount++;
 
-                return true;
+                // WHY: Prepared rows complete synchronously. An async state machine per row allocates in
+                // Debug and would measure this test reader instead of the report's temporary state.
+                return ValueTask.FromResult(true);
             }
 
+            return CompleteAsync();
+        }
+
+        /// <summary>Preserves asynchronous EOF cancellation and failure before successful completion.</summary>
+        private async ValueTask<bool> CompleteAsync()
+        {
             if (probe.CancelAfterRows is not null)
             {
                 await probe.CancelAfterRows.CancelAsync();

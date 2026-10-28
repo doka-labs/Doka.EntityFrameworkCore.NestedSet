@@ -128,15 +128,9 @@ public sealed class SignalReadBenchmarkTests
                     .WithUnrollFactor(2));
 
         using var discovery = BenchmarkConverter.TypeToBenchmarks(typeof(SignalReportingBenchmarks), configuration);
-        var validation = new ValidationParameters(discovery.BenchmarksCases, discovery.Config);
 
         // Act
-        var failures = discovery
-            .Config
-            .GetValidators()
-            .SelectMany(validator => validator.Validate(validation))
-            .Where(error => error.IsCritical)
-            .ToArray();
+        var failures = BenchmarkValidationTestSupport.StructuralErrors(discovery);
 
         // Assert
         Assert.Empty(failures);

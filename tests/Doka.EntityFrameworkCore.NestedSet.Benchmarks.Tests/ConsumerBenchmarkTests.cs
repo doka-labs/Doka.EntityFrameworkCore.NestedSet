@@ -150,15 +150,8 @@ public sealed class ConsumerBenchmarkTests
             type,
             BenchmarkConfiguration.Create(new BenchmarkRunOptions()));
 
-        var validation = new ValidationParameters(discovery.BenchmarksCases, discovery.Config);
-
         // Act
-        var failures = discovery
-            .Config
-            .GetValidators()
-            .SelectMany(validator => validator.Validate(validation))
-            .Where(error => error.IsCritical)
-            .ToArray();
+        var failures = BenchmarkValidationTestSupport.StructuralErrors(discovery);
 
         // Assert
         Assert.Empty(failures);

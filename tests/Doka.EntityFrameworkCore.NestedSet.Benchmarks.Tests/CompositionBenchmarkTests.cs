@@ -16,15 +16,9 @@ public sealed class CompositionBenchmarkTests
         // Arrange
         var configuration = BenchmarkConfiguration.Create(new BenchmarkRunOptions());
         using var discovery = BenchmarkConverter.TypeToBenchmarks(type, configuration);
-        var validation = new ValidationParameters(discovery.BenchmarksCases, discovery.Config);
 
         // Act
-        var errors = discovery
-            .Config
-            .GetValidators()
-            .SelectMany(validator => validator.Validate(validation))
-            .Where(error => error.IsCritical)
-            .ToArray();
+        var errors = BenchmarkValidationTestSupport.StructuralErrors(discovery);
 
         // Assert
         Assert.Empty(errors);

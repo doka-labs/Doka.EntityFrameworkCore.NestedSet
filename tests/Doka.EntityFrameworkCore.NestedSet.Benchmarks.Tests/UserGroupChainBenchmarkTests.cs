@@ -18,15 +18,9 @@ public sealed class UserGroupChainBenchmarkTests
 
         using var discovery = BenchmarkSelection.Discover(configuration, diagnostics: true);
         using var native = BenchmarkConverter.TypeToBenchmarks(typeof(UserGroupChainBenchmarks), configuration);
-        var validation = new ValidationParameters(native.BenchmarksCases, native.Config);
 
         // Act
-        var errors = native
-            .Config
-            .GetValidators()
-            .SelectMany(validator => validator.Validate(validation))
-            .Where(error => error.IsCritical)
-            .ToArray();
+        var errors = BenchmarkValidationTestSupport.StructuralErrors(native);
 
         // Assert
         Assert.True(discovery.RequiresDatabase);

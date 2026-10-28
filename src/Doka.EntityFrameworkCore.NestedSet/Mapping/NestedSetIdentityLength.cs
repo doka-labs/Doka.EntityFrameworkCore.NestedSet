@@ -3,6 +3,26 @@ namespace Doka.EntityFrameworkCore.NestedSet.Mapping;
 /// <summary>Recognizes known relational character limits and validates their exact Unicode representation.</summary>
 internal static class NestedSetIdentityLength
 {
+    private static readonly SearchValues<char> s_surrogates = CreateSurrogateSearchValues();
+
+    /// <summary>Creates the immutable surrogate-range search once instead of boxing range bounds per call.</summary>
+    private static SearchValues<char> CreateSurrogateSearchValues()
+    {
+        // WHY: IndexOfAnyInRange<char> boxes its generic bounds when JIT optimizations are disabled.
+        // SearchValues retains the framework's vectorized range search without per-identity allocations.
+        Span<char> characters = stackalloc char[0x800];
+
+        // WHY: Construct the complete contiguous surrogate range once using bounded stack storage.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var index = 0; index < characters.Length; index++)
+        {
+            characters[index] = (char)(0xd800 + index);
+        }
+
+        return SearchValues.Create(characters);
+    }
+
     /// <summary>Captures native identity-count facts while the selected adapter and mapping services are available.</summary>
     /// <param name="hierarchy">The exact configured hierarchy whose physical identities are finalized.</param>
     /// <param name="descriptor">The validated structural role descriptors.</param>
@@ -78,11 +98,10 @@ internal static class NestedSetIdentityLength
         string role
     )
     {
-        // WHY: The framework scans the complete surrogate range without a retained predicate or initialization.
-        // Allocation budgets run without coverage instrumentation, which can change the helper's generated code.
+        // WHY: Reuse the immutable search so Debug and Release both avoid per-call boxing or buffers.
         var firstSurrogate = value
             .AsSpan()
-            .IndexOfAnyInRange('\ud800', '\udfff');
+            .IndexOfAny(s_surrogates);
 
         // WHY: Most identities are ASCII/BMP. The vectorized search avoids a scalar loop for that common case.
         if (firstSurrogate < 0)

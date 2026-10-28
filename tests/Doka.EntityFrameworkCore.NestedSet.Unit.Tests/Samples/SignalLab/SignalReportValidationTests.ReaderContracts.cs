@@ -5,6 +5,29 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples.SignalLab;
 
 public sealed partial class SignalReportValidationTests
 {
+    /// <summary>Cancellation is returned through the pending read before exposing any prepared row.</summary>
+    [Fact]
+    public async Task PreparedReaderReturnsCancellationWithoutThrowingSynchronously()
+    {
+        // Arrange
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        var probe = new ReaderProbe();
+        int[] rows = [1];
+        var reader = ReadRows(rows, probe, cancellation.Token);
+
+        // Act
+        var pending = reader.MoveNextAsync();
+        var error = await Record.ExceptionAsync(async () => await pending);
+
+        // Assert
+        var canceled = Assert.IsAssignableFrom<OperationCanceledException>(error);
+        Assert.Equal(cancellation.Token, canceled.CancellationToken);
+        Assert.True(pending.IsCanceled);
+        Assert.Equal(0, probe.ReadCount);
+        Assert.False(probe.EndReached);
+    }
+
     /// <summary>Both async consumers forward their exact token even when the source captured no token.</summary>
     [Theory]
     [InlineData(false)]
