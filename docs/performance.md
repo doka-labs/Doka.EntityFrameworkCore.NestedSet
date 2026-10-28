@@ -1717,10 +1717,13 @@ See [MySQL's EXPLAIN documentation](https://dev.mysql.com/doc/refman/8.4/en/expl
 Portable long-path proofs count children with one visible allowed direct
 parent, retaining native key equality, consecutive depth, containment and
 row-dependent rules. SQL Server uses shared failure summaries for
-row-independent long-path rules: its adaptive width is a relational singleton
-aggregate, joined before grouping. Group keys contain only local columns;
-outer path limits are applied afterwards through existence predicates. This
-avoids subqueries in `GROUP BY` and aggregates mixing outer and local columns.
+row-independent long-path rules: its adaptive width is a deferred relational
+lookup of the greatest visible `Right`, joined before grouping. Each local
+summary has an `OFFSET 0` translation boundary before caller filters; nullable
+scalar `MAX` results are compared outside the aggregates. This keeps EF from
+merging caller predicates into `HAVING` and avoids aggregates mixing outer and
+local columns. It does not force SQL Server to materialize a summary or reuse
+it across facts; native actual-work assertions remain required.
 MySQL/MariaDB retain their separately qualified scalar-width form; row-dependent
 rules retain their exact per-occurrence count.
 
@@ -1741,18 +1744,29 @@ person retains every occurrence on that origin's path. No additional status
 row is sent for a successful origin and the reader count is unchanged.
 
 SQL Server's strict ancestor strategy projects a native
-owner key conditionally on nonleaf eligibility inside the independent
-`DISTINCT` relation, then hydrates by exact key/tree equality. A bare unique key
-could let the optimizer remove `DISTINCT`; coordinate-only hydration proved
+owner key conditionally on nonleaf eligibility inside an independent grouped
+relation, then hydrates by exact key/tree equality. Grouping the complete
+coordinate key instead of applying `DISTINCT` to computed values preserves
+EF's identifiers for owned auto-includes and collection DTOs. A bare unique key
+could let the optimizer remove the set boundary; coordinate-only hydration proved
 insufficient in successor CI. Equal-bound owners retain their separate keys
 and occurrences. These SQL shapes do not guarantee physical seeks or bounded
 server work; native execution plans and unchanged capacity guards remain
 required. The [2026-10-28 correction record](qualification/query-composition.md#ci-correction-qualification-2026-10-28)
 separates verified local behavior from outstanding native SQL Server execution.
 
+The SQL Server adapter additionally retains actual containment inside each
+unique native key/tree hydration and applies `Take(1)` there. NodeKey, or
+(Scope, NodeKey), is already a validated key and Scope is bound before
+composition. The lookup therefore has zero or one owner, so the limit cannot
+truncate valid output. Its remaining outer inequality keeps EF's correlated
+`CROSS APPLY` instead of a global `ROW_NUMBER` rewrite, including when the
+caller does not consume distance. It preserves the mapped entity and collection
+navigation; it is not proof that the optimizer chooses an index seek.
+
 Excluded owner intervals share `(NULL, Tree, 0, 0)` in that private relation.
 Keeping each excluded leaf's real coordinates retained a population-sized
-`DISTINCT` result even when only one root was eligible. The
+grouped result even when only one root was eligible. The
 [actual-relation cardinality controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerAncestorBoundsTests.Cardinality.cs)
 count the production relation asynchronously: one root and 100 leaves yield
 two classes per tree instead of 101. Eligible key zero, original bounds and

@@ -281,12 +281,14 @@ provider boundary, without changing bounds to Parent traversal or duplicating
 volatile/paged source evaluation.
 
 SQL Server's row-independent long paths reuse the shared failure proof with
-a relational width aggregate. Width and failure coordinates are joined before
-grouping, and path limits filter the local summaries through existence checks.
+a relational greatest-visible-Right lookup. Width and failure coordinates are
+joined before grouping. An `OFFSET 0` boundary keeps caller predicates outside
+the local grouping in EF's SQL; nullable scalar maxima are compared afterwards.
 This avoids T-SQL's prohibited subqueries in grouping expressions and mixed
 outer/local aggregate operands. Row-dependent rules keep their exact count;
 MySQL/MariaDB retain their qualified scalar-width strategy. These are internal
-SQL forms of the same path contract, not new public modes.
+SQL forms of the same path contract, not new public modes. The translation
+boundary does not guarantee physical materialization or reuse on SQL Server.
 
 SQL Server also uses the existing descending-Left nearest-owner strategy. Under
 the valid bounds/depth precondition, every candidate ancestor belongs to one
@@ -299,8 +301,21 @@ The independent SQL Server owner relation maps every excluded interval to the
 same `(NULL, Tree, 0, 0)` tuple per tree. Eligible owners keep their own original
 key/bounds; excluded intervals cannot pass strict containment or hydrate a
 required key. This avoids retaining separate leaf-coordinate classes in the
-independent DISTINCT relation. It is not a stored bounds change or a reserved
+independent grouped relation. Grouping the complete conditional coordinate key
+lifts computed values into columns and preserves EF's collection identifiers;
+`DISTINCT` over those computed values lost the identifiers in native successor
+CI. Owned auto-includes and collection DTOs remain single queries. This is not
+a stored bounds change or a reserved
 node-key value: an eligible native key zero remains valid.
+
+SQL Server hydrates a coordinate's mapped owner through its exact native
+key/tree equality plus the same structural containment already established on
+owner-derived coordinates. The validated NodeKey or (Scope, NodeKey) identity
+and bound Scope prove that `Take(1)` cannot remove another valid owner. Keeping
+the actual source-dependent inequality inside this lookup prevents EF's global
+owner-window rewrite without introducing a fabricated dependency. Returning the
+mapped entity directly preserves collection navigation. Native access-path and
+work qualification remain separate requirements.
 
 The supervisor consumer separates unresolved status markers from complete
 unique-person occurrences. An independent inner join admits evidence after
@@ -439,6 +454,7 @@ A malformed existing API fails clearly instead of guessing a server family.
 - 2026-10-26: The typed public Doka integration reference follows D-020; generic composition semantics and historical qualification remain unchanged.
 - 2026-10-26: The owner selected an independently synthetic SignalLab model for sample, test, benchmark and migration consumers. Source-specific acquisition formats, independent event identities and newly designed fixtures retain the existing hierarchy, multiplicity, owner, reader and allocation contracts. Historical measurements keep their original source and workload boundaries; they are not reassigned to the redesigned model.
 - 2026-10-28: Retained the path and nearest-owner contracts through SQL Server's relational failure summaries and equivalent coordinate ordering; separated supervisor status from complete unique-person evidence. Actual Showplan work controls cover emitted and pre-filter rows; native x64 performance qualification remains mandatory.
+- 2026-10-28: Recorded 36 native successor failures. Preserve collection identifiers through grouped conditional coordinates and retain an explicit EF boundary before outer path filters. Translation boundaries do not establish physical reuse; unchanged native work budgets remain required.
 
 ### Implementation References
 
@@ -473,6 +489,8 @@ files do not replace a full provider run on another patch.
 
 ### Sources
 
+- [EF 10.0.14 DISTINCT, grouping identifiers and APPLY translation](https://github.com/dotnet/efcore/blob/v10.0.14/src/EFCore.Relational/Query/SqlExpressions/SelectExpression.cs) (primary source; retrieved 2026-10-28)
+- [SQL Server logical queries and physical optimization](https://learn.microsoft.com/en-us/sql/relational-databases/query-processing-architecture-guide?view=sql-server-ver17) (primary source; retrieved 2026-10-28)
 - [EF relational grouping and joins](https://learn.microsoft.com/en-us/ef/core/querying/complex-query-operators) (primary source; retrieved 2026-10-28)
 - [SQL Server grouping expressions and derived-table columns](https://learn.microsoft.com/en-us/sql/t-sql/queries/select-group-by-transact-sql?view=sql-server-ver17) (primary source; retrieved 2026-10-28)
 - [SQL Server pre-filter actual row diagnostics](https://support.microsoft.com/en-gb/servicing/sql/performance-query/kb3107397-improved-diagnostics-for-query-execution-plans-that-involve-residual-predicate-pushdown-in) (primary source; retrieved 2026-10-28)

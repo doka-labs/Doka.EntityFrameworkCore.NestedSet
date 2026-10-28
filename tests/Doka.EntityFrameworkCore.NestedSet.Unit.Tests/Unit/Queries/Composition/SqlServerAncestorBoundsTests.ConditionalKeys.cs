@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public sealed partial class SqlServerAncestorBoundsTests
@@ -19,7 +21,8 @@ public sealed partial class SqlServerAncestorBoundsTests
         var sql = query.ToQueryString();
 
         // Assert
-        Assert.Contains("SELECT DISTINCT CASE", sql, StringComparison.Ordinal);
+        AssertConditionalNativeKey(sql);
+        Assert.Contains("GROUP BY", sql, StringComparison.Ordinal);
         Assert.Contains("THEN", sql, StringComparison.Ordinal);
         Assert.Contains("END AS [Key]", sql, StringComparison.Ordinal);
         Assert.DoesNotMatch(@"CAST\(\s*\[[^]]+\]\.\[Id\]|CONVERT\([^)]*\[[^]]+\]\.\[Id\]", sql);
@@ -40,7 +43,8 @@ public sealed partial class SqlServerAncestorBoundsTests
         var sql = await translate();
 
         // Assert
-        Assert.Contains("SELECT DISTINCT CASE", sql, StringComparison.Ordinal);
+        AssertConditionalNativeKey(sql);
+        Assert.Contains("GROUP BY", sql, StringComparison.Ordinal);
         Assert.Contains("END AS [Key]", sql, StringComparison.Ordinal);
         Assert.DoesNotMatch(@"CAST\(\s*\[[^]]+\]\.\[Id\]|CONVERT\([^)]*\[[^]]+\]\.\[Id\]", sql);
     }
@@ -57,6 +61,12 @@ public sealed partial class SqlServerAncestorBoundsTests
         return context.NestedSet<NativeConditionalNode<TKey>>().ForScope(7)
             .SelectAncestors(node => node.Depth >= 1, (source, owner, distance) => owner.Id).ToQueryString();
     }
+
+    /// <summary>Checks the actual eligibility CASE and native key branch independently of select-list ordering.</summary>
+    private static void AssertConditionalNativeKey(string sql)
+        => Assert.Matches(new Regex(
+            @"CASE\s+WHEN\s+(?<owner>\[[^]]+\])\.\[Right\]\s*>\s*CASE\b.*?\bEND\s+THEN\s+\k<owner>\.\[Id\]\s+END AS \[Key\]",
+            RegexOptions.Singleline), sql);
 
     /// <summary>Maps only native identity roles needed to qualify the conditional ancestor key.</summary>
     private sealed class NativeConditionalContext<TKey>(DbContextOptions<NativeConditionalContext<TKey>> options)

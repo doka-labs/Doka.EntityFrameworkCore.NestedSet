@@ -48,8 +48,21 @@ public sealed class CompositionSqlServerTranslationTests
         // Assert
         Assert.Contains("SELECT", sql, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(shape == "mixed", sql.Contains("COUNT_BIG(", StringComparison.OrdinalIgnoreCase));
-        Assert.Equal(shape != "mixed", sql.Contains("GROUP BY", StringComparison.OrdinalIgnoreCase));
-        Assert.DoesNotContain("APPLY", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("GROUP BY", sql, StringComparison.OrdinalIgnoreCase);
+
+        // WHY: The mixed leg now retains grouped ancestor identities and a correlated zero-or-one
+        // owner lookup. Its caller-dependent edge rule must still use the exact COUNT_BIG fallback.
+        if (shape == "mixed")
+        {
+            Assert.Contains("CROSS APPLY", sql, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("SELECT TOP(1)", sql, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("ROW_NUMBER", sql, StringComparison.OrdinalIgnoreCase);
+        }
+        else
+        {
+            Assert.DoesNotContain("APPLY", sql, StringComparison.OrdinalIgnoreCase);
+        }
+
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
     }

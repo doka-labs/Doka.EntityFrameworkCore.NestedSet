@@ -56,7 +56,8 @@ public sealed partial class SqlServerAncestorBoundsTests
         var probe = new IndependentCoordinateRelationProbe();
         probe.Visit(pairs.Expression);
         var relation = Assert.IsAssignableFrom<MethodCallExpression>(probe.Relation);
-        var count = Expression.Call(typeof(Queryable), nameof(Queryable.Count), relation.Method.GetGenericArguments(), relation);
+        var count = Expression.Call(typeof(Queryable), nameof(Queryable.Count),
+            [relation.Type.GetGenericArguments()[0]], relation);
 
         // Act
         // WHY: Count the actual independent production relation before containment and hydration. Correct
@@ -71,15 +72,22 @@ public sealed partial class SqlServerAncestorBoundsTests
     /// <summary>Finds the owned coordinate boundary without constructing an alternative implementation.</summary>
     private sealed class IndependentCoordinateRelationProbe : ExpressionVisitor
     {
-        /// <summary>Gets the production DISTINCT relation counted by the regression.</summary>
+        /// <summary>Gets the completed production coordinate-class relation counted by the regression.</summary>
         internal MethodCallExpression? Relation { get; private set; }
 
         /// <inheritdoc />
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
             if (node.Method.DeclaringType == typeof(Queryable)
-                && node.Method.Name == nameof(Queryable.Distinct)
-                && node.Method.GetGenericArguments()[0].Name == "AncestorBounds")
+                && node.Method.Name == nameof(Queryable.Select)
+                && node.Type.GetGenericArguments()[0].Name == "AncestorBounds"
+                && node.Arguments[0] is MethodCallExpression grouping
+                && grouping.Method.DeclaringType == typeof(Queryable)
+                && grouping.Method.Name == nameof(Queryable.GroupBy)
+                && node.Arguments[1] is UnaryExpression
+                {
+                    Operand: LambdaExpression { Body: MemberExpression { Member.Name: "Key" } },
+                })
             {
                 Relation = node;
             }

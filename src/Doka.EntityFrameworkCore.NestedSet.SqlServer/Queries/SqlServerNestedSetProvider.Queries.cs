@@ -6,6 +6,9 @@ internal sealed partial class SqlServerNestedSetProvider
     internal override bool UsesIndependentAncestorOwners => true;
 
     /// <inheritdoc />
+    internal override bool UsesBoundedAncestorHydration => true;
+
+    /// <inheritdoc />
     // WHY: Valid ancestors form one nested chain, so descending Left selects the same nearest
     // candidate as descending Depth and exposes the existing coordinate-index order without a depth sort.
     internal override NestedSetNearestQueryStrategy NearestQueryStrategy => NestedSetNearestQueryStrategy.ProjectedLeft;

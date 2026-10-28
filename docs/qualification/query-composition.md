@@ -162,7 +162,7 @@ tree. Existing zero-key, visibility, converted-identity, extreme-bound and
 equal-bound-owner semantic controls remain required. This reduction is an
 executed logical-cardinality result, not a native SQL Server seek guarantee.
 
-The follow-up replaces independent-rule long-path child counts with shared
+The first follow-up replaced independent-rule long-path child counts with shared
 invalid-child summaries. A relational singleton computes adaptive width before
 grouping; summary keys and `MAX` operands contain local columns only. Separate
 existence predicates apply the outer path limits. Row-dependent rules retain
@@ -194,7 +194,7 @@ CI25 plans exceed this allowance, including 100,000,000 owner reads against
 old-plan counterexamples, not executions of the corrected source. The guard
 bounds the largest operator; it is not a total CPU, total I/O or latency limit.
 
-The final local follow-up uses a fresh complete Release build with zero
+That local follow-up used a fresh complete Release build with zero
 warnings/errors. All 5,820 selected executions pass without skips: 451
 uninstrumented allocation/lifetime controls, 2,422 complementary Unit cases
 with Code Coverage, 1,480 native MySQL/MariaDB cases, 735 native PostgreSQL
@@ -204,10 +204,63 @@ the original medium and large consumer capacity profiles. Style and unused-impor
 verification pass. All 1,873 captured source/configuration hashes remain unchanged
 through these runs. These are local follow-up results, not a hosted CI result.
 
+### Native successor findings
+
+[CI run 40729069626](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/runs/40729069626)
+tested commit `376c0f128febe83b37332fa709719a58958b7abd` on supported x64.
+SQL Server executed 2,045 cases: 2,009 passed and 36 failed, with no skips.
+The failures comprise 27 collection-projection translation errors, six actual
+work-budget violations and three composed-reader timeouts. The statistics
+preparation now completes; the ten-million-node case fails in the subsequent
+query instead of setup. None of these native query findings is closed by the
+earlier 5,820 local passes.
+
+The same source passes all other provider lanes: MySQL/MariaDB 4,373/4,373,
+PostgreSQL 2,047/2,047 and SQLite 2,071/2,071. The ordinary Unit partition
+passes 2,422/2,422 and the separate uninstrumented allocation partition passes
+451/451. Migration integration passes 246/246 and SafeMigrations passes
+150/150, including their native SQL Server variants. These results isolate the
+remaining failures to composed SQL Server queries; they do not qualify the
+subsequent uncommitted correction.
+
+The collection errors arise from `DISTINCT` over computed conditional keys:
+EF loses the row identifiers needed for owned auto-includes and collection DTOs.
+Grouping the same coordinate class instead lifts its computed keys into columns
+and retains collection identifiers. The executed collection controls use the
+shared mapped contexts and preserve a single SQL query; they do not disable
+auto-includes or use split queries.
+
+SQL Server's owner hydration now repeats that exact containment proof inside
+the mapped native key/tree lookup and applies `Take(1)`. Model validation
+requires NodeKey or (Scope, NodeKey) to be a key, and composition has already
+bound Scope, so the limit cannot remove a legitimate owner. It retains an
+actual source-dependent inequality inside `CROSS APPLY` rather than allowing
+EF to turn the lookup into a population-sized `ROW_NUMBER` relation. The inner
+result remains an entity, preserving navigation projection. Translation controls
+also cover a caller that does not consume distance; other adapters keep their
+existing hydration shape. Native seek/work confirmation is still required.
+
+The native plans also show population-sized hydration reads per source and
+failure summaries recomputed per fact. The next local path form completes each
+grouping before caller filters, selects the visible maximum through descending
+`Right` and `Take(1)`, and compares nullable scalar maxima outside the summaries.
+This corrects EF's correlated `HAVING` shape. It does not require SQL Server to
+materialize or reuse a summary; the unchanged actual-work guards remain the
+acceptance criterion on x64.
+
 Generated SQL, portable execution and other native engines cannot establish
-SQL Server's selected access path. All eight affected SQL Server capacity
-cases and their actual plans still require supported x64 execution of this
-source. No command deadline, index, query hint or acceptance budget was raised.
+SQL Server's selected access path. The native failures remain open until the
+corrected source passes supported x64 execution. No command deadline, index,
+query hint or acceptance budget was raised.
+
+The corrected local source has a fresh complete Release build with zero
+warnings/errors. All 2,474 complementary Unit cases and 451 uninstrumented
+allocation/lifetime cases pass, without skips or overlapping test identities.
+The affected SQLite mapping, composition and indexed-query selection passes
+482/482. Style and unused-import verification pass. The 52 added Unit cases
+cover the actual collection models, bounded principal navigation, selected
+provider SQL and deferred relational width. These results qualify local
+contracts, not the outstanding native SQL Server work or timeouts.
 
 ## Semantic and native-work evidence
 

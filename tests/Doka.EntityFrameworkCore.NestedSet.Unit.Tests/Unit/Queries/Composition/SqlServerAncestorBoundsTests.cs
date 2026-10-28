@@ -16,12 +16,12 @@ public sealed partial class SqlServerAncestorBoundsTests
         _output = output;
     }
 
-    /// <summary>A conditional native key retains the distinct boundary and permits exact late hydration.</summary>
+    /// <summary>A conditional native key retains identifiable coordinate classes before exact late hydration.</summary>
     /// <param name="treeBound">Whether the query targets one exact tree instead of the scope's forest.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task StrictAncestorsKeepAConditionalKeyDistinctBoundary(bool treeBound)
+    public async Task StrictAncestorsKeepAConditionalKeyGroupingBoundary(bool treeBound)
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -41,16 +41,17 @@ public sealed partial class SqlServerAncestorBoundsTests
         // Act
         var sql = query.ToQueryString();
         _output.WriteLine(sql);
-        var distinct = Regex.Matches(sql, @"SELECT DISTINCT\s+(?<columns>.*?)\s+FROM", RegexOptions.Singleline);
+        var groups = Regex.Matches(sql, @"GROUP BY\s+(?<columns>[^\r\n]+)");
 
         // Assert
         Assert.True(NestedSetProviderCapabilities.Resolve(context).UsesIndependentAncestorOwners);
-        var columns = Assert.Single(distinct).Groups["columns"].Value;
-        Assert.Contains("[TreeId]", columns, StringComparison.Ordinal);
-        Assert.Contains("[Left]", columns, StringComparison.Ordinal);
-        Assert.Contains("[Right]", columns, StringComparison.Ordinal);
+        var columns = Assert.Single(groups).Groups["columns"].Value;
+        Assert.Contains("[Key]", columns, StringComparison.Ordinal);
+        Assert.Contains("[Tree", columns, StringComparison.Ordinal);
+        Assert.Contains("[Left", columns, StringComparison.Ordinal);
+        Assert.Contains("[Right", columns, StringComparison.Ordinal);
         Assert.Matches(new Regex(@"CASE\s+WHEN.*THEN\s+\[[^]]+\]\.\[Id\].*END AS \[Key\]",
-            RegexOptions.Singleline), columns);
+            RegexOptions.Singleline), sql);
         Assert.DoesNotMatch(@"(?:^|,)\s*\[[^]]+\]\.\[Id\]\s*(?:,|$)", columns);
         Assert.Matches(@"(?:\[[^]]+\]\.\[Id\] = \[[^]]+\]\.\[Key\]|\[[^]]+\]\.\[Key\] = \[[^]]+\]\.\[Id\])", sql);
         Assert.DoesNotContain("[Depth]", columns, StringComparison.Ordinal);

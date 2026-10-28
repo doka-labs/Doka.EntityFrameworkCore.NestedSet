@@ -368,6 +368,11 @@ internal sealed partial class NestedSetQuery<TEntity>
                     Block = group.Key.Block, Left = group.Key.Left, Right = group.Max(point => point.Right),
                 });
 
+        // WHY: Complete each local summary before applying caller endpoints. OFFSET 0 keeps EF from
+        // merging those outer predicates into HAVING; native work guards still verify physical reuse.
+        interior = interior.OrderBy(point => point.Block).Skip(0);
+        fringes = fringes.OrderBy(point => point.Block).Skip(0);
+
         var partition = Expression.Parameter(typeof(PathFailureCoordinate), "partition");
         var tree = Expression.Equal(Expression.Property(partition, nameof(PathFailureCoordinate.Tree)),
             NestedSetExpressions.Property(upper, _descriptor.TreeId.Resolve(_entityType), typeof(object)));
@@ -381,24 +386,34 @@ internal sealed partial class NestedSetQuery<TEntity>
         var widthColumn = Expression.Property(partition, nameof(PathFailureCoordinate.Width));
         var block = Expression.Property(partition, nameof(PathFailureCoordinate.Block));
         var left = Expression.Property(partition, nameof(PathFailureCoordinate.Left));
-        var right = Expression.Property(partition, nameof(PathFailureCoordinate.Right));
         var upperLeft = Bound(upper, _descriptor.Left);
         var lowerLeft = Bound(lower, _descriptor.Left);
         var upperBlock = CoordinateBlockStart(upperLeft, widthColumn);
         var lowerBlock = CoordinateBlockStart(lowerLeft, widthColumn);
-        var reachesLower = Expression.GreaterThanOrEqual(right, Bound(lower, _descriptor.Right));
-        var interiorMatch = Expression.AndAlso(identity, Expression.AndAlso(reachesLower,
-            Expression.AndAlso(Expression.GreaterThan(block, upperBlock), Expression.LessThan(block, lowerBlock))));
+        var interiorMatch = Expression.AndAlso(identity,
+            Expression.AndAlso(Expression.GreaterThan(block, upperBlock), Expression.LessThan(block, lowerBlock)));
 
-        var fringeMatch = Expression.AndAlso(identity, Expression.AndAlso(reachesLower,
+        var fringeMatch = Expression.AndAlso(identity,
             Expression.AndAlso(
                 Expression.OrElse(Expression.Equal(block, upperBlock), Expression.Equal(block, lowerBlock)),
-                Expression.AndAlso(Expression.GreaterThan(left, upperLeft), Expression.LessThanOrEqual(left, lowerLeft)))));
+                Expression.AndAlso(Expression.GreaterThan(left, upperLeft), Expression.LessThanOrEqual(left, lowerLeft))));
 
-        // WHY: EXISTS filters completed local summaries. MAX(CASE ... outer path columns ... Right)
-        // is invalid on SQL Server; separate WHERE predicates preserve the same existence proof.
-        // Combining both fringes is safe even in one block because caller occurrences are never grouped.
-        return Expression.OrElse(Any(interior, partition, interiorMatch), Any(fringes, partition, fringeMatch));
+        var interiorRights = interior
+            .Where(Expression.Lambda<Func<PathFailureCoordinate, bool>>(interiorMatch, partition))
+            .Select(point => (long?)point.Right);
+
+        var fringeRights = fringes
+            .Where(Expression.Lambda<Func<PathFailureCoordinate, bool>>(fringeMatch, partition))
+            .Select(point => (long?)point.Right);
+
+        // WHY: Scalar MAX consumes only each completed summary's local Right. Comparing the result
+        // outside the aggregate avoids both invalid outer-column MAX(CASE) and EXISTS row-goal plans.
+        // Empty summaries return NULL, hence no violation; overlapping fringes cannot duplicate a caller row.
+        var lowerRight = Expression.Convert(Bound(lower, _descriptor.Right), typeof(long?));
+
+        return Expression.OrElse(
+            Expression.GreaterThanOrEqual(Expression.Call(s_maximumNullableCoordinate, interiorRights.Expression), lowerRight),
+            Expression.GreaterThanOrEqual(Expression.Call(s_maximumNullableCoordinate, fringeRights.Expression), lowerRight));
 
         static MemberAssignment Field(string member, Expression value)
             => Expression.Bind(typeof(PathFailureCoordinate).GetProperty(member)!, value);

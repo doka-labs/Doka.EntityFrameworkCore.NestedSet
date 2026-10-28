@@ -175,6 +175,23 @@ mixed, deep and supervisor capacity profiles apply the original cardinality-base
 path allowance to both observations. Their final native x64 execution is a
 separate qualification requirement.
 
+The [ancestor collection controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerAncestorCollectionTests.cs)
+use the shared ordinary and indexed navigation models. SQL Server translates
+owned auto-includes and collection DTOs as single queries; SQLite executes the
+exact coordinate helper with visible, hidden and missing sources and verifies
+the original collection bags. The
+[path summary boundary controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerPathSummaryBoundaryTests.cs)
+guard local grouping before caller filters for path and nearest operations.
+[Deferred width controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerPathSummaryBoundaryTests.Widths.cs)
+exclude hidden and foreign scope/tree rows, observe changes after construction
+and retain empty-root behavior. None substitutes for native SQL Server plans.
+The [selected hydration controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerAncestorHydrationTests.cs)
+check all five configured engine profiles and an unused public distance,
+requiring the SQL Server correlated one-row lookup without a global owner
+window. [Unique-principal navigation controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerAncestorCollectionTests.UniqueLookup.cs)
+execute the equivalent zero-or-one root lookup on SQLite, retaining owned and
+ordinary collection payload for present, hidden, missing and non-ancestor keys.
+
 The [adapter registration controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/OptionsExtensionTests.Providers.cs)
 verify actual native callbacks, stable repeated selection, distinct service
 identities, and rejection of missing, mismatched, conflicting or opaque adapter

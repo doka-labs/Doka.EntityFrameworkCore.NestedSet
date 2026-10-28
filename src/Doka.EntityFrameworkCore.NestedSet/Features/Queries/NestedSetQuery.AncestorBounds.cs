@@ -2,6 +2,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Features.Queries;
 
 internal sealed partial class NestedSetQuery<TEntity>
 {
+    private static readonly MethodInfo s_takeAncestorOwner = MethodOf(
+        (Expression<Func<IQueryable<TEntity>, IQueryable<TEntity>>>)(owners => owners.Take(1)));
+
     /// <summary>Restricts independent nonleaf identities before exact native-key owner hydration.</summary>
     private IQueryable<TResult> SelectCoordinateAncestorPairs<TResult>(
         Expression<Func<TEntity, bool>> selected,
@@ -29,7 +32,10 @@ internal sealed partial class NestedSetQuery<TEntity>
         // WHY: Excluded intervals also share zero coordinates, so all leaves of one tree collapse
         // into one nonmatching class. Retaining their actual bounds kept the relation population-sized
         // even when only one root could be an ancestor. The NULL key cannot hydrate any required key.
-        var coordinates = _nodes.Select(coordinate).Distinct();
+        // WHY: EF cannot identify collection occurrences after DISTINCT over computed CASE values.
+        // Grouping the same coordinate class lifts those values into columns first and gives EF
+        // complete group identifiers; owned auto-includes and collection DTOs then remain one query.
+        var coordinates = _nodes.GroupBy(coordinate).Select(group => group.Key);
         var collection = Expression.Lambda<Func<TEntity, IEnumerable<AncestorBounds>>>(
             coordinates.Expression,
             Expression.Parameter(typeof(TEntity), "source"));
@@ -63,10 +69,29 @@ internal sealed partial class NestedSetQuery<TEntity>
         // WHY: Key and Tree keep native database equality, never a string conversion or CLR operator.
         // Both mapped roots retain the same scope, binding and filters; NULL ineligible keys cannot
         // match a required owner key, and every eligible equal-bound owner is restored separately.
-        var mapped = Expression.Lambda<Func<AncestorBoundsPair, IEnumerable<TEntity>>>(
-            Expression.Call(s_where, _nodes.Expression,
-                Expression.Quote(Expression.Lambda<Func<TEntity, bool>>(matches, owner))),
-            pair);
+        Expression mappedSource;
+
+        if (_capabilities.UsesBoundedAncestorHydration)
+        {
+            // WHY: ValidateIdentity requires NodeKey or (Scope, NodeKey), and public composition has
+            // already bound Scope. This is the exact zero-or-one identity lookup, not a result cap.
+            // The same real containment already proved on owner-derived coordinates keeps its source
+            // dependency inside the lookup. Retaining a mapped entity here preserves collection navigation.
+            matches = Expression.AndAlso(matches, Contains(owner, sourceNode, includeSelf: false));
+            var mappedOwners = Expression.Call(s_where, _nodes.Expression,
+                Expression.Quote(Expression.Lambda<Func<TEntity, bool>>(matches, owner)));
+
+            var order = Expression.Lambda<Func<TEntity, long>>(Bound(owner, _descriptor.Left), owner);
+            mappedSource = Expression.Call(s_takeAncestorOwner,
+                Expression.Call(s_orderByLeft, mappedOwners, Expression.Quote(order)), Expression.Constant(1));
+        }
+        else
+        {
+            mappedSource = Expression.Call(s_where, _nodes.Expression,
+                Expression.Quote(Expression.Lambda<Func<TEntity, bool>>(matches, owner)));
+        }
+
+        var mapped = Expression.Lambda<Func<AncestorBoundsPair, IEnumerable<TEntity>>>(mappedSource, pair);
 
         var pairs = ranges.Where(onPath).SelectMany(mapped,
             (range, related) => new { range.Source, Related = related });

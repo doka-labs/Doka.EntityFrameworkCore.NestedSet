@@ -79,8 +79,9 @@ the narrowly approved registration-removal exception.
 
 ### Fixed
 
-- Share SQL Server's row-independent long-path failure evidence through local
-  grouped coordinates, and separate unresolved supervisor markers from complete
+- Preserve SQL Server's row-independent long-path failure proof through local
+  grouped coordinates with caller filters outside nullable scalar maxima, and
+  separate unresolved supervisor markers from complete
   unique-person evidence. Guard actual iterator output and pre-filter reads
   against cardinality-derived budgets; retain native x64 qualification.
 - Project SQL Server's nearest decision once in equivalent descending coordinate order
@@ -88,6 +89,10 @@ the narrowly approved registration-removal exception.
   leaf coordinates per tree before hydration. Refresh fixture
   statistics individually with unchanged `FULLSCAN` accuracy and deadlines;
   retain the explicit native capacity qualification boundary.
+- Preserve owned auto-includes and collection DTO identifiers in SQL Server's
+  strict ancestor queries by grouping the complete conditional coordinate key.
+  Retain a correlated zero-or-one mapped-owner lookup without a global owner
+  window or distance-projection wrapper.
 - Select PostgreSQL's nearest-owner decision once while preserving `Depth`
   ordering, rejection without fallback and complete-path validation. Guard
   broad payload joins with actual native work to prevent quadratic rescans.
