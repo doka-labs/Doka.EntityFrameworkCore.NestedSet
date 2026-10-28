@@ -197,6 +197,7 @@ public sealed class BenchmarkProvenanceDriftTests
                 "-c",
                 "init.defaultBranch=main",
             ];
+
             foreach (var argument in configuration.Concat(arguments))
             {
                 start.ArgumentList.Add(argument);

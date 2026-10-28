@@ -14,7 +14,7 @@ internal sealed class BenchmarkSelection : IDisposable
         _runInfos = runInfos;
         DatabaseCases = runInfos
             .SelectMany(runInfo => runInfo.BenchmarksCases)
-            .Where(benchmarkCase => typeof(DatabaseBenchmark).IsAssignableFrom(benchmarkCase.Descriptor.Type))
+            .Where(benchmarkCase => typeof(IDatabaseBenchmark).IsAssignableFrom(benchmarkCase.Descriptor.Type))
             .ToArray();
     }
 
@@ -93,6 +93,14 @@ internal sealed class BenchmarkSelection : IDisposable
                         + $"nodes={scenario.Nodes}; shape={scenario.Shape}; "
                         + $"trees={scenario.Trees}; tracked={scenario.Tracked}.",
                         exception);
+                }
+
+                if (benchmarkCase.Descriptor.Type == typeof(UserGroupSelectionBenchmarks)
+                    && (int)benchmarkCase.Parameters[nameof(UserGroupSelectionBenchmarks.Origins)] > scenario.Nodes)
+                {
+                    // WHY: Every visible group, including a root with a NotFound supervisor outcome, is a valid
+                    // membership origin. More origins than persisted groups must fail before Docker is acquired.
+                    throw new ArgumentException("UserGroups selection requires Origins <= Nodes.");
                 }
             }
 

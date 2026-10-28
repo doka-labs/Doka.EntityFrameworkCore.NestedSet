@@ -1,3 +1,6 @@
+using Perfolizer.Mathematics.OutlierDetection;
+using BenchmarkRunMode = BenchmarkDotNet.Jobs.RunMode;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests;
 
 /// <summary>Guards process isolation, one-operation iterations and observational export contracts.</summary>
@@ -75,6 +78,119 @@ public sealed class BenchmarkConfigurationTests
             typeof(DatabaseBenchmark).Assembly.GetType("Doka.EntityFrameworkCore.NestedSet.Benchmarks.MutationBudgets"));
         Assert.Null(
             typeof(DatabaseBenchmark).Assembly.GetType("Doka.EntityFrameworkCore.NestedSet.Benchmarks.BenchmarkMeasurement"));
+    }
+
+    /// <summary>Read-only signal families leave warmup, invocation calibration and precision stopping adaptive.</summary>
+    /// <param name="type">The expression-construction or complete-read family.</param>
+    [Theory]
+    [InlineData(typeof(SignalReportConstructionBenchmarks))]
+    [InlineData(typeof(SignalReportingBenchmarks))]
+    public void SignalFamiliesPreserveAdaptiveMeasurementStages(
+        Type type
+    )
+    {
+        // Arrange
+        var configuration = BenchmarkConfiguration.Create(new BenchmarkRunOptions());
+
+        // Act
+        using var discovery = BenchmarkConverter.TypeToBenchmarks(type, configuration);
+
+        // Assert
+        Assert.NotEmpty(discovery.BenchmarksCases);
+        Assert.All(discovery.BenchmarksCases, benchmark =>
+        {
+            Assert.Null(benchmark.Descriptor.IterationSetupMethod);
+            Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.InvocationCountCharacteristic));
+            Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.IterationTimeCharacteristic));
+            Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.WarmupCountCharacteristic));
+            Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.IterationCountCharacteristic));
+        });
+    }
+
+    /// <summary>
+    /// Native CLI accuracy bounds reach signal jobs without replacing adaptive stages with fixed counts.
+    /// </summary>
+    /// <param name="type">The expression-construction or complete-read family.</param>
+    [Theory]
+    [InlineData(typeof(SignalReportConstructionBenchmarks))]
+    [InlineData(typeof(SignalReportingBenchmarks))]
+    public void NativeAdaptiveProtocolPreservesEffectiveSignalJobSettings(
+        Type type
+    )
+    {
+        // Arrange
+        var configuration = BenchmarkConfiguration.Create(new BenchmarkRunOptions());
+        string[] arguments =
+        [
+            "--launchCount", "3",
+            "--minWarmupCount", "20",
+            "--maxWarmupCount", "80",
+            "--minIterationCount", "20",
+            "--maxIterationCount", "100",
+            "--outliers", "DontRemove",
+        ];
+
+        // Act
+        var (isSuccess, config, _) = ConfigParser.Parse(arguments, NullLogger.Instance, configuration);
+        using var discovery = BenchmarkConverter.TypeToBenchmarks(
+            type,
+            ManualConfig.Union(configuration, config));
+
+        // Assert
+        Assert.True(isSuccess);
+        Assert.NotEmpty(discovery.BenchmarksCases);
+        Assert.All(discovery.BenchmarksCases, benchmark =>
+        {
+            Assert.Equal(3, benchmark.Job.Run.LaunchCount);
+            Assert.Equal(20, benchmark.Job.Run.MinWarmupIterationCount);
+            Assert.Equal(80, benchmark.Job.Run.MaxWarmupIterationCount);
+            Assert.Equal(20, benchmark.Job.Run.MinIterationCount);
+            Assert.Equal(100, benchmark.Job.Run.MaxIterationCount);
+            Assert.Equal(OutlierMode.DontRemove, benchmark.Job.Accuracy.OutlierMode);
+            Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.InvocationCountCharacteristic));
+            Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.IterationTimeCharacteristic));
+            Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.WarmupCountCharacteristic));
+            Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.IterationCountCharacteristic));
+        });
+    }
+
+    /// <summary>
+    /// Invalid adaptive iteration ranges remain native configuration errors before any workload runs.
+    /// </summary>
+    /// <param name="type">The expression-construction or complete-read family.</param>
+    /// <param name="warmup">Whether the invalid bounds target warmup or measurement iterations.</param>
+    [Theory]
+    [InlineData(typeof(SignalReportConstructionBenchmarks), false)]
+    [InlineData(typeof(SignalReportConstructionBenchmarks), true)]
+    [InlineData(typeof(SignalReportingBenchmarks), false)]
+    [InlineData(typeof(SignalReportingBenchmarks), true)]
+    public void NativeValidationRejectsReversedAdaptiveRanges(
+        Type type,
+        bool warmup
+    )
+    {
+        // Arrange
+        var configuration = BenchmarkConfiguration.Create(new BenchmarkRunOptions());
+        string[] arguments = warmup
+            ? ["--minWarmupCount", "20", "--maxWarmupCount", "10"]
+            : ["--minIterationCount", "20", "--maxIterationCount", "10"];
+
+        var (isSuccess, config, _) = ConfigParser.Parse(arguments, NullLogger.Instance, configuration);
+        using var discovery = BenchmarkConverter.TypeToBenchmarks(
+            type, ManualConfig.Union(configuration, config));
+
+        var validation = new ValidationParameters(discovery.BenchmarksCases, discovery.Config);
+        var maximum = warmup ? "MaxWarmupIterationCount" : "MaxIterationCount";
+
+        // Act
+        var errors = discovery.Config.GetValidators().SelectMany(validator => validator.Validate(validation))
+            .ToArray();
+
+        // Assert
+        Assert.True(isSuccess);
+        Assert.Contains(errors, error => error.IsCritical
+            && error.Message.Contains(maximum, StringComparison.Ordinal)
+            && error.Message.Contains("must be greater than", StringComparison.Ordinal));
     }
 
     /// <summary>The pure core benchmark consumes every prepared calculation result.</summary>

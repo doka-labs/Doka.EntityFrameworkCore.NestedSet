@@ -299,6 +299,7 @@ public sealed class DatabaseBenchmarkTests
         await using var prepared = await PreparedBenchmark.CreateAsync(
             typeof(InsertBenchmarks),
             new BenchmarkScenario(32, BenchmarkShape.Wide, 2, 0));
+
         var benchmark = (InsertBenchmarks)prepared.Benchmark;
         await benchmark.Root();
         await benchmark.VerifyAsync();

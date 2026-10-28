@@ -72,8 +72,11 @@ public static class BenchmarkProvenance
                 Job = new
                 {
                     report.BenchmarkCase.Job.Id,
-                    Runtime = report.BenchmarkCase.Job.Environment.Runtime?.Name ?? RuntimeInformation.FrameworkDescription,
-                    Toolchain = report.BenchmarkCase.Job.Infrastructure.Toolchain.Name,
+                    Runtime = report.BenchmarkCase.Job.Environment.Runtime?.Name
+                        ?? RuntimeInformation.FrameworkDescription,
+                    // WHY: BDN resolves an unset toolchain internally. Null preserves that configured/default
+                    // distinction without inventing an effective toolchain that its public API does not expose.
+                    Toolchain = report.BenchmarkCase.Job.Infrastructure.Toolchain?.Name,
                     BuildConfiguration = report.BenchmarkCase.Job.Infrastructure.ResolveValue(
                         InfrastructureMode.BuildConfigurationCharacteristic,
                         "Release"),
@@ -257,7 +260,7 @@ public static class BenchmarkProvenance
 
             if (!File.Exists(path))
             {
-                fingerprint.AppendData(Encoding.ASCII.GetBytes("deleted\0"));
+                fingerprint.AppendData("deleted\0"u8.ToArray());
                 continue;
             }
 

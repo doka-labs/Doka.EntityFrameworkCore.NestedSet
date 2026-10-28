@@ -25,6 +25,8 @@ the contract IDs below or turn consumer policies into product behavior.
   alone is not evidence that all five engines executed successfully.
 - Capacity tests reuse persisted structural populations; actual consumer
   builders and bounded payload are additional assertions on that population.
+- Benchmark functional tests establish reference equivalence. BenchmarkDotNet
+  observations remain optional and do not gate CI or a release.
 - Exact command counts, tuple bags, parameters, tracking, cancellation and
   before/after snapshots matter more than a successful translation alone.
 
@@ -287,7 +289,7 @@ remain separate historical qualification cohorts. Current adapter tests use the
 required published native dependency contract; old cohort results are not
 relabeled as a fresh run of this split.
 
-The current isolated EF and read qualification (planned documentation: `qualification/query-performance.md#ef-ownership-experiment`)
+The [current isolated EF and read qualification](qualification/query-performance.md#ef-ownership-experiment)
 separates expression-call reduction, incremental sample readers and the private
 EF experiment. The source controls below preserve semantics; their existence
 alone does not establish a native time or allocation improvement.
@@ -472,10 +474,10 @@ the implementation boundaries used to reduce expression and database work:
 | SignalLab catalog validation | [SignalReportValidationTests.Catalog](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/SignalLab/SignalReportValidationTests.Catalog.cs): reordered and duplicate evidence, no metadata groups, every selected identity, failure ordering, exact additive units and exact classification/field/value evidence. |
 | SignalLab bounded catalog transport | [SignalReportTests.Catalog](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Samples/SignalLab/SignalReportTests.Catalog.cs): requested field/value tuples only, no metadata rows for empty criteria, unchanged reports with unused choices, rejection of crossed field/value pairs and case/padding aliases. `InterleavedCatalogsKeepTheirOwnRootsAndBindings` constructs two deferred catalogs on different contexts before reverse-order execution. |
 | SignalLab result grid semantics and allocation | [SignalReportValidationTests.Grid](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/SignalLab/SignalReportValidationTests.Grid.cs): requested grain/order, missing versus measured zero, duplicate totals including foreign ones, ignored distinct foreign totals and checked cardinality overflow. The 6,144-cell empty-total fixture allows 76 bytes per cell plus 2,048 bytes; this does not include a populated totals lookup. |
-| SignalLab warm construction allocation | [SignalReportConstructionTests](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/SignalLab/SignalReportConstructionTests.cs): fixed ceilings of 128 KiB for Any, 160 KiB for Nearest and 232 KiB for Doka Nearest, no construction I/O, unchanged additional-criterion allowance and actual SQL Server translation. The ceilings do not detect every possible partial regression. The earlier construction qualification (planned documentation: `qualification/query-performance.md#historical-report-construction-and-materialization`) remains historical evidence for the static-template stage. |
+| SignalLab warm construction allocation | [SignalReportConstructionTests](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/SignalLab/SignalReportConstructionTests.cs): fixed ceilings of 128 KiB for Any, 160 KiB for Nearest and 232 KiB for Doka Nearest, no construction I/O, unchanged additional-criterion allowance and actual SQL Server translation. The ceilings do not detect every possible partial regression. The [earlier construction qualification](qualification/query-performance.md#historical-report-construction-and-materialization) remains historical evidence for the static-template stage. |
 | SignalLab projection and parameter cache ownership | [CatalogParameters](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/SignalLab/SignalReportConstructionTests.CatalogParameters.cs) and [OwnerParameters](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/SignalLab/SignalReportConstructionTests.OwnerParameters.cs): four reused projections, private values, equal-to-distinct scalar replacement without extra warmed EF compilation, both owner modes and all five configured provider dialects, with zero construction I/O. |
-| Nearest construction reuse | [NearestCandidates](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/SignalLab/SignalReportConstructionTests.NearestCandidates.cs) preserves independent equal/distinct classification captures and rejected owners. [CompositionCoordinateWidthTests](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/CompositionCoordinateWidthTests.cs) checks reuse within one binding, fresh cumulative scope roots, deferred SQL aggregates and zero I/O. [TypedEqualityConstructionTests](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Storage/TypedEqualityConstructionTests.cs) checks native/lifted and converted equality, nulls, method identity and conservative metadata allocation savings. The dated qualification (planned documentation: `qualification/query-performance.md#historical-report-construction-and-materialization`) retains repeated construction measurements and native deep-tree controls. |
-| Fixed path syntax and independent bindings | [SignalPathConstructionAllocationTests](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/SignalLab/SignalPathConstructionAllocationTests.cs) checks shared fixed literals with exact long values, fresh endpoint aliases and no construction I/O on three dialects. Frozen old libraries fail all three reuse cases. [InterleavedPathAndNearestRulesRetainTheirOwnAliases](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Composition/HierarchyCompositionTests.PathSyntax.cs) combines independent rejected rules, row-aware edges, reverse execution and nearest rejection without fallback. [MappedMemberConstructionTests](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/MappedMemberConstructionTests.cs) retains mutable/custom metadata, named mapping, alias, weak lifetime and factory-allocation counterexamples. The factory qualification (planned documentation: `qualification/query-performance.md#expression-construction`) records the rejected mapping cache and measured construction/read boundaries. |
+| Nearest construction reuse | [NearestCandidates](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/SignalLab/SignalReportConstructionTests.NearestCandidates.cs) preserves independent equal/distinct classification captures and rejected owners. [CompositionCoordinateWidthTests](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/CompositionCoordinateWidthTests.cs) checks reuse within one binding, fresh cumulative scope roots, deferred SQL aggregates and zero I/O. [TypedEqualityConstructionTests](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Storage/TypedEqualityConstructionTests.cs) checks native/lifted and converted equality, nulls, method identity and conservative metadata allocation savings. The [dated qualification](qualification/query-performance.md#historical-report-construction-and-materialization) retains repeated construction measurements and native deep-tree controls. |
+| Fixed path syntax and independent bindings | [SignalPathConstructionAllocationTests](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/SignalLab/SignalPathConstructionAllocationTests.cs) checks shared fixed literals with exact long values, fresh endpoint aliases and no construction I/O on three dialects. Frozen old libraries fail all three reuse cases. [InterleavedPathAndNearestRulesRetainTheirOwnAliases](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Composition/HierarchyCompositionTests.PathSyntax.cs) combines independent rejected rules, row-aware edges, reverse execution and nearest rejection without fallback. [MappedMemberConstructionTests](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/MappedMemberConstructionTests.cs) retains mutable/custom metadata, named mapping, alias, weak lifetime and factory-allocation counterexamples. The [factory qualification](qualification/query-performance.md#expression-construction) records the rejected mapping cache and measured construction/read boundaries. |
 | SignalLab deferred and exact scalar execution | [CatalogParameters](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Samples/SignalLab/SignalReportTests.CatalogParameters.cs): exact warm type/field/value binding, SQL-like text remains a parameter, a formerly valid scalar cannot authorize a missing value, and caller mutation after the catalog cannot change the report snapshot. [OwnerParameterValues](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Samples/SignalLab/SignalReportTests.OwnerParameterValues.cs) accepts empty and delimiter-ending choices and rejects padded stored aliases in Any and Nearest. |
 | SignalLab repeatable complete-read measurements | [SignalReadBenchmarkTests](../tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests/SignalReadBenchmarkTests.cs): adaptive and explicit multi-invocation discovery, repeated API/reference reads over one prepared dataset, unchanged persisted connection-write counts, 24 stable scalar cells, empty tracker and operation-only observations with zero or 1,000 unused catalog choices. Separate positive cleanup cases cover both owner modes and workloads; final verification disposes the context on success and failure. Unexecuted reads and negative catalog populations are rejected. |
 | Native deep signal work | [Deep signal work controls](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Composition/Performance/HierarchyCompositionCapacityTests.DeepSignalProofReuse.cs): control and repeated-fact profiles over 100,001 persisted nodes; unchanged results, commands, entities and construction budgets, plus a fact-independent MySQL operator-work bound. |
@@ -514,7 +516,7 @@ catalog and grid fixtures:
   axis above the stack boundary, final growth boundaries and the first duplicate
   at a full boundary. The [sparse failure resource guard](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/SignalLab/SignalReportValidationTests.GridSparseResources.cs)
   bounds consumed memory before a late failure without constructing the large
-  possible result grid. The phase qualification (planned documentation: `qualification/query-performance.md#historical-report-construction-and-materialization`)
+  possible result grid. The [phase qualification](qualification/query-performance.md#historical-report-construction-and-materialization)
   keeps native full reads separate from diagnostic lookup/completion/growth.
 - [Empty selected-total controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/SignalLab/SignalReportValidationTests.EmptySelected.cs)
   cover foreign anchor/channel/port identities, repeated ordered output positions,
@@ -523,14 +525,14 @@ catalog and grid fixtures:
   [Dense storage protection](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/SignalLab/SignalReportValidationTests.DenseGridResources.cs)
   bounds actual complete-grid allocations, complements the sparse failure
   guard, and checks measured zero, EOF, disposal and the same-thread premise.
-  The refined qualification (planned documentation: `qualification/query-performance.md#historical-report-construction-and-materialization`)
+  The [refined qualification](qualification/query-performance.md#historical-report-construction-and-materialization)
   retains its original-binary negative control and compares all three complete
   materializers; the earlier phase observations remain historical evidence.
 - [Catalog-boundary cancellation](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Samples/SignalLab/SignalReportTests.Cancellation.cs)
   prevents aggregate submission and releases the owned snapshot after the
   catalog cancels its caller.
 
-The complete signal read qualification (planned documentation: `qualification/query-performance.md#historical-report-construction-and-materialization`)
+The [complete signal read qualification](qualification/query-performance.md#historical-report-construction-and-materialization)
 records the historical execution boundary for its catalog, validation and query
 changes. It keeps old-binary negative controls separate from that source's
 test outcomes and distinguishes unit allocation fixtures from process-wide
@@ -675,7 +677,7 @@ model fixtures and from query construction without I/O.
 
 ## Execution qualification
 
-The 2026-10-26/27 synthetic comparison (planned documentation: `qualification/query-performance.md#synthetic-signal-lab-2026-10-26`)
+The [2026-10-26/27 synthetic comparison](qualification/query-performance.md#synthetic-signal-lab-2026-10-26)
 records completed native read, construction, materializer, MariaDB scale and
 prespecified construction-repeat observations. The four original-before
 100,001-node controls and their current-source counterparts pass with unchanged
@@ -693,7 +695,7 @@ MySQL/MariaDB work cases and four generated compiled-model query/write cases;
 one native SQL Server case remains excluded on ARM. The
 [provider record](qualification/provider-migrations.md) keeps those final-product
 checks distinct from broader earlier project runs and local package identities.
-The actual complete-reader profile (planned documentation: `qualification/query-performance.md#historical-complete-report-phase-attribution`)
+The [actual complete-reader profile](qualification/query-performance.md#historical-complete-report-phase-attribution)
 now includes the signal workload rather than borrowing generic query percentages;
 sampling is not exact phase allocation. The separate completed serial matrix
 retains 20 construction, 16 complete-read and 16 dense-materializer results;
@@ -703,7 +705,7 @@ or evidence that all materializer cases improved. The four feature summaries own
 
 - [Query/native work](qualification/query-composition.md): exact structural
   bags, dense/deep plans, optional-index costs and adverse/unknown outcomes.
-- Performance/allocation (planned documentation: `qualification/query-performance.md`): construction,
+- [Performance/allocation](qualification/query-performance.md): construction,
   complete `ReadAsync`, isolated materialization and framework experiments.
 - [Provider/migration integration](qualification/provider-migrations.md): exact
   local packages, actual schema/data/history/replay and retained rejection.
@@ -716,3 +718,8 @@ requires supported Linux x64 execution with no platform skips. Translation
 sentinels, ARM skips and another engine's success cannot replace that evidence.
 Local observations do not establish a hosted CI/RC or publication pass.
 Scenario numbers in sample fixtures are not physical hierarchy depths.
+
+The [performance guide](performance.md#query-composition-and-actual-consumer-profiles)
+defines deterministic budgets and shared population ownership. Independent
+semantic, command-count, allocation and native-work controls remain necessary;
+small BenchmarkDotNet distributions do not substitute for those assertions.

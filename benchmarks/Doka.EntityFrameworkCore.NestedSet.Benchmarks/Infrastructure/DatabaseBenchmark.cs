@@ -4,7 +4,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks;
 /// Defines one-operation iterations with independently prepared state and untimed effect verification.
 /// </summary>
 [Config(typeof(DatabaseBenchmarkConfiguration))]
-public abstract class DatabaseBenchmark
+public abstract class DatabaseBenchmark : IDatabaseBenchmark
 {
     private BenchmarkFixture? _fixture;
 
@@ -86,4 +86,7 @@ public abstract class DatabaseBenchmark
 
     /// <summary>Gets diagnostic counters after an operation but before verification reads.</summary>
     internal CommandObservation Observation => Fixture.Counter;
+
+    /// <inheritdoc />
+    CommandObservation IDatabaseBenchmark.Observation => Observation;
 }

@@ -34,6 +34,9 @@ public class DeleteBenchmarks : DatabaseBenchmark
         // WHY: Derive expected deletion work outside measurement, independently of persisted interval calculations.
         var descendants = new HashSet<int> { 2 };
 
+        // WHY: Derive each node key from its parent-array position while accumulating expected descendants.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 2; index < Fixture.Forest.Parents.Length; index++)
         {
             if (Fixture.Forest.Parents[index] is { } parent

@@ -406,7 +406,7 @@ A malformed existing API fails clearly instead of guessing a server family.
 
 ### Implementation References
 
-- Historical predecessor construction qualification (planned documentation: `../qualification/query-performance.md#historical-report-construction-and-materialization`)
+- [Historical predecessor construction qualification](../qualification/query-performance.md#historical-report-construction-and-materialization)
 - [Public query contracts](../query-composition.md)
 - [Shared composition implementation](../../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQuery.Composition.cs)
 - [Selected subtree pairs](../../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQuery.SubtreePairs.cs)

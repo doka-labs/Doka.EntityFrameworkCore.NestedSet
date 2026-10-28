@@ -5,7 +5,7 @@ The additive generic query contracts have their own
 the actual signal and UserGroups consumers. This guide retains the existing typed
 runtime, mutation and tracker-restoration contracts.
 
-The historical construction/read qualification (planned documentation: `qualification/query-performance.md#historical-report-construction-and-materialization`)
+The [historical construction/read qualification](qualification/query-performance.md#historical-report-construction-and-materialization)
 adds matched warmup, scalar-binding and exact-bound reuse evidence to that
 composition map. Its positive and rejection tests cover deferred snapshot
 ownership and warmed parameter shapes; performance measurements remain
@@ -13,7 +13,7 @@ separate from semantic coverage and do not become release gates.
 Its retained numbers describe predecessor sources. Current SignalLab test links
 identify the corresponding technical contracts, not new measurement evidence.
 
-The subsequent query-template reuse qualification (planned documentation: `qualification/query-performance.md#historical-report-construction-and-materialization`)
+The subsequent [query-template reuse qualification](qualification/query-performance.md#historical-report-construction-and-materialization)
 adds `CompositionAnyConstructionTests`, projection/capture and collection-policy
 cases in `SignalReportConstructionTests`, and actual warmed SQLite template-reuse
 and missing/foreign selection rejection controls. `CompositionPlanWorkTests`
@@ -156,12 +156,12 @@ the real sample's warm construction without database I/O.
 The sections below name the source methods behind the matrix. The matrix is a
 selection guide, not a replacement for the full provider suites.
 
-The hotpath iteration qualification (planned documentation: `qualification/query-performance.md#managed-hot-paths`)
+The [hotpath iteration qualification](qualification/query-performance.md#managed-hot-paths)
 distinguishes measured allocation savings from mixed timings and rejected loop
 changes. `CoordinatedGroupIterationTests` protects two independent hierarchy
 owners across the existing save phases and their failure cleanup.
 
-The follow-up qualification (planned documentation: `qualification/query-performance.md#managed-hot-paths`) covers
+The [follow-up qualification](qualification/query-performance.md#managed-hot-paths) covers
 `BinaryProviderComparerTests` and the fixed-arity direct-binding regressions in
 `ExpressionInliningTests`. Binary tests protect complete content equality,
 bounded framework-compatible hashes, null/converter behavior, and exclusion of
@@ -170,7 +170,7 @@ behavior, unvisited arguments and getters, and zero per-call visitor allocation.
 Seventeen allocation controls reject the frozen preceding implementation; the
 current unit and targeted provider runs are recorded separately.
 
-The historical predecessor Nearest qualification (planned documentation: `qualification/query-performance.md#historical-report-construction-and-materialization`)
+The [historical predecessor Nearest qualification](qualification/query-performance.md#historical-report-construction-and-materialization)
 adds `TypedEqualityConstructionTests` for method/lifting/null/converted equality
 parity and measured metadata savings, `CompositionCoordinateWidthTests` for
 deferred per-binding reuse and stale-scope rejection, and nearest-candidate
@@ -1167,7 +1167,7 @@ Sources: [metadata](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/
 [insert commands](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Mutations/Facade/NestedSetMutationFacadeBudgetTests.cs),
 and [move budgets](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Hierarchy/Movement/AutomaticMoveBudgetTests.cs).
 
-The expression-factory qualification (planned documentation: `qualification/query-performance.md#expression-construction`)
+The [expression-factory qualification](qualification/query-performance.md#expression-construction)
 adds mapped-member construction counterexamples for mutable/custom metadata,
 exact named models, independent aliases and weak lifetimes. It rejects an
 additional cache rather than adding retained state without a demonstrated

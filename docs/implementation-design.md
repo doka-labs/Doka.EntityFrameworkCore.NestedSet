@@ -540,7 +540,7 @@ still precedes final checked sizing, and the sample result remains one
 ordered cell array with missing values distinct from measured zero. DTO histories
 are not retained, but EF still creates projections and the evidence, sums and
 final output consume population-dependent memory. See the
-isolated EF and read qualification (planned documentation: `qualification/query-performance.md#ef-ownership-experiment`)
+[isolated EF and read qualification](qualification/query-performance.md#ef-ownership-experiment)
 for the current measurement boundary.
 
 `HasAncestorIndex()` is an explicit schema choice, recorded as a simple

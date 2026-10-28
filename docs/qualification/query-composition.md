@@ -25,6 +25,13 @@ path, with no fallback to a farther matching owner. Complete-path rules reject
 missing, hidden or invalid intermediate edges. Both direction orders and
 repeated sources are separate regression cases.
 
+The 2026-10-16 pre-hardening cohort used NestedSet DLL SHA-256
+`4305bbf0bf95cf34f2578ea5b7cf2bbdd7763201a6051fa83a66cbbcaa869442`,
+SDK 10.0.401, EF 10.0.13, Doka 10.5.0 and Npgsql 10.0.3. Its small paired
+BenchmarkDotNet cases all allocated more than the explicit-LINQ reference,
+and its selective MySQL UNION plan regressed native work. Those results
+qualify the earlier implementation only, not the later hardening.
+
 The 2026-10-17 dense-path qualification used EF 10.0.13, Doka 10.5.0,
 MySQL 8.4.11 and MariaDB 11.8.9. All 67 focused native controls passed, including
 million-node positive/rejection cases. The original 100,000-node proof emitted

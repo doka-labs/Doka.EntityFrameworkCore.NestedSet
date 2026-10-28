@@ -47,7 +47,7 @@ to `10.0.0`. See the [changelog](../CHANGELOG.md) for changes and the
   mutation budgets, and how to measure an application workload.
 - [Query Composition Qualification](qualification/query-composition.md)
   summarizes semantic/native-work controls and the optional ancestor-index trade-offs.
-- Query and Consumer Performance (planned documentation: `qualification/query-performance.md`)
+- [Query and Consumer Performance](qualification/query-performance.md)
   separates construction, complete-reader, materializer and framework observations.
 - [Provider and Migration Qualification](qualification/provider-migrations.md)
   records exact local package inputs, actual migrations/replay, retained negatives

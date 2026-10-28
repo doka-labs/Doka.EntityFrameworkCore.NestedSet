@@ -49,6 +49,7 @@ projects completed against published Doka 10.6.2 and SafeMigrations 10.6.0:
 | Ordinary migrations | 203 | 0 | 43 |
 | Optional SafeMigrations | 96 | 0 | 54 |
 | SQL Server metadata/platform contracts | 29 | 0 | 1,975 |
+| Benchmark contracts | 378 | 0 | 0 |
 | Total | 11,726 | 0 | 2,072 |
 
 The exclusions are the existing native-x64 policy, not passed database cases.
@@ -226,6 +227,7 @@ identify those uncommitted changes.
 | Ordinary migrations | 203 | 0 | 43 |
 | Optional SafeMigrations | 96 | 0 | 54 |
 | SQL Server metadata/platform contracts | 29 | 0 | 1,984 |
+| Benchmark contracts | 378 | 0 | 0 |
 | Total across nine unique suites | 11,789 | 0 | 2,081 |
 
 Every skip message identifies the existing native-x64 SQL Server policy; there

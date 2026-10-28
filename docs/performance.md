@@ -17,7 +17,7 @@ numbers describe the frozen predecessor source and workload. Current sample or
 regression links preserve the technical contract; they do not turn those
 numbers into measurements of the redesigned model.
 
-The 2026-10-26/27 SignalLab comparison (planned documentation: `qualification/query-performance.md#synthetic-signal-lab-2026-10-26`)
+The [2026-10-26/27 SignalLab comparison](qualification/query-performance.md#synthetic-signal-lab-2026-10-26)
 records completed native complete-read, SQLite construction and isolated
 materializer cohorts, three MariaDB 1,000-node pairs and one prespecified
 construction repeat for the redesigned acquisition model. Timings are mixed;
@@ -36,6 +36,11 @@ The historical comparison below explains why coverage-only boxing is handled
 by measurement isolation instead of retaining a slower production search.
 
 ### Unicode counting and allocation measurement, 2026-10-26
+
+An isolated BenchmarkDotNet 0.15.8 comparison used SDK 10.0.403 and runtime
+10.0.14 on an Apple M2 Max, after the native suites finished. Both cohorts use
+the same inputs and scalar validation. `Cached` denotes the preceding cached
+predicate; `Generic` denotes the restored framework range search.
 
 | Count input | Cached before | Generic after | Warm allocation, both |
 | --- | ---: | ---: | ---: |
@@ -76,6 +81,13 @@ GC. They initialize actual provider service graphs without database I/O.
 
 ## Maintainability comparison on published packages
 
+The 2026-10-25 comparison uses published Doka 10.6.2 and EF 10.0.13 on both
+frozen product cohorts. All 68 plain BenchmarkDotNet records completed across
+17 construction, signal, UserGroups and materialization cases. Two fresh processes
+per cohort run in before/after/after/before order; diagnostic timings are
+excluded. The percentage changes below describe means of process means, not a
+pooled confidence interval, significance test, equivalence proof or hardware gate.
+
 | Complete group read | Before process means | After process means | Descriptive change |
 | --- | --- | --- | ---: |
 | MariaDB, one origin | 6.146 / 6.086 ms | 5.958 / 6.222 ms | -0.43% |
@@ -105,6 +117,13 @@ thread samples and is excluded from CPU root-cause claims. Diagnostic timings
 remain outside the 68 plain observations; the profiles establish neither a
 universal causal explanation nor exhausted optimization.
 
+The [published runtime record](qualification/provider-migrations.md#published-runtime-qualification-2026-10-25)
+separately records all nine test projects and explicit native SQL Server ARM
+exclusions. The existing [benchmark guide](../benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks/README.md)
+defines consumers, lifecycle checks, diagnosers and result-retention boundaries.
+Earlier dated measurements below retain their original provider and source
+identities; these fresh comparisons do not relabel historical results.
+
 The separately instrumented setup comparison retains two database containers
 plus one Ryuk helper before and after. The immutable key-comparison fixture
 adds one database, 16 table-creation and 28 index-creation statements per engine;
@@ -117,6 +136,15 @@ functional setup scopes overlap and include observer/logging overhead, so
 their durations establish no setup speedup or additive throughput result.
 
 ## UserGroups allocation follow-up, 2026-10-26
+
+This comparison starts from the current post-maintainability source, not the
+older before cohort above. Both cohorts use published Doka 10.6.2, EF 10.0.13,
+SDK 10.0.401 and BenchmarkDotNet 0.15.8. All 32 plain records completed: two
+fresh processes per cohort in before/after/after/before order, across actual
+construction and complete `ResolveAsync` reads on MariaDB and MySQL. Each pair
+below lists individual process means or bytes per operation. Diagnostic timings
+are excluded; changes in means of process means are descriptive, not a pooled
+confidence interval or proof of equivalence.
 
 | Complete read, origins / metadata fields | Before B/op | After B/op | Before ms/op | After ms/op |
 | --- | ---: | ---: | ---: | ---: |
@@ -826,14 +854,10 @@ model. Hosted runners can change hardware and load. CI instead verifies:
 
 ## Development benchmarks
 
-The [benchmark project](../benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks/README.md)
-uses BenchmarkDotNet 0.15.8 for explicitly selected measurements in isolated
-.NET 10 Release processes. Developers run it before and after an optimization
-or when investigating behavior. Its results impose no performance threshold,
-required CI/RC run, or automated merge decision. The normal regression projects
-retain their existing deterministic structural and allocation contracts.
-
-List the catalog or select a feature and its datasets:
+The [BenchmarkDotNet guide](../benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks/README.md)
+owns launcher options, fixture lifetimes, diagnostics and output formats.
+Measurements run explicitly in isolated .NET 10 Release processes; they impose
+no CI/RC throughput threshold or automatic merge decision.
 
 ```sh
 dotnet run --project benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks \
@@ -842,119 +866,42 @@ dotnet run --project benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks \
 dotnet run --project benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks \
   -c Release -- --engine MariaDb --nodes 1000,10000 --shape Wide,Balanced \
   --trees 4 --tracked 0,1000 --filter '*MoveBenchmarks*' \
-  --artifacts /tmp/nestedset-move-MariaDb
-```
+  --artifacts artifacts/benchmarks/move-mariadb
 
-Measurement and diagnostic modes share BenchmarkDotNet's option aliases,
-framework response files, and case-filter semantics, including parameter values.
-Pass provider/dataset options directly to the launcher. Framework-selected
-artifacts contain results and provenance together. Diagnostics execute each
-selected method/dataset once even across multiple measurement jobs.
-Execution requires an explicit native selector, such as `--filter '*'`, a
-method filter, or a category/attribute selector. Executing options without a
-selector show usage and the catalog, then exit with code 2 before resources or
-artifacts. No arguments, help, and listing still show information without a run.
-
-Feature folders cover Core, Queries, Insert, Move, Delete, BulkImport,
-Ordering/SaveChanges, Validation, and Rebuild. Input generation is deterministic
-and iterative for wide roots, deep chains, and balanced binary trees. Sizes such
-as 100, 1,000, 10,000, and 100,000 are selected explicitly. `--nodes` describes
-the total forest size and `--trees` its independent coordinate spaces. Basic
-option validation checks shapes and integer bounds, including a total size of
-at least ten. Before resources are acquired, each selected database case must
-have at least ten nodes per effective tree. Cross-tree moves use at least two
-trees even with `--trees 1`, and validate and report that effective count.
-Unselected combinations do not undergo the per-tree check. An unmatched native
-selection or a Core-only diagnostic selection exits with code 2 before resources
-or artifacts. `--tracked` controls unrelated clean EF entries. Seeded
-nodes carry a 1,024-character payload. The chosen topology determines whether
-a branch operation moves or deletes a small or large part of its tree. Ordering
-rename permutes siblings in wide/balanced trees; a deep chain measures payload
-plus coordinated-save work because it has no sibling group.
-`--filter '*Ordering*'` selects both `OrderingBenchmarks.SortedInsert` and
-`OrderingSaveBenchmarks.RenameAndSave`; insertion has no tracked hierarchy
-preload, while the rename prepares its tracked node before measurement.
-
-MySQL and MariaDB use Doka; PostgreSQL, SQL Server, in-memory SQLite, and file
-SQLite remain distinct profiles. Server databases use owned Testcontainers with
-the existing digest-pinned images, two CPU and 2 GiB limits, and no application
-database credentials. Startup and disposal occur in the launcher, outside the
-measured process. Database pooling is disabled. Embedded SQLite results must be
-identified by memory or file mode. Database tests and other provider runs can
-compete for the same host resources, so collect comparisons sequentially.
-Core-only measurements acquire no database owner even with a server engine
-configured, and their provenance records `database: null`. The engine setting
-does not imply that a database was observed.
-
-Database benchmarks execute one awaited operation per iteration, restoring
-state and tracker before every observation and checking the actual effect
-afterwards. The default .NET 10 throughput job uses three warmup and twelve
-target iterations with invocation count and unroll factor one. Core operations
-use BenchmarkDotNet's normal throughput calibration. Framework job overrides
-remain available within those isolation and state invariants. A `--job dry` run
-checks execution and export; it does not establish comparative performance.
-
-Global setup constructs the fixture synchronously without database I/O. Global
-cleanup and workloads remain asynchronous. The pinned framework's iteration
-hooks bind to `System.Action` without `AwaitHelper`, so Task-returning iteration
-hooks cannot bind; void wrappers fully complete asynchronous preparation and
-verification helpers outside the observation window.
-
-Container startup, schema creation, seeding, tracker preparation, validation,
-and cleanup are outside timing. BenchmarkDotNet 0.15.8 takes managed allocation
-snapshots inside the iteration setup/cleanup boundary, including its extra
-diagnostic workload. On .NET 10, process-wide allocated-byte counts include
-asynchronous continuations and can also include background client allocations.
-Prepared data still affects the heap and GC state. Allocated bytes and GC counts
-are distinct from retained or peak memory and from database-server memory;
-those require their own profiling. The tagged engine is the source for these
-measurement boundaries, as recorded in
-[D-015](decisions/D-015-benchmarkdotnet-development-measurements.md#sources).
-
-Inspect SQL and writes in a separate untimed run. This mode supports Debug and
-Release for functional diagnosis and breakpoints. Actual measurements require
-Release; a Debug launcher rejects them before acquiring resources or artifacts:
-
-```sh
 dotnet run --project benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks \
   -c Release -- --diagnostics --engine SqliteMemory --nodes 10000 \
   --shape Balanced --trees 4 --filter '*InsertBenchmarks*' \
-  --artifacts /tmp/nestedset-insert-SqliteMemory-diagnostics
+  --artifacts artifacts/benchmarks/insert-sqlite-diagnostics
 ```
 
-The same operation and effect assertions produce `command-diagnostics.json`.
-Preparation commands and verification reads are excluded. All completed EF SQL
-commands contribute to the command count. `HierarchyUpdates` and `AffectedRows`
-include only completed NonQuery commands whose SQL starts with `UPDATE` and
-names `BenchmarkNodes`. Result-producing payload UPDATE commands observed as
-readers, including `RETURNING`/`OUTPUT`, contribute to the command count but
-are absent from these UPDATE/row observations. The fields do not report all
-hierarchy writes or a complete write-amplification budget.
+Every execution needs an explicit benchmark selector. Listing and help acquire
+no database. Core-only cases likewise have no database owner. Native profiles
+use the existing digest-pinned Testcontainers with fixed resources, no
+application credentials and pooling disabled. Run comparisons sequentially;
+other tests or benchmarks can contend for the same host.
 
-The diagnostic run has no manual timer, sampler, statistical measurement, or
-acceptance budget. Lock statements count as commands; transaction API calls,
-lock-table updates, and deletes are excluded from the UPDATE/row fields.
-Repeated qualifying updates count repeatedly; affected rows are not physical
-disk or WAL writes.
+Reset-dependent families restore the database/tracker outside timing and await
+one operation per observation. Their default job has three warmup and twelve
+target iterations. Read-only reports and expression construction use throughput
+calibration. A dry run checks execution/export, not comparative performance.
+Consumer validation, query construction, materialization and result creation
+inside the selected operation remain measured work.
 
-Markdown, full JSON, and raw CSV preserve BenchmarkDotNet results. A
-credential-free `provenance.json` preserves the initial commit, dirty state and
-working-source fingerprint as `source`, and records the final identity as
-`endSource`. `sourcesChangedDuringRun` reports differences between those
-snapshots; the final state does not replace the initial identity. The sidecar
-also adds SDK/runtime, package versions, CPU/OS, database version/image,
-container resources, dataset settings, and actual jobs and observation counts.
-Invalid scenarios, failed operations, and missing measurements fail visibly;
-slow observations are reported without a threshold verdict.
+Retain raw results and credential-free provenance: start/end source identity,
+SDK/runtime, package versions, engine/image, resource limits, dataset and actual
+job settings. Changed source, hardware, packages or data starts a new comparison
+series. Preserve adverse observations and outliers. Warmup does not establish
+stationarity; inspect each launch's chronology and operation count.
+Allocated bytes and GC counts do not measure retained heap, peak memory or
+server memory. Process-wide asynchronous observations can include background
+provider allocations. Untimed command diagnostics observe SQL/effect boundaries
+separately; their UPDATE counts exclude result-producing reader writes and do
+not represent physical I/O or complete write amplification.
 
-Compare source revisions on the same controlled host with identical runtime,
-provider, images, resource limits, datasets, and jobs. Preserve the raw outputs
-and source identity, inspect the distribution, and repeat paired runs. If
-`sourcesChangedDuringRun` is true, repeat with a stable source state. A hardware
-or configuration change creates a new comparison series. Historical
-handwritten-runner observations use different measurement boundaries and do
-not establish a BenchmarkDotNet baseline. Dated regression-test allocation
-observations elsewhere in this guide retain their stated scope.
+The [performance qualification](qualification/query-performance.md) separates
+construction, full reads, materialization and the isolated EF ownership
+experiment. The [benchmark regression project](../tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests.csproj)
+runs in Debug and Release; Debug rejects actual measurements before resources.
 
 ## Query composition and actual consumer profiles
 
@@ -1126,6 +1073,16 @@ versus MariaDB's 22.273 ms in that run: its plan repeats requested metadata
 lookups rather than scanning all ten million owners. This is residual work,
 not evidence that routing optimization is exhausted or that one engine is
 universally faster.
+
+The ordinary envelope cohort constructs approximately 142 KB per operation,
+versus approximately 114 KB in the earlier fallback; the supervisor witness
+cohort constructs approximately 105 KB versus 98 KB and uses 25 rather than 23
+parameters. Source sharing, envelopes, and the authorization rejoin add
+expression structure. Native work improvements do not establish an allocation
+win, cheaper complete reads, or regression-free deep/broad behavior. These are
+individual capacity observations, separate from paired BenchmarkDotNet
+construction/read/materialization comparisons and their uncertainty. No runtime
+or allocation budget was relaxed and no hardware timing gate was introduced.
 
 The subsequent all-engine matched-pair boundary retained eight targeted native
 walk variants and 86 targeted Unit controls, but failed the actual MariaDB
@@ -1382,7 +1339,7 @@ The current API consumes both readers incrementally; the reference still calls
 result contracts remain comparable, but the end-to-end timings include different
 consumption and buffering costs. They do not isolate the query-composition cost.
 Preparation and final equivalence checks are outside both measurements. The
-complete signal read qualification (planned documentation: `qualification/query-performance.md#historical-report-construction-and-materialization`)
+[complete signal read qualification](qualification/query-performance.md#historical-report-construction-and-materialization)
 records ReadAsync profiling, paired measurements and native-work boundaries;
 optional observers are absent from timed consumer contexts.
 
@@ -1399,6 +1356,11 @@ comparison run afterwards. `Reference` reads all eligible evidence and applies
 the same person-selection rule in the application; it is not an independent
 SQL implementation. Prepared execution therefore has a narrower boundary than
 either complete consumer and is reported separately.
+
+These BenchmarkDotNet profiles use the existing launcher, provenance and
+diagnostics. They add no workflow gate or portable CPU baseline. Run the
+functional benchmark tests first, then select a small paired profile on a
+stable source tree before expanding the matrix.
 
 ### Provider plan boundaries
 
@@ -1489,7 +1451,7 @@ repeated axes use proportional arrays. A terminal dictionary resize is capped
 only for a new identity when actual stored groups fill the dictionary and exceed
 half the representable grain. Capacity comes directly from the dictionary;
 sparse inputs do not trigger eager Cartesian reservation.
-The consumer performance summary (planned documentation: `qualification/query-performance.md#historical-report-construction-and-materialization`)
+The [consumer performance summary](qualification/query-performance.md#historical-report-construction-and-materialization)
 separates actual `ReadAsync`, isolated materialization and expression-construction
 observations. Allocation savings do not imply lower CPU or reader latency;
 record smaller asynchronous and adverse native cases as well as large grids.
@@ -1597,7 +1559,7 @@ distinguishes source coverage, the recorded execution boundary and remaining
 native-platform work. Timings describe their measured environment; later
 physical expressions require new evidence.
 
-The recorded complete-report allocation profile (planned documentation: `qualification/query-performance.md#historical-complete-report-phase-attribution`)
+The [recorded complete-report allocation profile](qualification/query-performance.md#historical-complete-report-phase-attribution)
 separates disjoint sampled parameter/cache/execution stack attribution from
 process-level complete-reader allocated bytes. Both mechanisms retain their
 own units and workload boundaries. The completed serial A-B-B-A matrix separately covers actual construction,
@@ -1611,13 +1573,23 @@ independent observations. These optional timings introduce no CI/RC gate.
 
 ## Regression diagnosis
 
-1. Reproduce on the same controlled environment.
-2. Compare source, dependency locks, provider, engine, schema, indexes,
-   statistics, and data shape.
-3. Inspect command count and affected rows before elapsed time.
-4. Inspect the actual execution plan and lock waits.
-5. Confirm identical final hierarchy and payload state.
-6. Repeat paired samples to distinguish noise from persistent change.
+1. Reproduce on the same controlled environment and stable source.
+2. Compare package DLL hashes, runtime, engine/image, schema, application indexes,
+   statistics, topology and selected occurrence counts.
+3. Separate construction, parameter extraction, server execution, transport,
+   materialization and complete-reader measurements.
+4. Inspect command counts, actual plans, repeated loops, temporary cardinality
+   and lock waits before interpreting elapsed time.
+5. Confirm the full result bag, payload and hierarchy state with an independent
+   oracle; a partial read or incomplete plan is not a qualified timing pair.
+6. Repeat paired observations and retain every adverse or unknown result.
 
-Do not weaken tree locks, skip validation, or remove required indexes to hide an
-unexplained timing change.
+The feature summaries cover [query/native work](qualification/query-composition.md),
+[managed/consumer costs](qualification/query-performance.md),
+[provider and migration inputs](qualification/provider-migrations.md) and
+[Unicode identities](qualification/unicode-identities.md). They describe their
+exact dated inputs. Historical numbers do not qualify a later binary, another
+published package, a different platform or a hosted release.
+
+Do not weaken locks, visibility, validation, limits or required indexes to hide
+an unexplained timing or allocation change.
