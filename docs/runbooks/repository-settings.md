@@ -12,13 +12,16 @@ already been configured or checked.
 - The repository is public and active.
 - `main` is the default branch.
 - Force pushes and branch deletion are blocked.
-- Pull requests are required for changes to `main`.
-- Require linear history for `main`; allow only squash or rebase merges, not
+- Pull requests are required for changes to `main` and every prepared/active
+  release branch. Registered inactive preparation branches need their applicable
+  PR checks before qualification; registration alone creates no hosted rule.
+- Require linear history for each protected release branch; allow only squash or rebase merges, not
   merge commits. See GitHub's
   [linear-history rule](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#require-linear-history).
-- Required checks apply to administrators as well as contributors.
-- Require the PR branch to be current with `main` before the required checks
-  permit a merge. This protects the tested PR result when `main` advances.
+- Retain the existing reviewer and administrator-bypass arrangement. Release-line
+  support does not add reviewers, disable bypass or grant new administrator access.
+- Require the PR branch to be current with its destination branch before required
+  checks permit a merge. This protects the tested PR result when that line advances.
 - Conversation resolution and current-head review are required.
 - Stale approval behavior is chosen deliberately and documented with the
   organization's reviewer model.
@@ -72,7 +75,9 @@ Create a protected GitHub environment named `nuget`:
 
 - require the project owner or designated release maintainer to approve;
 - prevent self-review when another authorized reviewer exists;
-- restrict deployment branches/tags to the release policy;
+- restrict deployments to exact approved active branch names from the current
+  protected-main release-line policy; avoid broad `maintenance/*` or `preview/*`
+  grants and activate no extra line implicitly;
 - store only the NuGet profile name as `NUGET_USER`, without a long-lived
   publishing key; and
 - review environment changes with the same care as workflow changes.
@@ -111,6 +116,22 @@ without it the token exchange cannot identify the account. Keep the protected
 Read the policy back before the first release and after an organization,
 repository, workflow filename, environment, or package ownership change.
 
+## Release-line activation and servicing
+
+Main/10 is initially active; maintenance/10.x and optional preview/11.x are
+registered inactive. Follow [release lines](../operations/release-lines.md) to
+prepare and independently activate a branch. Preserve the existing `nuget`
+environment and Trusted Publishing identity; add only its separately approved
+exact branch deployment grant. No new environment, long-lived key or
+repository secret is required.
+
+Confirm real branch-native daily audits and weekly CI on every active line,
+including complete successful producer/matrix evidence. Review the active
+Dependabot targets and framework-major/prerelease ceilings; non-default
+security coverage also needs the branch's own advisory audit. Repository
+Scorecard remains a default-branch signal. These hosted checks are separate
+from merely reading the policy or local test results.
+
 ## Release settings
 
 - Enable immutable releases when available for the repository.
@@ -130,7 +151,7 @@ The versioned [`.github/allowed_signers`](../../.github/allowed_signers) contain
 the approved principals and public SSH signing keys, following Doka and
 SafeMigrations. The workflow passes this file directly to Git's
 `gpg.ssh.allowedSignersFile` when verifying the release tag. Review changes to
-this file through protected-main pull requests. No separate GitHub signer
+this file through reviewed protected-line pull requests. No separate GitHub signer
 variable is needed, and no private key belongs in the repository.
 
 The operator creates and pushes the signed annotated tag only after reversible
@@ -141,7 +162,8 @@ candidate jobs pass. See [Release publication](../operations/release-publication
 Use GitHub UI or authenticated read-only API calls to confirm:
 
 - repository visibility, archived state, and default branch;
-- `main` protection/ruleset status and required check names;
+- protected-main authority and each selected release branch's protection/ruleset
+  status, exact policy state/major/channel and required check names;
 - enabled security features;
 - workflow permissions and allowed-action policy;
 - `nuget` environment protection;
@@ -165,7 +187,8 @@ operator system. Do not copy access tokens or full secret values into evidence.
       all six package IDs.
 - [ ] Release signer principal and public key are reviewed.
 - [ ] Immutable release and tag controls are active.
-- [ ] A release candidate was qualified on exact current `main`.
+- [ ] A release candidate was qualified on its exact current protected authorized line.
+- [ ] Current protected-main policy still permits that exact source/major/channel.
 - [ ] Publication and public readback were exercised without bypassing a gate.
 
 Do not infer any unchecked item from repository documentation. A missing hosted

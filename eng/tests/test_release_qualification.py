@@ -16,9 +16,10 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from eng.release import common, qualification
+from eng.release import common, qualification, lines
+from eng.tests.test_release_lines import policy as line_policy, source as line_source
 
-VERSION = "0.1.0-rc.1"
+VERSION = "10.1.0-rc.1"
 COMMIT = "a" * 40
 TREE = "b" * 40
 
@@ -73,10 +74,9 @@ class QualificationFixture(unittest.TestCase):
         self.root = Path(temporary.name)
         self.repo = self.root / "repo"
         self.repo.mkdir()
-        text_file(self.repo / "CHANGELOG.md", "# Changelog\n\n## 0.1.0-rc.1 (2026-09-19)\n\nReviewed change.\n"
-                  "\n## 0.1.0-rc.2 (2026-09-19)\n\nNext reviewed change.\n")
-        text_file(self.repo / "src/Directory.Build.props",
-                  "<Project><PropertyGroup><VersionPrefix>0.1.0</VersionPrefix></PropertyGroup></Project>\n")
+        text_file(self.repo / "CHANGELOG.md", "# Changelog\n\n## 10.1.0-rc.1 (2026-09-19)\n\nReviewed change.\n"
+                  "\n## 10.1.0-rc.2 (2026-09-19)\n\nNext reviewed change.\n")
+        line_source(self.repo)
         self.source = {"commit": COMMIT, "tree": TREE, "fingerprint": "c" * 64,
                        "files": {"CHANGELOG.md": common.sha256(self.repo / "CHANGELOG.md")}, "dirty": False}
         self.source_patch = patch.object(qualification, "source_identity", side_effect=lambda *_: copy.deepcopy(self.source))
@@ -86,6 +86,8 @@ class QualificationFixture(unittest.TestCase):
                             "GITHUB_WORKFLOW_REF": f"{common.REPOSITORY}/{common.RELEASE_WORKFLOW}@refs/heads/main",
                             "GITHUB_REPOSITORY": common.REPOSITORY, "GITHUB_SHA": COMMIT,
                             "GITHUB_RUN_ID": "120", "GITHUB_RUN_ATTEMPT": "1", "GITHUB_REF": "refs/heads/main"}
+        self.environment["NESTEDSET_RELEASE_LINE"] = json.dumps(lines.freeze_line(
+            line_policy(), "refs/heads/main", VERSION, policy_commit=COMMIT))
         environment_patch = patch.dict(os.environ, self.environment, clear=True)
         environment_patch.start()
         self.addCleanup(environment_patch.stop)
@@ -144,7 +146,7 @@ class ReleaseSourceContractTests(QualificationFixture):
         notes = common.reviewed_release_notes(self.repo, VERSION)
 
         # Assert
-        self.assertEqual("# 0.1.0-rc.1\n\nReviewed change.\n", notes)
+        self.assertEqual("# 10.1.0-rc.1\n\nReviewed change.\n", notes)
 
     def test_mismatched_source_version_fails(self):
         """An MSBuild Version override cannot silently publish from another source release line."""
@@ -161,8 +163,8 @@ class ReleaseSourceContractTests(QualificationFixture):
     def test_duplicate_source_version_fails(self):
         """A second MSBuild version value cannot make release-line selection ambiguous."""
         # Arrange
-        text_file(self.repo / "src/Directory.Build.props", "<Project><PropertyGroup><VersionPrefix>0.1.0</VersionPrefix>"
-                  "<VersionPrefix>0.1.0</VersionPrefix></PropertyGroup></Project>\n")
+        text_file(self.repo / "src/Directory.Build.props", "<Project><PropertyGroup><VersionPrefix>10.1.0</VersionPrefix>"
+                  "<VersionPrefix>10.1.0</VersionPrefix></PropertyGroup></Project>\n")
 
         # Act
         error = capture(lambda: common.reviewed_release_notes(self.repo, VERSION))
@@ -174,7 +176,7 @@ class ReleaseSourceContractTests(QualificationFixture):
         """An ambiguous second section cannot choose release notes by first-match order."""
         # Arrange
         with (self.repo / "CHANGELOG.md").open("a", encoding="ascii") as stream:
-            stream.write("\n## 0.1.0-rc.1 (2026-09-20)\n\nDifferent notes.\n")
+            stream.write("\n## 10.1.0-rc.1 (2026-09-20)\n\nDifferent notes.\n")
 
         # Act
         error = capture(lambda: common.reviewed_release_notes(self.repo, VERSION))
@@ -209,8 +211,8 @@ class ReleaseSourceContractTests(QualificationFixture):
     def test_empty_release_notes_fail(self):
         """A dated heading alone cannot create a usable GitHub release body."""
         # Arrange
-        text_file(self.repo / "CHANGELOG.md", "# Changelog\n\n## 0.1.0-rc.1 (2026-09-19)\n\n"
-                  "## 0.1.0-rc.2 (2026-09-19)\n\nNext reviewed change.\n")
+        text_file(self.repo / "CHANGELOG.md", "# Changelog\n\n## 10.1.0-rc.1 (2026-09-19)\n\n"
+                  "## 10.1.0-rc.2 (2026-09-19)\n\nNext reviewed change.\n")
 
         # Act
         error = capture(lambda: common.reviewed_release_notes(self.repo, VERSION))
@@ -532,10 +534,10 @@ class SourceAndLockTests(unittest.TestCase):
         """The release version must not silently reevaluate external dependency records."""
         # Arrange
         original = {"version": 2, "dependencies": {"net10.0": {
-            "consumer": {"type": "Project", "dependencies": {"Doka.NestedSet": "[0.1.0-dev, )",
+            "consumer": {"type": "Project", "dependencies": {"Doka.NestedSet": "[10.1.0-dev, )",
                                                                 "ThirdParty": "[10.0.0, )"}},
             "ThirdParty": {"type": "Direct", "requested": "[10.0.0, )", "resolved": "10.0.0",
-                           "contentHash": "unchanged", "dependencies": {"Doka.NestedSet": "0.1.0-dev"}}}}}
+                           "contentHash": "unchanged", "dependencies": {"Doka.NestedSet": "10.1.0-dev"}}}}}
         untouched = copy.deepcopy(original)
 
         # Act

@@ -174,6 +174,15 @@ Security fixes target the latest stable 10.x release. Reports against the
 earlier `10.0.0-rc.1` are accepted and triaged, but the RC has no separate
 maintenance or backport promise.
 
+The [release-line contract](docs/operations/release-lines.md) permits separately
+qualified servicing after main adopts another framework. Current main/10 is
+active; registered maintenance/10.x and optional preview/11.x remain inactive.
+Registration neither enables publication nor establishes .NET 11 support.
+Security work on an activated maintained line uses its own toolchain, advisory
+audit and reviewed fixes, while intake and private-disclosure duties remain
+unchanged. Historical release authenticity does not depend on today's active
+line policy or GitHub Latest status.
+
 | Release state | Security support |
 | --- | --- |
 | Latest stable 10.x, starting with `10.0.0` | Receives security fixes; reproduce with the qualified provider and patch matrix |

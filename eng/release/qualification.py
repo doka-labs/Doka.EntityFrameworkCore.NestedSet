@@ -33,6 +33,8 @@ from eng.release.common import (
     sha256,
     write_json,
 )
+from eng.release.lines import inspect_toolchain, validate_snapshot
+from eng.release.publication import parse_json
 
 ROOT = Path(__file__).resolve().parents[2]
 SOLUTION = "Doka.EntityFrameworkCore.NestedSet.slnx"
@@ -259,18 +261,33 @@ class Qualification:
                          "workflow": RELEASE_WORKFLOW}
         hosted_release = (os.environ.get("GITHUB_ACTIONS") == "true"
                           and os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
-                          and os.environ.get("GITHUB_WORKFLOW_REF") == f"{REPOSITORY}/{RELEASE_WORKFLOW}@refs/heads/main")
-        self.publishable = bool(hosted_release and not workspace and self.workflow["ref"] == "refs/heads/main")
-        self.notes = release_notes(self.repo, version, not self.publishable)
-        if self.publishable:
+                          and os.environ.get("GITHUB_WORKFLOW_REF") ==
+                          f"{REPOSITORY}/{RELEASE_WORKFLOW}@{self.workflow['ref']}")
+        self.line = None
+        self.toolchain = None
+        raw_line = os.environ.get("NESTEDSET_RELEASE_LINE", "")
+        if not workspace and (hosted_release or raw_line):
+            require(hosted_release and bool(raw_line), "line_identity",
+                    "Hosted qualification requires its independently authorized preflight line.")
+            self.line = validate_snapshot(parse_json(raw_line, "frozen qualification line"),
+                                          source_ref=self.workflow["ref"], version=version)
+            self.toolchain = inspect_toolchain(self.repo, self.line)
             require(os.environ.get("GITHUB_REPOSITORY") == REPOSITORY
-                    and os.environ.get("GITHUB_SHA") == self.source["commit"],
+                    and os.environ.get("GITHUB_SHA") == self.source["commit"]
+                    and self.workflow["runId"].isdigit() and int(self.workflow["runId"]) > 0
+                    and self.workflow["attempt"] > 0,
                     "hosted_identity", "Hosted repository or checkout does not match the workflow source.")
             release_version(version)
 
-        self.identity = {"schemaVersion": 1, "repository": REPOSITORY, "version": version,
+        self.publishable = bool(self.line and self.line["state"] == "active" and not self.line["qualificationOnly"])
+        self.notes = release_notes(self.repo, version, not bool(self.line))
+        self.identity = {"schemaVersion": 2 if self.line else 1, "repository": REPOSITORY, "version": version,
                          "source": self.source, "workflow": self.workflow, "publishable": self.publishable,
                          "deadlineUtc": self.deadline_utc}
+        if self.line:
+            # WHY: Reuse the existing exact-attempt identity through every parallel lane; no second
+            # receipt/inventory protocol is needed for the frozen branch grant or its own toolchain.
+            self.identity.update(line=self.line, toolchain=self.toolchain)
         if existing:
             # WHY: Reusing a downloaded build is allowed only within the exact producer run and attempt.
             require(previous_identity == self.identity, "build_identity",
@@ -638,10 +655,13 @@ class Qualification:
                 archive.write(path, path.relative_to(self.output).as_posix())
 
         identity = {name: value for name, value in self.source.items() if name != "files"}
-        write_json(candidate / "candidate.json",
-                   {"schemaVersion": 1, "repository": REPOSITORY, "version": self.version,
+        manifest = {"schemaVersion": 2 if self.line else 1, "repository": REPOSITORY, "version": self.version,
                     "tag": "v" + self.version, "source": identity, "workflow": self.workflow,
-                    "publishable": self.publishable, "stages": list(STAGES), "files": file_inventory(candidate)})
+                    "publishable": self.publishable, "stages": list(STAGES), "files": file_inventory(candidate)}
+        if self.line:
+            manifest.update(line=self.line, toolchain=self.toolchain)
+
+        write_json(candidate / "candidate.json", manifest)
         load_candidate(candidate, require_publishable=self.publishable)
         summary = (f"# Qualified candidate {self.version}\n\n"
                    f"- Source commit: `{self.source['commit'] or 'uncommitted workspace'}`\n"

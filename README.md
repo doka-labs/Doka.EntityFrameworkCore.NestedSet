@@ -37,6 +37,10 @@ the application's database. It brings in the common EF package, `Doka.NestedSet`
 and its actual EF provider transitively. The common EF package has no concrete
 provider dependency. SafeMigrations remains independently optional.
 
+[Release lines](docs/operations/release-lines.md) separates future framework
+development on `main` from maintenance of older framework majors. The current
+source remains .NET/EF Core 10; additional release lines are registered inactive.
+
 ## Install
 
 This source defines the `10.1.0` package contract, including a breaking

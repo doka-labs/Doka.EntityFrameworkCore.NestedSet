@@ -1,20 +1,62 @@
 name: CI
+run-name: ${{ inputs.maintenance && format('maintenance {0}', inputs.schedule-correlation) || github.event.pull_request.title || github.event.head_commit.message || 'CI' }}
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, 'maintenance/**', 'preview/**']
   workflow_dispatch:
+    inputs:
+      maintenance:
+        description: Execute this branch's qualification after exact coordinator dispatch.
+        type: boolean
+        default: false
+      schedule-correlation:
+        description: Coordinator run and attempt identity.
+        type: string
+        default: ''
+      schedule-source-sha:
+        description: Exact protected branch head frozen by the coordinator.
+        type: string
+        default: ''
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}-${{ inputs.maintenance && inputs.schedule-correlation || 'normal' }}
   cancel-in-progress: true
 
 jobs:
+  schedule-identity:
+    name: schedule-identity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout branch-native guard
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate the exact scheduled source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_MAINTENANCE: ${{ inputs.maintenance || false }}
+          INPUT_CORRELATION: ${{ inputs.schedule-correlation }}
+          INPUT_SOURCE_SHA: ${{ inputs.schedule-source-sha }}
+        run: python3 -m eng.release.maintenance guard --workflow ci.yml
+
+      - name: Validate the registered pull request base
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -m eng.release.maintenance check-pr
+
   source-quality:
     name: C# style and unused imports
+    needs: schedule-identity
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
@@ -42,6 +84,7 @@ jobs:
 
   engineering-tests:
     name: Engineering regression tests
+    needs: schedule-identity
     runs-on: ubuntu-24.04
     timeout-minutes: 15
 
@@ -57,8 +100,12 @@ jobs:
       - name: Run Dependabot diagnostic regressions
         run: python3 -m unittest discover -s eng/ci-tests -p 'test_*.py'
 
+      - name: Check active-line dependency targets
+        run: python3 -m eng.release.maintenance check-dependencies
+
   build:
     name: Release build and NuGet packages
+    needs: schedule-identity
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
@@ -128,6 +175,7 @@ jobs:
 
   tests:
     name: ${{ matrix.name }}
+    needs: schedule-identity
     runs-on: ubuntu-24.04
     timeout-minutes: 130
 
@@ -240,6 +288,7 @@ jobs:
 
   samples:
     name: SQLite sample / ${{ matrix.sample }}
+    needs: schedule-identity
     runs-on: ubuntu-24.04
     timeout-minutes: 15
 
@@ -298,7 +347,7 @@ jobs:
   repository-qualification:
     name: Repository qualification
     if: always()
-    needs: [source-quality, engineering-tests, build, tests, samples, coverage]
+    needs: [schedule-identity, source-quality, engineering-tests, build, tests, samples, coverage]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
 
@@ -306,6 +355,7 @@ jobs:
       - name: Require every qualification job to succeed
         env:
           RESULTS: >-
+            schedule-identity=${{ needs.schedule-identity.result }}
             source-quality=${{ needs.source-quality.result }}
             engineering-tests=${{ needs.engineering-tests.result }}
             build=${{ needs.build.result }}

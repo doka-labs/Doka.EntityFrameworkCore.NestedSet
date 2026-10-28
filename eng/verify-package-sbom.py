@@ -16,6 +16,7 @@ from urllib.parse import unquote
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "release"))
 from common import PACKAGES as SHIPPING_PACKAGES
+from packages import target_framework
 TOOL_VERSION = "4.1.5"
 MANIFEST_PATH = Path("_manifest/spdx_2.2/manifest.spdx.json")
 FORBIDDEN_PREFIXES = ("xunit", "nunit", "mstest", "testcontainers", "coverlet", "benchmarkdotnet")
@@ -70,14 +71,15 @@ def package_metadata(archive):
 
 
 def package_dependencies(archive):
-    """Read the shipping package's net10.0 dependency declarations from the actual candidate bytes."""
+    """Read the source line's framework dependency declarations from actual candidate bytes."""
+    framework = target_framework()
     dependencies = package_metadata(archive).find("{*}dependencies")
     if dependencies is None:
         return {}
 
     groups = dependencies.findall("{*}group")
-    require(not groups or len(groups) == 1 and groups[0].get("targetFramework") == "net10.0",
-            "Shipping nuspec must declare the supported net10.0 dependency group")
+    require(not groups or len(groups) == 1 and groups[0].get("targetFramework") == framework,
+            f"Shipping nuspec must declare the supported {framework} dependency group")
     declarations = (groups[0] if groups else dependencies).findall("{*}dependency")
     result = {item.attrib["id"].lower(): item.attrib["version"] for item in declarations}
     require(len(result) == len(declarations), "Duplicate dependency in shipping nuspec")
@@ -87,7 +89,7 @@ def package_dependencies(archive):
 
 def verify_shipping_bindings(assets, archives, cache=None):
     """Bind each restored local shipping identity, dependency declaration and SHA512 to its actual candidate."""
-    targets = assets["targets"]["net10.0"]
+    targets = assets["targets"][target_framework()]
     libraries = assets["libraries"]
 
     for name, archive in archives.items():
@@ -140,14 +142,15 @@ def shipping_archives(package_dir, version):
 
 def dependency_closure(assets, name, version):
     """Resolve the actual package closure from one isolated consumer's NuGet assets file."""
-    require(set(assets["targets"]) == {"net10.0"}, "Expected exactly the net10.0 consumer target")
-    dependencies = assets["project"]["frameworks"]["net10.0"]["dependencies"]
+    framework = target_framework()
+    require(set(assets["targets"]) == {framework}, f"Expected exactly the {framework} consumer target")
+    dependencies = assets["project"]["frameworks"][framework]["dependencies"]
     require(set(dependencies) == {name}, "Consumer must reference only its shipping package")
     require(dependencies[name]["version"] == f"[{version}, {version}]", "Consumer version must be exact")
-    require(not assets["project"]["restore"]["frameworks"]["net10.0"]["projectReferences"],
+    require(not assets["project"]["restore"]["frameworks"][framework]["projectReferences"],
             "Consumer must not contain project references")
 
-    target = assets["targets"]["net10.0"]
+    target = assets["targets"][framework]
     libraries = assets["libraries"]
     require(set(target) == set(libraries), "Restore target and package library inventory differ")
     resolved = {}
@@ -244,7 +247,7 @@ def prepare_consumer(work, archive, name, version, feed, repo):
     project = ET.Element("Project", {"Sdk": "Microsoft.NET.Sdk"})
     properties = ET.SubElement(project, "PropertyGroup")
 
-    for key, value in {"TargetFramework": "net10.0", "TreatWarningsAsErrors": "true", "NuGetAudit": "true",
+    for key, value in {"TargetFramework": target_framework(repo), "TreatWarningsAsErrors": "true", "NuGetAudit": "true",
                        "NuGetAuditMode": "all", "NuGetAuditLevel": "low"}.items():
         ET.SubElement(properties, key).text = value
 

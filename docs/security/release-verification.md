@@ -9,6 +9,13 @@ A published release uses three independent identities:
 
 Passing one check does not imply the others passed.
 
+Historical verification uses the original signed source, workflow ref, candidate
+schema and asset contract. Use the guide/helpers from the exact trusted signed
+tag for older releases, including the original two-package releases; current
+six-package inventory must not be applied retroactively. Current line activation
+and continued GitHub Latest status are publication concerns, not conditions
+for accepting an already published immutable release.
+
 ## Prerequisites
 
 - Git with SSH signature verification;
@@ -23,10 +30,16 @@ set -euo pipefail
 
 release_tag="v<release-version>"
 release_version="${release_tag#v}"
+release_ref="refs/heads/<original-qualified-branch>"
 repository="doka-labs/Doka.EntityFrameworkCore.NestedSet"
 release_root="artifacts/${release_tag}"
 nuget_root="${release_root}/nuget.org"
 ```
+
+Set `release_ref` from the independently reviewed release record: for example
+`refs/heads/main` for its historical main release, or
+`refs/heads/maintenance/10.x` for a later maintenance release. Do not derive it
+from today's main framework version or current active-line policy.
 
 ## Verify source identity
 
@@ -45,7 +58,7 @@ test "$(git rev-parse HEAD)" = "${release_commit}"
 
 Review the public keys in [`.github/allowed_signers`](../../.github/allowed_signers)
 against the approved Doka Labs signing identity before using that policy. Obtain
-it from reviewed protected-main history or an already trusted checkout; an
+it from reviewed protected-line history or an already trusted checkout; an
 arbitrary candidate cannot establish signer approval by including its own key.
 A cryptographically valid signature from an unapproved principal is not
 sufficient. Run the repository readback helper below only from this exact
@@ -82,7 +95,7 @@ manifest cannot choose its own trusted source.
 verified_root="${release_root}-verified"
 mkdir -p "${verified_root}"
 
-python3 - "${release_root}" "${verified_root}" "${release_version}" "${release_commit}" <<'PY'
+python3 - "${release_root}" "${verified_root}" "${release_version}" "${release_commit}" "${release_ref}" <<'PY'
 from pathlib import Path
 import hashlib
 import json
@@ -94,6 +107,7 @@ source = Path(sys.argv[1])
 target = Path(sys.argv[2])
 expected_version = sys.argv[3]
 expected_commit = sys.argv[4]
+expected_ref = sys.argv[5]
 
 packages = (
     "Doka.NestedSet",
@@ -125,12 +139,14 @@ if any(path.is_symlink() or not path.is_file() for path in source.iterdir()):
 if any(target.iterdir()):
     raise SystemExit("Verification target must be empty")
 
-for name in sorted(required_release):
-    shutil.copyfile(source / name, target / name)
-
-manifest = json.loads((target / "candidate.json").read_text(encoding="ascii"))
+manifest = json.loads((source / "candidate.json").read_text(encoding="ascii"))
 if manifest.get("version") != expected_version or manifest.get("source", {}).get("commit") != expected_commit:
     raise SystemExit("Candidate version/source mismatch")
+if manifest.get("workflow", {}).get("ref") != expected_ref:
+    raise SystemExit("Candidate original source-ref mismatch")
+
+for name in sorted(required_release):
+    shutil.copyfile(source / name, target / name)
 
 candidate_files = manifest.get("files")
 if not isinstance(candidate_files, dict) or set(candidate_files) != required_candidate:
@@ -199,7 +215,7 @@ for artifact in "${verified_root}"/*.nupkg "${verified_root}"/*.snupkg; do
     --repo "${repository}" \
     --signer-workflow "${repository}/.github/workflows/release-candidate.yml" \
     --signer-digest "${release_commit}" \
-    --source-ref "refs/heads/main" \
+    --source-ref "${release_ref}" \
     --source-digest "${release_commit}" \
     --deny-self-hosted-runners
 done
@@ -223,7 +239,7 @@ for package in \
     --repo "${repository}" \
     --signer-workflow "${repository}/.github/workflows/release-candidate.yml" \
     --signer-digest "${release_commit}" \
-    --source-ref "refs/heads/main" \
+    --source-ref "${release_ref}" \
     --source-digest "${release_commit}" \
     --deny-self-hosted-runners \
     --predicate-type "https://spdx.dev/Document/v2.2" \
@@ -298,8 +314,8 @@ done
 
 - the tag is annotated, trusted, and resolves to `release_commit`;
 - each package and symbol file matches a signed provenance subject;
-- provenance names the protected release workflow on `main`, exact source
-  commit, and a GitHub-hosted runner;
+- provenance names the protected release workflow on its exact original source
+  ref/commit and a GitHub-hosted runner;
 - each SBOM signature and predicate matches its package and SPDX document;
 - all six public primary packages have valid NuGet repository signatures;
 - public package contents match the qualified candidates except for the NuGet

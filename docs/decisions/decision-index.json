@@ -186,7 +186,9 @@
       "supersedes": [],
       "supersededBy": [],
       "amends": [],
-      "amendedBy": []
+      "amendedBy": [
+        "D-021"
+      ]
     },
     {
       "id": "D-017",
@@ -235,6 +237,19 @@
       "supersededBy": [],
       "amends": [
         "D-019"
+      ],
+      "amendedBy": []
+    },
+    {
+      "id": "D-021",
+      "title": "Separate release-line qualification from current publication authority",
+      "status": "implemented",
+      "date": "2026-10-28",
+      "path": "docs/decisions/D-021-release-lines-and-monotonic-publication.md",
+      "supersedes": [],
+      "supersededBy": [],
+      "amends": [
+        "D-016"
       ],
       "amendedBy": []
     }

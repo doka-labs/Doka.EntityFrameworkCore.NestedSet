@@ -10,11 +10,17 @@ bash eng/verify-package-consumer.sh
 
 ## Qualification and release evidence
 
-Release operators start with `./eng/pre-tag-check.sh` after updating clean
-`main`, then follow [Release publication](../docs/operations/release-publication.md).
+Release operators start with `./eng/pre-tag-check.sh` after updating a clean
+checkout of the selected authorized branch, then follow
+[Release publication](../docs/operations/release-publication.md).
+[Release lines](../docs/operations/release-lines.md) owns exact branch/major
+eligibility, preparation and servicing.
 The no-argument command checks source and SSH signing readiness through the
 existing publication module; it does not qualify packages, create tags, or
 request publication credentials.
+The pre-tag command requires authenticated GitHub CLI read access to the
+selected protected branch and current protected-main policy; no additional
+secret or environment is needed.
 
 [`ci.yml`](../.github/workflows/ci.yml) runs independent jobs for C# style and
 unused imports, offline engineering regressions, the Release solution build,
@@ -101,9 +107,44 @@ Tests, samples, benchmarks, and engineering tools do not require separate
 committed lockfiles.
 
 A normal run requires clean committed source. `--workspace` verifies changes without making them publishable.
-Only the exact main workflow-dispatch context produces a publication-eligible candidate, and it still requires
+Only the exact authorized active-line workflow-dispatch context produces a publication-eligible candidate, and it still requires
 provenance, the authorized signed tag, and protected approval. Do not set hosted identity variables manually.
 See [release publication](../docs/operations/release-publication.md) for external actions and recovery.
+
+## Release lines and ongoing servicing
+
+The small [line policy](release/lines-policy.json) names exact branches, majors,
+channels and states. Main/10 starts active; maintenance/10.x and optional
+preview/11.x remain inactive. Qualification freezes its selected line in the
+existing identity/candidate evidence and uses that branch's SDK, framework and
+dependency graph. `qualification-only=true` skips the entire publisher job,
+environment and credentials.
+
+Publication independently rechecks current protected-main authority and retains
+one shared non-cancelling publisher queue. Canonical version precedence keeps
+older stable patches/majors from replacing a higher GitHub Latest release.
+Historical evidence still uses its original ref/schema; it does not grant
+current publication rights. No separate client framework, release database or
+per-lane receipt inventory is introduced.
+
+The [maintenance workflow](../.github/workflows/release-line-maintenance.yml)
+coordinates daily branch-native transitive audits and weekly full CI for active
+lines. It verifies exact child source/workflow/correlation and successful real
+producers, including all matrix cells. The audit checks complete fresh advisory
+JSON for the actual solution graph, not only command exit status.
+
+The retained Dependabot template keeps all four ecosystems and existing Docker
+LTS constraints. Render/check reviewed active-line changes with:
+
+```bash
+python3 -m eng.release.maintenance render-dependencies --output .github/dependabot.yml
+python3 -m eng.release.maintenance check-dependencies
+```
+
+Framework-coupled versions exclude next-major prereleases as well as GA;
+independent tools and drivers keep their own versioning. Registered inactive
+preparation branches receive PR checks without publication permission. Branch
+activation, environment grants and actual .NET 11 adoption remain separate.
 
 ## Package-consumer verification
 

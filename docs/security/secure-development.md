@@ -86,6 +86,14 @@ findings promptly. Do not count Scorecard configuration/process warnings as
 CodeQL source vulnerabilities, or dismiss source vulnerabilities because the
 Scorecard workflow succeeded.
 
+The [release-line maintenance contract](../operations/release-lines.md) adds
+branch-native daily transitive advisory audits and weekly full CI for each
+active line. Dependabot version targets follow active branches and framework
+major/prerelease ceilings; its security-update default-branch boundary does not
+replace audits of maintained branches. Full fresh advisory JSON, exact solution
+project coverage and successful real child producers are required. These source
+controls do not claim that an inactive line or hosted schedule is already active.
+
 ## Dynamic analysis evidence
 
 Provider suites execute actual database behavior, including hostile identifiers,

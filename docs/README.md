@@ -82,6 +82,8 @@ to `10.0.0`. See the [changelog](../CHANGELOG.md) for changes and the
   evidence, servicing, and compatibility policy.
 - [Release Publication](operations/release-publication.md) is the operator
   procedure for an RC or stable release.
+- [Release Lines](operations/release-lines.md) defines branch-owned framework
+  qualification, current publication authority, activation, servicing and Latest.
 - [Repository Security Settings](runbooks/repository-settings.md) records the
   hosted controls that cannot be proven from repository files.
 - [Release Verification](security/release-verification.md) shows consumers how

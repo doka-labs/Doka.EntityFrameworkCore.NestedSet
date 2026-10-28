@@ -1,7 +1,8 @@
 # Release publication operations
 
 Use this runbook for every RC and stable release. The operator sequence follows
-Doka and SafeMigrations: prepare current `main`, run `./eng/pre-tag-check.sh`,
+Doka and SafeMigrations: prepare the current authorized branch, run
+`./eng/pre-tag-check.sh`,
 start one untagged candidate, wait for qualification and attestations, create
 the signed tag, and approve the same waiting publication job. Run each command
 separately and stop on the first failure.
@@ -10,7 +11,10 @@ The package set is `Doka.NestedSet`, `Doka.EntityFrameworkCore.NestedSet`, and
 its `.MySql`, `.Postgres`, `.Sqlite`, and `.SqlServer` adapters at one version:
 six primary packages and six symbol packages. Evidence requirements
 are defined in [Release governance](../release-governance.md) and
-[Release process](../release-process.md).
+[Release process](../release-process.md). The
+[release-line runbook](release-lines.md) governs preparation, activation and
+ongoing servicing. Main/10 is currently active; maintenance/10.x and optional
+preview/11.x are registered inactive. This procedure activates none of them.
 
 ## Release identity
 
@@ -55,8 +59,8 @@ immutable GitHub release. Retain dated qualification evidence; the presence of
 a tag does not replace it. Add the release/tag/package URLs to the OpenSSF
 entry and verify the saved badge state.
 
-The stable candidate must be built and qualified on then-current protected
-`main`. Do not reuse the RC candidate, tag, or package bytes as a stable
+The stable candidate must be built and qualified on its then-current protected
+authorized line using that branch's SDK, framework and dependency graph. Do not reuse the RC candidate, tag, or package bytes as a stable
 publication. SQL Server release evidence must come from a supported Linux
 x86-64 host; successful local emulation on Arm does not establish that boundary.
 
@@ -66,12 +70,13 @@ Recheck the controls in
 [Repository security settings](../runbooks/repository-settings.md) before
 starting the release:
 
-- protect `main`, require reviewed pull requests, and require the repository's
-  CI and code scanning checks;
+- protect `main` and every prepared/active source line, require reviewed pull
+  requests and the applicable CI and code scanning checks;
 - protect `v*` release tags against update and deletion;
 - enable immutable GitHub Releases;
-- create environment `nuget`, restrict deployments to protected `main`, require
-  maintainer approval, and store the NuGet profile name as `NUGET_USER`;
+- retain environment `nuget`, restrict deployments to exact approved active
+  branch names, retain the existing reviewer/administrator arrangement and
+  store the NuGet profile name as `NUGET_USER`;
 - configure the NuGet Trusted Publishing policy below; and
 - configure SSH tag signing and review the public keys in
   [`.github/allowed_signers`](../../.github/allowed_signers).
@@ -101,13 +106,15 @@ gh api \
 
 The response must report `"enabled": true`. Also verify the environment,
 Trusted Publishing policy, package ownership, and signer configuration. Local
-build success does not establish hosted permissions or settings.
+build success does not establish hosted permissions or settings. Readiness
+requires authenticated GitHub CLI access to the selected protected branch and
+current protected-main policy; this introduces no new publishing credential.
 
 ## Publication procedure
 
-### 1. Prepare reviewed main
+### 1. Prepare the reviewed source line
 
-Merge the complete release preparation through protected `main`. It must
+Merge the complete release preparation through the protected authorized branch. It must
 contain the intended `VersionPrefix`, one dated changelog section for the exact
 version, current package metadata, dependencies, support documentation, and
 public API baselines. Prerelease preparation keeps new declarations in
@@ -117,16 +124,18 @@ public API baselines. Prerelease preparation keeps new declarations in
 Update the checkout:
 
 ```bash
-git fetch origin main --tags
-git switch main
-git merge --ff-only origin/main
+release_branch=main
+git fetch origin "${release_branch}" --tags
+git switch "${release_branch}"
+git merge --ff-only "origin/${release_branch}"
 git status --porcelain --untracked-files=all
 
 release_commit="$(git rev-parse HEAD)"
-test "${release_commit}" = "$(git rev-parse origin/main)"
+test "${release_commit}" = "$(git rev-parse "origin/${release_branch}")"
 ```
 
-The status command must print nothing. Keep this terminal and checkout
+For a later authorized maintenance release, set `release_branch` to its exact
+active branch instead. The status command must print nothing. Keep this terminal and checkout
 unchanged until the tag is pushed. Record `release_commit`; every later
 identity check refers to this exact commit.
 
@@ -136,7 +145,8 @@ identity check refers to this exact commit.
 ./eng/pre-tag-check.sh
 ```
 
-This checks clean current `main` against the remote, rejects a semantic release
+This checks the clean current authorized branch against the remote and current
+protected-main policy, rejects a semantic release
 tag already identifying the candidate commit, and checks SSH signing
 configuration. File-based signing keys must exist. It reads remote refs without
 fetching or changing the checkout, creates no tag, and requests no credentials
@@ -149,10 +159,12 @@ availability, or signing-authority checks in the hosted workflow.
 
 ### 3. Start the untagged candidate and wait
 
-In GitHub Actions, start **Release candidate**. Select branch `main` and enter:
+In GitHub Actions, start **Release candidate**. Select the same authorized
+branch as `release_branch` and enter:
 
 ```text
 version: 10.1.0
+qualification-only: false
 ```
 
 Use `10.1.0` for this stable release. Other release versions use
@@ -186,7 +198,12 @@ current run and attempt. It verifies all required retained results before sealin
 There is no separate job-receipt registry or artifact-index API to configure.
 The final summary identifies the candidate and retained qualification evidence.
 
-The final `Publish approved candidate` job must show **Waiting** for approval
+For a prepared line or a nonpublishing rehearsal, set `qualification-only=true`.
+The same applicable qualification and attestations run, but the entire
+environment-bearing publisher is skipped. Create no tag and request no NuGet
+approval for that run.
+
+For publication, the final `Publish approved candidate` job must show **Waiting** for approval
 on environment `nuget`. Do not approve it yet. Confirm that the run SHA equals
 `release_commit`, and record the run URL, run ID, and attempt. Inspect the
 qualification summary, exact candidate, and provenance artifacts. Missing,
@@ -202,7 +219,7 @@ release_version="<release_version>"
 release_tag="v${release_version}"
 
 test "$(git rev-parse HEAD)" = "${release_commit}"
-test "$(git rev-parse origin/main)" = "${release_commit}"
+test "$(git rev-parse "origin/${release_branch}")" = "${release_commit}"
 git tag -s "${release_tag}" "${release_commit}" \
   -m "Doka.EntityFrameworkCore.NestedSet ${release_version}"
 git tag -v "${release_tag}"
@@ -212,9 +229,10 @@ git push origin "refs/tags/${release_tag}"
 
 Push only that tag. Never use `git push --tags`, move a pushed release tag, or
 reuse a published version. The tag push does not start a second release
-workflow. A later merge on `main` does not select new release bytes: publication
-still verifies the recorded candidate commit's reachability from protected
-`main`, its exact tag, and its original candidate artifacts.
+workflow. A later merge on the selected line does not select new release bytes:
+publication still verifies the recorded candidate commit's reachability from
+that protected line, its exact tag and original candidate artifacts. Current
+protected-main policy must continue to authorize that line's major/channel.
 
 ### 5. Approve the same waiting run
 
@@ -225,8 +243,9 @@ during review. Approve `Publish approved candidate` for environment `nuget`.
 
 The same workflow run then:
 
-1. verifies the downloaded candidate and provenance, qualified source, signed
-   annotated tag, approved signer, and hosted run identity;
+1. independently rereads current protected-main authorization, verifies the
+   selected protected source, downloaded candidate/provenance, signed annotated
+   tag, approved signer and original hosted run identity;
 2. rejects conflicting public package contents;
 3. creates or resumes a matching draft GitHub release and verifies its exact
    candidate and provenance assets;
@@ -236,8 +255,19 @@ The same workflow run then:
 6. reads all six primary packages and their Portable PDBs back, verifies NuGet
    repository signatures, and compares signed package contents with the
    qualified candidate;
-7. publishes and verifies the immutable GitHub release; and
+7. publishes and verifies the immutable GitHub release, promoting GitHub
+   Latest only when canonical version precedence allows it; and
 8. retains the complete publication receipt.
+
+All publisher versions/lines share one non-cancelling queue with `queue: max`.
+Current authority is checked again before public writes and credential use; a
+prepared, disabled, reassigned or unauthorized line cannot publish with an old
+frozen grant. Complete affected publication before changing line policy.
+
+Uploads read the original sealed files under `artifacts/candidate` after
+authorization rechecks. Availability and public readback use their verified
+copies under `artifacts/packages`; those copies do not replace the sealed
+upload source.
 
 No package is rebuilt after qualification. Public package and symbol readback
 has a 120-minute budget inside the 180-minute publication job. An accepted push
@@ -267,7 +297,10 @@ The package IDs and dependency order are listed in
 package pages, signature verification, and symbol readback.
 Inspect `publication-<run-id>-<attempt>` for package availability, draft,
 NuGet readback, immutable-release, and completion receipts. RC releases must
-be prereleases and must not be latest; stable releases must be latest.
+be prereleases and must not be Latest. Stable releases may be Latest only when
+no higher stable version already owns it. A 10.x maintenance release or an
+out-of-order lower patch stays stable without replacing a higher Latest.
+Historical release verification does not require continued Latest status.
 
 Run [Release verification](../security/release-verification.md) independently
 from a clean directory. Only then update documentation that declares a version
@@ -282,8 +315,9 @@ publicly available.
   preflight also retains its deadline. See the exact
   [rerun boundaries](../release-process.md#recovery). Correct source failures
   through review and start a new candidate run.
-- Once a candidate is sealed, its original artifact IDs and bytes remain the
-  inputs for existing attestation/publication recovery. Do not requalify
+- Once a candidate is sealed, use **Re-run failed jobs** in its original run.
+  Its original artifact IDs and bytes remain the inputs for existing
+  attestation/publication recovery, with current authorization rechecked. Do not requalify
   selected parts or replace the candidate to repair a later failure.
 - After the tag exists, never move or delete it to hide a failure. Rerun only
   the failed publication job in the same workflow run.

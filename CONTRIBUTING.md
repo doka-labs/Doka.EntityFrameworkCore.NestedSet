@@ -552,6 +552,13 @@ Use the pull request template. Describe the concrete consumer problem, final
 behavior, compatibility/security impact, and exact verification. Keep one
 cohesive concern per pull request.
 
+Target the protected release branch that owns the affected framework major.
+Registered inactive lines receive full preparation PR checks and exact
+base/head Dependency Review before they can qualify or publish a release.
+Keep each branch's SDK, EF graph and line policy intact; applicable fixes need
+reviewed ports and that destination's checks. Ordinary feature/manual CI remains
+nonpublishing. See [release lines](docs/operations/release-lines.md).
+
 A reviewer checks implementation, meaningful tests, public API, provider and
 migration impact, transactions/concurrency, security/privacy, documentation,
 dependencies, packages, and evidence as applicable. Approval applies to the

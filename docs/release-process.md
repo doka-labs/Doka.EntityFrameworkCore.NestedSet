@@ -3,13 +3,15 @@
 This document defines the package and evidence contract. The operator sequence
 is in [Release publication](operations/release-publication.md), and decision
 authority is in [Release governance](release-governance.md).
+The [release-line contract](operations/release-lines.md) governs exact branch
+eligibility, framework ownership, preparation and ongoing servicing.
 
 Version `10.0.0` is the first stable contract. Each version, including the
 earlier `10.0.0-rc.1`, retains its own exact packages and qualification evidence.
 RC archives are never renamed into stable packages.
 
 The operator entry point is `./eng/pre-tag-check.sh`, as in Doka and
-SafeMigrations. It checks readiness from the current `main` checkout before the
+SafeMigrations. It checks readiness from the current authorized branch before the
 untagged hosted candidate starts. The runbook uses `release_commit`,
 `release_version`, and `release_tag` throughout checkout, tag creation, and
 public release inspection.
@@ -28,7 +30,9 @@ One version publishes six package IDs in dependency order:
 The workflow accepts a canonical `X.Y.Z-rc.N` or `X.Y.Z` version without a
 leading `v`. It must match the reviewed source version and one dated changelog
 section. All six NuGet identities must be unused, the release tag must not exist,
-and dispatch must target exact current protected `main`.
+and dispatch must target that line's exact current protected head. The version
+major must match the line's approved framework/toolchain and package major.
+Current source is .NET 10 with `10.1.0`; additional lines remain inactive.
 
 ## Qualification stages
 
@@ -36,7 +40,7 @@ Pull-request CI checks the offline engineering regressions, shipping package loc
 C# style, Release build, all test projects, coverage reports, runnable samples,
 pack, and primary/symbol archive inspection. The PR-only lockfile diagnostic
 tests run there. The release candidate independently repeats the solution and
-release-tooling checks from its selected `main` commit and additionally verifies
+release-tooling checks from its selected branch/commit and additionally verifies
 isolated package consumers and SBOMs. It checks source, dependency locks, and
 compiled binaries throughout qualification and seals the candidate only after
 every check passes. It consumes no prior CI artifacts.
@@ -48,7 +52,7 @@ and this GitHub job graph:
 
 | Job | Direct prerequisites | Work |
 | --- | --- | --- |
-| `preflight` | Dispatch | Verify exact source and unused version; establish one shared 7,200-second UTC deadline |
+| `preflight` | Dispatch | Verify current line authorization, exact protected source, compatible toolchain and unused version; freeze line identity and establish one shared 7,200-second UTC deadline |
 | `source-quality` | `preflight` | Locked restore, C# style, and unused imports |
 | `engineering-tests` | `preflight` | Offline RC-tooling regressions and shell syntax |
 | `build` | `preflight` | Canonical Release solution build; pack each shipping package once; inspect primary and symbol archives |
@@ -126,8 +130,11 @@ The final candidate contains:
 - `candidate.json`, which inventories every other file by size and SHA-256.
 
 A workspace qualification can verify uncommitted changes but sets
-`publishable: false`. Only the exact hosted release workflow on current `main`
-can produce a publishable candidate.
+`publishable: false`. Only the exact hosted release workflow on an authorized
+active line can produce a publishable candidate. `qualification-only=true`
+permits complete nonpublishing qualification of prepared or active lines and
+skips the entire publisher environment. The frozen line travels with existing
+identity/candidate evidence, not another per-job inventory or release registry.
 
 ## Attestation
 
@@ -138,7 +145,7 @@ After qualification, GitHub's attestation action signs:
 - each primary package with its exact SPDX 2.2 predicate.
 
 The workflow retains portable bundles and verifies their signatures, subject
-names and digests, repository, workflow path, workflow commit, `main` source
+names and digests, repository, workflow path, workflow commit, original source
 ref/commit, run attempt, and GitHub-hosted runner boundary before publication.
 
 ## Publication boundary
@@ -147,7 +154,9 @@ The `publish` job is the only job with `contents: write`, NuGet OIDC, and the
 protected `nuget` environment. Before requesting credentials it verifies:
 
 - unchanged candidate and provenance inventories;
-- exact hosted repository, workflow, run, attempt, source, and current `main`;
+- exact hosted repository, workflow, run, attempt and qualified source line;
+- current independent protected-main permission for that exact ref, major and
+  channel, plus the selected line's protection and source history;
 - a reviewed signed annotated tag that peels to the candidate commit;
 - repository and branch protection visibility;
 - unused or same-candidate public package state; and
@@ -177,6 +186,14 @@ than restarting that budget for each asset.
 The GitHub release stays a draft until NuGet readback succeeds. It is then
 published and verified in immutable state, including GitHub's release/asset
 attestation behavior where available.
+
+All publishers share one non-cancelling queue across versions and lines.
+Before irreversible writes, they recheck current protected-main authority.
+Stable GitHub Latest is promoted only when canonical version precedence
+permits it; an older stable maintenance major or patch remains stable without
+replacing a higher Latest. Prereleases never become Latest. Historical release
+verification uses original signed evidence rather than current policy or
+continued Latest status.
 
 ## Recovery
 

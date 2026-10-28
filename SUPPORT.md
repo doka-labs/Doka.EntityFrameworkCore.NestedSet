@@ -158,6 +158,14 @@ Reports must identify the actual package version or the exact source revision
 and build for unreleased changes. The earlier `10.0.0-rc.1` has no separate
 maintenance line; fixes target the shared 10.x line.
 
+[Release-line tooling](docs/operations/release-lines.md) prepares independent
+framework servicing: current main/10 is active, while maintenance/10.x and
+optional preview/11.x remain inactive. Registration does not add a supported
+framework or activate a branch. When main adopts another framework, the reviewed
+10.x source can transfer to its independently qualified maintenance line. Each
+active line needs its own reviewed fixes, dependency servicing and qualification;
+the applicable support policy still governs availability and best-effort scope.
+
 All six packages target .NET 10. The common EF package declares an EF Core 10
 range; each native adapter also has its own provider dependency constraints.
 Their intersection determines what an application can restore. The exact

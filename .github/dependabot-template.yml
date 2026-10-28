@@ -1,0 +1,50 @@
+version: 2
+updates:
+  - package-ecosystem: dotnet-sdk
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /docker
+    schedule:
+      interval: weekly
+    ignore:
+      # WHY: Qualification owns the MySQL 8.4 and MariaDB 11.8 LTS lines;
+      # automatic proposals may update their patches, but must not replace them.
+      - dependency-name: mysql
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+      - dependency-name: mariadb
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+      # WHY: PostgreSQL maintenance releases change the second version number,
+      # so minor updates within the qualified major must remain eligible.
+      - dependency-name: postgres
+        update-types:
+          - version-update:semver-major
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      doka:
+        # WHY: The MySQL adapter requires a matching provider release; qualify the Doka packages together.
+        patterns:
+          - Doka.EntityFrameworkCore.MySql
+          - Doka.EntityFrameworkCore.SafeMigrations.*
+      entity-framework:
+        patterns:
+          - Microsoft.EntityFrameworkCore
+          - Microsoft.EntityFrameworkCore.*
+      xunit:
+        patterns:
+          - xunit.*
+      testcontainers:
+        patterns:
+          - Testcontainers.*
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

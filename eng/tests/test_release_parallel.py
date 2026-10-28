@@ -115,7 +115,7 @@ class RestoredIdentityTests(ParallelFixture):
         cases = (
             (patch.object(qualification, "source_identity", return_value=different), {}, different["commit"]),
             (patch.dict(os.environ, {"GITHUB_RUN_ATTEMPT": "2"}), {}, COMMIT),
-            (patch.dict(os.environ, {}), {"version": "0.1.0-rc.2"}, COMMIT),
+            (patch.dict(os.environ, {}), {"version": "10.1.0-rc.2"}, COMMIT),
             (patch.dict(os.environ, {}), {"deadline_utc": self.runner.deadline_utc + 1}, COMMIT),
         )
 
@@ -499,7 +499,7 @@ class AggregationTests(ParallelFixture):
         # Arrange
         path = self.runner.output / "consumer/result.json"
         original = common.read_json(path)
-        cases = ({"success": False}, {"version": "0.1.0-rc.2"}, {"consumers": [{"name": "core"}]})
+        cases = ({"success": False}, {"version": "10.1.0-rc.2"}, {"consumers": [{"name": "core"}]})
         for change in cases:
             common.write_json(path, {**original, **change})
             with self.subTest(change=change):

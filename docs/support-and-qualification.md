@@ -88,6 +88,16 @@ This statement does not assert the same limitation for the separate
 [trim-guidance]: https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/prepare-libraries-for-trimming
 [ef-aot]: https://learn.microsoft.com/en-us/ef/core/performance/nativeaot-and-precompiled-queries
 
+## Framework release lines
+
+The current source and qualified graph remain .NET/EF Core 10 at package version
+`10.1.0`. [Release lines](operations/release-lines.md) defines future independent
+framework servicing: main/10 starts active; maintenance/10.x and optional
+preview/11.x are registered inactive. The capability does not qualify .NET 11,
+create a branch or enable publication. Each later activated line needs its own
+SDK, TFM, compatible provider/migration dependencies, complete test matrix and
+package/consumer/SBOM evidence. Main's results cannot substitute for that graph.
+
 ## Provider and engine matrix
 
 Install one NestedSet adapter for each context's native provider:

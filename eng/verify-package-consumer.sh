@@ -97,6 +97,16 @@ try:
     consumers = root / "eng/consumers"
     for name in ("Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props"):
         shutil.copyfile(consumers / name, output / name)
+
+    # WHY: Keep generated projects independently runnable in Rider without producer MSBuild imports or flags.
+    properties = ET.parse(output / "Directory.Build.props")
+    framework = properties.find(".//TargetFramework")
+    if framework is None:
+        raise ValueError("Consumer template must declare its source-owned target framework")
+    framework.text = packages.target_framework(root)
+    receipt["targetFramework"] = framework.text
+    expected_framework = framework.text
+    properties.write(output / "Directory.Build.props", encoding="unicode")
     shutil.copyfile(root / "global.json", output / "global.json")
     shutil.copytree(consumers / "Shared", output / "Shared")
 
@@ -142,6 +152,9 @@ try:
         retained_assets = directory / "project.assets.json"
         shutil.copyfile(assets_path, retained_assets)
         assets = json.loads(assets_path.read_text())
+        if (set(assets.get("targets", {})) != {expected_framework}
+                or set(assets.get("project", {}).get("frameworks", {})) != {expected_framework}):
+            raise ValueError("Consumer restored another source line's target framework")
         libraries = assets["libraries"]
         expected_ids = {"Doka.NestedSet"}
         if kind != "core":

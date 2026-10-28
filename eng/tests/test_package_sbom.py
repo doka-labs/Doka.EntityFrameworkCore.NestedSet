@@ -420,6 +420,9 @@ class PackageSbomTests(unittest.TestCase):
             directory.mkdir()
 
         (repo / "global.json").write_text('{"sdk":{"version":"10.0.401"}}', encoding="ascii")
+        (repo / "Directory.Build.props").write_text(
+            '<Project><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>',
+            encoding="ascii")
         overrides = {key: str(self.directory / "producer" / key) for key in (
             "ArtifactsPath", "UseArtifactsOutput", "BaseIntermediateOutputPath", "BaseOutputPath",
             "MSBuildProjectExtensionsPath", "DirectoryPackagesPropsPath", "RestorePackagesPath",

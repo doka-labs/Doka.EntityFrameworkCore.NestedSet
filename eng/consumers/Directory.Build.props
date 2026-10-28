@@ -2,7 +2,8 @@
   <PropertyGroup Label="Independent candidate consumers">
     <!-- WHY: A consumer must compile against packed dependencies without inheriting producer project references or pins. -->
     <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
+    <!-- WHY: The wrapper fills this source-owned target before any consumer restore or build. -->
+    <TargetFramework>$(CandidateTargetFramework)</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>

@@ -255,7 +255,7 @@ class DocumentedConsumerTests(QualificationFixture):
     """Execute the published inventory example offline; no cryptographic success is inferred from fixtures."""
 
     def setUp(self):
-        """Read the actual documentation snippet and prepare its thirteen local release assets."""
+        """Read the actual documentation snippet and prepare its complete local release asset set."""
         super().setUp()
         candidate = self.complete_fixture()
         self.downloads = self.root / "downloads"
@@ -270,9 +270,9 @@ class DocumentedConsumerTests(QualificationFixture):
         self.assertEqual(1, len(snippets), "Review the test when the documented consumer procedure changes")
         self.script = snippets[0]
 
-    def execute_example(self, expected=COMMIT):
+    def execute_example(self, expected=COMMIT, expected_ref="refs/heads/main"):
         """Run only the documentation's local Python inventory/hash verification."""
-        return subprocess.run([sys.executable, "-", str(self.downloads), str(self.target), VERSION, expected],
+        return subprocess.run([sys.executable, "-", str(self.downloads), str(self.target), VERSION, expected, expected_ref],
                               input=self.script, text=True, cwd=ROOT, capture_output=True, timeout=10, check=False)
 
     def test_documented_example_accepts_valid_inventory(self):
@@ -299,6 +299,19 @@ class DocumentedConsumerTests(QualificationFixture):
         # Assert
         self.assertNotEqual(0, result.returncode)
         self.assertIn("candidate_changed", result.stderr)
+
+    def test_documented_example_rejects_original_ref_shift(self):
+        """An independently expected maintenance line cannot accept a main candidate with the same commit."""
+        # Arrange
+        reference = "refs/heads/maintenance/10.x"
+
+        # Act
+        result = self.execute_example(expected_ref=reference)
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Candidate original source-ref mismatch", result.stderr)
+        self.assertEqual([], list(self.target.iterdir()))
 
     def test_documented_example_rejects_unexpected_asset(self):
         """The consumer must reject an extra file before copying candidate content."""
@@ -570,7 +583,7 @@ class WorkflowBoundaryTests(unittest.TestCase):
         self.assertNotIn("attest", self.ci)
         self.assertIn('$CANDIDATE_VERSION', release)
         self.assertIn("  pull_request:", triggers)
-        self.assertIn("    branches: [main]", triggers)
+        self.assertIn("    branches: [main, 'maintenance/**', 'preview/**']", triggers)
         self.assertNotIn("  push:", triggers)
         self.assertNotIn("  schedule:", triggers)
 
@@ -583,7 +596,7 @@ class WorkflowBoundaryTests(unittest.TestCase):
         dependencies = {name: re.findall(r"^    needs:.*$", self.ci[name], re.MULTILINE) for name in producers}
 
         # Assert
-        self.assertEqual({name: [] for name in producers}, dependencies)
+        self.assertEqual({name: ["    needs: schedule-identity"] for name in producers}, dependencies)
         self.assertNotIn("max-parallel:", self.ci["tests"])
         self.assertNotIn("max-parallel:", self.ci["samples"])
         self.assertIn("fail-fast: false", self.ci["tests"])
@@ -834,8 +847,10 @@ class WorkflowBoundaryTests(unittest.TestCase):
         # Assert
         self.assertIn("workflow_dispatch:", triggers)
         self.assertNotRegex(triggers, re.compile(r"^  (push|pull_request|workflow_run):", re.MULTILINE))
-        self.assertIn("group: nestedset-release-${{ inputs.version }}", text)
+        self.assertIn("group: nestedset-release-${{ github.ref }}-${{ inputs.version }}", text)
         self.assertIn("cancel-in-progress: false", text)
+        self.assertIn("group: nestedset-publication", self.release["publish"])
+        self.assertIn("queue: max", self.release["publish"])
 
     def test_only_publish_requests_credentials_and_environment(self):
         """Unprotected qualification jobs must not request NuGet publication authority."""
@@ -897,8 +912,8 @@ class WorkflowBoundaryTests(unittest.TestCase):
         return re.findall(r"^      - name: Publish (?:primary|symbol) packages\n(.*?)(?=^      - name:|\Z)",
                           self.release["publish"], re.MULTILINE | re.DOTALL)
 
-    def run_publish(self, *, manifest=None, failure=None):
-        """Execute real YAML Bash with real jq and a recording dotnet stub that cannot publish."""
+    def run_publish(self, *, manifest=None, failure=None, recheck_failure=0):
+        """Execute real Bash/jq with recording publication and authorization boundaries, without remote I/O."""
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             records = [{"id": package, "version": VERSION,
@@ -911,16 +926,31 @@ class WorkflowBoundaryTests(unittest.TestCase):
                       "import json, os, sys\n"
                       "with open(os.environ['PUSH_LOG'], 'a', encoding='ascii') as stream:\n"
                       "    stream.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+                      "with open(os.environ['BOUNDARY_LOG'], 'a', encoding='ascii') as stream:\n"
+                      "    stream.write('push\\n')\n"
                       "sys.exit(31 if sys.argv[3].endswith(os.environ.get('FAIL_PACKAGE', '!')) else 0)\n")
             stub.chmod(0o755)
+            authorization = root / "bin/python3"
+            text_file(authorization, f"#!{sys.executable}\n"
+                      "import os, pathlib, sys\n"
+                      "assert sys.argv[1:4] == ['-m', 'eng.release.publication', 'recheck']\n"
+                      "path = pathlib.Path(os.environ['BOUNDARY_LOG'])\n"
+                      "with path.open('a', encoding='ascii') as stream:\n"
+                      "    stream.write('recheck\\n')\n"
+                      "count = path.read_text().splitlines().count('recheck')\n"
+                      "sys.exit(47 if count == int(os.environ['FAIL_RECHECK']) else 0)\n")
+            authorization.chmod(0o755)
             log = root / "pushes.jsonl"
+            boundaries = root / "boundaries.txt"
             commands = [textwrap.dedent(step.split("        run: |\n", 1)[1]) for step in self.publish_steps()]
             result = subprocess.run(["bash", "-eo", "pipefail", "-c", "\n\n".join(commands)], cwd=root,
                                     env={**os.environ, "PATH": f"{stub.parent}{os.pathsep}{os.environ['PATH']}",
                                          "PUSH_LOG": str(log), "NUGET_API_KEY": "offline-stub-key",
+                                         "BOUNDARY_LOG": str(boundaries), "FAIL_RECHECK": str(recheck_failure),
                                          "FAIL_PACKAGE": failure or "!"},
                                     capture_output=True, text=True, check=False)
             calls = [json.loads(line) for line in log.read_text(encoding="ascii").splitlines()] if log.exists() else []
+            self.publication_boundaries = boundaries.read_text().splitlines() if boundaries.exists() else []
 
             return result, calls
 
@@ -929,7 +959,7 @@ class WorkflowBoundaryTests(unittest.TestCase):
         # Arrange
         expected = [f"{package}.{VERSION}.{extension}"
                     for extension in ("nupkg", "snupkg") for package in common.PACKAGES]
-        arguments = [["nuget", "push", f"artifacts/packages/{name}",
+        arguments = [["nuget", "push", f"artifacts/candidate/{name}",
                       "--source", "https://api.nuget.org/v3/index.json", "--api-key", "offline-stub-key",
                       *(["--no-symbols"] if name.endswith(".nupkg") else []),
                       "--skip-duplicate", "--timeout", "300"] for name in expected]
@@ -940,9 +970,36 @@ class WorkflowBoundaryTests(unittest.TestCase):
         # Assert
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual(arguments, calls)
+        self.assertEqual(["recheck", "push"] * 12, self.publication_boundaries)
         self.assertEqual(12, result.stdout.count("::group::"))
         self.assertEqual(12, result.stdout.count("::endgroup::"))
         self.assertTrue(all(name in result.stdout for name in expected))
+
+    def test_current_line_revocation_stops_before_first_push(self):
+        """A failed fresh authorization boundary cannot publish the first package."""
+        # Arrange
+        boundary = 1
+
+        # Act
+        result, calls = self.run_publish(recheck_failure=boundary)
+
+        # Assert
+        self.assertEqual(47, result.returncode, result.stderr)
+        self.assertEqual([], calls)
+        self.assertEqual(["recheck"], self.publication_boundaries)
+
+    def test_current_line_revocation_stops_later_pushes(self):
+        """Permission must remain current after an earlier primary package succeeds."""
+        # Arrange
+        boundary = 2
+
+        # Act
+        result, calls = self.run_publish(recheck_failure=boundary)
+
+        # Assert
+        self.assertEqual(47, result.returncode, result.stderr)
+        self.assertEqual(1, len(calls))
+        self.assertEqual(["recheck", "push", "recheck"], self.publication_boundaries)
 
     def test_publish_credentials_are_limited_to_two_manifest_loops(self):
         """Only the two publication steps receive the temporary credential."""
@@ -969,7 +1026,7 @@ class WorkflowBoundaryTests(unittest.TestCase):
 
         # Assert
         self.assertEqual(31, result.returncode)
-        self.assertEqual([f"artifacts/packages/{failure}"], [call[2] for call in calls])
+        self.assertEqual([f"artifacts/candidate/{failure}"], [call[2] for call in calls])
 
     def test_late_primary_push_failure_prevents_symbol_publication(self):
         """A late primary failure cannot advance to the symbol step."""
@@ -995,7 +1052,7 @@ class WorkflowBoundaryTests(unittest.TestCase):
         # Assert
         self.assertEqual(31, result.returncode)
         self.assertEqual(11, len(calls))
-        self.assertEqual(f"artifacts/packages/{failure}", calls[-1][2])
+        self.assertEqual(f"artifacts/candidate/{failure}", calls[-1][2])
 
     def test_empty_package_manifest_fails_before_publication(self):
         """An empty list cannot turn the publication step into a false success."""
@@ -1088,7 +1145,7 @@ class WorkflowBoundaryTests(unittest.TestCase):
 
         # Assert
         self.assertEqual(1, len(matches))
-        self.assertIn("needs: [source-quality, engineering-tests, build, tests, samples, coverage]", required)
+        self.assertIn("needs: [schedule-identity, source-quality, engineering-tests, build, tests, samples, coverage]", required)
         self.assertIn("if: always()", required)
         self.assertEqual(set(self.ci) - {"repository-qualification"}, results)
 

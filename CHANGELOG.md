@@ -15,6 +15,12 @@ explicitly breaking.
 
 ### Added
 
+- Prepare independently qualified framework release lines through the existing
+  parallel six-package pipeline. Keep `main`/10 active and the registered
+  maintenance/preview lines inactive; reuse protected publication, retain exact
+  candidate bytes, promote stable Latest monotonically, and service active
+  branches with their own audits, CI and dependency updates. See
+  [release lines](docs/operations/release-lines.md).
 - Compose multiple subtrees, strict ancestors and ancestors-or-self through the
   existing scoped, unscoped and exact-tree bindings. Preserve source occurrences,
   mapped distances, application filters and mixed-direction composition.

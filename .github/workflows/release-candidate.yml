@@ -7,13 +7,19 @@ on:
         description: Reviewed exact version (X.Y.Z-rc.N or X.Y.Z), without v.
         required: true
         type: string
+      qualification-only:
+        description: Qualify the selected line without publication or its environment.
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
 concurrency:
-  group: nestedset-release-${{ inputs.version }}
+  group: nestedset-release-${{ github.ref }}-${{ inputs.version }}
   cancel-in-progress: false
+  queue: max
 
 env:
   CANDIDATE_VERSION: ${{ inputs.version }}
@@ -25,6 +31,8 @@ jobs:
     timeout-minutes: 10
     outputs:
       deadline-utc: ${{ steps.preflight.outputs.deadline-utc }}
+      line-json: ${{ steps.preflight.outputs.line-json }}
+      publish-allowed: ${{ steps.preflight.outputs.publish-allowed }}
     permissions:
       contents: read
       actions: read
@@ -40,10 +48,21 @@ jobs:
 
       - name: Reject stale source, existing tag, and used package version
         id: preflight
+        env:
+          QUALIFICATION_ONLY: ${{ inputs.qualification-only }}
         run: |
+          qualification=()
+          if [[ "$QUALIFICATION_ONLY" == true ]]; then
+            qualification=(--qualification-only)
+          fi
+
           python3 -m eng.release.publication preflight \
-            --version "$CANDIDATE_VERSION" --output artifacts/preflight.json
-          echo "deadline-utc=$(( $(date +%s) + 7200 ))" >> "$GITHUB_OUTPUT"
+            --version "$CANDIDATE_VERSION" "${qualification[@]}" --output artifacts/preflight.json
+          {
+            echo "line-json=$(jq -c '.line' artifacts/preflight.json)"
+            echo "publish-allowed=$(jq -r '.publishAllowed' artifacts/preflight.json)"
+            echo "deadline-utc=$(( $(date +%s) + 7200 ))"
+          } >> "$GITHUB_OUTPUT"
 
   source-quality:
     name: C# style and unused imports
@@ -52,6 +71,8 @@ jobs:
     outputs:
       artifact-id: ${{ steps.evidence.outputs.artifact-id }}
     timeout-minutes: 30
+    env:
+      NESTEDSET_RELEASE_LINE: ${{ needs.preflight.outputs.line-json }}
 
     steps:
       - name: Checkout exact candidate source
@@ -99,6 +120,8 @@ jobs:
     outputs:
       artifact-id: ${{ steps.evidence.outputs.artifact-id }}
     timeout-minutes: 15
+    env:
+      NESTEDSET_RELEASE_LINE: ${{ needs.preflight.outputs.line-json }}
 
     steps:
       - name: Checkout exact candidate source
@@ -140,6 +163,9 @@ jobs:
     outputs:
       build-id: ${{ steps.build.outputs.artifact-id }}
       package-id: ${{ steps.packages.outputs.artifact-id }}
+      line-json: ${{ needs.preflight.outputs.line-json }}
+    env:
+      NESTEDSET_RELEASE_LINE: ${{ needs.preflight.outputs.line-json }}
 
     steps:
       - name: Checkout exact candidate source
@@ -203,6 +229,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 130
     env:
+      NESTEDSET_RELEASE_LINE: ${{ needs.build.outputs.line-json }}
       RC_BUILD_ARTIFACT_ID: ${{ needs.build.outputs.build-id }}
 
     # WHY: Independent runners isolate Docker and coverage while testing the same producer-built bytes.
@@ -319,6 +346,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
+      NESTEDSET_RELEASE_LINE: ${{ needs.build.outputs.line-json }}
       RC_BUILD_ARTIFACT_ID: ${{ needs.build.outputs.build-id }}
     strategy:
       fail-fast: false
@@ -386,6 +414,7 @@ jobs:
       artifact-id: ${{ steps.evidence.outputs.artifact-id }}
     timeout-minutes: 30
     env:
+      NESTEDSET_RELEASE_LINE: ${{ needs.build.outputs.line-json }}
       RC_PACKAGE_ARTIFACT_ID: ${{ needs.build.outputs.package-id }}
 
     steps:
@@ -445,6 +474,7 @@ jobs:
       artifact-id: ${{ steps.evidence.outputs.artifact-id }}
     timeout-minutes: 30
     env:
+      NESTEDSET_RELEASE_LINE: ${{ needs.build.outputs.line-json }}
       RC_PACKAGE_ARTIFACT_ID: ${{ needs.build.outputs.package-id }}
 
     steps:
@@ -506,8 +536,10 @@ jobs:
       contents: read
     env:
       RC_BUILD_ARTIFACT_ID: ${{ needs.build.outputs.build-id }}
+      NESTEDSET_RELEASE_LINE: ${{ needs.preflight.outputs.line-json }}
     outputs:
       artifact-id: ${{ steps.candidate.outputs.artifact-id }}
+      publish-allowed: ${{ needs.preflight.outputs.publish-allowed }}
 
     steps:
       - name: Require every qualification job to pass
@@ -730,6 +762,12 @@ jobs:
   publish:
     name: Publish approved candidate
     needs: [qualify, attest]
+    if: ${{ !inputs.qualification-only && needs.qualify.outputs.publish-allowed == 'true' }}
+    # WHY: Every version and source line shares one publisher; lower or late patches cannot race Latest.
+    concurrency:
+      group: nestedset-publication
+      cancel-in-progress: false
+      queue: max
     environment: nuget
     runs-on: ubuntu-24.04
     # WHY: NuGet package and symbol indexing has exceeded an hour in actual releases; readback needs its full budget.
@@ -741,6 +779,8 @@ jobs:
       id-token: write
     env:
       GH_TOKEN: ${{ github.token }}
+      NESTEDSET_PUBLICATION_LOCK_GROUP: nestedset-publication
+      NESTEDSET_PUBLICATION_LOCK_HELD: '1'
 
     steps:
       - name: Checkout qualified source and signed tags
@@ -771,11 +811,12 @@ jobs:
       - name: Revalidate source and operator-signed tag
         shell: bash
         run: |
-          git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
+          git fetch --no-tags origin "$GITHUB_REF:refs/remotes/origin/${GITHUB_REF#refs/heads/}"
           git fetch --no-tags origin "refs/tags/v$CANDIDATE_VERSION:refs/tags/v$CANDIDATE_VERSION"
           python3 -m eng.release.publication authorize \
             --candidate artifacts/candidate \
-            --provenance artifacts/provenance
+            --provenance artifacts/provenance \
+            --output artifacts/publication/authorization.json
 
       - name: Reject conflicting public package bytes
         shell: bash
@@ -795,6 +836,12 @@ jobs:
           --provenance artifacts/provenance
           --output artifacts/publication/draft.json
 
+      - name: Recheck current line permission before credentials
+        run: >-
+          python3 -m eng.release.publication recheck
+          --candidate artifacts/candidate --provenance artifacts/provenance
+          --authorization artifacts/publication/authorization.json
+
       - name: Obtain short-lived NuGet credential
         id: login
         uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
@@ -812,7 +859,10 @@ jobs:
             then .[] else error("Missing primary package filenames") end' artifacts/candidate/package-manifest.json)"
           while IFS= read -r package; do
             echo "::group::Publish $package"
-            dotnet nuget push "artifacts/packages/$package" \
+            python3 -m eng.release.publication recheck \
+              --candidate artifacts/candidate --provenance artifacts/provenance \
+              --authorization artifacts/publication/authorization.json
+            dotnet nuget push "artifacts/candidate/$package" \
               --source https://api.nuget.org/v3/index.json \
               --api-key "$NUGET_API_KEY" \
               --no-symbols --skip-duplicate --timeout 300
@@ -829,7 +879,10 @@ jobs:
             then .[] else error("Missing symbol package filenames") end' artifacts/candidate/package-manifest.json)"
           while IFS= read -r package; do
             echo "::group::Publish $package"
-            dotnet nuget push "artifacts/packages/$package" \
+            python3 -m eng.release.publication recheck \
+              --candidate artifacts/candidate --provenance artifacts/provenance \
+              --authorization artifacts/publication/authorization.json
+            dotnet nuget push "artifacts/candidate/$package" \
               --source https://api.nuget.org/v3/index.json \
               --api-key "$NUGET_API_KEY" \
               --skip-duplicate --timeout 300

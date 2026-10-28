@@ -3,6 +3,8 @@
 This document defines who may decide, qualify, authorize, and verify a release.
 The executable contract is in [Release process](release-process.md); exact
 commands are in [Release publication](operations/release-publication.md).
+[Release lines](operations/release-lines.md) defines exact branch ownership,
+activation, maintenance and historical verification.
 
 ## Roles
 
@@ -59,7 +61,9 @@ that packages have been published.
 
 ## Entry conditions
 
-- Exact source is reviewed and current on protected `main`.
+- Exact source is reviewed and current on its protected authorized release line.
+- Independent current protected-main policy admits its exact ref, major and
+  channel. Prepared lines use qualification-only and cannot publish.
 - Worktree is clean and dependency locks match source.
 - Version and dated changelog entry are reviewed.
 - All six package IDs are unused at that version.
@@ -76,7 +80,7 @@ created only after all reversible candidate work succeeds.
 
 ```mermaid
 flowchart LR
-    A[Reviewed main source]
+    A[Reviewed authorized line source]
     B[Reversible qualification]
     C[Signed provenance and SBOM]
     D[Operator signed tag]
@@ -111,6 +115,7 @@ The release record includes:
 
 - source commit, tree, and content fingerprint;
 - workflow run and attempt;
+- frozen exact source-line/toolchain identity and observed authority;
 - canonical build identity;
 - candidate and package manifests;
 - primary and symbol package SHA-256 hashes;
@@ -156,6 +161,32 @@ same failed publish job and candidate. Already visible matching packages may be
 skipped; conflicting public content is terminal. The GitHub release remains a
 draft until public packages are verified.
 
+## Release-line ownership
+
+The reviewed policy admits exact refs and at most one active publication line
+per package major. Main/10 is initially active; maintenance/10.x and optional
+preview/11.x remain inactive. When main adopts a new framework, the old major
+can transfer to its separately prepared and activated maintenance branch.
+Current source and dependencies remain .NET 10.
+
+The existing `nuget` environment, reviewer arrangement, administrator bypass
+and Trusted Publishing identity are preserved. Qualification-only skips that
+environment entirely. After approval, a publisher rechecks current protected-main
+authority before irreversible boundaries; frozen evidence is not a standing
+permission grant. Complete affected releases before changing line ownership.
+
+All publishers share one non-cancelling queue with `queue: max`. Stable and
+GitHub Latest are separate: an older major or patch may publish without replacing
+a higher stable Latest. Prereleases never become Latest. Historical evidence
+retains its original source ref/schema and does not require current activation
+or continued Latest status.
+
+Active lines receive branch-native daily dependency audits, weekly full CI and
+reviewed dependency-update targets. Preparation PRs receive full CI and exact
+base/head Dependency Review before publication is activated. The
+[release-line procedure](operations/release-lines.md) owns setup, servicing and
+retirement; hosted changes remain separately authorized.
+
 ## Security fixes
 
 Coordinate embargoed releases through the private channel in
@@ -170,7 +201,7 @@ After publication:
 
 1. verify the public tag, assets, provenance, SBOMs, packages, signatures, and
    symbols independently;
-2. confirm stable/prerelease and latest flags;
+2. confirm stable/prerelease and version-ordered Latest behavior;
 3. archive exact run and attempt links in the release record;
 4. update support/changelog statements that depend on actual availability; and
 5. open findings for every manual recovery or unexpected warning.

@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -78,7 +79,11 @@ if args[0] == "restore":
 
     intermediate = Path(os.environ["BaseIntermediateOutputPath"])
     intermediate.mkdir(parents=True, exist_ok=True)
-    (intermediate / "project.assets.json").write_text(json.dumps({"libraries": libraries}))
+    framework = ET.parse(directory.parent / "Directory.Build.props").findtext(".//TargetFramework")
+    if os.environ.get("CONSUMER_WRONG_FRAMEWORK"):
+        framework = "net999.0"
+    (intermediate / "project.assets.json").write_text(json.dumps({"libraries": libraries,
+        "targets": {framework: {}}, "project": {"frameworks": {framework: {}}}}))
     (directory / "packages.lock.json").write_text(json.dumps({"version": 1, "dependencies": libraries}))
 elif args[0] == "run":
     if os.environ.get("CONSUMER_RUN_FAILURE") or os.environ.get("CONSUMER_RUN_FAILURE_KIND") == directory.name:
@@ -181,6 +186,46 @@ class ConsumerTests(unittest.TestCase):
         self.assertEqual([], list((self.output / "filesystem").rglob("*.cs")))
         self.assertIn(f"-p:RepositoryRoot={root}",
                       json.loads(self.command_log.read_text().splitlines()[-1]))
+
+    def test_consumer_uses_its_selected_source_framework(self):
+        """The real wrapper renders another branch's target without requiring producer property overrides."""
+        # Arrange
+        root = Path(__file__).parents[2]
+        source = self.directory / "source"
+        (source / "eng").mkdir(parents=True)
+        shutil.copyfile(root / "eng/verify-package-consumer.sh", source / "eng/verify-package-consumer.sh")
+        shutil.copytree(root / "eng/release", source / "eng/release", ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copytree(root / "eng/consumers", source / "eng/consumers")
+        shutil.copyfile(root / "global.json", source / "global.json")
+        (source / "Directory.Build.props").write_text(
+            '<Project><PropertyGroup><TargetFramework>net11.0</TargetFramework></PropertyGroup></Project>')
+        self.command[1] = str(source / "eng/verify-package-consumer.sh")
+
+        # Act
+        result = self.execute()
+
+        # Assert
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("net11.0", ET.parse(self.output / "Directory.Build.props").findtext(".//TargetFramework"))
+        receipt = json.loads((self.output / "result.json").read_text())
+        self.assertEqual("net11.0", receipt["targetFramework"])
+        self.assertTrue(receipt["success"])
+
+    def test_consumer_rejects_another_framework_restore_before_execution(self):
+        """Matching package identities cannot hide assets restored for another line's target."""
+        # Arrange
+        self.environment["CONSUMER_WRONG_FRAMEWORK"] = "1"
+
+        # Act
+        result = self.execute()
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+        receipt = json.loads((self.output / "result.json").read_text())
+        self.assertFalse(receipt["success"])
+        self.assertIn("another source line's target framework", receipt["error"])
+        commands = [json.loads(line)[0] for line in self.command_log.read_text().splitlines()]
+        self.assertEqual(["restore", "restore"], commands)
 
     def test_invalid_candidate_version_is_rejected_before_sdk_execution(self):
         """Ordinary MSBuild properties never turn untrusted input into a floating package selection."""
