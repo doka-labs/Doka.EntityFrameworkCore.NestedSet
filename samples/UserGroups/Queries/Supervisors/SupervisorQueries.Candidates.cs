@@ -370,7 +370,11 @@ internal static partial class SupervisorQueries
             MetadataOwner.SourceUser or MetadataOwner.CandidateUser => context
                 .UserMetadatas
                 .Where(value => context.UserMetadataDefinitions.Any(definition => definition.TenantId == value.TenantId
+                    // WHY: The text inliner replaces this marker with string comparisons before EF translation.
+                    // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                     && SupervisorExactText.FieldEquals(definition.FieldCode, value.FieldCode)
+                    // WHY: The text inliner replaces this marker with string comparisons before EF translation.
+                    // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                     && SupervisorExactText.FieldEquals(definition.ValueKind, "Text")))
                 .Select(value => new SupervisorRoutingValue
                 {
@@ -389,7 +393,11 @@ internal static partial class SupervisorQueries
                         && group.TypeId == value.GroupTypeId)
                     && context.MembershipMetadataDefinitions.Any(definition => definition.TenantId == value.TenantId
                         && definition.GroupTypeId == value.GroupTypeId
+                        // WHY: The text inliner replaces this marker with string comparisons before EF translation.
+                        // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                         && SupervisorExactText.FieldEquals(definition.FieldCode, value.FieldCode)
+                        // WHY: The text inliner replaces this marker with string comparisons before EF translation.
+                        // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                         && SupervisorExactText.FieldEquals(definition.ValueKind, "Text")))
                 .Select(value => new SupervisorRoutingValue
                 {
@@ -408,7 +416,11 @@ internal static partial class SupervisorQueries
                         && group.TypeId == value.GroupTypeId)
                     && context.GroupMetadataDefinitions.Any(definition => definition.TenantId == value.TenantId
                         && definition.GroupTypeId == value.GroupTypeId
+                        // WHY: The text inliner replaces this marker with string comparisons before EF translation.
+                        // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                         && SupervisorExactText.FieldEquals(definition.FieldCode, value.FieldCode)
+                        // WHY: The text inliner replaces this marker with string comparisons before EF translation.
+                        // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                         && SupervisorExactText.FieldEquals(definition.ValueKind, "Text")))
                 .Select(value => new SupervisorRoutingValue
                 {

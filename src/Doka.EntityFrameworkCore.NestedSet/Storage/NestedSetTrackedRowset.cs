@@ -72,6 +72,10 @@ internal static class NestedSetTrackedRowset<TEntity>
         }
 
         IQueryable<int>? query = null;
+
+        // WHY: Keep each SQL branch tagged with the original value ordinal without an indexed projection.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < values.Count; index++)
         {
             var ordinal = index;

@@ -48,6 +48,10 @@ internal sealed class NestedSetRepairWriter<TEntity, TKey, TTreeId, TScope>
         }
 
         var values = new NestedSetBatchParameter[count * 5];
+
+        // WHY: Align repairs with five fixed parameter slots per row.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < count; index++)
         {
             var repair = repairs[offset + index];

@@ -40,6 +40,9 @@ internal static class NestedSetInspector<TKey>
             ? new HashSet<TKey>(nodes.Select(node => node.Key), keyComparer)
             : null;
 
+        // WHY: Store root and child ordinals that reference the existing structural snapshot directly.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < nodes.Length; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -199,6 +202,9 @@ internal static class NestedSetInspector<TKey>
 
             if (issues is not null)
             {
+                // WHY: Match visited flags to the original node slots when reporting unreachable nodes.
+                // ReSharper disable once ForCanBeConvertedToForeach
+                // ReSharper disable once LoopCanBeConvertedToQuery
                 for (var index = 0; index < nodes.Length; index++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -264,6 +270,9 @@ internal static class NestedSetInspector<TKey>
     {
         siblings.Sort(comparer);
 
+        // WHY: Compare adjacent sorted sibling positions without another projection or buffer.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 1; index < siblings.Count; index++)
         {
             if (nodes[siblings[index - 1]].Position == nodes[siblings[index]].Position)

@@ -31,57 +31,112 @@ internal static partial class SupervisorQueries
 
         var requiredTypes = request.Groups switch
         {
-            AllEligibleGroups all => all.Types.Distinct().ToArray(),
-            NthEligibleGroup nth => nth.Types.Distinct().ToArray(),
+            AllEligibleGroups all => all
+                .Types
+                .Distinct()
+                .ToArray(),
+            NthEligibleGroup nth => nth
+                .Types
+                .Distinct()
+                .ToArray(),
             NthTypeGroupThenValidate typed => [typed.TypeId],
             _ => [],
         };
 
         var userFields = Fields(request.Matches, MetadataOwner.SourceUser, MetadataOwner.CandidateUser);
         var membershipFields = Fields(
-            request.Matches, MetadataOwner.SourceMembership, MetadataOwner.CandidateMembership);
+            request.Matches,
+            MetadataOwner.SourceMembership,
+            MetadataOwner.CandidateMembership);
 
         var groupFields = Fields(request.Matches, MetadataOwner.SourceGroup, MetadataOwner.CandidateGroup);
 
         // WHY: EF 10 otherwise expands catalog Contains into padded scalar parameters. Each catalog
         // array uses the providers' existing JSON/array transport so growing the criterion count does
         // not grow the SQL/binding list. The override is local to these finite catalog checks.
-        var sourceRows = context.Users.Where(user => user.TenantId == tenantId && user.Id == source)
+        var sourceRows = context
+            .Users
+            .Where(user => user.TenantId == tenantId && user.Id == source)
             .Select(user => new SupervisorReadRow
             {
-                Kind = 0, HasEvidence = false,
-                CatalogValid = (roleId == null || context.Roles.Any(role =>
-                        role.TenantId == tenantId && role.Id == roleId))
-                    && (requiredTypes.Length == 0 || context.GroupTypes.LongCount(type =>
-                        type.TenantId == tenantId && Enumerable.Contains(EF.Parameter(requiredTypes), type.Id))
+                Kind = 0,
+                HasEvidence = false,
+                CatalogValid =
+                    (roleId == null || context.Roles.Any(role => role.TenantId == tenantId && role.Id == roleId))
+                    && (requiredTypes.Length == 0
+                        || context.GroupTypes.LongCount(type =>
+                            type.TenantId == tenantId && Enumerable.Contains(EF.Parameter(requiredTypes), type.Id))
                         == requiredTypes.Length)
-                    && (userFields.Length == 0 || context.UserMetadataDefinitions.LongCount(definition =>
-                        definition.TenantId == tenantId
-                        && Enumerable.Contains(EF.Parameter(userFields),
-                            SupervisorExactText.Suffix(definition.FieldCode))
-                        && SupervisorExactText.FieldEquals(definition.ValueKind, "Text")) == userFields.Length)
-                    && (membershipFields.Length == 0 || context.MembershipMetadataDefinitions
-                        .Where(definition => definition.TenantId == tenantId
-                            && Enumerable.Contains(EF.Parameter(membershipFields),
+                    && (userFields.Length == 0
+                        || context.UserMetadataDefinitions.LongCount(definition => definition.TenantId == tenantId
+                            && Enumerable.Contains(
+                                EF.Parameter(userFields),
+                                // WHY: The text inliner expands this suffix to concatenation before EF translation.
+                                // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                                 SupervisorExactText.Suffix(definition.FieldCode))
+                            // WHY: The text inliner replaces this marker with string comparisons before EF translation.
+                            // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                             && SupervisorExactText.FieldEquals(definition.ValueKind, "Text"))
-                        .Select(definition => definition.FieldCode).Distinct().LongCount() == membershipFields.Length)
+                        == userFields.Length)
+                    && (membershipFields.Length == 0
+                        || context
+                            .MembershipMetadataDefinitions
+                            .Where(definition => definition.TenantId == tenantId
+                                && Enumerable.Contains(
+                                    EF.Parameter(membershipFields),
+                                    // WHY: The text inliner expands this suffix to concatenation before EF translation.
+                                    // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
+                                    SupervisorExactText.Suffix(definition.FieldCode))
+                                // WHY: The text inliner replaces this marker with string comparisons before EF translation.
+                                // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
+                                && SupervisorExactText.FieldEquals(definition.ValueKind, "Text"))
+                            .Select(definition => definition.FieldCode)
+                            .Distinct()
+                            .LongCount()
+                        == membershipFields.Length)
                     && !context.MembershipMetadataDefinitions.Any(definition => definition.TenantId == tenantId
-                        && Enumerable.Contains(EF.Parameter(membershipFields),
+                        && Enumerable.Contains(
+                            EF.Parameter(membershipFields),
+                            // WHY: The text inliner expands this suffix to concatenation before EF translation.
+                            // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                             SupervisorExactText.Suffix(definition.FieldCode))
+                        // WHY: The text inliner replaces this marker with string comparisons before EF translation.
+                        // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                         && !SupervisorExactText.FieldEquals(definition.ValueKind, "Text"))
-                    && (groupFields.Length == 0 || context.GroupMetadataDefinitions
-                        .Where(definition => definition.TenantId == tenantId
-                            && Enumerable.Contains(EF.Parameter(groupFields),
-                                SupervisorExactText.Suffix(definition.FieldCode))
-                            && SupervisorExactText.FieldEquals(definition.ValueKind, "Text"))
-                        .Select(definition => definition.FieldCode).Distinct().LongCount() == groupFields.Length)
+                    && (groupFields.Length == 0
+                        || context
+                            .GroupMetadataDefinitions
+                            .Where(definition => definition.TenantId == tenantId
+                                && Enumerable.Contains(
+                                    EF.Parameter(groupFields),
+                                    // WHY: The text inliner expands this suffix to concatenation before EF translation.
+                                    // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
+                                    SupervisorExactText.Suffix(definition.FieldCode))
+                                // WHY: The text inliner replaces this marker with string comparisons before EF translation.
+                                // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
+                                && SupervisorExactText.FieldEquals(definition.ValueKind, "Text"))
+                            .Select(definition => definition.FieldCode)
+                            .Distinct()
+                            .LongCount()
+                        == groupFields.Length)
                     && !context.GroupMetadataDefinitions.Any(definition => definition.TenantId == tenantId
-                        && Enumerable.Contains(EF.Parameter(groupFields),
+                        && Enumerable.Contains(
+                            EF.Parameter(groupFields),
+                            // WHY: The text inliner expands this suffix to concatenation before EF translation.
+                            // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                             SupervisorExactText.Suffix(definition.FieldCode))
+                        // WHY: The text inliner replaces this marker with string comparisons before EF translation.
+                        // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                         && !SupervisorExactText.FieldEquals(definition.ValueKind, "Text")),
-                StateOrdinal = 0, SourceUserId = user.Id, StartGroupId = 0, StartTreeId = Guid.Empty,
-                Count = 0, FoundGroupId = 0, CandidateUserId = 0, Distance = 0, LeadershipPriority = 0,
+                StateOrdinal = 0,
+                SourceUserId = user.Id,
+                StartGroupId = 0,
+                StartTreeId = Guid.Empty,
+                Count = 0,
+                FoundGroupId = 0,
+                CandidateUserId = 0,
+                Distance = 0,
+                LeadershipPriority = 0,
             });
 
         sourceRows = sourceRows.Provider.CreateQuery<SupervisorReadRow>(
@@ -97,25 +152,41 @@ internal static partial class SupervisorQueries
             var originMarkers = origins.Select(s_originMarkerProjection);
             var evidenceRows = candidates.Select(s_evidenceRowProjection);
 
-            return sourceRows.Concat(originMarkers).Concat(evidenceRows);
+            return sourceRows
+                .Concat(originMarkers)
+                .Concat(evidenceRows);
         }
 
         // WHY: Equal minimum and maximum IDs prove exactly one distinct person, even with many occurrences.
         // Unequal IDs mean ambiguity; neither extreme chooses a business winner. This avoids a DISTINCT set
         // and keeps the grouped relation uncorrelated for MariaDB's derived-table restrictions.
         var witnesses = PersonWitnesses(candidates, origins, selection);
-        var outcomes = origins.GroupJoin(witnesses, origin => origin.Group.Id, witness => witness.StartGroupId,
-                (origin, matching) => new { origin, matching })
-            .SelectMany(row => row.matching.DefaultIfEmpty(), (row, witness) => new SupervisorOriginOutcome
-            {
-                // WHY: EF lifts this LEFT JOIN scalar to SQL NULL; this coalesce never dereferences it in CLR code.
-                Origin = row.origin,
-                Count = witness!.Minimum == null ? 0L : witness.Minimum == witness.Maximum ? 1L : 2L,
-                PersonId = witness.Minimum == witness.Maximum ? witness.Minimum : null,
-                FoundGroupId = witness.FoundGroupId,
-                Distance = witness.Distance,
-                LeadershipPriority = witness.LeadershipPriority,
-            });
+        var outcomes = origins
+            .GroupJoin(
+                witnesses,
+                origin => origin.Group.Id,
+                witness => witness.StartGroupId,
+                (origin, matching) => new
+                {
+                    origin,
+                    matching
+                })
+            .SelectMany(
+                row => row.matching.DefaultIfEmpty(),
+                (row, witness) => new SupervisorOriginOutcome
+                {
+                    // WHY: EF lifts this LEFT JOIN scalar to SQL NULL; this coalesce never dereferences it in CLR code.
+                    Origin = row.origin,
+                    Count = witness!.Minimum == null
+                        ? 0L
+                        : witness.Minimum == witness.Maximum
+                            ? 1L
+                            : 2L,
+                    PersonId = witness.Minimum == witness.Maximum ? witness.Minimum : null,
+                    FoundGroupId = witness.FoundGroupId,
+                    Distance = witness.Distance,
+                    LeadershipPriority = witness.LeadershipPriority,
+                });
 
         if (request.Groups is NthTypeGroupThenValidate or NthEligibleGroup)
         {
@@ -129,30 +200,48 @@ internal static partial class SupervisorQueries
             return sourceRows.Concat(singleGroupRows);
         }
 
-        // WHY: Keep complete evidence separate from the outcome LEFT JOIN. Otherwise MySQL joined every
+        // WHY: Keep complete evidence separate from the outcome LEFT JOIN. Otherwise, MySQL joined every
         // membership of a proven unique person to every origin before applying its structural rank and path.
         // Source/member keys and EXISTS predicates make (origin, found group, person) unique; DISTINCT retains
         // all valid occurrences, including the same person in different found groups.
-        var admittedEvidence = candidates.Select(candidate => new
-        {
-            candidate.StartGroupId,
-            CandidateUserId = (int?)candidate.CandidateUserId,
-            FoundGroupId = (int?)candidate.FoundGroupId,
-            Distance = (int?)candidate.Distance,
-            LeadershipPriority = (int?)candidate.LeadershipPriority,
-        }).Distinct();
+        var admittedEvidence = candidates
+            .Select(candidate => new
+            {
+                candidate.StartGroupId,
+                CandidateUserId = (int?)candidate.CandidateUserId,
+                FoundGroupId = (int?)candidate.FoundGroupId,
+                Distance = (int?)candidate.Distance,
+                LeadershipPriority = (int?)candidate.LeadershipPriority,
+            })
+            .Distinct();
 
         // WHY: Join the outcome only once, then null-extend its admitted evidence. An ambiguous 10,000-person
         // fan-in emits one outcome row; a unique person retains every original occurrence for cursor selection.
-        var joined = outcomes.GroupJoin(admittedEvidence,
-            outcome => new { StartGroupId = outcome.Origin.Group.Id, outcome.PersonId },
-            candidate => new { candidate.StartGroupId, PersonId = candidate.CandidateUserId },
-            (outcome, matching) => new { outcome, matching });
-
-        var originRows = joined
-            .SelectMany(row => row.matching.DefaultIfEmpty(), (row, candidate) => new SupervisorReadRow
+        var joined = outcomes.GroupJoin(
+            admittedEvidence,
+            outcome => new
             {
-                Kind = 1, CatalogValid = false, StateOrdinal = 0,
+                StartGroupId = outcome.Origin.Group.Id,
+                outcome.PersonId
+            },
+            candidate => new
+            {
+                candidate.StartGroupId,
+                PersonId = candidate.CandidateUserId
+            },
+            (outcome, matching) => new
+            {
+                outcome,
+                matching,
+            });
+
+        var originRows = joined.SelectMany(
+            row => row.matching.DefaultIfEmpty(),
+            (row, candidate) => new SupervisorReadRow
+            {
+                Kind = 1,
+                CatalogValid = false,
+                StateOrdinal = 0,
                 HasEvidence = candidate!.CandidateUserId != null,
                 Count = row.outcome.Count,
                 SourceUserId = source,
@@ -168,11 +257,18 @@ internal static partial class SupervisorQueries
     }
 
     /// <summary>Collects only requested fields for one explicit physical owner catalog.</summary>
-    private static string[] Fields(IReadOnlyList<MetadataMatch> matches, MetadataOwner source, MetadataOwner candidate)
-        => matches.SelectMany(match => new[]
-            {
-                match.SourceOwner == source ? match.SourceFieldCode : null,
-                match.CandidateOwner == candidate ? match.CandidateFieldCode : null,
-            })
-            .OfType<string>().Distinct(StringComparer.Ordinal).Select(SupervisorExactText.Suffix).ToArray();
+    private static string[] Fields(
+        IReadOnlyList<MetadataMatch> matches,
+        MetadataOwner source,
+        MetadataOwner candidate
+    ) => matches
+        .SelectMany(match => new[]
+        {
+            match.SourceOwner == source ? match.SourceFieldCode : null,
+            match.CandidateOwner == candidate ? match.CandidateFieldCode : null,
+        })
+        .OfType<string>()
+        .Distinct(StringComparer.Ordinal)
+        .Select(SupervisorExactText.Suffix)
+        .ToArray();
 }

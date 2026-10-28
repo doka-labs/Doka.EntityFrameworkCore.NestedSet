@@ -115,7 +115,7 @@ public sealed class UnicodeIdentityCompiledModelTests
     {
         // Arrange
         await using var database = await _fixture.CreateDatabaseAsync("PostgreSql", qualifySchema: false);
-        using var source = database.CreateContext();
+        await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<UnicodeIdentityAliasCompiledContext>().UseNpgsql(
             source.Database.GetConnectionString()!,
             provider => provider.UseNestedSets());

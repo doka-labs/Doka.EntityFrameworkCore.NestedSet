@@ -94,6 +94,9 @@ internal sealed class NestedSetTrackedStructure<TEntity, TKey, TTreeId, TScope>
 
                         var identities = new HashSet<TKey>(matched, map.KeyComparer);
 
+                        // WHY: Accumulate database membership into the matching key slots across chunks.
+                        // ReSharper disable once ForCanBeConvertedToForeach
+                        // ReSharper disable once LoopCanBeConvertedToQuery
                         for (var index = 0; index < keys.Length; index++)
                         {
                             found[index] |= identities.Contains(keys[index]);
@@ -118,6 +121,9 @@ internal sealed class NestedSetTrackedStructure<TEntity, TKey, TTreeId, TScope>
                     }
                 }
 
+                // WHY: Select tracked entries by their corresponding database-membership flags.
+                // ReSharper disable once ForCanBeConvertedToForeach
+                // ReSharper disable once LoopCanBeConvertedToQuery
                 for (var index = 0; index < batch.Length; index++)
                 {
                     if (found[index])
@@ -250,6 +256,9 @@ internal sealed class NestedSetTrackedStructure<TEntity, TKey, TTreeId, TScope>
                     RefreshEntry(batch[ordinal], row);
                 }
 
+                // WHY: Detach only entries whose corresponding persisted-row flag is absent.
+                // ReSharper disable once ForCanBeConvertedToForeach
+                // ReSharper disable once LoopCanBeConvertedToQuery
                 for (var index = 0; index < batch.Length; index++)
                 {
                     if (!persisted[index])

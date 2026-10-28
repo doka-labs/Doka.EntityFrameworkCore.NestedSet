@@ -52,10 +52,15 @@ internal sealed partial class NestedSetQuerySelection : ExpressionVisitor
 
         // WHY: Framework parents can forward a child's Type. Inspect children first so retained
         // application metadata cannot run a virtual getter through an otherwise ordinary parent.
-        if (!_usesQueryOperators && node.Type.GetType() != typeof(object).GetType())
+        // WHY: Compare concrete Type implementations to exclude application-defined metadata wrappers.
+        // ReSharper disable PossibleMistakenCallToGetType
+        if (!_usesQueryOperators
+            && node.Type.GetType() != typeof(object).GetType())
         {
             _usesQueryOperators = true;
         }
+
+        // ReSharper restore PossibleMistakenCallToGetType
 
         return node;
     }
@@ -98,8 +103,6 @@ internal sealed partial class NestedSetQuerySelection : ExpressionVisitor
             && ReferencesOrIsOpaque(collection, _entity))
         {
             _usesQueryOperators = true;
-
-            return node;
         }
 
         return node;
@@ -124,7 +127,9 @@ internal sealed partial class NestedSetQuerySelection : ExpressionVisitor
     /// <summary>Recognizes syntax and metadata whose visitor dispatch cannot execute application code.</summary>
     // WHY: New/indexer nodes can retain application reflection objects. Dynamic dispatch reduces through
     // extension visitation and can inspect an application-supplied delegate Type before visiting children.
-    private static bool CanInspectSyntax(Expression node) => NestedSetQuerySyntax.CanInspect(node);
+    private static bool CanInspectSyntax(
+        Expression node
+    ) => NestedSetQuerySyntax.CanInspect(node);
 
     /// <summary>Retains unknown child syntax as dependent without invoking its traversal.</summary>
     private static bool ReferencesOrIsOpaque(
@@ -145,7 +150,9 @@ internal sealed partial class NestedSetQuerySelection : ExpressionVisitor
         internal bool FoundOrOpaque { get; private set; }
 
         /// <inheritdoc />
-        public override Expression? Visit(Expression? node)
+        public override Expression? Visit(
+            Expression? node
+        )
         {
             if (FoundOrOpaque || node is null)
             {
@@ -168,7 +175,9 @@ internal sealed partial class NestedSetQuerySelection : ExpressionVisitor
         }
 
         /// <inheritdoc />
-        protected override Expression VisitParameter(ParameterExpression node)
+        protected override Expression VisitParameter(
+            ParameterExpression node
+        )
         {
             FoundOrOpaque = ReferenceEquals(node, parameter);
 

@@ -65,6 +65,9 @@ internal sealed class NestedSetGeneratedConcurrency<TEntity>
             .SingleAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        // WHY: Apply projected generated values to their corresponding mapped properties.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < metadata._properties.Length; index++)
         {
             // WHY: CurrentValue writes the mapped CLR member; generated sidecars would be lost on detachment.

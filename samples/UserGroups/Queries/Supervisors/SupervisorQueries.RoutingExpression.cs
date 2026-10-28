@@ -28,7 +28,8 @@ internal static partial class SupervisorQueries
         // WHY: One scalar CASE protects the complete same-candidate AND from top-level semijoin flattening.
         // Sharing this wrapper also avoids a new Lambda, Where, and fence for every additional scalar match.
         var fenced = Expression.NotEqual(
-            Expression.Condition(routing, Expression.Constant(1L), Expression.Constant(0L)), Expression.Constant(0L));
+            Expression.Condition(routing, Expression.Constant(1L), Expression.Constant(0L)),
+            Expression.Constant(0L));
 
         return pairs.Where(Expression.Lambda<Func<SupervisorCandidatePath, bool>>(fenced, row));
     }
@@ -51,8 +52,11 @@ internal static partial class SupervisorQueries
 
         // WHY: One rowset per exact owner pair keeps the metadata query independent of criterion count.
         // Canonical owner order also keeps equivalent requests on one EF shape when callers reorder owner pairs.
-        var ownerPairs = request.Matches.GroupBy(match => (match.SourceOwner, match.CandidateOwner))
-            .OrderBy(matches => matches.Key.SourceOwner).ThenBy(matches => matches.Key.CandidateOwner);
+        var ownerPairs = request
+            .Matches
+            .GroupBy(match => (match.SourceOwner, match.CandidateOwner))
+            .OrderBy(matches => matches.Key.SourceOwner)
+            .ThenBy(matches => matches.Key.CandidateOwner);
 
         foreach (var matches in ownerPairs)
         {
@@ -74,11 +78,23 @@ internal static partial class SupervisorQueries
 
             // WHY: Both arrays come from the same nonempty group, so every generated index has both fields.
             // Raw strings remain ordinary provider parameters; no delimiter encoding or client metadata reads occur.
-            var sourceFields = matches.Select(match => match.SourceFieldCode).ToArray();
-            var targetFields = matches.Select(match => match.CandidateFieldCode).ToArray();
-            var expression = s_routingTemplates[(sourceIndex * 3) + targetIndex].Bind(
-                row, request.RoutingUserId ?? request.SourceUserId, request.RoutingGroupId,
-                sourceFields, targetFields, source, target);
+            var sourceFields = matches
+                .Select(match => match.SourceFieldCode)
+                .ToArray();
+
+            var targetFields = matches
+                .Select(match => match.CandidateFieldCode)
+                .ToArray();
+
+            var expression = s_routingTemplates[(sourceIndex * 3) + targetIndex]
+                .Bind(
+                    row,
+                    request.RoutingUserId ?? request.SourceUserId,
+                    request.RoutingGroupId,
+                    sourceFields,
+                    targetFields,
+                    source,
+                    target);
 
             condition = condition is null ? expression : Expression.AndAlso(condition, expression);
         }
@@ -96,8 +112,11 @@ internal static partial class SupervisorQueries
         {
             for (var target = 0; target < 3; target++)
             {
-                templates[(source * 3) + target] = new RoutingTemplate(
-                    source != 2, source != 0, target != 2, target != 0);
+                templates[source * 3 + target] = new RoutingTemplate(
+                    source != 2,
+                    source != 0,
+                    target != 2,
+                    target != 0);
             }
         }
 
@@ -107,33 +126,52 @@ internal static partial class SupervisorQueries
     /// <summary>Stores one reusable server expression for an explicit source/candidate owner pair.</summary>
     private sealed class RoutingTemplate
     {
-        private readonly Expression<Func<SupervisorCandidatePath, RoutingArguments,
-            IQueryable<SupervisorRoutingValue>, IQueryable<SupervisorRoutingValue>, bool>> _expression;
+        private readonly Expression<Func<SupervisorCandidatePath, RoutingArguments, IQueryable<SupervisorRoutingValue>,
+            IQueryable<SupervisorRoutingValue>, bool>> _expression;
 
         /// <summary>
         /// Captures fixed owner semantics; no request, context, or query is retained by the static cache.
         /// </summary>
-        internal RoutingTemplate(bool sourceUser, bool sourceGroup, bool targetUser, bool targetGroup)
+        internal RoutingTemplate(
+            bool sourceUser,
+            bool sourceGroup,
+            bool targetUser,
+            bool targetGroup
+        )
         {
             // WHY: Keep each target probe scalar inside its matching source field. A flattened
             // value-equality semijoin can otherwise pair every equal-valued field with every other
             // field before applying their criterion indices (4 x 4 rather than four exact pairs).
-            Expression<Func<SupervisorCandidatePath, RoutingArguments,
-                IQueryable<SupervisorRoutingValue>, IQueryable<SupervisorRoutingValue>, bool>> expression
-                = (row, arguments, source, target) =>
-                    EF.Parameter(arguments.Indices).All(index => source.Any(left =>
-                        SupervisorExactText.FieldEquals(left.FieldCode, arguments.SourceFields.ElementAt(index))
-                        && left.UserId == (sourceUser ? arguments.UserId : 0)
-                        && left.GroupId == (sourceGroup ? arguments.GroupId ?? row.Candidate.StartGroupId : 0)
-                        && (target.Any(right => SupervisorExactText.FieldEquals(
-                                right.FieldCode, arguments.TargetFields.ElementAt(index))
-                            && right.UserId == (targetUser ? row.Candidate.CandidateUserId : 0)
-                            && right.GroupId == (targetGroup ? row.Candidate.FoundGroupId : 0)
-                            && SupervisorExactText.ValueEquals(left.Value, right.Value)) ? 1L : 0L) != 0L));
+            Expression<Func<SupervisorCandidatePath, RoutingArguments, IQueryable<SupervisorRoutingValue>,
+                IQueryable<SupervisorRoutingValue>, bool>> expression = (
+                row,
+                arguments,
+                source,
+                target
+            ) => EF
+                .Parameter(arguments.Indices)
+                .All(index => source.Any(left =>
+                    // WHY: The text inliner replaces this marker with string comparisons before EF translation.
+                    // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
+                    SupervisorExactText.FieldEquals(left.FieldCode, arguments.SourceFields.ElementAt(index))
+                    && left.UserId == (sourceUser ? arguments.UserId : 0)
+                    && left.GroupId == (sourceGroup ? arguments.GroupId ?? row.Candidate.StartGroupId : 0)
+                    // WHY: The text inliner replaces this marker with string comparisons before EF translation.
+                    // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
+                    && (target.Any(right =>
+                        SupervisorExactText.FieldEquals(right.FieldCode, arguments.TargetFields.ElementAt(index))
+                        && right.UserId == (targetUser ? row.Candidate.CandidateUserId : 0)
+                        && right.GroupId == (targetGroup ? row.Candidate.FoundGroupId : 0)
+                        // WHY: The text inliner expands this marker to null, empty and equality checks.
+                        // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
+                        && SupervisorExactText.ValueEquals(left.Value, right.Value))
+                        ? 1L
+                        : 0L)
+                    != 0L));
 
-            _expression = (Expression<Func<SupervisorCandidatePath, RoutingArguments,
-                IQueryable<SupervisorRoutingValue>, IQueryable<SupervisorRoutingValue>, bool>>)
-                SupervisorExactText.Inline(expression);
+            _expression =
+                (Expression<Func<SupervisorCandidatePath, RoutingArguments, IQueryable<SupervisorRoutingValue>,
+                    IQueryable<SupervisorRoutingValue>, bool>>)SupervisorExactText.Inline(expression);
         }
 
         /// <summary>
@@ -162,9 +200,17 @@ internal static partial class SupervisorQueries
             // WHY: Reusing the complete shape avoids reflection and rebuilding each extra scalar criterion.
             Expression[] values =
             [
-                Expression.Constant(new RoutingArguments(
-                    user, group, sourceFields, targetFields, Enumerable.Range(0, sourceFields.Length).ToArray())),
-                source.Expression, target.Expression,
+                Expression.Constant(
+                    new RoutingArguments(
+                        user,
+                        group,
+                        sourceFields,
+                        targetFields,
+                        Enumerable
+                            .Range(0, sourceFields.Length)
+                            .ToArray())),
+                source.Expression,
+                target.Expression,
             ];
 
             var visitor = new RoutingBindingVisitor(_expression.Parameters, values, row);
@@ -195,7 +241,9 @@ internal static partial class SupervisorQueries
     ) : ExpressionVisitor
     {
         /// <inheritdoc />
-        protected override Expression VisitParameter(ParameterExpression node)
+        protected override Expression VisitParameter(
+            ParameterExpression node
+        )
         {
             if (ReferenceEquals(node, parameters[0]))
             {

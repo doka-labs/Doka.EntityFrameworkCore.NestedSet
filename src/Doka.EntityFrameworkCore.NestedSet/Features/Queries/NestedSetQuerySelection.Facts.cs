@@ -25,7 +25,7 @@ internal sealed partial class NestedSetQuerySelection
         // filters retain the conservative path rather than being evaluated to guess their contents.
         var facts = new FactSelection(model, predicate.Parameters[0]);
         facts.Visit(predicate.Body);
-        factSelection = !facts.RequiresCorrelation && facts.HasFactRoot;
+        factSelection = facts is { RequiresCorrelation: false, HasFactRoot: true };
 
         return !factSelection;
     }
@@ -45,7 +45,9 @@ internal sealed partial class NestedSetQuerySelection
         internal bool HasFactRoot { get; private set; }
 
         /// <inheritdoc />
-        public override Expression? Visit(Expression? node)
+        public override Expression? Visit(
+            Expression? node
+        )
         {
             if (RequiresCorrelation || node is null)
             {
@@ -61,7 +63,8 @@ internal sealed partial class NestedSetQuerySelection
                 return node;
             }
 
-            if (node.GetType() == typeof(EntityQueryRootExpression) && node is EntityQueryRootExpression root)
+            if (node.GetType() == typeof(EntityQueryRootExpression)
+                && node is EntityQueryRootExpression root)
             {
                 InspectRoot(root.EntityType);
 
@@ -86,6 +89,8 @@ internal sealed partial class NestedSetQuerySelection
             // child-first pass also prevents a parent's Type getter from reaching opaque child metadata.
             var type = node.Type;
 
+            // WHY: Compare concrete Type implementations to exclude application-defined metadata wrappers.
+            // ReSharper disable PossibleMistakenCallToGetType
             if (type.GetType() != typeof(object).GetType()
                 || (typeof(IQueryable).IsAssignableFrom(type)
                     && (node is not MethodCallExpression call || !IsFactSourceOperator(call.Method))))
@@ -93,11 +98,15 @@ internal sealed partial class NestedSetQuerySelection
                 RequiresCorrelation = true;
             }
 
+            // ReSharper restore PossibleMistakenCallToGetType
+
             return node;
         }
 
         /// <inheritdoc />
-        protected override Expression VisitConstant(ConstantExpression node)
+        protected override Expression VisitConstant(
+            ConstantExpression node
+        )
         {
             RequiresCorrelation = node.Value is IQueryable;
 
@@ -105,7 +114,9 @@ internal sealed partial class NestedSetQuerySelection
         }
 
         /// <inheritdoc />
-        protected override Expression VisitMethodCall(MethodCallExpression node)
+        protected override Expression VisitMethodCall(
+            MethodCallExpression node
+        )
         {
             base.VisitMethodCall(node);
 
@@ -123,20 +134,23 @@ internal sealed partial class NestedSetQuerySelection
                 return node;
             }
 
-            if (node.Method.DeclaringType == typeof(EF) && node.Method.Name == nameof(EF.Property)
+            if (node.Method.DeclaringType == typeof(EF)
+                && node.Method.Name == nameof(EF.Property)
                 && (node.Arguments[1] is not ConstantExpression { Value: string property }
-                    || model.FindEntityType(node.Arguments[0].Type)?.FindProperty(property) is null))
+                    || model
+                        .FindEntityType(node.Arguments[0].Type)
+                        ?.FindProperty(property) is null))
             {
                 RequiresCorrelation = true;
-
-                return node;
             }
 
             return node;
         }
 
         /// <inheritdoc />
-        protected override Expression VisitMember(MemberExpression node)
+        protected override Expression VisitMember(
+            MemberExpression node
+        )
         {
             base.VisitMember(node);
 
@@ -163,23 +177,24 @@ internal sealed partial class NestedSetQuerySelection
                     || declaring.FindSkipNavigation(node.Member.Name) is not null))
             {
                 RequiresCorrelation = true;
-
-                return node;
             }
 
             return node;
         }
 
         /// <summary>Admits ordinary LINQ and tracking-only markers, never arbitrary query-producing methods.</summary>
-        private static bool IsFactSourceOperator(MethodInfo method)
-            => method.DeclaringType == typeof(Queryable)
-                || (method.DeclaringType == typeof(EntityFrameworkQueryableExtensions)
-                    && method.Name is nameof(EntityFrameworkQueryableExtensions.AsNoTracking)
-                        or nameof(EntityFrameworkQueryableExtensions.AsTracking)
-                        or nameof(EntityFrameworkQueryableExtensions.AsNoTrackingWithIdentityResolution));
+        private static bool IsFactSourceOperator(
+            MethodInfo method
+        ) => method.DeclaringType == typeof(Queryable)
+            || (method.DeclaringType == typeof(EntityFrameworkQueryableExtensions)
+                && method.Name is nameof(EntityFrameworkQueryableExtensions.AsNoTracking)
+                    or nameof(EntityFrameworkQueryableExtensions.AsTracking)
+                    or nameof(EntityFrameworkQueryableExtensions.AsNoTrackingWithIdentityResolution));
 
         /// <inheritdoc />
-        protected override Expression VisitUnary(UnaryExpression node)
+        protected override Expression VisitUnary(
+            UnaryExpression node
+        )
         {
             if (node.NodeType == ExpressionType.ArrayLength
                 && ReferencesOrIsOpaque(node.Operand, selected))
@@ -193,9 +208,12 @@ internal sealed partial class NestedSetQuerySelection
         }
 
         /// <summary>Checks inherited filters too, because EF applies them after selection construction.</summary>
-        private void InspectRoot(IEntityType entity)
+        private void InspectRoot(
+            IEntityType entity
+        )
         {
-            if (!ReferenceEquals(entity.Model, model) || IsHierarchy(entity))
+            if (!ReferenceEquals(entity.Model, model)
+                || IsHierarchy(entity))
             {
                 RequiresCorrelation = true;
 
@@ -221,7 +239,9 @@ internal sealed partial class NestedSetQuerySelection
         }
 
         /// <summary>Recognizes inherited hierarchy configuration without manufacturing CLR-type identity.</summary>
-        private static bool IsHierarchy(IEntityType entity)
+        private static bool IsHierarchy(
+            IEntityType entity
+        )
         {
             for (var current = entity; current is not null; current = current.BaseType)
             {

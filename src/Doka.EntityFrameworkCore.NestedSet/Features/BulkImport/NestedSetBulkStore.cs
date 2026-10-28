@@ -187,6 +187,9 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
             var count = Math.Min(NestedSetBatch.MaximumRows, _plan.Nodes.Count - offset);
             var entries = new Dictionary<TKey, int>(count, _store.Map.KeyComparer);
 
+            // WHY: Map only the current key batch to its absolute plan ordinals.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var index = offset; index < offset + count; index++)
             {
                 entries.Add(keys[index], index);
@@ -236,6 +239,9 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
     {
         var keys = new TKey[_plan.Nodes.Count];
 
+        // WHY: Keep independent key snapshots aligned with their original plan nodes.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < keys.Length; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -314,6 +320,8 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
         // WHY: Reader callbacks or mapped setters can mutate an input key while its physical row stays intact,
         // including an earlier input changed by a later setter. Read the caller-visible value after disposal and
         // compare it with the independent database-membership snapshot.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < keys.Length; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -336,6 +344,9 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
         // WHY: Creating an already-detached Entry still adds it to EF's strong detached-reference map, and
         // assigning Detached again does not remove it. Direct compiled setters preserve exact database values
         // and complex value-copyback without retaining one EF entry for every imported node.
+        // Align refresh setters and projected values while leaving the key slot untouched.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 1; index < setters.Length; index++)
         {
             setters[index]

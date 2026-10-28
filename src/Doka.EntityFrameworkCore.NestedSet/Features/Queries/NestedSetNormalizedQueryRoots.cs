@@ -6,12 +6,15 @@ internal sealed class NestedSetNormalizedQueryRoots
     private Dictionary<Expression, Expression>? _roots;
 
     /// <summary>Canonicalizes only the two owned root arguments of an already recognized exact library marker.</summary>
-    internal MethodCallExpression Canonicalize(MethodCallExpression marker)
+    internal MethodCallExpression Canonicalize(
+        MethodCallExpression marker
+    )
     {
         var visible = CanonicalizeRoot(marker.Arguments[0]);
         var unbound = CanonicalizeRoot(marker.Arguments[1]);
 
-        if (ReferenceEquals(visible, marker.Arguments[0]) && ReferenceEquals(unbound, marker.Arguments[1]))
+        if (ReferenceEquals(visible, marker.Arguments[0])
+            && ReferenceEquals(unbound, marker.Arguments[1]))
         {
             return marker;
         }
@@ -24,7 +27,9 @@ internal sealed class NestedSetNormalizedQueryRoots
     }
 
     /// <summary>Reuses a binding only after its entire grammar excludes application equality or virtual dispatch.</summary>
-    private Expression CanonicalizeRoot(Expression root)
+    private Expression CanonicalizeRoot(
+        Expression root
+    )
     {
         var admission = new RootAdmission();
         admission.Visit(root);
@@ -56,32 +61,47 @@ internal sealed class NestedSetNormalizedQueryRoots
         internal bool Allowed { get; private set; } = true;
 
         /// <inheritdoc />
-        public override Expression? Visit(Expression? node)
+        public override Expression? Visit(
+            Expression? node
+        )
         {
-            if (!Allowed || node is null)
+            if (!Allowed
+                || node is null)
             {
                 return node;
             }
 
-            if (node.GetType() == typeof(EntityQueryRootExpression) && node is EntityQueryRootExpression root)
+            if (node.GetType() == typeof(EntityQueryRootExpression)
+                && node is EntityQueryRootExpression root)
             {
+                // WHY: Compare concrete Type implementations to exclude application-defined metadata wrappers.
+                // ReSharper disable PossibleMistakenCallToGetType
                 Allowed = root.QueryProvider is null
                     && root.EntityType.GetType().Assembly == typeof(IEntityType).Assembly
                     && root.Type.GetType() == typeof(object).GetType();
+                // ReSharper restore PossibleMistakenCallToGetType
 
                 return node;
             }
 
             if (node.GetType() == typeof(QueryParameterExpression))
             {
+                // WHY: Compare concrete Type implementations to exclude application-defined metadata wrappers.
+                // ReSharper disable PossibleMistakenCallToGetType
                 Allowed = node.Type.GetType() == typeof(object).GetType();
+                // ReSharper restore PossibleMistakenCallToGetType
 
                 return node;
             }
 
             if (!NestedSetQuerySyntax.CanInspect(node)
-                || node is not (MethodCallExpression or UnaryExpression or BinaryExpression
-                    or LambdaExpression or ParameterExpression or MemberExpression or ConstantExpression)
+                || node is not (MethodCallExpression
+                    or UnaryExpression
+                    or BinaryExpression
+                    or LambdaExpression
+                    or ParameterExpression
+                    or MemberExpression
+                    or ConstantExpression)
                 || (node is BinaryExpression { Method: { } binary }
                     && binary.GetType().Assembly != typeof(MethodInfo).Assembly)
                 || (node is UnaryExpression { Method: { } unary }
@@ -96,24 +116,49 @@ internal sealed class NestedSetNormalizedQueryRoots
 
             // WHY: Runtime parents can forward a child's Type. Inspect children first so no opaque
             // child or application metadata can be reached indirectly through that otherwise safe parent.
+            // WHY: Compare concrete Type implementations to exclude application-defined metadata wrappers.
+            // ReSharper disable PossibleMistakenCallToGetType
             if (Allowed && node.Type.GetType() != typeof(object).GetType())
             {
                 Allowed = false;
             }
 
+            // ReSharper restore PossibleMistakenCallToGetType
+
             return node;
         }
 
         /// <inheritdoc />
-        protected override Expression VisitConstant(ConstantExpression node)
+        protected override Expression VisitConstant(
+            ConstantExpression node
+        )
         {
             // WHY: EF's comparer invokes literal Equals/GetHashCode and structural-array callbacks.
             // Custom objects, structs and arrays are deliberately not interned; captured values remain
             // EF parameters, so rejecting those literals retains correctness and the conservative proof.
             var value = node.Value;
-            Allowed = value is null or string or bool or char or byte or sbyte or short or ushort
-                or int or uint or long or ulong or float or double or decimal or Guid or DateTime
-                or DateTimeOffset or DateOnly or TimeOnly or TimeSpan or DbFunctions;
+            Allowed = value is null
+                or string
+                or bool
+                or char
+                or byte
+                or sbyte
+                or short
+                or ushort
+                or int
+                or uint
+                or long
+                or ulong
+                or float
+                or double
+                or decimal
+                or Guid
+                or DateTime
+                or DateTimeOffset
+                or DateOnly
+                or TimeOnly
+                or TimeSpan
+                or DbFunctions;
 
             return node;
         }

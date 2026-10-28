@@ -53,6 +53,10 @@ internal sealed class NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>
 
         var prepared = new PreparedTree[trees.Count];
         var lockRequests = new NestedSetTreeLockRequest<TTreeId, TScope>[trees.Count];
+
+        // WHY: Keep prepared tree plans and registry lock requests aligned with input trees.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < trees.Count; index++)
         {
             var request = trees[index];
@@ -167,6 +171,9 @@ internal sealed class NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>
     {
         var order = NestedSetMapping<TEntity, TKey, TScope>.For(_context, _entityType).Order;
 
+        // WHY: Write each resolved destination back to the corresponding prepared-tree slot.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < prepared.Length; index++)
         {
             var tree = prepared[index];
@@ -210,6 +217,9 @@ internal sealed class NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>
                     tree.Plan.StageBatch(tree.Destination, treeOffset, count, cancellationToken);
                     active.Add(tree);
 
+                    // WHY: Authorize exactly the staged slice of the current tree in the shared payload wave.
+                    // ReSharper disable once ForCanBeConvertedToForeach
+                    // ReSharper disable once LoopCanBeConvertedToQuery
                     for (var index = treeOffset; index < treeOffset + count; index++)
                     {
                         expected.Add(tree.Plan.Nodes[index].Entity);

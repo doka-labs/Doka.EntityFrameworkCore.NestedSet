@@ -16,6 +16,9 @@ internal static class NestedSetTrackedRefresh
         var pendingPayload = entry.State == EntityState.Modified;
         IUpdateEntry? generated = null;
 
+        // WHY: Match mapped properties to projected row values after the leading ordinal slot.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < properties.Count; index++)
         {
             var metadata = properties[index];

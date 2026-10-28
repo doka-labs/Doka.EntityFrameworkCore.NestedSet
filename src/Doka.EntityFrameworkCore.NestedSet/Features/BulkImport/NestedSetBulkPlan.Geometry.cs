@@ -32,6 +32,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         var pending = new Stack<TraversalFrame>();
         var boundary = destination.Boundary;
 
+        // WHY: Root ordinals determine persisted sibling positions while geometry is assigned in preorder.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var rootPosition = 0; rootPosition < Roots.Count; rootPosition++)
         {
             var rootIndex = Roots[rootPosition];
@@ -85,6 +88,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         var children = new int[parent.ChildCount];
         var child = parent.FirstChild;
 
+        // WHY: Fill sortable child indexes directly from the sibling chain.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < children.Length; index++)
         {
             children[index] = child;
@@ -95,6 +101,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         parent.FirstChild = children[0];
         parent.LastChild = children[^1];
 
+        // WHY: Link each sorted child to its adjacent successor.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 1; index < children.Length; index++)
         {
             Nodes[children[index - 1]].NextSibling = children[index];

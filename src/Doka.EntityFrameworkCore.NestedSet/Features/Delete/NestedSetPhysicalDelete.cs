@@ -3,8 +3,8 @@ namespace Doka.EntityFrameworkCore.NestedSet.Features.Delete;
 /// <summary>Deletes one mapped hierarchy row across every physical table fragment.</summary>
 /// <typeparam name="TEntity">The mapped hierarchy entity.</typeparam>
 /// <typeparam name="TKey">The primary key type.</typeparam>
-/// <typeparam name="TScope">The optional mapped scope type or the scope-free marker.</typeparam>
 /// <typeparam name="TTreeId">The stable tree-identity type.</typeparam>
+/// <typeparam name="TScope">The optional mapped scope type or the scope-free marker.</typeparam>
 internal sealed class NestedSetPhysicalDelete<TEntity, TKey, TTreeId, TScope>
     where TEntity : class
     where TKey : notnull
@@ -82,6 +82,13 @@ internal sealed class NestedSetPhysicalDelete<TEntity, TKey, TTreeId, TScope>
         return affected;
     }
 
+    /// <summary>Deletes one bounded key batch from a physical fragment using that table's key-column mappings.</summary>
+    /// <param name="table">The fragment selected by the plan's dependent-before-principal ordering.</param>
+    /// <param name="keyProperties">The model primary-key components in the same order as every key vector.</param>
+    /// <param name="keys">The bounded logical identities projected before any fragment is removed.</param>
+    /// <param name="sql">The current provider's identifier and parameter-name delimiter.</param>
+    /// <param name="cancellationToken">The token forwarded to the transaction-owned database command.</param>
+    /// <returns>The physical affected-row count for this table, not the logical hierarchy delete count.</returns>
     private async Task<int> DeleteBatchAsync(
         ITable table,
         IProperty[] keyProperties,
@@ -104,6 +111,9 @@ internal sealed class NestedSetPhysicalDelete<TEntity, TKey, TTreeId, TScope>
             var parameters = new object[keys.Length * keyProperties.Length];
             var index = 0;
 
+            // WHY: Keep SQL predicates and flattened parameter slots together for each composite-key row.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var row = 0; row < keys.Length; row++)
             {
                 if (row > 0)
@@ -113,6 +123,9 @@ internal sealed class NestedSetPhysicalDelete<TEntity, TKey, TTreeId, TScope>
 
                 statement.Append('(');
 
+                // WHY: Align each composite-key component with its mapped column and row value.
+                // ReSharper disable once ForCanBeConvertedToForeach
+                // ReSharper disable once LoopCanBeConvertedToQuery
                 for (var propertyIndex = 0; propertyIndex < keyProperties.Length; propertyIndex++)
                 {
                     if (propertyIndex > 0)
@@ -154,8 +167,19 @@ internal sealed class NestedSetPhysicalDelete<TEntity, TKey, TTreeId, TScope>
         }
     }
 
+    /// <summary>Caches the model-owned key projection and ordered table fragments for one hierarchy mapping.</summary>
+    /// <remarks>
+    ///     The plan contains finalized EF metadata and immutable construction results, never a context or node.
+    ///     Every fragment uses the same projected logical key vector but resolves its own physical key columns.
+    /// </remarks>
     private sealed class DeletePlan
     {
+        /// <summary>Retains one completed mapping plan without changing its metadata or table order afterward.</summary>
+        /// <param name="keyProperties">The ordered logical primary-key properties used by the projection.</param>
+        /// <param name="keyProjection">The scalar key vector projected from every selected hierarchy row.</param>
+        /// <param name="tables">All participating fragments, with dependents before their principals.</param>
+        /// <param name="structureTable">The fragment whose affected rows prove the logical delete count.</param>
+        /// <param name="isRequired">Whether the mapping requires this path instead of single-table ExecuteDelete.</param>
         private DeletePlan(
             IProperty[] keyProperties,
             Expression<Func<TEntity, object?[]>> keyProjection,
@@ -171,16 +195,26 @@ internal sealed class NestedSetPhysicalDelete<TEntity, TKey, TTreeId, TScope>
             IsRequired = isRequired;
         }
 
+        /// <summary>Gets the ordered logical key components supplying each table's provider parameter mappings.</summary>
         internal IProperty[] KeyProperties { get; }
 
+        /// <summary>Gets the key-vector projection whose component order matches <see cref="KeyProperties"/>.</summary>
         internal Expression<Func<TEntity, object?[]>> KeyProjection { get; }
 
+        /// <summary>Gets the physical fragments ordered so their dependents are deleted before their principals.</summary>
         internal ITable[] Tables { get; }
 
+        /// <summary>Gets the managed-coordinate fragment whose row count must match each logical key batch.</summary>
         internal ITable StructureTable { get; }
 
+        /// <summary>Gets whether multiple fragments or independent shared mappings require physical deletion.</summary>
         internal bool IsRequired { get; }
 
+        /// <summary>Resolves all hierarchy fragments and constructs a shared primary-key projection for deletion.</summary>
+        /// <param name="entity">The exact mapped hierarchy type, including its inherited and derived fragments.</param>
+        /// <param name="store">The physical table containing the hierarchy's managed structural properties.</param>
+        /// <returns>A context-free plan suitable for caching under the finalized entity metadata.</returns>
+        /// <exception cref="InvalidOperationException">The mapping has no primary key or contains a table cycle.</exception>
         internal static DeletePlan Create(
             IEntityType entity,
             StoreObjectIdentifier store
@@ -249,6 +283,10 @@ internal sealed class NestedSetPhysicalDelete<TEntity, TKey, TTreeId, TScope>
             return new DeletePlan(keyProperties, projection, ordered, structureTable, isRequired);
         }
 
+        /// <summary>Orders mapped fragments by their foreign-key dependencies without relying on cascade deletes.</summary>
+        /// <param name="tables">The distinct fragments participating in the logical hierarchy mapping.</param>
+        /// <returns>Each fragment once, with any mapped dependents before their principal fragment.</returns>
+        /// <exception cref="InvalidOperationException">The participating fragments contain a foreign-key cycle.</exception>
         private static ITable[] OrderTables(
             ITable[] tables
         )

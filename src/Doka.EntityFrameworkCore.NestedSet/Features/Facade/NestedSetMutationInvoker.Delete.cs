@@ -34,6 +34,7 @@ internal sealed partial class
             var nodeKey = SnapshotKey(binding, key);
             var treeId = await ResolveTreeIdAsync(binding, nodeKey, token)
                 .ConfigureAwait(false);
+
             var store = Store(binding, treeId);
 
             var delete = new NestedSetDelete<TEntity, TKey, TTreeId, TScope>(
