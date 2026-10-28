@@ -10,8 +10,8 @@ internal abstract partial class NestedSetProviderCapabilities
     /// <summary>Gets whether strict ancestors retain an independent coordinate-only owner relation.</summary>
     internal virtual bool UsesIndependentAncestorOwners => false;
 
-    /// <summary>Gets whether nearest-candidate lookup projects its decision before limiting the relation.</summary>
-    internal virtual bool UsesProjectedQueryDecision => false;
+    /// <summary>Gets the qualified nearest-owner ordering and scalar decision boundary.</summary>
+    internal abstract NestedSetNearestQueryStrategy NearestQueryStrategy { get; }
 
     /// <summary>Gets whether row-independent path failures use a separate structural relation.</summary>
     internal virtual bool UsesQueryFailureRelation => false;

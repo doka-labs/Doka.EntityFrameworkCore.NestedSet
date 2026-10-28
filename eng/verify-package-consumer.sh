@@ -92,8 +92,8 @@ try:
     receipt["candidateSha256"] = initial_hashes
     sdk = json.loads((root / "global.json").read_text())["sdk"]["version"]
 
-    # WHY: These are ordinary reviewed C# projects. Copying keeps restore evidence and generated
-    # outputs separate from source, while linked FileSystem code remains the actual maintained sample.
+    # WHY: Candidate projects need explicit version/framework inputs and cannot restore independently.
+    # Templates keep automatic discovery on runnable projects; copying preserves the reviewed XML and C#.
     consumers = root / "eng/consumers"
     for name in ("Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props"):
         shutil.copyfile(consumers / name, output / name)
@@ -113,6 +113,7 @@ try:
     for kind, direct_packages in CONSUMERS:
         directory = output / kind
         shutil.copytree(consumers / kind, directory)
+        (directory / "Consumer.csproj.template").rename(directory / "Consumer.csproj")
         runtime = Path(scratch.name) / kind
         cache = runtime / "packages"
         config = ET.Element("configuration")

@@ -1716,14 +1716,35 @@ See [MySQL's EXPLAIN documentation](https://dev.mysql.com/doc/refman/8.4/en/expl
 
 Portable long-path proofs count children with one visible allowed direct
 parent, retaining native key equality, consecutive depth, containment and
-row-dependent rules. SQL Server's strict ancestor strategy restricts distinct
-tree/bound coordinates before joining every visible mapped owner. The
-coordinate boundary excludes the unique node key, which could otherwise let
-the optimizer remove `DISTINCT`. Equal-bound owners are restored rather than
-deduplicated. These SQL shapes do not guarantee physical seeks or bounded
+row-dependent rules. SQL Server's strict ancestor strategy projects a native
+owner key conditionally on nonleaf eligibility inside the independent
+`DISTINCT` relation, then hydrates by exact key/tree equality. A bare unique key
+could let the optimizer remove `DISTINCT`; coordinate-only hydration proved
+insufficient in successor CI. Equal-bound owners retain their separate keys
+and occurrences. These SQL shapes do not guarantee physical seeks or bounded
 server work; native execution plans and unchanged capacity guards remain
 required. The [2026-10-28 correction record](qualification/query-composition.md#ci-correction-qualification-2026-10-28)
 separates verified local behavior from outstanding native SQL Server execution.
+
+PostgreSQL's nearest decision uses one depth-ordered owner projection rather
+than two scalar-key selections and a subsequent owner lookup. This preserves
+the original nearest-before-value/path contract. The
+[successor qualification](qualification/query-composition.md#successor-ci-and-postgresql-broad-payload-correction)
+records a reproduced quadratic broad-payload join and its corrected actual
+operator work. An inactive branch can still affect optimizer costs; command
+count, zero materialized entities and a small final aggregate do not detect
+repeated fact scans. Native work guards therefore count emitted tuples and
+rows rejected by join filters, multiplied by actual loops.
+
+SQL Server fixture statistics are read from `sys.stats` for the exact mapped
+table through a parameterized `OBJECT_ID` lookup. Each returned statistic is
+updated with `FULLSCAN` in its own command, including automatic column
+statistics. This avoids accumulating all independent refreshes under one
+command deadline without sampling or changing the deadline. An individual
+large scan can still exceed that deadline and must fail visibly. The
+[Microsoft statement contract](https://learn.microsoft.com/en-us/sql/t-sql/statements/update-statistics-transact-sql)
+defines the named-statistic and all-table forms. This is test setup outside the
+measured query; it adds no library-managed production statistics updates.
 
 1. Reproduce on the same controlled environment and stable source.
 2. Compare package DLL hashes, runtime, engine/image, schema, application indexes,

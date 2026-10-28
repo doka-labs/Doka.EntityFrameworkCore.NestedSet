@@ -37,17 +37,20 @@ The failures have distinct evidence boundaries:
   caller token. SqlClient 6.1.7 can cancel its task without that exception
   metadata. Tests still require cancellation and no successful result; the
   original token is checked directly at command/read boundaries.
-- One ten-million-node SQL Server case timed out in a single payload-seeding
-  `INSERT SELECT`. The fixture now uses existing 100,000-key windows. Four
-  independent SQLite controls verify empty, partial, full and second-batch
-  payloads, including exact key totals. Ordinary query deadlines are unchanged.
+- The ten-million-node SQL Server case timed out during setup. Its earlier
+  attribution to a payload `INSERT SELECT` was incorrect: the exact stack and
+  source line identify table-wide `UPDATE STATISTICS ... WITH FULLSCAN`.
+  This case seeds only 100 facts. Payload seeding separately uses 100,000-key
+  windows with four SQLite key-total controls; those controls do not qualify
+  statistics preparation or native SQL Server capacity execution.
 - Five SQL Server capacity reads timed out in actual composed queries. Retained
   wide plans read about 9.5-10 million index/lookup rows for selective requests.
-  The strict ancestor coordinate relation and scalar parent-existence proof
-  address those SQL shapes. Nine focused coordinate controls pass, including
-  real SQL Server translation and executed SQLite adversarial semantics.
-  This is not proof that SQL Server's optimizer chooses the intended plan;
-  native x64 capacity execution and actual plans remain outstanding.
+  The initial strict ancestor coordinate relation and scalar parent-existence
+  proof passed local translation and semantic controls. Successor CI shows that
+  coordinate-only hydration still repeats large scans; it is not a qualified
+  physical fix. The successor candidate uses conditional native owner keys and
+  a single projected nearest decision. Native x64 capacity execution and actual
+  plans remain outstanding, including the deep repeated child scans.
 - The MySQL query returned all 501,005 expected rows, but the separate
   instrumented replay was interrupted after about 30 seconds and returned a
   partial root of 470,220 rows. The replay-only watchdog and warning checks
@@ -83,6 +86,70 @@ report cases with Code Coverage 18.11.0 and the CI runsettings. These are
 focused cohorts, not complete native provider suites. The separate original
 MySQL failure passes as described above. All quoted local cohorts have zero
 failures/skips; none is native SQL Server or hosted release evidence.
+
+### Successor CI and PostgreSQL broad-payload correction
+
+Successor CI `40684866314` at `3488d2149ac85e42d0c6e8b91c890961a98fec61`
+passes the corrected setup/cancellation contracts but exposes a PostgreSQL
+100,000-node broad-payload failure and eight remaining SQL Server capacity
+failures. These results supersede assumptions about optimizer behavior, not
+the successful local semantic controls above.
+
+The PostgreSQL case is reproduced locally without coverage or a timeout
+change. The successful smaller 10,000-node profile already reads 50,000,000
+materialized fact tuples and rejects 49,995,000 join pairs. The 100,000-node
+version times out in the original reader. Its inactive nearest-owner branches
+contain two depth-ordered key selections and another mapped-owner lookup;
+their high estimated cost affects the surrounding payload join even when
+those branches do not execute.
+
+The corrected PostgreSQL strategy reuses the existing projected decision
+primitive, selecting the nearest owner once with `Depth DESC`. Candidate
+selection still precedes value and complete-path decisions. MySQL/MariaDB and
+SQLite retain their existing projected Left ordering. Native positive and
+negative checks retain row-aware criteria, missing paths, rejected nearest
+owners, self rejection and source occurrences. Both original Medium cases
+pass, alongside the dedicated native work guards and broader Unit controls.
+
+| PostgreSQL profile | Maximum emitted tuples | Rejected join tuples | Existing operator budget |
+| --- | --- | --- | --- |
+| 10,000 nodes, one anchor, original | 50,000,000 | 49,995,000 | 40,002 |
+| 10,000 nodes, one anchor, corrected | 10,000 | 0 | 40,002 |
+| 100,000 nodes, one anchor, corrected | 100,000 | 0 | 400,002 |
+| 100,000 nodes, 1,000 anchors, corrected | 101,000 | 0 | 603,998 |
+
+The independent SQL comparison uses an owned PostgreSQL 17.11 container with
+two CPUs and 2 GiB. Both corrected reads return exact fact counts and key sums;
+the original 100,000-node read reaches the unchanged 30-second timeout. No
+planner setting, alternate consumer query, relation boundary, index or
+duration gate is introduced. The
+[work controls](../../tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests/Querying/Composition/NearestDecisionWorkTests.cs)
+use the existing actual-plan parser and work budgets; a negative Unit control
+rejects the five-billion-tuple extrapolated bad shape with that same budget.
+
+The SQL Server successor still reads population-sized owner/child ranges per
+source in successful neighboring profiles. The initial coordinate-only
+`DISTINCT` shape does not establish the intended materialization order and is
+not a qualified performance fix. Those native failures remain open until
+their corrected source passes supported x64 execution with actual plans.
+
+The current SQL Server candidate preserves `Depth DESC` while projecting its
+nearest-owner decision once. The now-unused scalar-key route and exclusive
+method templates were removed; all four adapters explicitly select one of the
+two consumed depth/left orderings. Its ancestor relation retains nonleaf
+eligibility inside a conditional native-key projection and hydrates by key/tree
+instead of three bound coordinates. Fifteen SQL-translation and executed
+portable semantic controls pass, as do 682 broader Unit/provider controls.
+The final cleaned core also passes 22 PostgreSQL cases including both original
+Medium populations and native work guards. These results do not establish the
+SQL Server candidate's physical plan or bound the remaining deep child scans.
+
+The ten-million-node setup correction enumerates the case-owned table's real
+`sys.stats` entries and updates each one with `FULLSCAN`, retaining the ordinary
+command deadline. Thirty replay/cleanup/statistics controls pass, including
+bound object identity, escaped identifiers, default and explicit deadlines,
+and catalog/read/update failures. An individual scan and the full native
+ten-million-node case remain subject to x64 verification.
 
 ## Semantic and native-work evidence
 

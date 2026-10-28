@@ -53,6 +53,7 @@ jobs:
             ISC,
             MIT,
             MIT-0,
+            PostgreSQL,
             Unlicense
           # WHY: These native Microsoft packages ship reviewed license files rather than SPDX expressions.
           # v5.0.0 ignores PURL versions; the following step enforces the exact reviewed versions.

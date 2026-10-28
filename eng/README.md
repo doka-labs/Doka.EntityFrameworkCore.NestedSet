@@ -156,12 +156,17 @@ bash eng/verify-package-consumer.sh --package-dir artifacts/packages --version 1
 ```
 
 The explicit mode requires all three arguments and a new or empty output directory.
-The seven ordinary C# projects live in [`consumers/`](consumers). Their checked-in
+The seven C# probes and `Consumer.csproj.template` inputs live in
+[`consumers/`](consumers). Their checked-in
 props isolate the probes from the producer's central versions, build settings,
 and source-project graph. `CandidateVersion` supplies exact package references;
-the runner copies these files rather than generating C# or project XML. They
-are intentionally outside the main solution because they restore already-packed
-candidate versions. The FileSystem probe links the maintained sample source.
+the runner copies these files and names each output project `Consumer.csproj`,
+without generating C# or rewriting its package references. They are intentionally
+outside the main solution because they restore already-packed candidate versions.
+The template extension prevents GitHub's automatic NuGet project discovery from
+attempting an unparameterized restore. The generated projects still require the
+explicit candidate version; no published-version fallback bypasses the guard.
+The FileSystem probe links the maintained sample source.
 
 The runner verifies six independent single-package roots using separate fresh caches,
 exact candidate versions, and source mapping: `core`, `ef`, `mysql`, `postgres`,

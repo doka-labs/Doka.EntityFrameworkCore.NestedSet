@@ -203,6 +203,13 @@ hashing work while introducing another owner, so the existing runner remains.
 Publication uses two manifest-driven Bash loops, and CI invokes the existing
 read-only result validator instead of embedding another implementation in YAML.
 
+Checked-in consumer project XML uses `Consumer.csproj.template`: these inputs
+cannot restore without an exact candidate version and source-owned framework.
+The existing runner copies them to ordinary `Consumer.csproj` files in its
+isolated output before restoring. Automatic NuGet discovery therefore scans
+runnable repository projects, while package consumers retain their required
+version, source mapping, fresh cache and archive-byte checks.
+
 ### Re-evaluation Triggers
 
 - A new supported native provider requires behavior outside the consumed internal boundary; qualify its actual consumers before adding another extension point.
@@ -226,6 +233,7 @@ read-only result validator instead of embedding another implementation in YAML.
 - 2026-10-26: Consumer sources/projects became checked-in C# assets; SDK validation against the published baseline records only the approved registration removal. Native parameter plumbing is shared without moving reservation SQL into the kernel.
 - 2026-10-26: SQL-free adapter defaults were consolidated; the shipping PKCS minimum was separated from the qualified servicing pin. Pack metadata uses the supported in-target modification form, and delivery reuses validated manifest ordering and result checks without introducing another framework.
 - 2026-10-26: The qualification-only PKCS pin advanced to the .NET 10 package 10.0.14 while the shipping first-patched 9.x minimum remains 9.0.21 without an upper bound.
+- 2026-10-28: Candidate project inputs became explicit templates after automatic NuGet submission attempted to restore them without a candidate version. The existing runner materializes identical project XML in isolated output; no release guard or dependency check was relaxed.
 
 ### Implementation References
 
@@ -249,7 +257,7 @@ read-only result validator instead of embedding another implementation in YAML.
 - [Typed source composition](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/DokaSourceBindingTests.cs)
 - [Typed ordered joins and failure behavior](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/DokaStraightJoinTests.cs)
 - [Package consumers](../../eng/verify-package-consumer.sh)
-- [Checked-in consumer projects](../../eng/consumers)
+- [Checked-in consumer sources and project templates](../../eng/consumers)
 - [Exact private kernel package edge](../../src/Directory.Build.targets)
 - [SDK baseline configuration](../../src/Directory.Build.props)
 - [Upgrade guide](../../docs/upgrading-provider-packages.md)
@@ -257,6 +265,7 @@ read-only result validator instead of embedding another implementation in YAML.
 
 ### Sources
 
+- [GitHub automatic dependency submission](https://docs.github.com/en/code-security/reference/supply-chain-security/automatic-dependency-submission) (primary source; retrieved 2026-10-28)
 - [EF Core database providers](https://learn.microsoft.com/en-us/ef/core/providers/) (primary source; retrieved 2026-10-26)
 - [EF Core plug-in APIs](https://learn.microsoft.com/en-us/ef/core/miscellaneous/plugins) (primary source; retrieved 2026-10-26)
 - [EF Core 10.0.13 relational options-builder infrastructure](https://github.com/dotnet/efcore/blob/v10.0.13/src/EFCore.Relational/Infrastructure/IRelationalDbContextOptionsBuilderInfrastructure.cs) (primary source; retrieved 2026-10-26)

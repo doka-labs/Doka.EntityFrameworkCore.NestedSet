@@ -76,16 +76,54 @@ internal static class QueryPlanTestSupport
         var entity = context.Model.FindEntityType(typeof(TEntity))!;
         var sql = context.GetService<ISqlGenerationHelper>();
         var table = sql.DelimitIdentifier(entity.GetTableName()!, entity.GetSchema());
+
+        if (engine == "SqlServer")
+        {
+            return RefreshSqlServerStatisticsAsync(context, sql, table);
+        }
+
         // WHY: Fresh PostgreSQL tables otherwise estimated two scope rows where the probe seeded two hundred.
         // Keep statistics preparation outside measured queries and restrict it to this case's owned table.
         var statement = engine switch
         {
-            "SqlServer" => "UPDATE STATISTICS " + table + " WITH FULLSCAN",
             "MySql" or "MariaDb" => "ANALYZE TABLE " + table,
             _ => "ANALYZE " + table,
         };
 
         return context.Database.ExecuteSqlRawAsync(statement, CancellationToken.None);
+    }
+
+    /// <summary>Refreshes every statistic on one owned SQL Server table with its unchanged command watchdog.</summary>
+    /// <param name="context">The fixture context whose ordinary provider command settings remain authoritative.</param>
+    /// <param name="sql">The configured provider's identifier delimiter.</param>
+    /// <param name="table">The fully delimited mapped table, bound as a value when resolving its object identity.</param>
+    /// <returns>A task completing after every owned statistic has been refreshed using FULLSCAN.</returns>
+    private static async Task RefreshSqlServerStatisticsAsync(
+        DbContext context,
+        ISqlGenerationHelper sql,
+        string table
+    )
+    {
+        // WHY: One all-statistics FULLSCAN accumulated every index/column scan under one command watchdog.
+        // Enumerating the same objects preserves exact distributions while bounding each independent refresh.
+        var statistics = await context.Database.SqlQueryRaw<string>(
+                "SELECT [name] AS [Value] FROM [sys].[stats] "
+                + "WHERE [object_id] = OBJECT_ID({0}) ORDER BY [stats_id]", table)
+            .ToArrayAsync(CancellationToken.None);
+
+        if (statistics.Length == 0)
+        {
+            // WHY: Every mapped fixture table has a key statistic. Missing visibility or table identity
+            // must fail rather than silently qualifying a table whose distributions were never refreshed.
+            throw new InvalidOperationException("No statistics are visible for the owned SQL Server fixture table.");
+        }
+
+        foreach (var statistic in statistics)
+        {
+            // WHY: Only mapped/catalog identifiers enter this statement, and both use the provider delimiter.
+            var statement = "UPDATE STATISTICS " + table + " " + sql.DelimitIdentifier(statistic) + " WITH FULLSCAN";
+            await context.Database.ExecuteSqlRawAsync(statement, CancellationToken.None);
+        }
     }
 
     /// <summary>

@@ -3,7 +3,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Sqlite;
 internal sealed partial class SqliteNestedSetProvider
 {
     /// <inheritdoc />
-    internal override bool UsesProjectedQueryDecision => true;
+    internal override NestedSetNearestQueryStrategy NearestQueryStrategy => NestedSetNearestQueryStrategy.ProjectedLeft;
 
     /// <inheritdoc />
     internal override bool SupportsTrackedKeyCollection(

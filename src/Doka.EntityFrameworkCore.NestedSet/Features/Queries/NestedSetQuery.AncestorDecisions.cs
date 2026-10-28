@@ -84,8 +84,8 @@ internal sealed partial class NestedSetQuery<TEntity>
             return PartitionedNearestDecision(lower, row, selected, predicate);
         }
 
-        // WHY: Row-aware and query-bearing Doka inputs retain their original correlation; SQLite
-        // retains its indexed candidate lookup. Only Doka has qualified shared coordinate groups.
+        // WHY: Row-aware and query-bearing inputs retain their original correlation. Only Doka
+        // has qualified shared coordinate groups; the other adapters keep one scalar owner lookup.
         var candidates = Expression.Call(
             s_where,
             _nodes.Expression,
@@ -94,12 +94,14 @@ internal sealed partial class NestedSetQuery<TEntity>
                     Expression.AndAlso(Contains(owner, lower, includeSelf: false), selected.Body),
                     owner)));
 
-        // WHY: On a valid nested set, ancestor Left increases strictly with structural depth.
-        // The existing tree/Left index can therefore select the same nearest owner without a Depth sort.
-        var ordered = Expression.Call(
-            s_orderByLeft,
-            candidates,
-            Expression.Quote(Expression.Lambda<Func<TEntity, long>>(Bound(owner, _descriptor.Left), owner)));
+        // WHY: PostgreSQL retains its existing Depth ordering, including repairable intervals.
+        // Projecting the decision once removes two scalar key sorts and their owner rejoin whose
+        // inactive subplans distorted broad join estimates. Doka/SQLite keep their qualified Left path.
+        var ordered = _capabilities.NearestQueryStrategy == NestedSetNearestQueryStrategy.ProjectedDepth
+            ? Expression.Call(s_orderByDepth, candidates,
+                Expression.Quote(Expression.Lambda<Func<TEntity, int>>(Depth(owner), owner)))
+            : Expression.Call(s_orderByLeft, candidates,
+                Expression.Quote(Expression.Lambda<Func<TEntity, long>>(Bound(owner, _descriptor.Left), owner)));
 
         return SelectNearestOwnerDecision(ordered, owner, lower, row, predicate);
     }
@@ -173,13 +175,11 @@ internal sealed partial class NestedSetQuery<TEntity>
         var selected = NestedSetQueryExpressions.Inline(node, row);
         var membership = Expression.Parameter(typeof(TEntity), "node");
         var lower = identity.IsVisible ? selected : membership;
-        Expression strictAccepted = _capabilities.UsesProjectedQueryDecision
-            ? ProjectedStrictNearestDecision(lower, row, candidate, predicate)
-            : StrictNearestExists(lower, row, candidate, predicate);
+        var strictAccepted = ProjectedStrictNearestDecision(lower, row, candidate, predicate);
 
         // WHY: Self is already the nearest visible candidate and its path has no edges. Resolve it
-        // before the ancestor lookup, including rejection without fallback. The separate keyed owner
-        // shape on other providers keeps PostgreSQL's qualified owner-key access available.
+        // before the ancestor lookup, including rejection without fallback. Each adapter retains
+        // its own ordering while sharing the same selected-owner value and complete-path decision.
         var accepted = Expression.Condition(
             NestedSetQueryExpressions.Inline(candidate, row, lower),
             Expression.Condition(
@@ -198,75 +198,5 @@ internal sealed partial class NestedSetQuery<TEntity>
         }
 
         return source.Where(Expression.Lambda<Func<TRow, bool>>(CorrelatedCondition(condition), row));
-    }
-
-    /// <summary>Retains the qualified scalar-key owner lookup on providers without the Doka decision shape.</summary>
-    private ConditionalExpression StrictNearestExists(
-        Expression lower,
-        ParameterExpression row,
-        LambdaExpression candidate,
-        LambdaExpression predicate
-    )
-    {
-        var owner = Expression.Parameter(typeof(TEntity), "owner");
-        var possible = Expression.Parameter(typeof(TEntity), "possible");
-        var candidates = Expression.Call(
-            s_where,
-            _nodes.Expression,
-            Expression.Quote(
-                Expression.Lambda<Func<TEntity, bool>>(
-                    Expression.AndAlso(
-                        Contains(possible, lower, includeSelf: false),
-                        NestedSetQueryExpressions.Inline(candidate, row, possible)),
-                    possible)));
-
-        var ordered = Expression.Call(
-            s_orderByDepth,
-            candidates,
-            Expression.Quote(Expression.Lambda<Func<TEntity, int>>(Depth(possible), possible)));
-
-        var key = _descriptor.NodeKey.Resolve(_entityType);
-        var keys = Expression.Call(
-            s_selectKey,
-            ordered,
-            Expression.Quote(
-                Expression.Lambda<Func<TEntity, object>>(
-                    NestedSetExpressions.Property(possible, key, typeof(object)),
-                    possible)));
-
-        var nearestKey = Expression.Call(s_firstKey, keys);
-
-        // WHY: Selecting a scalar node key exposes the scope/key unique index for one owner lookup.
-        // Comparing a scalar MAX depth instead made MySQL rescan all candidates for every owner.
-        // EF.Property<object> is a translation marker: unlike boxing a typed access, it adds no
-        // index-defeating CAST on the owner column. An absent scalar yields NULL, never key 0.
-        var selectedOwner = Expression.AndAlso(
-            Contains(owner, lower, includeSelf: false),
-            Expression.Equal(NestedSetExpressions.Property(owner, key, typeof(object)), nearestKey));
-
-        var matches = Expression.AndAlso(selectedOwner, NestedSetQueryExpressions.Inline(predicate, row, owner));
-
-        // WHY: SQL may reorder AND conditions. Keeping the scalar count in CASE's result prevents
-        // premature path evaluation; a boolean CASE can be folded back into AND by SQL Server's
-        // bit conversion. Actual provider plans qualify the cost rather than assuming short-circuiting.
-        var visibleEdges = Expression.Condition(
-            matches,
-            Expression.Convert(PathEdgeEvidence(owner, lower, row, edgeAllowed: null), typeof(long?)),
-            Expression.Constant(null, typeof(long?)));
-
-        var distance = Expression.Subtract(
-            Expression.Convert(Depth(lower), typeof(long)),
-            Expression.Convert(Depth(owner), typeof(long)));
-
-        // WHY: Keep key equality outside CASE as an index access predicate as well. Hiding it only
-        // inside CASE made SQLite enumerate every owner and repeat the ordered scalar selection.
-        var ownerPredicate = Expression.AndAlso(
-            selectedOwner,
-            Expression.Equal(visibleEdges, Expression.Convert(distance, typeof(long?))));
-
-        return Expression.Condition(
-            Any(_nodes, owner, ownerPredicate),
-            Expression.Constant(1L),
-            Expression.Constant(0L));
     }
 }

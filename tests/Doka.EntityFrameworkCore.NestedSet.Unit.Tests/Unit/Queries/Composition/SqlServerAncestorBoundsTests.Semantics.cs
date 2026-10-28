@@ -11,6 +11,7 @@ public sealed partial class SqlServerAncestorBoundsTests
     /// <param name="expectedOwners">The complete visible owner keys expected for each selected source.</param>
     [Theory]
     [InlineData("duplicate", new[] { 1, 2, 3 })]
+    [InlineData("zero-key", new[] { 0, 1, 3 })]
     [InlineData("hidden", new[] { 1, 3 })]
     [InlineData("foreign-tree", new[] { 1, 3 })]
     [InlineData("foreign-scope", new[] { 1, 3 })]
@@ -28,7 +29,7 @@ public sealed partial class SqlServerAncestorBoundsTests
         await using var services = NestedSetTestAdapters.BuildServices(options.Options);
         await using var context = new CoordinateBoundsContext(options.UseInternalServiceProvider(services).Options);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
-        var duplicate = BoundsNode(2, 1, 10);
+        var duplicate = BoundsNode(ownerVariant == "zero-key" ? 0 : 2, 1, 10);
         duplicate.TreeId = "A";
         duplicate.Visible = ownerVariant != "hidden";
         duplicate.TreeId = ownerVariant == "foreign-tree" ? "b" : duplicate.TreeId;
@@ -171,7 +172,8 @@ public sealed partial class SqlServerAncestorBoundsTests
             node.HasKey(entity => new { entity.Scope, entity.Id });
             node.Property(entity => entity.Id).HasConversion(converter).ValueGeneratedNever();
             node.Property(entity => entity.ParentId).HasConversion(converter);
-            node.Property(entity => entity.TreeId).HasMaxLength(40).UseCollation("NOCASE");
+            node.Property(entity => entity.TreeId).HasMaxLength(40)
+                .UseCollation(Database.IsSqlServer() ? "Latin1_General_100_BIN2" : "NOCASE");
             node.HasQueryFilter(entity => entity.Visible);
             node.HasNestedSet(hierarchy => hierarchy
                 .HasNodeKey(entity => entity.Id)

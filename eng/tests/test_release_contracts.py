@@ -551,6 +551,20 @@ class DependencyLicenseExceptionTests(unittest.TestCase):
         self.assertNotIn("license-check: false", workflow)
         self.assertNotIn("warn-only: true", workflow)
 
+    def test_existing_postgresql_provider_license_is_allowed_without_unknown_fallbacks(self):
+        """Npgsql's declared permissive SPDX license is supported without admitting unidentified licenses."""
+        # Arrange
+        workflow = (ROOT / ".github/workflows/dependency-review.yml").read_text(encoding="ascii")
+        block = workflow.split("allow-licenses: >-", 1)[1].split("allow-dependencies-licenses:", 1)[0]
+
+        # Act
+        licenses = {line.strip().rstrip(",") for line in block.splitlines() if line.startswith("            ")}
+
+        # Assert
+        self.assertIn("PostgreSQL", licenses)
+        self.assertNotIn("LicenseRef-scancode-unknown", licenses)
+        self.assertNotIn("GPL-3.0-only", licenses)
+
 
 class WorkflowBoundaryTests(unittest.TestCase):
     """Check qualification and authorization sequencing without running GitHub actions."""

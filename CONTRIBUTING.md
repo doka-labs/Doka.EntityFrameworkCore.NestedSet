@@ -478,7 +478,11 @@ dotnet restore Doka.EntityFrameworkCore.NestedSet.slnx --locked-mode
 
 Requalify the affected provider and migration contracts.
 
-Dependency Review retains the SPDX allowlist and vulnerability gate. Its only
+Dependency Review retains the SPDX allowlist and vulnerability gate. The
+allowlist includes the PostgreSQL SPDX license declared by the existing Npgsql
+provider, verified against its package metadata and
+[versioned license](https://github.com/npgsql/efcore.pg/blob/v10.0.3/LICENSE).
+This is a recognized permissive license, not an unknown-license exception. The only
 package-specific license exceptions are `Microsoft.Data.SqlClient.SNI.runtime`
 6.0.3 and `Microsoft.Identity.Client.NativeInterop` 0.20.6, which ship Microsoft
 license files. The workflow checks the action's complete dependency delta to

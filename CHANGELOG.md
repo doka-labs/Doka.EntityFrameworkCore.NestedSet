@@ -79,6 +79,19 @@ the narrowly approved registration-removal exception.
 
 ### Fixed
 
+- Project SQL Server's nearest decision once with its existing depth ordering
+  and hydrate ancestor owners by conditional native keys. Refresh fixture
+  statistics individually with unchanged `FULLSCAN` accuracy and deadlines;
+  retain the explicit native capacity qualification boundary.
+- Select PostgreSQL's nearest-owner decision once while preserving `Depth`
+  ordering, rejection without fallback and complete-path validation. Guard
+  broad payload joins with actual native work to prevent quadratic rescans.
+- Include the existing Npgsql provider's PostgreSQL SPDX license in dependency
+  review while retaining vulnerability checks and exact package exceptions.
+- Keep exact-candidate consumer inputs as project templates so automatic NuGet
+  dependency submission restores only runnable projects. Materialize the same
+  reviewed projects for isolated package qualification without weakening
+  candidate-version, dependency-closure or archive-byte checks.
 - Preserve portable complete-path proofs through exact visible parent existence
   per child. SQL Server strict ancestor reads restrict independent structural
   coordinates before hydrating owners, retaining duplicate-owner occurrences,

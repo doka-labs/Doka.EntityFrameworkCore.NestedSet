@@ -2,26 +2,30 @@ namespace Doka.EntityFrameworkCore.NestedSet.Features.Queries;
 
 internal sealed partial class NestedSetQuery<TEntity>
 {
-    /// <summary>Restricts independent nonleaf coordinates before restoring every visible mapped owner.</summary>
+    /// <summary>Restricts independent nonleaf identities before exact native-key owner hydration.</summary>
     private IQueryable<TResult> SelectCoordinateAncestorPairs<TResult>(
         Expression<Func<TEntity, bool>> selected,
         Expression<Func<TEntity, TEntity, int, TResult>> projection
     )
     {
         var owner = Expression.Parameter(typeof(TEntity), "owner");
-        var nonLeaf = Expression.Lambda<Func<TEntity, bool>>(NonLeafBounds(owner), owner);
+        var key = NestedSetExpressions.Property(owner, _descriptor.NodeKey.Resolve(_entityType), typeof(object));
+        var conditionalKey = Expression.Condition(NonLeafBounds(owner), key, Expression.Constant(null, typeof(object)));
         var coordinate = Expression.Lambda<Func<TEntity, AncestorBounds>>(
             Expression.MemberInit(
                 Expression.New(typeof(AncestorBounds)),
+                Expression.Bind(typeof(AncestorBounds).GetProperty(nameof(AncestorBounds.Key))!, conditionalKey),
                 Coordinate(nameof(AncestorBounds.Tree), _descriptor.TreeId, typeof(object)),
                 Coordinate(nameof(AncestorBounds.Left), _descriptor.Left),
                 Coordinate(nameof(AncestorBounds.Right), _descriptor.Right)),
             owner);
 
-        // WHY: A unique node key lets SQL Server remove DISTINCT and repeat the whole ancestor
-        // range for every source. Coordinates alone preserve a real independent structural relation;
-        // they do not deduplicate the mapped owners or any caller occurrence returned below.
-        var coordinates = _nodes.Where(nonLeaf).Select(coordinate).Distinct();
+        // WHY: A bare unique key lets SQL Server remove DISTINCT; a coordinate-only boundary let
+        // its late payload hydration move before eligibility and repeat a full PK scan. The conditional
+        // native key retains nonleaf classification while permitting an exact mapped-key hydration.
+        // Every eligible owner keeps its own key, including owners sharing corrupt equal bounds.
+        // Eligibility stays inside CASE: repeating it in WHERE would make the key branch unconditional.
+        var coordinates = _nodes.Select(coordinate).Distinct();
         var collection = Expression.Lambda<Func<TEntity, IEnumerable<AncestorBounds>>>(
             coordinates.Expression,
             Expression.Parameter(typeof(TEntity), "source"));
@@ -48,15 +52,13 @@ internal sealed partial class NestedSetQuery<TEntity>
 
         var onPath = Expression.Lambda<Func<AncestorBoundsPair, bool>>(containment, pair);
         var matches = Expression.AndAlso(
+            Expression.Equal(key, Expression.Property(bounds, nameof(AncestorBounds.Key))),
             Expression.Equal(
-                NestedSetExpressions.Property(owner, _descriptor.TreeId.Resolve(_entityType), typeof(object)), tree),
-            Expression.AndAlso(
-                Expression.Equal(Bound(owner, _descriptor.Left), left),
-                Expression.Equal(Bound(owner, _descriptor.Right), right)));
+                NestedSetExpressions.Property(owner, _descriptor.TreeId.Resolve(_entityType), typeof(object)), tree));
 
-        // WHY: Distinct coordinates may represent several visible owners after external corruption.
-        // Rejoining all three native roles restores every original owner, including duplicate bounds,
-        // while both roots retain the exact scope, tree binding, mapping, collation and query filters.
+        // WHY: Key and Tree keep native database equality, never a string conversion or CLR operator.
+        // Both mapped roots retain the same scope, binding and filters; NULL ineligible keys cannot
+        // match a required owner key, and every eligible equal-bound owner is restored separately.
         var mapped = Expression.Lambda<Func<AncestorBoundsPair, IEnumerable<TEntity>>>(
             Expression.Call(s_where, _nodes.Expression,
                 Expression.Quote(Expression.Lambda<Func<TEntity, bool>>(matches, owner))),
@@ -85,9 +87,12 @@ internal sealed partial class NestedSetQuery<TEntity>
         }
     }
 
-    /// <summary>Retains native structural equality without including the mapped owner's unique key.</summary>
+    /// <summary>Retains nonleaf eligibility and native identity without a bare unique-key projection.</summary>
     private sealed class AncestorBounds
     {
+        /// <summary>Gets the native owner key for an eligible interval, or null for an ineligible one.</summary>
+        public object? Key { get; init; }
+
         /// <summary>Gets the native mapped tree role used by the structural and hydration joins.</summary>
         public required object Tree { get; init; }
 

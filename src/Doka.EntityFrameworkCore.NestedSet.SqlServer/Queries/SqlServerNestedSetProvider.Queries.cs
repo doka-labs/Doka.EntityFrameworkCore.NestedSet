@@ -6,6 +6,9 @@ internal sealed partial class SqlServerNestedSetProvider
     internal override bool UsesIndependentAncestorOwners => true;
 
     /// <inheritdoc />
+    internal override NestedSetNearestQueryStrategy NearestQueryStrategy => NestedSetNearestQueryStrategy.ProjectedDepth;
+
+    /// <inheritdoc />
     internal override bool SupportsTrackedKeyCollection(
         IProperty key
     )

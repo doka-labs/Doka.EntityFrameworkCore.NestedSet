@@ -7,12 +7,21 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Protects independent ancestor coordinates and the selected SQL Server adapter boundary.</summary>
 public sealed partial class SqlServerAncestorBoundsTests
 {
-    /// <summary>Only structural bounds cross the independent relation, leaving mapped keys for late hydration.</summary>
+    private readonly ITestOutputHelper _output;
+
+    /// <summary>Retains generated SQL as translation evidence without database execution.</summary>
+    /// <param name="output">The test-owned diagnostic sink.</param>
+    public SqlServerAncestorBoundsTests(ITestOutputHelper output)
+    {
+        _output = output;
+    }
+
+    /// <summary>A conditional native key retains the distinct boundary and permits exact late hydration.</summary>
     /// <param name="treeBound">Whether the query targets one exact tree instead of the scope's forest.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task StrictAncestorsKeepANonKeyDistinctBoundary(bool treeBound)
+    public async Task StrictAncestorsKeepAConditionalKeyDistinctBoundary(bool treeBound)
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -31,6 +40,7 @@ public sealed partial class SqlServerAncestorBoundsTests
 
         // Act
         var sql = query.ToQueryString();
+        _output.WriteLine(sql);
         var distinct = Regex.Matches(sql, @"SELECT DISTINCT\s+(?<columns>.*?)\s+FROM", RegexOptions.Singleline);
 
         // Assert
@@ -39,7 +49,10 @@ public sealed partial class SqlServerAncestorBoundsTests
         Assert.Contains("[TreeId]", columns, StringComparison.Ordinal);
         Assert.Contains("[Left]", columns, StringComparison.Ordinal);
         Assert.Contains("[Right]", columns, StringComparison.Ordinal);
-        Assert.DoesNotContain("[Id]", columns, StringComparison.Ordinal);
+        Assert.Matches(new Regex(@"CASE\s+WHEN.*THEN\s+\[[^]]+\]\.\[Id\].*END AS \[Key\]",
+            RegexOptions.Singleline), columns);
+        Assert.DoesNotMatch(@"(?:^|,)\s*\[[^]]+\]\.\[Id\]\s*(?:,|$)", columns);
+        Assert.Matches(@"(?:\[[^]]+\]\.\[Id\] = \[[^]]+\]\.\[Key\]|\[[^]]+\]\.\[Key\] = \[[^]]+\]\.\[Id\])", sql);
         Assert.DoesNotContain("[Depth]", columns, StringComparison.Ordinal);
         Assert.DoesNotContain("[EdgeOpen]", columns, StringComparison.Ordinal);
         Assert.Equal(0, boundary.ConnectionStarts);

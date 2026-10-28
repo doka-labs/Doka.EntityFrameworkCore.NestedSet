@@ -131,6 +131,38 @@ class ConsumerTests(unittest.TestCase):
         return subprocess.run(self.command, env=self.environment, capture_output=True, text=True,
                               check=False, timeout=30)
 
+    def test_candidate_templates_are_not_unparameterized_restore_projects(self):
+        """Automatic project discovery must not restore inputs with deliberately unbound candidate properties."""
+        # Arrange
+        source = Path(__file__).parents[1] / "consumers"
+        expected = {source / name / "Consumer.csproj.template" for name, _ in CONSUMERS}
+
+        # Act
+        projects = set(source.rglob("*.csproj"))
+        templates = set(source.rglob("*.csproj.template"))
+
+        # Assert
+        self.assertEqual(set(), projects)
+        self.assertEqual(expected, templates)
+
+    def test_materialized_projects_preserve_reviewed_candidate_templates(self):
+        """Only the output filename changes; exact candidate references and guards are not rewritten."""
+        # Arrange
+        source = Path(__file__).parents[1] / "consumers"
+
+        # Act
+        result = self.execute()
+
+        # Assert
+        self.assertEqual(0, result.returncode, result.stderr)
+        for name, _ in CONSUMERS:
+            self.assertEqual((source / name / "Consumer.csproj.template").read_bytes(),
+                             (self.output / name / "Consumer.csproj").read_bytes())
+
+        self.assertEqual([], list(self.output.rglob("*.template")))
+        self.assertEqual((source / "Directory.Build.targets").read_bytes(),
+                         (self.output / "Directory.Build.targets").read_bytes())
+
     def test_explicit_candidate_never_repacks_and_uses_independent_selected_package_caches(self):
         """Every shipping package executes separately against its own exact candidate dependency closure."""
         # Arrange

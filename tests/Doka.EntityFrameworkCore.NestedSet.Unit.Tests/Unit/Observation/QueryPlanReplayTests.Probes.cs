@@ -49,24 +49,43 @@ public sealed partial class QueryPlanReplayTests
     }
 
     /// <summary>Keeps a real local connection while substituting only its diagnostic command and result sets.</summary>
-    private sealed class PlanReplayConnection(Func<DbDataReader> reader) : SqliteConnection("Data Source=:memory:")
+    private sealed class PlanReplayConnection(
+        Func<DbDataReader> reader,
+        Func<int>? nonQuery = null
+    ) : SqliteConnection("Data Source=:memory:")
     {
         /// <summary>Gets the raw diagnostic command after the helper applies its own deadline and statement.</summary>
         internal PlanReplayCommand? Command { get; private set; }
 
+        /// <summary>Gets each raw command in creation order, including completed fixture-statistics commands.</summary>
+        internal List<PlanReplayCommand> Commands { get; } = [];
+
         /// <inheritdoc />
         protected override DbCommand CreateDbCommand()
         {
-            Command = new PlanReplayCommand(reader);
+            Command = new PlanReplayCommand(reader, nonQuery);
+            Commands.Add(Command);
 
             return Command;
         }
     }
 
     /// <summary>Records the raw deadline and returns controlled framework reader results for the actual helper.</summary>
-    private sealed class PlanReplayCommand(Func<DbDataReader> reader) : DbCommand
+    private sealed class PlanReplayCommand(
+        Func<DbDataReader> reader,
+        Func<int>? nonQuery
+    ) : DbCommand
     {
         private readonly SqliteCommand _parameters = new();
+
+        /// <summary>Gets the values bound at execution before EF clears its reusable parameter collection.</summary>
+        internal object?[] ParameterValues { get; private set; } = [];
+
+        /// <summary>Gets the number of asynchronous catalog or diagnostic reader executions.</summary>
+        internal int ReaderExecutions { get; private set; }
+
+        /// <summary>Gets the number of asynchronous fixture-statistics executions.</summary>
+        internal int NonQueryExecutions { get; private set; }
 
         /// <inheritdoc />
         [AllowNull]
@@ -100,6 +119,17 @@ public sealed partial class QueryPlanReplayTests
         public override int ExecuteNonQuery() => throw new NotSupportedException();
 
         /// <inheritdoc />
+        public override Task<int> ExecuteNonQueryAsync(
+            CancellationToken cancellationToken
+        )
+        {
+            NonQueryExecutions++;
+            ParameterValues = Parameters.Cast<DbParameter>().Select(parameter => parameter.Value).ToArray();
+
+            return Task.FromResult(nonQuery is null ? throw new NotSupportedException() : nonQuery());
+        }
+
+        /// <inheritdoc />
         public override object ExecuteScalar() => throw new NotSupportedException();
 
         /// <inheritdoc />
@@ -117,7 +147,13 @@ public sealed partial class QueryPlanReplayTests
         protected override Task<DbDataReader> ExecuteDbDataReaderAsync(
             CommandBehavior behavior,
             CancellationToken cancellationToken
-        ) => Task.FromResult(reader());
+        )
+        {
+            ReaderExecutions++;
+            ParameterValues = Parameters.Cast<DbParameter>().Select(parameter => parameter.Value).ToArray();
+
+            return Task.FromResult(reader());
+        }
 
         /// <inheritdoc />
         public override async ValueTask DisposeAsync()

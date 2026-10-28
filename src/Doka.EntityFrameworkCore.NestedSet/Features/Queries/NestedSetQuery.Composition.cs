@@ -29,12 +29,6 @@ internal sealed partial class NestedSetQuery<TEntity>
         (Expression<Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>>)(nodes =>
             nodes.OrderByDescending(node => 0)));
 
-    private static readonly MethodInfo s_selectKey = MethodOf(
-        (Expression<Func<IQueryable<TEntity>, IQueryable<object>>>)(nodes => nodes.Select(node => (object)node)));
-
-    private static readonly MethodInfo s_firstKey = MethodOf(
-        (Expression<Func<IQueryable<object>, object?>>)(keys => keys.FirstOrDefault()));
-
     private static readonly MethodInfo s_orderByLeft = MethodOf(
         (Expression<Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>>)(nodes =>
             nodes.OrderByDescending(node => 0L)));
