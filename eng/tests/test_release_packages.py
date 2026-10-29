@@ -24,7 +24,7 @@ def make_packages(directory, version="0.1.0-dev", commit="a" * 40):
                           '<dependency id="Microsoft.EntityFrameworkCore.Relational" version="[10.0.12, 11.0.0)" />')
         else:
             providers = {
-                "Doka.EntityFrameworkCore.NestedSet.MySql": ("Doka.EntityFrameworkCore.MySql", "[10.6.2,10.7.0)"),
+                "Doka.EntityFrameworkCore.NestedSet.MySql": ("Doka.EntityFrameworkCore.MySql", "[10.6.3,10.7.0)"),
                 "Doka.EntityFrameworkCore.NestedSet.Postgres": ("Npgsql.EntityFrameworkCore.PostgreSQL", "[10.0.3,11.0.0)"),
                 "Doka.EntityFrameworkCore.NestedSet.Sqlite": ("Microsoft.EntityFrameworkCore.Sqlite", "[10.0.13,11.0.0)"),
                 "Doka.EntityFrameworkCore.NestedSet.SqlServer": ("Microsoft.EntityFrameworkCore.SqlServer", "[10.0.13,11.0.0)"),
@@ -346,7 +346,7 @@ class PackageTests(unittest.TestCase):
         """Direct typed APIs require the adapter's declared and reviewed native compatibility range."""
         # Arrange
         self.change_adapter_dependencies("Doka.EntityFrameworkCore.NestedSet.MySql",
-            b'version="[10.6.2,10.7.0)"', b'version="10.6.2"')
+            b'version="[10.6.3,10.7.0)"', b'version="10.6.3"')
 
         # Act
         error = capture(lambda: packages.verify_packages(self.directory, "0.1.0-dev"))

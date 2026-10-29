@@ -60,7 +60,7 @@ provider-package/registration break is approved in
 [D-020](decisions/D-020-provider-owned-runtime-packages.md) and documented in
 the [upgrade guide](upgrading-provider-packages.md). The source uses
 `VersionPrefix=10.1.0` without a prerelease suffix and the dated
-`10.1.0 (2026-10-28)` changelog entry. Publication evidence remains the exact
+`10.1.0 (2026-10-29)` changelog entry. Publication evidence remains the exact
 release's hosted qualification and successful public readback.
 
 ## Entry conditions

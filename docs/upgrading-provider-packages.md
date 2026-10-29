@@ -39,7 +39,7 @@ not an unconditional runtime barrier.
 
 | Database | Package to install | Native dependency range |
 | --- | --- | --- |
-| MySQL or MariaDB | `Doka.EntityFrameworkCore.NestedSet.MySql` | Doka `[10.6.2,10.7.0)` |
+| MySQL or MariaDB | `Doka.EntityFrameworkCore.NestedSet.MySql` | Doka `[10.6.3,10.7.0)` |
 | PostgreSQL | `Doka.EntityFrameworkCore.NestedSet.Postgres` | Npgsql `[10.0.3,11.0.0)` |
 | SQLite | `Doka.EntityFrameworkCore.NestedSet.Sqlite` | Microsoft SQLite `[10.0.13,11.0.0)` |
 | SQL Server | `Doka.EntityFrameworkCore.NestedSet.SqlServer` | Microsoft SQL Server `[10.0.13,11.0.0)` |
@@ -52,7 +52,7 @@ dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.1.0
 
 A provider already referenced directly by the application must satisfy the
 adapter's range. The common kernel declares EF/Relational
-`[10.0.12,11.0.0)`. Doka 10.6.2 also requires EF Relational below `10.1.0`, so
+`[10.0.12,11.0.0)`. Doka 10.6.3 also requires EF Relational below `10.1.0`, so
 the effective MySQL/MariaDB intersection is `[10.0.12,10.1.0)`. The SQLite and
 SQL Server adapters require their native provider from `10.0.13`; they do not
 extend the common kernel's supported EF major. Restore and review the resulting

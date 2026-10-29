@@ -19,7 +19,7 @@ preview/11.x are registered inactive. This procedure activates none of them.
 ## Release identity
 
 The source uses `VersionPrefix=10.1.0` without a prerelease suffix and the
-`## 10.1.0 (2026-10-28)` changelog entry. The reviewed stable APIs are recorded
+`## 10.1.0 (2026-10-29)` changelog entry. The reviewed stable APIs are recorded
 in all six shipped baselines; their unshipped files contain no pending changes.
 SDK package validation still compares the two original packages with `10.0.0`
 and retains only the approved options-registration removal exception. The
@@ -32,7 +32,7 @@ Use the reviewed PR and publication sequence below for each release.
 
 Before starting the candidate:
 
-1. Confirm the reviewed `## 10.1.0 (2026-10-28)` entry in `CHANGELOG.md` and
+1. Confirm the reviewed `## 10.1.0 (2026-10-29)` entry in `CHANGELOG.md` and
    retain that exact version/date heading for qualification. If the publication
    date changes before qualification, update the changelog and this release
    identity together. Do not change the qualified source afterward.

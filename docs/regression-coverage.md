@@ -284,8 +284,8 @@ and [generated-test guidance](../CONTRIBUTING.md#generated-invariant-tests).
 
 ## Current-source optional migration contracts
 
-The suite now declares published Doka 10.6.2 and same-version SafeMigrations
-Core/all four adapters 10.6.0. The fresh 2026-10-25 public-graph run passed all
+The suite now declares published Doka 10.6.3 and same-version SafeMigrations
+Core/all four adapters 10.6.1. The earlier Doka 10.6.2/SafeMigrations 10.6.0 public-graph run on 2026-10-25 passed all
 96 locally executable adapter cases; 54 native SQL Server cases remain excluded
 on ARM. Earlier local overlay results keep their exact source/package identities
 in the [provider qualification](qualification/provider-migrations.md).
@@ -319,8 +319,8 @@ SQL Server cases still require the native x64 lane.
 
 ## Optional SQL Server migrations
 
-The repository's published baseline pins SafeMigrations 10.6.0 with ordinary
-EF SQL Server 10.0.13. Its new public-graph qualification is separate from the
+The repository's published baseline pins SafeMigrations 10.6.1 with ordinary
+EF SQL Server 10.0.14. Its current public-graph qualification is separate from the
 recorded local overlay described above. Every relational case runs with the default `dbo` schema
 and an explicitly configured schema; package discovery is checked
 separately. Neither NestedSet package nor the ordinary migration test project

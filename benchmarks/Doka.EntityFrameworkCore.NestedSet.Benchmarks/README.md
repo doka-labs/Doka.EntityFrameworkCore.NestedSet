@@ -169,7 +169,7 @@ The historical [six-block CPU/GC/ThreadPool qualification](../../docs/qualificat
 retains original/previous/current comparisons, native reports, caller/retention
 controls, all adverse observations and precision limits. Its three-cohort runs
 used the recorded private provider overlay without changing pins for that
-measurement. The current declared Doka 10.6.2/SafeMigrations 10.6.0 graph has
+measurement. The current declared Doka 10.6.3/SafeMigrations 10.6.1 graph has
 its own [qualification boundary](../../docs/qualification/provider-migrations.md);
 the earlier measurements are not reassigned to the newer published binaries.
 They also predate the independent SignalLab event model. The commands and

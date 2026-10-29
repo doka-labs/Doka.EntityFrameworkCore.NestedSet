@@ -26,17 +26,17 @@
 
   <!-- Native adapters declare bounded production compatibility below; qualification uses these fixed baselines. -->
   <ItemGroup Label="Database provider baselines">
-    <PackageVersion Include="Doka.EntityFrameworkCore.MySql" Version="10.6.2"/>
+    <PackageVersion Include="Doka.EntityFrameworkCore.MySql" Version="10.6.3"/>
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14"/>
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.14"/>
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3"/>
   </ItemGroup>
 
   <ItemGroup Label="Optional SafeMigrations qualification">
-    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.MySql" Version="10.6.0"/>
-    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.PostgreSql" Version="10.6.0"/>
-    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.SqlServer" Version="10.6.0"/>
-    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.Sqlite" Version="10.6.0"/>
+    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.MySql" Version="10.6.1"/>
+    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.PostgreSql" Version="10.6.1"/>
+    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.SqlServer" Version="10.6.1"/>
+    <PackageVersion Include="Doka.EntityFrameworkCore.SafeMigrations.Sqlite" Version="10.6.1"/>
   </ItemGroup>
 
   <ItemGroup Label="Test tooling">
@@ -75,7 +75,7 @@
   <ItemGroup Label="Production MySql provider compatibility"
              Condition="'$(MSBuildProjectName)' == 'Doka.EntityFrameworkCore.NestedSet.MySql'">
     <!-- WHY: The typed source-binding and ordered-join APIs first qualified here belong to the Doka 10.6 line. -->
-    <PackageVersion Update="Doka.EntityFrameworkCore.MySql" Version="[10.6.2,10.7.0)"/>
+    <PackageVersion Update="Doka.EntityFrameworkCore.MySql" Version="[10.6.3,10.7.0)"/>
   </ItemGroup>
 
   <ItemGroup Label="Production Postgres provider compatibility"

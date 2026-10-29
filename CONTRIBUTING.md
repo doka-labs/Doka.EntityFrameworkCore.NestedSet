@@ -53,7 +53,7 @@ dotnet test Doka.EntityFrameworkCore.NestedSet.slnx \
 The ordinary migration project must have no SafeMigrations reference.
 SafeMigrations tests extend the contract; they do not define runtime support.
 The current optional suite retains the adapter contract now declared with
-published Doka 10.6.2 and SafeMigrations Core/adapters 10.6.0. Use the central
+published Doka 10.6.3 and SafeMigrations Core/adapters 10.6.1. Use the central
 package graph; do not add legacy expectations, compatibility skips or weaker
 assertions to make it green. The
 [provider qualification](docs/qualification/provider-migrations.md) separates

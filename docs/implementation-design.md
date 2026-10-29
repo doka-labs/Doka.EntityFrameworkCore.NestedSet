@@ -578,12 +578,12 @@ NestedSet consumer passes its [separate native acceptance](qualification/query-c
 with Id, Scope, TreeId and ParentId all at length 254. This remains provider
 metadata work; NestedSet's identity validator is unchanged. That historical
 qualification predates the provider-package dependency boundary in D-020.
-The MySql adapter now declares published Doka 10.6.2 as its minimum native
+The MySql adapter now declares published Doka 10.6.3 as its minimum native
 dependency and qualification input, independently of those frozen local results.
 
 The MySql adapter binds Doka's published public source-binding, ordered-join,
 and engine APIs directly. Its declared native dependency is Doka
-`[10.6.2,10.7.0)`; it does not discover optional declarations by names or share
+`[10.6.3,10.7.0)`; it does not discover optional declarations by names or share
 an assembly/signature/delegate lookup registry with the common kernel. The
 selected adapter and configured native provider must have matching exact
 runtime identities. Source and ordered-join method identities used for query

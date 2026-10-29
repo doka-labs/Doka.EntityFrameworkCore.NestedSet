@@ -70,17 +70,17 @@ The provider qualification matrix is:
 | SQL Server | `.SqlServer` | `Microsoft.EntityFrameworkCore.SqlServer` |
 
 Adapter names in this table are suffixes of `Doka.EntityFrameworkCore.NestedSet`.
-The MySQL adapter supports Doka `[10.6.2,10.7.0)`; its effective EF Relational
+The MySQL adapter supports Doka `[10.6.3,10.7.0)`; its effective EF Relational
 range is `[10.0.12,10.1.0)` after intersecting the common kernel and Doka ranges.
 See [supported versions](docs/support-and-qualification.md#provider-and-engine-matrix)
 for the other adapter ranges and actual qualification evidence.
 
 Pomelo is not a supported provider. Ordinary EF migrations are the required
 baseline. SafeMigrations is an optional integration. Repository qualification
-uses published Doka 10.6.2 and SafeMigrations 10.6.0. The optional tests retain
+uses published Doka 10.6.3 and SafeMigrations 10.6.1. The optional tests retain
 the current adapter contract without a legacy mode or compatibility skip. See the
 [adapter qualification](docs/support-and-qualification.md#migration-matrix)
-for the current graph, its 2026-10-25 executed local qualification, separate
+for the current graph, the earlier 2026-10-25 executed local qualification, separate
 dated private migration/replay evidence, and the remaining native SQL Server
 qualification.
 [SQL Server registration](docs/migrations.md#optional-sql-server-safemigrations)

@@ -7,7 +7,7 @@ explicit one-time `10.1.0` exception for the provider-package/registration break
 below. The package major follows the .NET family; `11.x` is reserved for .NET 11.
 This exception does not authorize other breaking minor releases.
 
-## 10.1.0 (2026-10-28)
+## 10.1.0 (2026-10-29)
 
 Stable contract for all six NestedSet packages on .NET 10 and EF Core 10.
 The provider-package and registration transition below is explicitly breaking;
@@ -63,11 +63,15 @@ the narrowly approved registration-removal exception.
   authorization and deferred source values. Replace optional reflected Doka
   feature discovery and its options/assembly lookup caches with the MySql
   adapter's directly typed Doka 10.6.2 APIs and exact method identities.
-- Refresh the qualification graph to published Doka 10.6.2 and SafeMigrations
-  10.6.0 and EF Core 10.0.14. Preserve shipping
+- Refresh the qualification graph to published Doka 10.6.3 and SafeMigrations
+  10.6.1 and EF Core 10.0.14. Preserve shipping
   EF compatibility ranges and database LTS lines. The newer local adapter
   contract, dated local evidence and fresh published-graph qualification are explicit in the
   [qualification boundary](docs/qualification/provider-migrations.md).
+- Refresh the existing MySQL 8.4.13 and MariaDB 11.8.9 image digests from their
+  official registries. Pin CodeQL SARIF uploader 4.39.1 to its release commit
+  rather than the annotated tag object. Retain dated runtime evidence separately
+  from the updated package and image declarations.
 - Update property testing to FsCheck 3.6.0, Test SDK and Code Coverage to
   18.11.0, and the qualification-only PKCS dependency to 10.0.14 for .NET 10.
 - Refresh MySQL to 8.4.13 and SQL Server 2022 to CU27-GDR1; refresh the existing
