@@ -280,15 +280,15 @@ ancestor-cost fixes. Activation retains the supported public
 provider boundary, without changing bounds to Parent traversal or duplicating
 volatile/paged source evaluation.
 
-SQL Server's row-independent long paths reuse the shared failure proof with
-a relational greatest-visible-Right lookup. Width and failure coordinates are
-joined before grouping. An `OFFSET 0` boundary keeps caller predicates outside
-the local grouping in EF's SQL; nullable scalar maxima are compared afterwards.
-This avoids T-SQL's prohibited subqueries in grouping expressions and mixed
-outer/local aggregate operands. Row-dependent rules keep their exact count;
+SQL Server's row-independent long paths fence the shared invalid-child proof.
+Their identity and interval points sit behind an `OFFSET 0` boundary and
+reference no caller bound; each path then performs one scalar `TOP(1)` lookup
+for a point inside its exact window. In native plans the points were completed
+once and the scalar lookup stayed lazy and correlated: `EXISTS` became an eager
+probe join beside nearest candidates and rebuilt the points per row, and grouped
+failure summaries were recomputed per fact. Row-dependent rules keep their exact count;
 MySQL/MariaDB retain their qualified scalar-width strategy. These are internal
-SQL forms of the same path contract, not new public modes. The translation
-boundary does not guarantee physical materialization or reuse on SQL Server.
+SQL forms of the same path contract, not new public modes.
 
 SQL Server also uses the existing descending-Left nearest-owner strategy. Under
 the valid bounds/depth precondition, every candidate ancestor belongs to one
@@ -297,25 +297,28 @@ order, hidden rows and candidate filters do not change that equivalence. This
 retains nearest-before-value/path rejection while removing the separate depth
 sort from SQL. PostgreSQL keeps the depth order of its measured correction.
 
-The independent SQL Server owner relation maps every excluded interval to the
-same `(NULL, Tree, 0, 0)` tuple per tree. Eligible owners keep their own original
-key/bounds; excluded intervals cannot pass strict containment or hydrate a
-required key. This avoids retaining separate leaf-coordinate classes in the
-independent grouped relation. Grouping the complete conditional coordinate key
-lifts computed values into columns and preserves EF's collection identifiers;
-`DISTINCT` over those computed values lost the identifiers in native successor
-CI. Owned auto-includes and collection DTOs remain single queries. This is not
-a stored bounds change or a reserved
-node-key value: an eligible native key zero remains valid.
+SQL Server's strict ancestors start from each visible nonleaf owner and select
+the caller's sources inside that owner's `Left` range through a correlated
+`CROSS APPLY` ordered by `Left` behind `OFFSET 0`. Ancestors have no bounded
+range in any coordinate index, while descendants do; in native plans the
+boundary kept the apply correlated for every measured source count. Inclusive
+ancestors fence an independent fact selection behind a node-key boundary;
+hierarchy-backed
+selections stay correlatable. Owner and source stay mapped
+entities, so collection identifiers, owned auto-includes, equal-bound owners and
+caller occurrences are preserved. The former grouped conditional-key relation
+and its zero-or-one hydration were removed after native plans scanned every
+coordinate class once per source.
 
-SQL Server hydrates a coordinate's mapped owner through its exact native
-key/tree equality plus the same structural containment already established on
-owner-derived coordinates. The validated NodeKey or (Scope, NodeKey) identity
-and bound Scope prove that `Take(1)` cannot remove another valid owner. Keeping
-the actual source-dependent inequality inside this lookup prevents EF's global
-owner-window rewrite without introducing a fabricated dependency. Returning the
-mapped entity directly preserves collection navigation. Native access-path and
-work qualification remain separate requirements.
+The owner approved one SQL Server statement policy for public composition only:
+composition queries carry an EF tag, and the adapter appends
+`OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 1)` to those commands. A cached plan for
+one selected source repeated subtree and path work for later sources, fresh
+compiles chose the same per-row shape, and parallel workers rebuilt uncorrelated
+relations. Ordinary hierarchy reads, mutations and other adapters are unchanged;
+no index, deadline or acceptance budget was raised. Neither the hints nor the
+`OFFSET 0` boundaries fix a physical plan; the capacity guards remain the
+acceptance criterion.
 
 The supervisor consumer separates unresolved status markers from complete
 unique-person occurrences. An independent inner join admits evidence after
@@ -455,6 +458,7 @@ A malformed existing API fails clearly instead of guessing a server family.
 - 2026-10-26: The owner selected an independently synthetic SignalLab model for sample, test, benchmark and migration consumers. Source-specific acquisition formats, independent event identities and newly designed fixtures retain the existing hierarchy, multiplicity, owner, reader and allocation contracts. Historical measurements keep their original source and workload boundaries; they are not reassigned to the redesigned model.
 - 2026-10-28: Retained the path and nearest-owner contracts through SQL Server's relational failure summaries and equivalent coordinate ordering; separated supervisor status from complete unique-person evidence. Actual Showplan work controls cover emitted and pre-filter rows; native x64 performance qualification remains mandatory.
 - 2026-10-28: Recorded 36 native successor failures. Preserve collection identifiers through grouped conditional coordinates and retain an explicit EF boundary before outer path filters. Translation boundaries do not establish physical reuse; unchanged native work budgets remain required.
+- 2026-10-29: Replaced SQL Server's grouped ancestor coordinates and failure summaries with owner-first fenced ranges and completed failure points behind a lazy scalar lookup. The owner approved tagging composition queries with `OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 1)` on SQL Server only; budgets, indexes and deadlines are unchanged and native x64 qualification remains required.
 
 ### Implementation References
 

@@ -5,9 +5,6 @@ internal sealed partial class NestedSetQuery<TEntity>
     /// <summary>Retains only this immutable query binding's deferred coordinate-width expression.</summary>
     private Expression? _coordinateBlockWidth;
 
-    /// <summary>Retains the deferred relational width root for this immutable scope/tree binding.</summary>
-    private Expression? _coordinateBlockWidths;
-
     private static readonly MethodInfo s_maximumNullableCoordinate = MethodOf(
         (Expression<Func<IQueryable<long?>, long?>>)(coordinates => coordinates.Max()));
 
@@ -15,14 +12,6 @@ internal sealed partial class NestedSetQuery<TEntity>
         nodes,
         right
     ) => nodes.Max(node => (long?)EF.Property<long>(node, right)) ?? 0L;
-
-    private static readonly Expression<Func<IQueryable<TEntity>, string, IQueryable<long>>> s_visibleCoordinateBlockWidths = (
-        nodes,
-        right
-    ) => nodes
-        .OrderByDescending(node => EF.Property<long>(node, right))
-        .Take(1)
-        .Select(node => (long)Math.Floor(Math.Sqrt(EF.Property<long>(node, right))) + 1L);
 
     private static readonly Expression<Func<long, long>> s_coordinateBlockWidth =
         maximum => (long)Math.Floor(Math.Sqrt(maximum)) + 1L;
@@ -52,19 +41,6 @@ internal sealed partial class NestedSetQuery<TEntity>
                 s_maximumVisibleRight,
                 _nodes.Expression,
                 Expression.Constant(_descriptor.Right.Name)));
-
-    /// <summary>Sizes partitions from the maximum visible coordinate in a deferred relational query block.</summary>
-    private IQueryable<long> VisibleCoordinateBlockWidths()
-    {
-        // WHY: Descending Right plus one row is the same visible maximum as the former aggregate,
-        // while exposing the existing Right index instead of scanning a constant-key GROUP BY.
-        // The relational boundary gives downstream grouping a local width column. An empty visible
-        // root still produces no width row and cannot invent a successful path.
-        _coordinateBlockWidths ??= NestedSetQueryExpressions.Inline(
-            s_visibleCoordinateBlockWidths, _nodes.Expression, Expression.Constant(_descriptor.Right.Name));
-
-        return _nodes.Provider.CreateQuery<long>(_coordinateBlockWidths);
-    }
 
     /// <summary>Resolves a visible endpoint before joining any mapped scope/tree coordinate partition.</summary>
     private MethodCallExpression VisibleCoordinateEndpoint(

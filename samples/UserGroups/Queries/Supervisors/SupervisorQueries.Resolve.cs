@@ -161,6 +161,14 @@ internal static partial class SupervisorQueries
         // Unequal IDs mean ambiguity; neither extreme chooses a business winner. This avoids a DISTINCT set
         // and keeps the grouped relation uncorrelated for MariaDB's derived-table restrictions.
         var witnesses = PersonWitnesses(candidates, origins, selection);
+
+        if (context.Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer")
+        {
+            // WHY: SQL Server pushed each origin's group key into this grouped relation and rebuilt every
+            // ancestor path per origin. Behind OFFSET 0 the measured plans completed the witnesses once.
+            witnesses = witnesses.OrderBy(witness => witness.StartGroupId).Skip(0);
+        }
+
         var outcomes = origins
             .GroupJoin(
                 witnesses,

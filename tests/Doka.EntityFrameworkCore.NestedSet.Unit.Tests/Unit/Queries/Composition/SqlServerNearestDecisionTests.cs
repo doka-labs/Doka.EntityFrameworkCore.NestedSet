@@ -47,8 +47,9 @@ public sealed class SqlServerNearestDecisionTests
         Assert.Single(selections);
         Assert.Contains("SELECT TOP(1) CASE", sql, StringComparison.Ordinal);
         // WHY: A row-aware candidate changes owner selection, not structural edge eligibility.
-        // Its selected owner's path can still share the same row-independent failure summaries.
-        Assert.Contains("GROUP BY", sql, StringComparison.Ordinal);
+        // Its selected owner's path can still share the same row-independent completed failure points.
+        Assert.Single(Regex.Matches(sql, @"ORDER BY \[\w+\]\.\[Left\]\s+OFFSET 0 ROWS"));
+        Assert.DoesNotContain("GROUP BY", sql, StringComparison.Ordinal);
         Assert.DoesNotContain("COUNT_BIG(*)", sql, StringComparison.Ordinal);
         Assert.DoesNotContain("SUM(", sql, StringComparison.Ordinal);
         Assert.DoesNotMatch(@"MAX\s*\(\s*CASE", sql);

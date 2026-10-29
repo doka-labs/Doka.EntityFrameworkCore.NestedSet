@@ -48,19 +48,19 @@ internal sealed partial class NestedSetQuery<TEntity>
     internal IQueryable<TResult> SelectSubtrees<TResult>(
         Expression<Func<TEntity, bool>> anchors,
         Expression<Func<TEntity, TEntity, int, TResult>> projection
-    ) => SelectPairs(anchors, projection, ancestors: false, includeSelf: true, nameof(anchors));
+    ) => Composed(SelectPairs(anchors, projection, ancestors: false, includeSelf: true, nameof(anchors)));
 
     /// <summary>Projects selected nodes with their strict visible ancestors.</summary>
     internal IQueryable<TResult> SelectAncestors<TResult>(
         Expression<Func<TEntity, bool>> nodes,
         Expression<Func<TEntity, TEntity, int, TResult>> projection
-    ) => SelectPairs(nodes, projection, ancestors: true, includeSelf: false, nameof(nodes));
+    ) => Composed(SelectPairs(nodes, projection, ancestors: true, includeSelf: false, nameof(nodes)));
 
     /// <summary>Projects selected nodes with their visible ancestors and themselves.</summary>
     internal IQueryable<TResult> SelectAncestorsOrSelf<TResult>(
         Expression<Func<TEntity, bool>> nodes,
         Expression<Func<TEntity, TEntity, int, TResult>> projection
-    ) => SelectPairs(nodes, projection, ancestors: true, includeSelf: true, nameof(nodes));
+    ) => Composed(SelectPairs(nodes, projection, ancestors: true, includeSelf: true, nameof(nodes)));
 
     /// <summary>Composes EF-expanded sources without inserting another deferred strategy marker.</summary>
     internal IQueryable<TResult> SelectNormalizedAncestors<TResult>(
@@ -141,10 +141,18 @@ internal sealed partial class NestedSetQuery<TEntity>
 
         // WHY: Upward pairs must remain available for pivot decorrelation in a later downward leg.
         // Materializing their selected-key boundary made mixed queries rescan a large ancestor range.
-        var selectedNodes = ancestors ? _nodes.Where(selected) : SelectedAnchors(selected);
+        var selectedNodes = ancestors ? SelectedSources(selected) : SelectedAnchors(selected);
 
         return SelectRangePairs(selectedNodes, projection, ancestors, includeSelf);
     }
+
+    /// <summary>Adds the adapter's composition tag to one public composition result.</summary>
+    private IQueryable<TResult> Composed<TResult>(
+        IQueryable<TResult> query
+    )
+        // WHY: Endpoint provenance already treats EF tags as row-preserving, and EF collects tags from
+        // nested sources. Adapters without a command policy keep their generated SQL unchanged.
+        => _capabilities.TagsCompositionQueries ? query.TagWith(NestedSetCompositionTag.Text) : query;
 
     /// <summary>Reads an exact standard LINQ method from a typed template without compiling it.</summary>
     private static MethodInfo MethodOf(

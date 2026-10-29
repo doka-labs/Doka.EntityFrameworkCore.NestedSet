@@ -689,12 +689,13 @@ results, one command, zero entities and an empty tracker. See the
 and [binary](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Composition/Models/HierarchyCompositionModelTests.LongPaths.Binary.cs)
 cases.
 
-The [SQL Server coordinate controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerAncestorBoundsTests.cs)
-check generated SQL and schema-only diagnostics. Their
-[executed semantic controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerAncestorBoundsTests.Semantics.cs)
-use SQLite for duplicate bounds, native text equality, converted keys, hidden
-or foreign identities, empty selections and extreme intervals. They do not
-replace native SQL Server plans. [Fixture translation](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Observation/CapacityFixtureTranslationTests.cs)
+The [SQL Server strategy controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerCompositionStrategyTests.cs)
+check generated SQL and schema-only diagnostics. Duplicate and extreme bounds,
+foreign identities and hidden owners execute natively through the cross-provider
+[malformed-bound](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Composition/Models/AncestorIndexQueryTests.MalformedBounds.cs),
+[foreign-owner](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Composition/Semantics/HierarchyCompositionSemanticTests.ForeignOwners.cs)
+and [visibility](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Composition/Semantics/HierarchyCompositionSemanticTests.Visibility.cs)
+cases. They do not replace native SQL Server plans. [Fixture translation](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Observation/CapacityFixtureTranslationTests.cs)
 and [payload seeding](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Observation/CapacityPayloadSeedingTests.cs)
 have independent compatibility and batch-boundary controls.
 

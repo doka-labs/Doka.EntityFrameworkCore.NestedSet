@@ -48,3 +48,15 @@ The former options-level `DbContextOptionsBuilder.UseNestedSets()` overloads
 are removed. See the [upgrade guide](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/blob/main/docs/upgrading-provider-packages.md),
 [configuration](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/blob/main/docs/configuration.md), and
 [support/qualification matrix](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/blob/main/docs/support-and-qualification.md).
+
+## Composition query plans
+
+Public composition operations, such as `SelectAncestors(...)`,
+`SelectSubtrees(...)` and `WherePathEdges(...)`, tag their queries with
+`Doka.EntityFrameworkCore.NestedSet composition`. The adapter appends
+`OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 1)` to commands carrying that tag only.
+SQL Server otherwise reuses a plan compiled for the first selection size and
+can repeat population-sized work for later sources or parallel workers.
+Ordinary hierarchy reads, mutations and untagged application queries are
+unchanged. Do not append a second `OPTION` clause to tagged commands; see
+[SQL Server composition plans](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/blob/main/docs/performance.md#sql-server-composition-plans).

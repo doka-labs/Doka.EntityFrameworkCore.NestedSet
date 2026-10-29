@@ -1716,16 +1716,18 @@ See [MySQL's EXPLAIN documentation](https://dev.mysql.com/doc/refman/8.4/en/expl
 
 Portable long-path proofs count children with one visible allowed direct
 parent, retaining native key equality, consecutive depth, containment and
-row-dependent rules. SQL Server uses shared failure summaries for
-row-independent long-path rules: its adaptive width is a deferred relational
-lookup of the greatest visible `Right`, joined before grouping. Each local
-summary has an `OFFSET 0` translation boundary before caller filters; nullable
-scalar `MAX` results are compared outside the aggregates. This keeps EF from
-merging caller predicates into `HAVING` and avoids aggregates mixing outer and
-local columns. It does not force SQL Server to materialize a summary or reuse
-it across facts; native actual-work assertions remain required.
-MySQL/MariaDB retain their separately qualified scalar-width form; row-dependent
-rules retain their exact per-occurrence count.
+row-dependent rules. For row-independent long-path rules, SQL Server's form
+fences the invalid children: their identity and interval points form an
+uncorrelated relation behind an `ORDER BY ... OFFSET 0` boundary that references
+no caller bound. Each path then asks for one point with
+`upper.Left < Left <= lower.Left` and `Right >= lower.Right` through a scalar
+`TOP(1)` lookup; in a valid nested set such a point exists exactly when the path
+is incomplete. In the measured plans the points were completed once and the
+scalar lookup stayed lazy and correlated: an `EXISTS` let SQL Server turn the
+proof into an eager probe join beside nearest candidates and rebuild the points
+for every row, and the former grouped failure summaries were recomputed for
+every fact. MySQL/MariaDB retain their separately qualified
+scalar-width form; row-dependent rules retain their exact per-occurrence count.
 
 SQL Server selects the nearest strict ancestor in descending `Left` order.
 For the required valid bounds/depth model, ancestors form one nested chain:
@@ -1743,35 +1745,43 @@ through an inner join. The server still decides ambiguity, and an admitted
 person retains every occurrence on that origin's path. No additional status
 row is sent for a successful origin and the reader count is unchanged.
 
-SQL Server's strict ancestor strategy projects a native
-owner key conditionally on nonleaf eligibility inside an independent grouped
-relation, then hydrates by exact key/tree equality. Grouping the complete
-coordinate key instead of applying `DISTINCT` to computed values preserves
-EF's identifiers for owned auto-includes and collection DTOs. A bare unique key
-could let the optimizer remove the set boundary; coordinate-only hydration proved
-insufficient in successor CI. Equal-bound owners retain their separate keys
-and occurrences. These SQL shapes do not guarantee physical seeks or bounded
-server work; native execution plans and unchanged capacity guards remain
-required. The [2026-10-28 correction record](qualification/query-composition.md#ci-correction-qualification-2026-10-28)
-separates verified local behavior from outstanding native SQL Server execution.
+SQL Server's strict ancestor strategy drives each visible nonleaf owner into its
+own source interval. A correlated `CROSS APPLY` selects the caller's sources
+inside the owner's `Left` range, ordered by `Left` behind `OFFSET 0`. Strict
+ancestors have no bounded range in any coordinate index, while each owner's
+descendants form one `Left` range. In the measured plans the boundary kept the
+apply correlated, so a plan compiled for one source no longer scanned every owner
+again for each later source.
+Owner and source remain mapped entities: owned auto-includes, collection
+identifiers, caller occurrences and equal-bound owners are preserved without a
+global owner window. Inclusive ancestors whose selection is an independent fact
+query fence that selection behind a node-key `OFFSET 0` boundary, which the
+measured plans completed once; SQL Server otherwise evaluated the fact `EXISTS` for every node of each selected anchor
+subtree. Hierarchy-backed selections remain correlatable for later direction
+changes. These SQL shapes do not prove physical seeks; native plans and the
+unchanged capacity guards remain the acceptance criterion.
 
-The SQL Server adapter additionally retains actual containment inside each
-unique native key/tree hydration and applies `Take(1)` there. NodeKey, or
-(Scope, NodeKey), is already a validated key and Scope is bound before
-composition. The lookup therefore has zero or one owner, so the limit cannot
-truncate valid output. Its remaining outer inequality keeps EF's correlated
-`CROSS APPLY` instead of a global `ROW_NUMBER` rewrite, including when the
-caller does not consume distance. It preserves the mapped entity and collection
-navigation; it is not proof that the optimizer chooses an index seek.
+### SQL Server composition plans
 
-Excluded owner intervals share `(NULL, Tree, 0, 0)` in that private relation.
-Keeping each excluded leaf's real coordinates retained a population-sized
-grouped result even when only one root was eligible. The
-[actual-relation cardinality controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerAncestorBoundsTests.Cardinality.cs)
-count the production relation asynchronously: one root and 100 leaves yield
-two classes per tree instead of 101. Eligible key zero, original bounds and
-equal-bound owner occurrences remain unchanged. The excluded zero interval
-cannot pass strict containment, and its NULL key cannot hydrate a required key.
+The six public composition operations tag their SQL Server queries with the EF
+tag `Doka.EntityFrameworkCore.NestedSet composition`. The adapter's command
+interceptor appends `OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 1)` to reader, scalar
+and non-query commands whose leading EF tag block carries that tag, once per
+statement and before an optional terminator. Ordinary hierarchy reads,
+mutations, untagged application queries and other adapters are unchanged.
+
+SQL Server otherwise reuses the plan compiled for the first parameter values.
+A plan built for one selected source repeated subtree and path work for every
+later source, and fresh compiles still chose that per-row shape for small exact
+estimates. `OPTIMIZE FOR UNKNOWN` plans with average selectivity instead of the
+first sniffed values; in the measured capacity profiles this kept each
+composition operator within its population-pass budget. Parallel nested loops
+rebuilt an uncorrelated inner relation once per worker thread, so completed path
+failures repeated with the core count; `MAXDOP 1` removes that per-worker
+repetition. Neither hint fixes a physical plan or guarantees one-time
+evaluation; the actual-work guards below remain the acceptance criterion.
+Composition queries therefore give up parallel scans. Applications must not
+append a second `OPTION` clause to tagged composition commands.
 
 The mixed-direction, deep-path and supervisor capacity profiles additionally
 read SQL Server's actual Showplan counters. They sum `ActualRows` and reported

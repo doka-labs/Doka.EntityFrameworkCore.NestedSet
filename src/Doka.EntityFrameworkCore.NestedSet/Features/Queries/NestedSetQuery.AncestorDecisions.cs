@@ -24,14 +24,14 @@ internal sealed partial class NestedSetQuery<TEntity>
         if (!normalized
             && NestedSetDeferredQuery.ContainsMarker(source.Expression))
         {
-            return NestedSetDeferredQuery.CreateAny(
+            return Composed(NestedSetDeferredQuery.CreateAny(
                 _nodes,
                 _unboundNodes,
                 source,
                 node,
                 predicate,
                 _entityType.Name,
-                _treeBound);
+                _treeBound));
         }
 
         var row = Expression.Parameter(typeof(TRow), "row");
@@ -61,7 +61,7 @@ internal sealed partial class NestedSetQuery<TEntity>
             condition = Any(_nodes, membership, Expression.AndAlso(MatchEndpoint(membership, selected), condition));
         }
 
-        return source.Where(Expression.Lambda<Func<TRow, bool>>(CorrelatedCondition(condition), row));
+        return Composed(source.Where(Expression.Lambda<Func<TRow, bool>>(CorrelatedCondition(condition), row)));
     }
 
     /// <summary>Selects a scalar nearest-owner decision without repeating the nearest-key relation.</summary>
@@ -161,7 +161,7 @@ internal sealed partial class NestedSetQuery<TEntity>
         if (!normalized
             && NestedSetDeferredQuery.ContainsMarker(source.Expression))
         {
-            return NestedSetDeferredQuery.CreateNearest(
+            return Composed(NestedSetDeferredQuery.CreateNearest(
                 _nodes,
                 _unboundNodes,
                 source,
@@ -169,7 +169,7 @@ internal sealed partial class NestedSetQuery<TEntity>
                 candidate,
                 predicate,
                 _entityType.Name,
-                _treeBound);
+                _treeBound));
         }
 
         var row = Expression.Parameter(typeof(TRow), "row");
@@ -198,6 +198,6 @@ internal sealed partial class NestedSetQuery<TEntity>
             condition = Any(_nodes, membership, Expression.AndAlso(MatchEndpoint(membership, selected), condition));
         }
 
-        return source.Where(Expression.Lambda<Func<TRow, bool>>(CorrelatedCondition(condition), row));
+        return Composed(source.Where(Expression.Lambda<Func<TRow, bool>>(CorrelatedCondition(condition), row)));
     }
 }

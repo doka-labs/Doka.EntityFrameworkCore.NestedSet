@@ -10,7 +10,7 @@ internal sealed partial class NestedSetQuery<TEntity>
     {
         if (_capabilities.CompletedSourceMethod is null)
         {
-            return SelectCoordinateAncestorPairs(selected, projection);
+            return SelectOwnerFirstAncestorPairs(selected, projection);
         }
 
         if (SelectBoundedIndependentAncestorPairs(selected, projection) is { } bounded)

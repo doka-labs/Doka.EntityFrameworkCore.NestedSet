@@ -150,6 +150,9 @@ internal sealed partial class NestedSetQuery<TEntity>
                 (endpoint, point) => point)
             .Select(point => point.Left > upperLeft && point.Left <= lowerLeft ? (long?)point.Right : null);
 
+    private static readonly MethodInfo s_firstPathFailure = MethodOf(
+        (Expression<Func<IQueryable<long?>, long?>>)(failures => failures.FirstOrDefault()));
+
     /// <summary>Rejects paths whose interior blocks or endpoint fringes contain an invalid direct child.</summary>
     private BinaryExpression InvalidPathChildren(
         Expression upper,
@@ -160,9 +163,9 @@ internal sealed partial class NestedSetQuery<TEntity>
     {
         var failures = InvalidPathChildSource(edgeAllowed, edges);
 
-        if (_capabilities.PathFailureStrategy == NestedSetPathFailureStrategy.RelationalWidth)
+        if (_capabilities.PathFailureStrategy == NestedSetPathFailureStrategy.CompletedPoints)
         {
-            return InvalidRelationalPathChildren(upper, lower, failures);
+            return InvalidCompletedPathChildren(upper, lower, failures);
         }
 
         var leftName = Expression.Constant(_descriptor.Left.Name);
@@ -309,8 +312,8 @@ internal sealed partial class NestedSetQuery<TEntity>
             Expression.Lambda<Func<TEntity, bool>>(Expression.Not(Any(edges, edge, valid)), invalid));
     }
 
-    /// <summary>Checks local grouped failure coordinates without scalar subqueries inside grouping or aggregates.</summary>
-    private BinaryExpression InvalidRelationalPathChildren(
+    /// <summary>Fences invalid-child points before testing each path's exact coordinate window.</summary>
+    private BinaryExpression InvalidCompletedPathChildren(
         Expression upper,
         Expression lower,
         IQueryable<TEntity> failures
@@ -321,106 +324,57 @@ internal sealed partial class NestedSetQuery<TEntity>
             ? NestedSetExpressions.Property(child, role.Resolve(_entityType), typeof(object))
             : (Expression)Expression.Constant(null, typeof(object));
 
-        var selector = Expression.Lambda<Func<TEntity, PathFailureCoordinate>>(
-            Expression.MemberInit(Expression.New(typeof(PathFailureCoordinate)),
-                Field(nameof(PathFailureCoordinate.Scope), scope),
-                Field(nameof(PathFailureCoordinate.Tree),
+        var selector = Expression.Lambda<Func<TEntity, PathFailurePoint>>(
+            Expression.MemberInit(Expression.New(typeof(PathFailurePoint)),
+                Field(nameof(PathFailurePoint.Scope), scope),
+                Field(nameof(PathFailurePoint.Tree),
                     NestedSetExpressions.Property(child, _descriptor.TreeId.Resolve(_entityType), typeof(object))),
-                Field(nameof(PathFailureCoordinate.Left), Bound(child, _descriptor.Left)),
-                Field(nameof(PathFailureCoordinate.Right), Bound(child, _descriptor.Right))), child);
+                Field(nameof(PathFailurePoint.Left), Bound(child, _descriptor.Left)),
+                Field(nameof(PathFailurePoint.Right), Bound(child, _descriptor.Right))), child);
 
-        var widths = Expression.Lambda<Func<PathFailureCoordinate, IEnumerable<long>>>(
-            VisibleCoordinateBlockWidths().Expression, Expression.Parameter(typeof(PathFailureCoordinate), "point"));
+        // WHY: SQL Server reran grouped failure summaries for every path row: the scalar MAX stayed
+        // correlated, so neither its hash joins nor its population scans were reused. These points do not
+        // reference outer path bounds; behind OFFSET 0 the measured plans completed them once.
+        var points = failures.Select(selector).OrderBy(point => point.Left).Skip(0);
 
-        var points = failures.Select(selector).SelectMany(widths, (point, width) => new PathFailureCoordinate
-        {
-            Scope = point.Scope, Tree = point.Tree, Left = point.Left, Right = point.Right,
-            Width = width, Block = point.Left - point.Left % width,
-        });
-
-        // WHY: Both aggregates consume only local columns. Their width is a real relational column,
-        // never MAX/SQRT subqueries repeated inside GROUP BY. Scope is omitted entirely when absent.
-        var interior = _descriptor.Scope is null
-            ? points.GroupBy(point => new { point.Tree, point.Width, point.Block })
-                .Select(group => new PathFailureCoordinate
-                {
-                    Tree = group.Key.Tree, Width = group.Key.Width, Block = group.Key.Block,
-                    Right = group.Max(point => point.Right),
-                })
-            : points.GroupBy(point => new { point.Scope, point.Tree, point.Width, point.Block })
-                .Select(group => new PathFailureCoordinate
-                {
-                    Scope = group.Key.Scope, Tree = group.Key.Tree, Width = group.Key.Width, Block = group.Key.Block,
-                    Right = group.Max(point => point.Right),
-                });
-
-        var fringes = _descriptor.Scope is null
-            ? points.GroupBy(point => new { point.Tree, point.Width, point.Block, point.Left })
-                .Select(group => new PathFailureCoordinate
-                {
-                    Tree = group.Key.Tree, Width = group.Key.Width, Block = group.Key.Block, Left = group.Key.Left,
-                    Right = group.Max(point => point.Right),
-                })
-            : points.GroupBy(point => new { point.Scope, point.Tree, point.Width, point.Block, point.Left })
-                .Select(group => new PathFailureCoordinate
-                {
-                    Scope = group.Key.Scope, Tree = group.Key.Tree, Width = group.Key.Width,
-                    Block = group.Key.Block, Left = group.Key.Left, Right = group.Max(point => point.Right),
-                });
-
-        // WHY: Complete each local summary before applying caller endpoints. OFFSET 0 keeps EF from
-        // merging those outer predicates into HAVING; native work guards still verify physical reuse.
-        interior = interior.OrderBy(point => point.Block).Skip(0);
-        fringes = fringes.OrderBy(point => point.Block).Skip(0);
-
-        var partition = Expression.Parameter(typeof(PathFailureCoordinate), "partition");
-        var tree = Expression.Equal(Expression.Property(partition, nameof(PathFailureCoordinate.Tree)),
+        var point = Expression.Parameter(typeof(PathFailurePoint), "point");
+        Expression identity = Expression.Equal(Expression.Property(point, nameof(PathFailurePoint.Tree)),
             NestedSetExpressions.Property(upper, _descriptor.TreeId.Resolve(_entityType), typeof(object)));
 
-        Expression identity = _descriptor.Scope is { } scopeRole
-            ? Expression.AndAlso(tree,
-                Expression.Equal(Expression.Property(partition, nameof(PathFailureCoordinate.Scope)),
-                    NestedSetExpressions.Property(upper, scopeRole.Resolve(_entityType), typeof(object))))
-            : tree;
+        if (_descriptor.Scope is { } scopeRole)
+        {
+            identity = Expression.AndAlso(identity,
+                Expression.Equal(Expression.Property(point, nameof(PathFailurePoint.Scope)),
+                    NestedSetExpressions.Property(upper, scopeRole.Resolve(_entityType), typeof(object))));
+        }
 
-        var widthColumn = Expression.Property(partition, nameof(PathFailureCoordinate.Width));
-        var block = Expression.Property(partition, nameof(PathFailureCoordinate.Block));
-        var left = Expression.Property(partition, nameof(PathFailureCoordinate.Left));
-        var upperLeft = Bound(upper, _descriptor.Left);
-        var lowerLeft = Bound(lower, _descriptor.Left);
-        var upperBlock = CoordinateBlockStart(upperLeft, widthColumn);
-        var lowerBlock = CoordinateBlockStart(lowerLeft, widthColumn);
-        var interiorMatch = Expression.AndAlso(identity,
-            Expression.AndAlso(Expression.GreaterThan(block, upperBlock), Expression.LessThan(block, lowerBlock)));
-
-        var fringeMatch = Expression.AndAlso(identity,
+        // WHY: In a valid nested set, a failure with upper.Left < Left <= lower.Left lies on this path
+        // exactly when its Right >= lower.Right. Existence is the complete proof; no caller row, payload
+        // value or occurrence is deduplicated, and an empty point relation proves no violation.
+        var left = Expression.Property(point, nameof(PathFailurePoint.Left));
+        var onPath = Expression.AndAlso(identity,
             Expression.AndAlso(
-                Expression.OrElse(Expression.Equal(block, upperBlock), Expression.Equal(block, lowerBlock)),
-                Expression.AndAlso(Expression.GreaterThan(left, upperLeft), Expression.LessThanOrEqual(left, lowerLeft))));
+                Expression.AndAlso(
+                    Expression.GreaterThan(left, Bound(upper, _descriptor.Left)),
+                    Expression.LessThanOrEqual(left, Bound(lower, _descriptor.Left))),
+                Expression.GreaterThanOrEqual(
+                    Expression.Property(point, nameof(PathFailurePoint.Right)), Bound(lower, _descriptor.Right))));
 
-        var interiorRights = interior
-            .Where(Expression.Lambda<Func<PathFailureCoordinate, bool>>(interiorMatch, partition))
-            .Select(point => (long?)point.Right);
+        // WHY: EXISTS let SQL Server turn this proof into an eager probe join beside nearest candidates,
+        // rebuilding the completed points for every row. In the measured plans a scalar TOP(1) remained a
+        // lazy correlated lookup that short paths skipped and long paths answered from the completed points.
+        var found = Expression.Call(s_firstPathFailure,
+            points.Where(Expression.Lambda<Func<PathFailurePoint, bool>>(onPath, point))
+                .Select(failure => (long?)1L).Expression);
 
-        var fringeRights = fringes
-            .Where(Expression.Lambda<Func<PathFailureCoordinate, bool>>(fringeMatch, partition))
-            .Select(point => (long?)point.Right);
-
-        // WHY: Scalar MAX consumes only each completed summary's local Right. Comparing the result
-        // outside the aggregate avoids both invalid outer-column MAX(CASE) and EXISTS row-goal plans.
-        // Empty summaries return NULL, hence no violation; overlapping fringes cannot duplicate a caller row.
-        var lowerRight = Expression.Convert(Bound(lower, _descriptor.Right), typeof(long?));
-
-        return Expression.OrElse(
-            Expression.GreaterThanOrEqual(Expression.Call(s_maximumNullableCoordinate, interiorRights.Expression), lowerRight),
-            Expression.GreaterThanOrEqual(Expression.Call(s_maximumNullableCoordinate, fringeRights.Expression), lowerRight));
+        return Expression.Equal(found, Expression.Constant(1L, typeof(long?)));
 
         static MemberAssignment Field(string member, Expression value)
-            => Expression.Bind(typeof(PathFailureCoordinate).GetProperty(member)!, value);
+            => Expression.Bind(typeof(PathFailurePoint).GetProperty(member)!, value);
     }
 
-    /// <summary>Carries native identity and local summary columns across one relational width boundary.</summary>
-    private sealed class PathFailureCoordinate
+    /// <summary>Carries native identity and the exact interval of one invalid child across the fence.</summary>
+    private sealed class PathFailurePoint
     {
         /// <summary>Gets the scope role only for a scoped model.</summary>
         public object? Scope { get; init; }
@@ -428,16 +382,10 @@ internal sealed partial class NestedSetQuery<TEntity>
         /// <summary>Gets the native mapped tree identity.</summary>
         public required object Tree { get; init; }
 
-        /// <summary>Gets the current visible population's adaptive partition width.</summary>
-        public long Width { get; init; }
-
-        /// <summary>Gets the overflow-safe coordinate block start.</summary>
-        public long Block { get; init; }
-
-        /// <summary>Gets the exact left coordinate retained by fringe summaries.</summary>
+        /// <summary>Gets the invalid child's left coordinate.</summary>
         public long Left { get; init; }
 
-        /// <summary>Gets the greatest failed right coordinate within the local summary.</summary>
+        /// <summary>Gets the invalid child's right coordinate.</summary>
         public long Right { get; init; }
     }
 }

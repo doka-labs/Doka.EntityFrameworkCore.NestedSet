@@ -9,6 +9,6 @@ internal enum NestedSetPathFailureStrategy
     /// <summary>Uses the qualified scalar-width grouped failure summaries.</summary>
     ScalarWidth,
 
-    /// <summary>Joins a relational width aggregate before grouping local failure coordinates.</summary>
-    RelationalWidth,
+    /// <summary>Fences invalid-child points before testing each path's coordinate window.</summary>
+    CompletedPoints,
 }

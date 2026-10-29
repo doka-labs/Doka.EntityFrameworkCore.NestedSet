@@ -73,26 +73,34 @@ the narrowly approved registration-removal exception.
 - Refresh MySQL to 8.4.13 and SQL Server 2022 to CU27-GDR1; refresh the existing
   MariaDB 11.8.9 and PostgreSQL 17.11 image digests. Keep the supported engine
   lines and update the CodeQL SARIF uploader to 4.39.1.
+- Tag public composition queries on SQL Server and plan only those commands with
+  `OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 1)` through an adapter-owned command
+  interceptor. In the measured capacity profiles, plans cached for one selected
+  source or rebuilt per worker thread no longer repeated population work for
+  later sources; neither hint fixes a physical plan. Ordinary
+  hierarchy reads, mutations and other adapters are unchanged. See
+  [SQL Server composition plans](docs/performance.md#sql-server-composition-plans).
 - Declare the SQL Server adapter's PKCS security floor as `9.0.21` without an
   arbitrary upper bound, allowing applications to use newer compatible framework
   packages. The common libraries retain no SQL Client dependency.
 
 ### Fixed
 
-- Preserve SQL Server's row-independent long-path failure proof through local
-  grouped coordinates with caller filters outside nullable scalar maxima, and
-  separate unresolved supervisor markers from complete
-  unique-person evidence. Guard actual iterator output and pre-filter reads
-  against cardinality-derived budgets; retain native x64 qualification.
-- Project SQL Server's nearest decision once in equivalent descending coordinate order
-  and hydrate ancestor owners by conditional native keys. Collapse excluded
-  leaf coordinates per tree before hydration. Refresh fixture
-  statistics individually with unchanged `FULLSCAN` accuracy and deadlines;
+- Fence SQL Server's row-independent long-path failures behind an `OFFSET 0`
+  boundary and test each path through a scalar `TOP(1)` lookup,
+  and separate unresolved supervisor markers from complete
+  unique-person evidence. The UserGroups sample fences its supervisor
+  witnesses behind `OFFSET 0` on SQL Server before joining origins. Guard actual iterator
+  output and pre-filter reads against cardinality-derived budgets; retain native
+  x64 qualification.
+- Project SQL Server's nearest decision once in equivalent descending coordinate
+  order. Refresh fixture statistics individually with unchanged `FULLSCAN` accuracy and deadlines;
   retain the explicit native capacity qualification boundary.
-- Preserve owned auto-includes and collection DTO identifiers in SQL Server's
-  strict ancestor queries by grouping the complete conditional coordinate key.
-  Retain a correlated zero-or-one mapped-owner lookup without a global owner
-  window or distance-projection wrapper.
+- Drive SQL Server's strict ancestors from visible nonleaf owners into one
+  fenced `Left` range each, and fence independent fact
+  selections by node key before inclusive ancestor ranges. Preserve owned
+  auto-includes, collection DTO identifiers and equal-bound owner occurrences
+  without a global owner window.
 - Select PostgreSQL's nearest-owner decision once while preserving `Depth`
   ordering, rejection without fallback and complete-path validation. Guard
   broad payload joins with actual native work to prevent quadratic rescans.
@@ -103,9 +111,7 @@ the narrowly approved registration-removal exception.
   reviewed projects for isolated package qualification without weakening
   candidate-version, dependency-closure or archive-byte checks.
 - Preserve portable complete-path proofs through exact visible parent existence
-  per child. SQL Server strict ancestor reads restrict independent structural
-  coordinates before hydrating owners, retaining duplicate-owner occurrences,
-  mapped equality and query filters.
+  per child.
 - Correct shared capacity setup at SQL Server's default compatibility level,
   batch large payload seeds by primary key, and enable snapshot isolation in
   indexed SignalLab fixtures. Check cancellation forwarding at the command and

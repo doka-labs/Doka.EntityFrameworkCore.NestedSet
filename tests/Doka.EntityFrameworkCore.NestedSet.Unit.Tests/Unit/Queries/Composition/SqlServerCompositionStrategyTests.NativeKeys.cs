@@ -1,12 +1,10 @@
-using System.Text.RegularExpressions;
-
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-public sealed partial class SqlServerAncestorBoundsTests
+public sealed partial class SqlServerCompositionStrategyTests
 {
-    /// <summary>Operator-free converted keys retain native CASE and equality without an index-defeating CAST.</summary>
+    /// <summary>Operator-free converted keys stay native in the owner-first APPLY without a CAST.</summary>
     [Fact]
-    public async Task ConvertedOwnerKeyRetainsNativeConditionalSql()
+    public async Task ConvertedOwnerKeyRetainsNativeSql()
     {
         // Arrange
         var options = ModelCompatibilityDatabase.Options<CoordinateBoundsContext>("SqlServer");
@@ -21,61 +19,51 @@ public sealed partial class SqlServerAncestorBoundsTests
         var sql = query.ToQueryString();
 
         // Assert
-        AssertConditionalNativeKey(sql);
-        Assert.Contains("GROUP BY", sql, StringComparison.Ordinal);
-        Assert.Contains("THEN", sql, StringComparison.Ordinal);
-        Assert.Contains("END AS [Key]", sql, StringComparison.Ordinal);
+        Assert.Contains("CROSS APPLY", sql, StringComparison.Ordinal);
+        Assert.Contains("OFFSET 0 ROWS", sql, StringComparison.Ordinal);
         Assert.DoesNotMatch(@"CAST\(\s*\[[^]]+\]\.\[Id\]|CONVERT\([^)]*\[[^]]+\]\.\[Id\]", sql);
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>Binary-collated text and binary keys retain their native SQL representation through CASE.</summary>
+    /// <summary>Binary-collated text and binary keys retain their native SQL representation.</summary>
     /// <param name="binary">Whether the mapped key is binary rather than binary-collated text.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task NativeOwnerKeyRetainsConditionalSqlWithoutTextConversion(bool binary)
+    public async Task NativeOwnerKeyRetainsSqlWithoutTextConversion(bool binary)
     {
         // Arrange
-        Func<Task<string>> translate = binary ? NativeConditionalSqlAsync<byte[]> : NativeConditionalSqlAsync<string>;
+        Func<Task<string>> translate = binary ? NativeOwnerKeySqlAsync<byte[]> : NativeOwnerKeySqlAsync<string>;
 
         // Act
         var sql = await translate();
 
         // Assert
-        AssertConditionalNativeKey(sql);
-        Assert.Contains("GROUP BY", sql, StringComparison.Ordinal);
-        Assert.Contains("END AS [Key]", sql, StringComparison.Ordinal);
+        Assert.Contains("CROSS APPLY", sql, StringComparison.Ordinal);
         Assert.DoesNotMatch(@"CAST\(\s*\[[^]]+\]\.\[Id\]|CONVERT\([^)]*\[[^]]+\]\.\[Id\]", sql);
     }
 
     /// <summary>Translates the exact selected SQL Server strategy using native reference-valued keys.</summary>
-    private static async Task<string> NativeConditionalSqlAsync<TKey>() where TKey : class
+    private static async Task<string> NativeOwnerKeySqlAsync<TKey>() where TKey : class
     {
-        var options = ModelCompatibilityDatabase.Options<NativeConditionalContext<TKey>>("SqlServer");
+        var options = ModelCompatibilityDatabase.Options<NativeOwnerKeyContext<TKey>>("SqlServer");
         await using var services = NestedSetTestAdapters.BuildServices(options);
-        await using var context = new NativeConditionalContext<TKey>(
-            new DbContextOptionsBuilder<NativeConditionalContext<TKey>>(options)
+        await using var context = new NativeOwnerKeyContext<TKey>(
+            new DbContextOptionsBuilder<NativeOwnerKeyContext<TKey>>(options)
                 .UseInternalServiceProvider(services).Options);
 
-        return context.NestedSet<NativeConditionalNode<TKey>>().ForScope(7)
+        return context.NestedSet<NativeOwnerKeyNode<TKey>>().ForScope(7)
             .SelectAncestors(node => node.Depth >= 1, (source, owner, distance) => owner.Id).ToQueryString();
     }
 
-    /// <summary>Checks the actual eligibility CASE and native key branch independently of select-list ordering.</summary>
-    private static void AssertConditionalNativeKey(string sql)
-        => Assert.Matches(new Regex(
-            @"CASE\s+WHEN\s+(?<owner>\[[^]]+\])\.\[Right\]\s*>\s*CASE\b.*?\bEND\s+THEN\s+\k<owner>\.\[Id\]\s+END AS \[Key\]",
-            RegexOptions.Singleline), sql);
-
-    /// <summary>Maps only native identity roles needed to qualify the conditional ancestor key.</summary>
-    private sealed class NativeConditionalContext<TKey>(DbContextOptions<NativeConditionalContext<TKey>> options)
+    /// <summary>Maps only native identity roles needed to qualify owner-first key translation.</summary>
+    private sealed class NativeOwnerKeyContext<TKey>(DbContextOptions<NativeOwnerKeyContext<TKey>> options)
         : DbContext(options) where TKey : class
     {
         /// <inheritdoc />
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            var node = modelBuilder.Entity<NativeConditionalNode<TKey>>();
+            var node = modelBuilder.Entity<NativeOwnerKeyNode<TKey>>();
             node.HasKey(entity => new { entity.Scope, entity.Id });
             node.Property(entity => entity.Id).ValueGeneratedNever().HasMaxLength(40);
             node.Property(entity => entity.ParentId).HasMaxLength(40);
@@ -94,7 +82,7 @@ public sealed partial class SqlServerAncestorBoundsTests
     }
 
     /// <summary>Supplies strongly mapped reference-valued keys without implicit string conversion.</summary>
-    private sealed class NativeConditionalNode<TKey> where TKey : class
+    private sealed class NativeOwnerKeyNode<TKey> where TKey : class
     {
         /// <summary>Gets or sets the native node identity.</summary>
         public required TKey Id { get; set; }

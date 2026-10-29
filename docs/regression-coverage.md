@@ -177,20 +177,25 @@ separate qualification requirement.
 
 The [ancestor collection controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerAncestorCollectionTests.cs)
 use the shared ordinary and indexed navigation models. SQL Server translates
-owned auto-includes and collection DTOs as single queries; SQLite executes the
-exact coordinate helper with visible, hidden and missing sources and verifies
-the original collection bags. The
-[path summary boundary controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerPathSummaryBoundaryTests.cs)
-guard local grouping before caller filters for path and nearest operations.
-[Deferred width controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerPathSummaryBoundaryTests.Widths.cs)
-exclude hidden and foreign scope/tree rows, observe changes after construction
-and retain empty-root behavior. None substitutes for native SQL Server plans.
-The [selected hydration controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerAncestorHydrationTests.cs)
-check all five configured engine profiles and an unused public distance,
-requiring the SQL Server correlated one-row lookup without a global owner
-window. [Unique-principal navigation controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerAncestorCollectionTests.UniqueLookup.cs)
-execute the equivalent zero-or-one root lookup on SQLite, retaining owned and
-ordinary collection payload for present, hidden, missing and non-ancestor keys.
+owned auto-includes and collection DTOs as single queries; the
+[cross-provider navigation cases](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Composition/Models/AncestorIndexQueryTests.Navigations.cs)
+execute both collection forms natively. The
+[SQL Server strategy controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerCompositionStrategyTests.cs)
+check all five configured engine profiles, tree-bound and forest owner-first
+SQL and an unused public distance; [key controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerCompositionStrategyTests.NativeKeys.cs)
+keep converted, binary and binary-collated keys native, and
+[completed fact controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/CompositionAncestorIndexTests.CompletedFacts.cs)
+restrict the inclusive-ancestor completion boundary to independent fact
+selections on SQL Server. The
+[completed path-point controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerCompositionStrategyTests.PathPoints.cs)
+execute the exact failure relation on SQLite with scoped/unscoped, hidden or
+missing parent, depth, blocked edge, cross-tree/scope and partition-boundary
+cases. [Path translation controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerPathFailureTranslationTests.cs)
+require one uncorrelated completion boundary for path and nearest operations
+and the exact count for row-dependent rules. [Plan policy controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerCompositionStrategyTests.PlanHint.cs)
+cover leading-tag recognition, every intercepted execution kind, terminators,
+idempotence and adapter-only registration. None substitutes for native SQL
+Server plans.
 
 The [adapter registration controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/OptionsExtensionTests.Providers.cs)
 verify actual native callbacks, stable repeated selection, distinct service

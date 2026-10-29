@@ -15,6 +15,78 @@ semantics. [D-018](../decisions/D-018-generic-hierarchy-query-composition.md) an
 [D-019](../decisions/D-019-optional-ancestor-index-and-source-binding.md)
 record the architectural decisions.
 
+## SQL Server correction qualification 2026-10-29
+
+[CI run 40743938176](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/runs/40743938176)
+tested source `0bf2c3ee7781` on supported x64. Eight SQL Server capacity cases
+failed: both medium compositions, both large consumers, depth 100,000, both
+million-node cases and ten million nodes. Their actual-work guards reported, for
+example, 200,000 reads against 20,060 allowed for
+`mixed-wide-10000-origins-10`. These corrections are uncommitted local changes,
+not a hosted rerun.
+
+Diagnosis used SQL Server 2022 CU27-GDR1 and the .NET 10.0.403 SDK as x64
+containers under Apple Silicon emulation. That environment reproduced the
+hosted counts exactly but is not the supported qualification platform; hosted
+x64 CI remains the acceptance criterion. Actual Showplans showed these causes:
+
+- Plan reuse: the plan compiled for one selected source served later selection
+  sizes and repeated owner, subtree and path work for every source.
+- Strict ancestors scanned every grouped coordinate class once per source.
+- Grouped path-failure summaries were recomputed for every fact; an `EXISTS`
+  form became an eager probe join beside nearest candidates.
+- Parallel nested loops rebuilt uncorrelated inner relations once per worker.
+- Inclusive ancestors evaluated an independent fact `EXISTS` for every node of
+  each anchor subtree.
+- The UserGroups supervisor query let SQL Server rebuild its grouped ancestor
+  evidence for every origin.
+
+The corrections, owner-approved where marked:
+
+- Strict ancestors drive visible nonleaf owners into one correlated, `Left`-ordered
+  source range behind `OFFSET 0`.
+- Row-independent path proofs fence invalid-child points behind `OFFSET 0` and
+  test each path with a scalar `TOP(1)` lookup.
+- Inclusive ancestors fence an independent fact selection by node key.
+- Owner decision: public composition queries carry an EF tag, and the SQL Server
+  adapter appends `OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 1)` to those commands.
+  `OPTION (RECOMPILE)`, `LOOP JOIN` and an unfenced fact selection were measured
+  and rejected because each moved a guard failure to another profile or size.
+- Owner decision: the UserGroups sample fences its supervisor witnesses behind
+  `OFFSET 0` on SQL Server before joining origins.
+
+These boundaries and hints do not fix a physical plan; the actual-work guards
+below measured their effect. No budget, index, deadline or other provider strategy changed. With these
+changes, the emulated x64 run passes both medium compositions, both large
+consumers, depth 100,000 and both million-node cases on one source state. The
+Unit partition passes 2,922/2,922. These local results do not replace hosted
+x64 qualification.
+
+Ten million nodes passes every result and actual-work guard on the same source
+state only with a 600-second command timeout, set solely in a diagnostic
+container copy of the test infrastructure. Its four `mixed-wide-10000000`
+profiles took 29.2 to 33.4 seconds under emulation, against the default
+30-second timeout. In that plan, 27.6 of 32.4 seconds belong to one ancestor
+search for the target: a full `Left` index range plus one key lookup per row.
+Completing the selected pivots behind `OFFSET 0` instead took 50.3 seconds
+and was rejected. `0bf2c3ee7781` already timed out on this profile in hosted
+x64 CI. Whether the corrected form stays within the default timeout there
+remains open until the hosted rerun.
+
+The complete SQL Server project apart from ten million nodes passed
+2,027/2,044 in one emulated run while a PostgreSQL suite ran on the same host.
+Its 17 failures were connection timeouts, their fixture follow-on errors and
+one supervisor execution timeout; all of them, with their sibling cases, then
+passed 34/34 in isolation. The supervisor profile with 1,000 origins took 2 to
+5 seconds there, and replaying its query on the retained data took about 0.75
+seconds with or without the sample boundary and the plan hint. SQLite passes
+2,071/2,071 and PostgreSQL 2,047/2,047 on the same source; one earlier
+PostgreSQL run lost an ordering case under the same load, and neither an
+isolated nor a complete rerun reproduced it. MySQL and MariaDB pass
+4,372/4,373; the remaining MariaDB million-node repair case reported an
+aggregate rollback failure instead of its injected failure once, then passed
+4/4 in isolation. That rebuild and transaction path is unchanged here.
+
 ## CI correction qualification 2026-10-28
 
 The first hosted run of stable preparation, CI `40668521125` at source
@@ -168,9 +240,11 @@ grouping; summary keys and `MAX` operands contain local columns only. Separate
 existence predicates apply the outer path limits. Row-dependent rules retain
 their exact count and native parent comparison. MySQL/MariaDB retain their
 existing scalar-width strategy. The
-[direct helper controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerAncestorBoundsTests.RelationalPaths.cs)
-execute the new classifier and relation on SQLite with scoped/unscoped,
-converted, hidden/missing parent, blocked edge and partition-boundary cases.
+direct helper controls executed the new classifier and relation on SQLite with
+scoped/unscoped, converted, hidden/missing parent, blocked edge and
+partition-boundary cases. Their cases now run against the completed-point
+successor in the
+[path-point controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerCompositionStrategyTests.PathPoints.cs).
 
 SQL Server now uses the existing descending-`Left` nearest-owner strategy.
 Valid ancestor intervals form one nested chain, so their depth order is the

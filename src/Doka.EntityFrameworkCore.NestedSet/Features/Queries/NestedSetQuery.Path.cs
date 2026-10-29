@@ -44,7 +44,7 @@ internal sealed partial class NestedSetQuery<TEntity>
         {
             // WHY: Validate endpoints immediately, then wait for EF to expand captured source queries.
             // Only the existing normalized proof can decide whether membership is actually redundant.
-            return NestedSetDeferredQuery.CreatePath(
+            return Composed(NestedSetDeferredQuery.CreatePath(
                 _nodes,
                 _unboundNodes,
                 source,
@@ -52,7 +52,7 @@ internal sealed partial class NestedSetQuery<TEntity>
                 node,
                 edgeAllowed,
                 _entityType.Name,
-                _treeBound);
+                _treeBound));
         }
 
         var row = Expression.Parameter(typeof(TRow), "row");
@@ -105,7 +105,7 @@ internal sealed partial class NestedSetQuery<TEntity>
         // WHY: The source pair already exposes its indexed coordinate range. Keeping this complete
         // path proof scalar prevents PostgreSQL from multiplying the same variable-range estimates again
         // and choosing a quadratic payload join. Containment still rejects unrelated supplied endpoints.
-        return source.Where(Expression.Lambda<Func<TRow, bool>>(CorrelatedCondition(condition), row));
+        return Composed(source.Where(Expression.Lambda<Func<TRow, bool>>(CorrelatedCondition(condition), row)));
     }
 
     /// <summary>Proves visible direct-edge completeness without materializing hierarchy nodes.</summary>

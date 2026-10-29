@@ -3,10 +3,10 @@ using Doka.EntityFrameworkCore.NestedSet.Features.Queries;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-public sealed partial class SqlServerAncestorBoundsTests
+public sealed partial class SqlServerCompositionStrategyTests
 {
     /// <summary>Provides both optional-scope layouts and failures in each distinct partition region.</summary>
-    public static TheoryData<bool, string, int, int> RelationalPathCases
+    public static TheoryData<bool, string, int, int> CompletedPathCases
     {
         get
         {
@@ -45,8 +45,8 @@ public sealed partial class SqlServerAncestorBoundsTests
     /// <param name="location">The failed child in the upper fringe, interior or lower fringe.</param>
     /// <param name="expectedCount">The independently known accepted occurrence count.</param>
     [Theory]
-    [MemberData(nameof(RelationalPathCases))]
-    public async Task RelationalPathSummariesExecuteExactFailureSemantics(
+    [MemberData(nameof(CompletedPathCases))]
+    public async Task CompletedPathPointsExecuteExactFailureSemantics(
         bool scoped,
         string mode,
         int location,
@@ -60,7 +60,8 @@ public sealed partial class SqlServerAncestorBoundsTests
             .UseSqlite(connection, provider => provider.UseNestedSets());
 
         await using var services = NestedSetTestAdapters.BuildServices(options.Options);
-        await using var context = new CoordinateBoundsContext(options.UseInternalServiceProvider(services).Options, scoped);
+        await using var context = new CoordinateBoundsContext(
+            options.UseInternalServiceProvider(services).Options, scoped);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
 
         if (mode is "missing" or "off-path" or "cross-scope")
@@ -130,7 +131,8 @@ public sealed partial class SqlServerAncestorBoundsTests
 
         var upperDepth = mode == "hidden-above" ? 1 : 0;
         var rows = visible.Where(node => node.Depth == upperDepth)
-            .SelectMany(_ => visible.Where(node => node.Depth == 12), (upper, lower) => new { Upper = upper, Lower = lower });
+            .SelectMany(_ => visible.Where(node => node.Depth == 12),
+                (upper, lower) => new { Upper = upper, Lower = lower });
 
         Expression<Func<object, CoordinateBoundsNode, CoordinateBoundsNode, bool>> allowed =
             (_, parent, child) => child.Position != 99;
@@ -139,7 +141,7 @@ public sealed partial class SqlServerAncestorBoundsTests
         var filtered = mode.StartsWith("row-aware", StringComparison.Ordinal)
             ? root.WherePathEdges(occurrences, row => row.Upper, row => row.Lower,
                 (row, parent, child) => child.Position != row.Upper.Position + 99, normalized: true)
-            : FilterRelationalFailures(root, occurrences, row => row.Upper, row => row.Lower, allowed);
+            : FilterCompletedFailures(root, occurrences, row => row.Upper, row => row.Lower, allowed);
 
         // Act
         var actual = await filtered.Select(row => row.Lower.Id).ToArrayAsync(CancellationToken.None);
@@ -150,8 +152,8 @@ public sealed partial class SqlServerAncestorBoundsTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>Executes actual production classification and grouping without altering SQLite capabilities.</summary>
-    private static IQueryable<TRow> FilterRelationalFailures<TRow>(
+    /// <summary>Executes the actual completed failure points without altering SQLite capabilities.</summary>
+    private static IQueryable<TRow> FilterCompletedFailures<TRow>(
         NestedSetQuery<CoordinateBoundsNode> root,
         IQueryable<TRow> rows,
         Expression<Func<TRow, CoordinateBoundsNode>> upper,
@@ -162,26 +164,36 @@ public sealed partial class SqlServerAncestorBoundsTests
         // WHY: This host cannot run SQL Server. Reflection selects these exact private production
         // expressions for relational semantic execution while the selected SQLite adapter stays unchanged.
         var type = root.GetType();
-        var nodes = (IQueryable<CoordinateBoundsNode>)type.GetField("_nodes", BindingFlags.NonPublic | BindingFlags.Instance)!
+        var nodes = (IQueryable<CoordinateBoundsNode>)type
+            .GetField("_nodes", BindingFlags.NonPublic | BindingFlags.Instance)!
             .GetValue(root)!;
 
         var key = nodes.ElementType;
-        var entity = ((DbContext)type.GetField("_context", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(root)!)
+        var entity = ((DbContext)type
+                .GetField("_context", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(root)!)
             .Model.FindEntityType(key)!;
 
-        var projection = (Expression<Func<CoordinateBoundsNode, CoordinateBoundsNode, NestedSetQueryEdge<CoordinateBoundsNode>>>)
+        var projection =
+            (Expression<Func<CoordinateBoundsNode, CoordinateBoundsNode, NestedSetQueryEdge<CoordinateBoundsNode>>>)
             type.GetField("s_edgeProjection", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
 
         var edges = NestedSetParentExpressions<CoordinateBoundsNode, NestedSetQueryEdge<CoordinateBoundsNode>>.Join(
-            nodes, entity.FindProperty(nameof(CoordinateBoundsNode.Id))!, entity.FindProperty(nameof(CoordinateBoundsNode.ParentId))!,
+            nodes, entity.FindProperty(nameof(CoordinateBoundsNode.Id))!,
+            entity.FindProperty(nameof(CoordinateBoundsNode.ParentId))!,
             null, projection);
 
         var failures = (IQueryable<CoordinateBoundsNode>)type
-            .GetMethod("InvalidPathChildSource", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(root, [allowed, edges])!;
+            .GetMethod("InvalidPathChildSource", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(root, [allowed, edges])!;
 
         var row = Expression.Parameter(typeof(TRow), "row");
-        var violation = (Expression)type.GetMethod("InvalidRelationalPathChildren", BindingFlags.NonPublic | BindingFlags.Instance)!
-            .Invoke(root, [NestedSetQueryExpressions.Inline(upper, row), NestedSetQueryExpressions.Inline(lower, row), failures])!;
+        var violation = (Expression)type
+            .GetMethod("InvalidCompletedPathChildren", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(root, [
+                NestedSetQueryExpressions.Inline(upper, row),
+                NestedSetQueryExpressions.Inline(lower, row),
+                failures,
+            ])!;
 
         return rows.Where(Expression.Lambda<Func<TRow, bool>>(Expression.Not(violation), row));
     }

@@ -4,12 +4,12 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public sealed partial class SqlServerPathFailureTranslationTests
 {
-    /// <summary>Named shadow roles and a converted tree identity keep one exact scoped or unscoped mapping.</summary>
+    /// <summary>Named shadow roles and a converted tree identity keep one exact completed failure relation.</summary>
     /// <param name="scoped">Whether the named property-bag mapping declares an application scope.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task NamedShadowRolesKeepLocalRelationalGrouping(bool scoped)
+    public async Task NamedShadowRolesKeepOneCompletedFailureRelation(bool scoped)
     {
         // Arrange
         var options = ModelCompatibilityDatabase.Options<NamedPathContext>("SqlServer");
@@ -35,21 +35,15 @@ public sealed partial class SqlServerPathFailureTranslationTests
 
         // Act
         var sql = query.Select(row => EF.Property<int>(row.Lower, "Key")).ToQueryString();
-        var grouping = GroupingClauses(sql);
+        var fenced = FencedRelations(sql);
         output.WriteLine(sql);
 
         // Assert
-        Assert.NotEmpty(grouping);
+        AssertUncorrelated(Assert.Single(fenced));
         Assert.Contains(mapping, sql, StringComparison.Ordinal);
         Assert.DoesNotContain(scoped ? "UnscopedPaths" : "ScopedPaths", sql, StringComparison.Ordinal);
         Assert.Equal(scoped, sql.Contains("[Tenant]", StringComparison.Ordinal));
-        Assert.DoesNotMatch(@"MAX\s*\(\s*CASE", sql);
-
-        foreach (var clause in grouping)
-        {
-            Assert.DoesNotContain("SELECT", clause, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("MAX(", clause, StringComparison.OrdinalIgnoreCase);
-        }
+        Assert.DoesNotContain("GROUP BY", sql, StringComparison.Ordinal);
 
         Assert.Empty(context.ChangeTracker.Entries());
     }

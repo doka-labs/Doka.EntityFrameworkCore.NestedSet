@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Checks complete SQL Server query translation without claiming runtime coverage on an ARM host.</summary>
@@ -46,16 +48,19 @@ public sealed class CompositionSqlServerTranslationTests
         var sql = scalar.ToQueryString();
 
         // Assert
+        Assert.StartsWith("-- Doka.EntityFrameworkCore.NestedSet composition", sql, StringComparison.Ordinal);
         Assert.Contains("SELECT", sql, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(shape == "mixed", sql.Contains("COUNT_BIG(", StringComparison.OrdinalIgnoreCase));
-        Assert.Contains("GROUP BY", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(shape != "mixed", Regex.IsMatch(sql, @"ORDER BY \[\w+\]\.\[Left\]\s+OFFSET 0 ROWS"));
+        Assert.DoesNotContain("GROUP BY", sql, StringComparison.OrdinalIgnoreCase);
 
-        // WHY: The mixed leg now retains grouped ancestor identities and a correlated zero-or-one
-        // owner lookup. Its caller-dependent edge rule must still use the exact COUNT_BIG fallback.
+        // WHY: The mixed leg drives visible owners into one fenced source range each. Its caller-dependent
+        // edge rule must still use the exact COUNT_BIG fallback instead of completed failure points.
         if (shape == "mixed")
         {
             Assert.Contains("CROSS APPLY", sql, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("SELECT TOP(1)", sql, StringComparison.OrdinalIgnoreCase);
+            Assert.Matches(@"\[Left\] DESC\s+OFFSET 0 ROWS", sql);
+            Assert.DoesNotContain("TOP(1)", sql, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("ROW_NUMBER", sql, StringComparison.OrdinalIgnoreCase);
         }
         else

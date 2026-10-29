@@ -6,7 +6,15 @@ internal sealed partial class SqlServerNestedSetProvider
     internal override bool UsesIndependentAncestorOwners => true;
 
     /// <inheritdoc />
-    internal override bool UsesBoundedAncestorHydration => true;
+    internal override bool TagsCompositionQueries => true;
+
+    /// <inheritdoc />
+    internal override bool CompletesFactSelections => true;
+
+    /// <inheritdoc />
+    internal override void AddServices(
+        IServiceCollection services
+    ) => services.TryAddEnumerable(ServiceDescriptor.Singleton<IInterceptor, SqlServerCompositionPlanInterceptor>());
 
     /// <inheritdoc />
     // WHY: Valid ancestors form one nested chain, so descending Left selects the same nearest
@@ -14,7 +22,7 @@ internal sealed partial class SqlServerNestedSetProvider
     internal override NestedSetNearestQueryStrategy NearestQueryStrategy => NestedSetNearestQueryStrategy.ProjectedLeft;
 
     /// <inheritdoc />
-    internal override NestedSetPathFailureStrategy PathFailureStrategy => NestedSetPathFailureStrategy.RelationalWidth;
+    internal override NestedSetPathFailureStrategy PathFailureStrategy => NestedSetPathFailureStrategy.CompletedPoints;
 
     /// <inheritdoc />
     internal override bool SupportsTrackedKeyCollection(

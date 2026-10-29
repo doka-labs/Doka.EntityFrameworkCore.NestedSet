@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Doka.EntityFrameworkCore.NestedSet.Features.Queries;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
@@ -119,6 +120,16 @@ public sealed partial class CompositionAncestorIndexTests
 
         var actual = queries[0].ToQueryString();
         var expected = queries[1].ToQueryString();
+
+        // WHY: The control composes before EF parameter extraction, so EF parameterizes a top-level
+        // completion offset that the deferred path adds after extraction. Only that offset spelling differs.
+        var offset = Regex.Match(expected, @"^DECLARE (?<name>@p\d*) int = 0;\r?\n", RegexOptions.Multiline);
+
+        if (offset.Success)
+        {
+            expected = expected.Remove(offset.Index, offset.Length)
+                .Replace($"OFFSET {offset.Groups["name"].Value} ROWS", "OFFSET 0 ROWS", StringComparison.Ordinal);
+        }
 
         // Assert
         Assert.Equal(expected, actual);
