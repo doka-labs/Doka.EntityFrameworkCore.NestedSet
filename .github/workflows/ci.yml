@@ -192,14 +192,36 @@ jobs:
           - id: ef-unit
             name: EF Core unit tests
             project: tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests.csproj
+            filter: Category!=Allocation
             docker: false
           - id: benchmark-contracts
             name: Benchmark contract tests
             project: tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests.csproj
             docker: false
           - id: mysql
-            name: MySQL and MariaDB integration tests
+            name: MySQL integration tests
             project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
+            filter: FullyQualifiedName!~.MariaDb.&Lane!=Allocation
+            docker: true
+          - id: mariadb
+            name: MariaDB integration tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
+            filter: FullyQualifiedName~.MariaDb.&Lane!=Allocation
+            docker: true
+          - id: mysql-capacity
+            name: MySQL capacity tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
+            filter: FullyQualifiedName!~.MariaDb.&Lane=Allocation&FullyQualifiedName~.CapacityTests.
+            docker: true
+          - id: mariadb-capacity
+            name: MariaDB capacity tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
+            filter: FullyQualifiedName~.MariaDb.&Lane=Allocation&FullyQualifiedName~.CapacityTests.
+            docker: true
+          - id: mysql-allocation
+            name: MySQL and MariaDB allocation measurements
+            project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
+            filter: Lane=Allocation&FullyQualifiedName!~.CapacityTests.
             docker: true
           - id: postgresql
             name: PostgreSQL integration tests
@@ -255,12 +277,14 @@ jobs:
       - name: Run tests with coverage
         env:
           DOKA_NESTEDSET_QUERY_PLAN_DIR: ${{ github.workspace }}/artifacts/ci-tests/${{ matrix.id }}/query-plans
+          TEST_FILTER: ${{ matrix.filter }}
         shell: bash
         run: |
-          # WHY: Instrumentation changes allocation costs and collectible-module lifetimes; measurement ran above.
+          # WHY: Instrumentation changes allocation costs and collectible-module lifetimes; Unit measurement ran above.
+          # Cells sharing one project use complementary filters, so each of its tests still runs exactly once.
           filter=()
-          if [[ "${{ matrix.id }}" == ef-unit ]]; then
-            filter=(--filter "Category!=Allocation")
+          if [[ -n "$TEST_FILTER" ]]; then
+            filter=(--filter "$TEST_FILTER")
           fi
 
           dotnet test "${{ matrix.project }}" --configuration Release --no-build --no-restore \

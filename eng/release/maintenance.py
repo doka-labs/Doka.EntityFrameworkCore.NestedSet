@@ -86,7 +86,9 @@ def literal(value):
     if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
         value = value[1:-1]
 
-    require(bool(value) and not any(token in value for token in ("${{", "\n", "&", "*", "{", "}")),
+    # WHY: YAML reads only a leading '&' or '*' as an anchor or alias; VSTest filters join conditions with '&'.
+    require(bool(value) and not value.startswith(("&", "*"))
+            and not any(token in value for token in ("${{", "\n", "{", "}")),
             "maintenance-matrix", "Unsupported CI matrix scalar.")
 
     return value
@@ -121,24 +123,29 @@ def qualification_producers(source):
                     "maintenance-matrix", "Unrecognized test matrix row.")
             require(not matrix[:rows[0].start()].strip().removeprefix("include:").strip(),
                     "maintenance-matrix", "Unconsumed test matrix fields.")
-            ids, projects = set(), set()
+            ids, projects = set(), {}
             for row_index, row in enumerate(rows):
                 end = rows[row_index + 1].start() if row_index + 1 < len(rows) else len(matrix)
                 remainder = matrix[row.end():end]
                 fields = [(row[1], row[2]), *re.findall(r"^            ([a-z-]+): (.+)$", remainder, re.MULTILINE)]
                 remainder = re.sub(r"^            [a-z-]+: .+$", "", remainder, flags=re.MULTILINE)
-                require(not remainder.strip() and len(fields) == 4
-                        and set(dict(fields)) == {"id", "name", "project", "docker"},
+                keys, required = set(dict(fields)), {"id", "name", "project", "docker"}
+                require(not remainder.strip() and len(fields) == len(keys)
+                        and required <= keys <= required | {"filter"},
                         "maintenance-matrix", "Incomplete or unsupported test matrix fields.")
                 values = {key: literal(value) for key, value in fields}
                 identity = values["id"]
-                require(identity not in ids and values["project"] not in projects
+                require(identity not in ids
                         and re.fullmatch(r"tests/[A-Za-z0-9.]+/[A-Za-z0-9.]+\.csproj", values["project"])
                         and values["docker"] in ("true", "false"),
                         "maintenance-matrix", "Repeated or malformed test producer.")
                 ids.add(identity)
-                projects.add(values["project"])
+                projects.setdefault(values["project"], []).append("filter" in values)
                 names.append(values["name"])
+
+            # WHY: A project may own several cells only as filtered shards; an unfiltered repeat duplicates work.
+            require(all(all(filtered) for filtered in projects.values() if len(filtered) > 1),
+                    "maintenance-matrix", "Repeated or malformed test producer.")
         else:
             require(name == "SQLite sample / ${{ matrix.sample }}",
                     "maintenance-matrix", "Sample matrix display shape changed.")

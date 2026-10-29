@@ -176,8 +176,9 @@ class MaintenanceTests(unittest.TestCase):
         names = maintenance.qualification_producers(source)
 
         # Assert
-        self.assertEqual(18, len(names))
-        self.assertIn("MySQL and MariaDB integration tests", names)
+        self.assertEqual(22, len(names))
+        self.assertIn("MySQL integration tests", names)
+        self.assertIn("MariaDB capacity tests", names)
         self.assertIn("SafeMigrations integration tests", names)
         self.assertIn("SQLite sample / SignalLab", names)
         self.assertIn("schedule-identity", names)
@@ -189,7 +190,9 @@ class MaintenanceTests(unittest.TestCase):
         mutations = (source.replace("            docker: false", "            mystery: false", 1),
                      source.replace("            docker: false", "            docker: false\n            docker: true", 1),
                      source.replace("          - id: core", "          - strange: core", 1),
-                     source.replace("sample: [FileSystem, SignalLab, UserGroups]", "sample: ${{ inputs.samples }}"))
+                     source.replace("sample: [FileSystem, SignalLab, UserGroups]", "sample: ${{ inputs.samples }}"),
+                     source.replace("\n            filter: FullyQualifiedName~.MariaDb.&Lane!=Allocation", "", 1),
+                     source.replace("filter: Category!=Allocation", "filter: &unit Category!=Allocation", 1))
 
         # Act
         errors = []
@@ -225,7 +228,7 @@ class MaintenanceTests(unittest.TestCase):
     def test_missing_duplicate_and_skipped_native_cells_are_rejected(self):
         """A green final wrapper does not excuse a missing concrete database producer."""
         # Arrange
-        variants = (lambda jobs: [job for job in jobs if job["name"] != "MySQL and MariaDB integration tests"],
+        variants = (lambda jobs: [job for job in jobs if job["name"] != "MariaDB capacity tests"],
                     lambda jobs: [*jobs, {**next(job for job in jobs if job["name"] == "SQLite integration tests"),
                                          "id": 900}],
                     lambda jobs: [{**job, "conclusion": "skipped"} if job["name"] == "SafeMigrations integration tests"

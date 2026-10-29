@@ -57,7 +57,10 @@ decision's parallel six-package and original-byte recovery boundaries.
 
 CI runs independent source, engineering, build/package, test-project, and sample
 jobs. Each executable test project and SQLite sample owns a named matrix cell
-and runner. Coverage waits for complete test evidence; the stable Repository
+and runner. The shared MySQL/MariaDB project is the exception: its serial
+allocation collection alone outlasted every other project, so CI splits it into
+filtered cells whose VSTest filters must partition the project. RC keeps one
+cell per project. Coverage waits for complete test evidence; the stable Repository
 qualification check rejects any failed, skipped, or canceled gate. Project-local
 builds avoid transporting or sharing coverage-instrumented binary outputs.
 The build job inspects all primary and symbol archives before uploading

@@ -25,7 +25,10 @@ secret or environment is needed.
 [`ci.yml`](../.github/workflows/ci.yml) runs independent jobs for C# style and
 unused imports, offline engineering regressions, the Release solution build,
 NuGet pack and archive inspection, nine executable test projects, and the
-three SQLite samples. Test and sample matrix cells run on separate runners without a repository-imposed
+three SQLite samples. The shared MySQL/MariaDB project runs as five filtered
+cells: one non-allocation cell per engine, one capacity cell per engine and
+one cell for the remaining serial allocation measurements. Its filters must
+partition the project, so each test still runs exactly once. Test and sample matrix cells run on separate runners without a repository-imposed
 parallelism cap. Each restores its own project graph while the shipping
 packages retain their reviewed locks, so Docker resources and instrumented
 outputs are isolated. Coverage

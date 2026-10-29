@@ -1,5 +1,6 @@
 """Offline candidate, documented verifier, and workflow authorization contracts."""
 
+import itertools
 import json
 import os
 import re
@@ -339,6 +340,19 @@ class DocumentedConsumerTests(QualificationFixture):
         self.assertIn("Candidate version/source mismatch", result.stderr)
 
 
+def partitions(filters):
+    """Whether conjunctive VSTest filters select every combination of their conditions exactly once."""
+    terms = [[re.fullmatch(r"(\w+)(!?)([=~])(.+)", atom).groups() for atom in value.split("&")]
+             for value in filters]
+    conditions = sorted({(name, operator, value) for term in terms for name, _, operator, value in term})
+
+    # WHY: Treating each condition as independent is stricter than the real test inventory requires.
+    return all(sum(all(truth[(name, operator, value)] != bool(negated) for name, negated, operator, value in term)
+                   for term in terms) == 1
+               for truth in (dict(zip(conditions, bits))
+                             for bits in itertools.product((False, True), repeat=len(conditions))))
+
+
 def workflow_jobs(path):
     """Read job blocks from the repository's fixed YAML indentation without a new parser dependency."""
     text = path.read_text(encoding="ascii")
@@ -644,13 +658,20 @@ class WorkflowBoundaryTests(unittest.TestCase):
         projects = list((ROOT / "tests").rglob("*.csproj"))
         expected = {path.relative_to(ROOT).as_posix() for path in projects
                     if ET.parse(path).findtext(".//IsTestProject") != "false"}
+        rows = [dict(re.findall(r"^\s*([a-z]+): (.+)$", row, re.MULTILINE))
+                for row in self.ci["tests"].split("        include:\n", 1)[1].split("\n    steps:", 1)[0]
+                .split("          - ")[1:]]
 
         # Act
-        selected = re.findall(r"^            project: (\S+)$", self.ci["tests"], re.MULTILINE)
+        selected = [row["project"] for row in rows]
+        shards = {project: [row.get("filter") for row in rows if row["project"] == project]
+                  for project in selected if selected.count(project) > 1}
 
         # Assert
         self.assertEqual(expected, set(selected))
-        self.assertEqual(len(selected), len(set(selected)))
+        self.assertEqual({"tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/"
+                          "Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj"}, set(shards))
+        self.assertTrue(all(partitions(filters) for filters in shards.values()))
         self.assertIn('dotnet restore "${{ matrix.project }}" --locked-mode', self.ci["tests"])
         self.assertIn('dotnet build "${{ matrix.project }}"', self.ci["tests"])
         self.assertIn('dotnet test "${{ matrix.project }}"', self.ci["tests"])
@@ -685,7 +706,9 @@ class WorkflowBoundaryTests(unittest.TestCase):
         self.assertLess(coverage, verify)
         self.assertIn("if: matrix.id == 'ef-unit'", tests[allocation:coverage])
         self.assertIn('--filter "Category=Allocation"', tests[allocation:coverage])
-        self.assertIn('filter=(--filter "Category!=Allocation")', tests[coverage:verify])
+        self.assertIn("            filter: Category!=Allocation\n            docker: false", tests)
+        self.assertIn("TEST_FILTER: ${{ matrix.filter }}", tests[coverage:verify])
+        self.assertIn('filter=(--filter "$TEST_FILTER")', tests[coverage:verify])
         self.assertIn("python3 -m eng.release.qualification", tests[verify:])
         self.assertIn("--verify-results artifacts/ci-tests/ef-unit", tests[verify:])
         self.assertIn("--project Doka.EntityFrameworkCore.NestedSet.Unit.Tests", tests[verify:])

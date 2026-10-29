@@ -371,7 +371,8 @@ bash eng/release-candidate.sh \
 This executes the complete release candidate checks locally. Pull-request CI
 uses independent source-quality, engineering, build/package, test-project, and
 SQLite-sample jobs. Every executable test project has its own named matrix
-cell; MySQL and MariaDB share their provider project. Cells can run concurrently
+cell; the shared MySQL/MariaDB provider project is split into complementary
+filtered cells by engine and by its serial allocation collection. Cells can run concurrently
 on isolated runners. Coverage is verified across the complete test reports,
 and `Repository qualification` requires every gate to succeed. A workspace run
 is never publishable.
