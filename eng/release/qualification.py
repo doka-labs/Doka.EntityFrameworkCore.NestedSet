@@ -1,11 +1,10 @@
-"""Run one complete qualification locally, in CI, or for an RC."""
+"""Build exact packages for CI and RC runs and seal hosted candidates from shared qualification evidence."""
 
 import argparse
 import copy
 import hashlib
 import json
 import os
-import re
 import shutil
 import signal
 import subprocess
@@ -40,6 +39,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SOLUTION = "Doka.EntityFrameworkCore.NestedSet.slnx"
 TRX = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
 ALLOCATION_PROJECT = "Doka.EntityFrameworkCore.NestedSet.Unit.Tests"
+PROCESS_BUDGET_SECONDS = 7200
 
 
 def git(repo, *arguments, required=True):
@@ -52,8 +52,8 @@ def git(repo, *arguments, required=True):
     return result.stdout.decode().strip() if result.returncode == 0 else None
 
 
-def source_identity(repo, workspace):
-    """Bind current file bytes as well as the Git identity; workspace runs never become releases."""
+def source_identity(repo):
+    """Bind current file bytes as well as the Git identity of a clean committed checkout."""
     files = git(repo, "ls-files", "--cached", "--others", "--exclude-standard", "-z").split("\0")
     inputs = {}
     for name in sorted(set(files)):
@@ -62,7 +62,7 @@ def source_identity(repo, workspace):
 
         path = repo / name
         if not path.exists() and not path.is_symlink():
-            # WHY: A staged source move can leave deleted index entries during workspace verification.
+            # WHY: A staged source move leaves a deleted index entry; the clean-source gate below rejects it.
             inputs[name] = None
             continue
 
@@ -72,9 +72,8 @@ def source_identity(repo, workspace):
     commit = git(repo, "rev-parse", "--verify", "HEAD", required=False)
     tree = git(repo, "rev-parse", "--verify", "HEAD^{tree}", required=False)
     dirty = bool(git(repo, "status", "--porcelain", "--untracked-files=all"))
-    require(workspace or (commit and not dirty), "unreviewed_source",
-            "Qualification requires a clean committed source tree.",
-            "Use --workspace for explicitly non-publishable local verification, or review and commit separately.")
+    require(commit and not dirty, "unreviewed_source", "Qualification requires a clean committed source tree.",
+            "Review and commit the change before building qualified packages.")
     fingerprint = hashlib.sha256(json.dumps(inputs, sort_keys=True).encode("ascii")).hexdigest()
 
     return {"commit": commit, "tree": tree, "fingerprint": fingerprint, "files": inputs, "dirty": dirty}
@@ -112,7 +111,8 @@ def prepare_locks(repo, output, version):
     # WHY: Only the published package graphs are reviewed locks; tests, samples, and tools restore their own graphs.
     for package in PACKAGES:
         project = repo / "src" / package / f"{package}.csproj"
-        require(project in projects, "package_project_missing", f"Shipping project is absent from the solution: {project}.")
+        require(project in projects, "package_project_missing",
+                f"Shipping project is absent from the solution: {project}.")
         original = project.parent / "packages.lock.json"
         require(original.is_file(), "lock_missing", f"Missing reviewed lockfile: {original}.")
         target = output / "locks" / project.stem / "packages.lock.json"
@@ -130,11 +130,6 @@ def verify_locks(output):
                 "dependencies_changed", f"Locked dependencies changed for {project}.")
 
 
-def runtime_inventory(output):
-    """Record the actual execution copies, including test-local shipping assemblies and symbols."""
-    return file_inventory(output / "build" / "bin")
-
-
 def test_projects(repo):
     """Return executable solution tests, excluding the shared specification library."""
     return [path for path in solution_projects(repo)
@@ -143,25 +138,18 @@ def test_projects(repo):
 
 
 def verify_query_plans(directory):
-    """Require the live provider plan families that the full test suite promises."""
+    """Require every promised live provider plan family from at least one test cell."""
     engines = ("MySql", "MariaDb", "PostgreSql", "SqlServer")
     names = {f"{engine}-hierarchy.txt" for engine in engines}
     names.update(f"{engine}-key-filter.txt" for engine in (*engines, "Sqlite"))
-    require(all((directory / name).is_file() and (directory / name).stat().st_size > 0 for name in names),
+    # WHY: Cells that partition one provider project may write the same plan name; each cell keeps its own copy.
+    require(all(any(path.is_file() and path.stat().st_size > 0 for path in directory.glob(f"*/query-plans/{name}"))
+                for name in names),
             "query_plans_missing", "Required provider hierarchy or key-filter plans are missing or empty.")
 
 
-def collect_query_plans(directory):
-    """Collect project-owned provider plans once, rejecting ambiguous duplicate names."""
-    for path in directory.glob("*/query-plans/*"):
-        target = directory / "query-plans" / path.name
-        require(not target.exists(), "query_plans_duplicate", f"Duplicate provider plan: {path.name}.")
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(path, target)
-
-
 def verify_results(repo, directory, expected=None):
-    """Reject missing projects, skipped/failed tests, or a zero-test success."""
+    """Reject missing projects, skipped/failed tests, repeated cases, or a zero-test success."""
     # WHY: Specification libraries share test sources but do not execute tests or produce TRX artifacts.
     expected = {path.stem for path in test_projects(repo)} if expected is None else set(expected)
     observed = {}
@@ -176,8 +164,6 @@ def verify_results(repo, directory, expected=None):
         matches = {name for name in expected if name.casefold() in storage}
         require(len(matches) == 1, "tests_identity", f"TRX has ambiguous or unexpected project: {path.name}.")
         name = matches.pop()
-        require(name == ALLOCATION_PROJECT or name not in observed,
-                "tests_duplicate", f"Duplicate project result: {name}.")
         case_ids = [item.get("testId") for item in cases]
         definition_ids = [item.get("id") for item in definitions]
         require(all(case_ids) and len(case_ids) == len(set(case_ids))
@@ -188,77 +174,50 @@ def verify_results(repo, directory, expected=None):
                 and int(counters.attrib["passed"]) == count and int(counters.attrib["failed"]) == 0
                 and all(item.attrib.get("outcome") == "Passed" for item in cases),
                 "tests_not_passed", f"Every selected test must pass without skipping: {name}.")
-        record = {"passed": count, "trx": str(path.relative_to(directory)), "sha256": sha256(path)}
         if name == ALLOCATION_PROJECT:
-            # WHY: Instrumentation can change allocations. Require both complementary Unit partitions,
-            # retaining their individual hashes and rejecting any repeated test identity across them.
+            # WHY: Instrumentation can change allocations; Unit keeps its fixed uninstrumented and covered partitions.
             require(path.name in {"allocations.trx", "coverage.trx"}, "tests_partitions",
                     "Unit results must use the fixed allocation and coverage partition names.")
-            previous = identities.setdefault(name, set())
-            require(previous.isdisjoint(case_ids), "tests_duplicate", "Unit partitions repeat test identities.")
-            previous.update(case_ids)
-            group = observed.setdefault(name, {"passed": 0, "reports": []})
-            require(not any(Path(report["trx"]).name == path.name for report in group["reports"]),
-                    "tests_duplicate", "Unit partition was reported more than once.")
-            group["passed"] += count
-            group["reports"].append(record)
-        else:
-            observed[name] = record
+
+        # WHY: Complementary filters may split one project across cells; a repeated case would inflate the total.
+        previous = identities.setdefault(name, set())
+        require(previous.isdisjoint(case_ids), "tests_duplicate", f"Result partitions repeat test identities: {name}.")
+        previous.update(case_ids)
+        group = observed.setdefault(name, {"passed": 0, "reports": []})
+        group["passed"] += count
+        group["reports"].append({"passed": count, "trx": str(path.relative_to(directory)), "sha256": sha256(path)})
 
     require(set(observed) == expected, "tests_missing", "Not every solution test project supplied a passing result.")
     if ALLOCATION_PROJECT in expected:
-        require({Path(report["trx"]).name for report in observed[ALLOCATION_PROJECT]["reports"]}
-                == {"allocations.trx", "coverage.trx"}, "tests_partitions",
+        require(sorted(Path(report["trx"]).name for report in observed[ALLOCATION_PROJECT]["reports"])
+                == ["allocations.trx", "coverage.trx"], "tests_partitions",
                 "Both uninstrumented allocation budgets and instrumented Unit semantics must pass.")
 
     return observed
 
 
-def release_notes(repo, version, development):
-    """Select the reviewed version's changelog section; a real RC cannot use an unreleased placeholder."""
-    if not development:
-        # WHY: An MSBuild version override alone does not prove that the source release line was reviewed.
-        return reviewed_release_notes(repo, version)
-
-    text = (repo / "CHANGELOG.md").read_text(encoding="ascii")
-    pattern = rf"^## {re.escape(version)}(?: \([^\n]*\))?\n(.*?)(?=^## |\Z)"
-    match = re.search(pattern, text, re.MULTILINE | re.DOTALL)
-    require(match is not None and match.group(1).strip(), "release_notes_missing",
-            f"CHANGELOG.md needs a nonempty section for {version}.",
-            "Prepare and review the exact version's release notes before RC qualification.")
-    return f"# {version}\n\n{match.group(1).strip()}\n"
-
-
 class Qualification:
-    """Qualify one source and package version in a fresh, single run."""
+    """Build one exact package set, or seal those packages with the shared workflow's evidence."""
 
-    def __init__(self, repo, output, version, workspace=False, timeout_seconds=7200,
-                 existing=False, deadline_utc=None):
+    def __init__(self, repo, output, version, existing=False):
         self.repo = repo.resolve()
         self.output = output.resolve()
         self.version = release_version(version, allow_development=True)
-        self.command_logs = []
         if existing:
             previous_identity = read_json(self.output / "identity.json")
-            deadline_utc = previous_identity.get("deadlineUtc") if deadline_utc is None else deadline_utc
 
-        self.deadline_utc = int(time.time() + timeout_seconds) if deadline_utc is None else int(deadline_utc)
-        self.deadline = time.monotonic() + self.deadline_utc - time.time()
-        require(self.deadline > time.monotonic(), "deadline", "Qualification deadline elapsed.")
-        self.workspace = workspace
-        # WHY: A local VSTest filter can silently select a passing subset in every project.
-        require(not any(value for name, value in os.environ.items()
-                        if name.casefold() in ("vstesttestcasefilter", "vstestclirunsettings")),
-                "test_filter", "Remove inherited VSTest filtering or inline run settings for full qualification.")
+        # WHY: Owned processes stop within one bounded budget even if GitHub only cancels the job.
+        self.deadline = time.monotonic() + PROCESS_BUDGET_SECONDS
         require(self.output != self.repo and not self.repo.is_relative_to(self.output),
                 "output_scope", "Output cannot replace the source tree or an ancestor.")
         require(not self.output.is_relative_to(self.repo) or self.output.is_relative_to(self.repo / "artifacts"),
                 "output_scope", "In-repository qualification output must remain under ignored artifacts/.")
-        self.source = source_identity(self.repo, workspace)
+        self.source = source_identity(self.repo)
         self.workflow = {"runId": os.environ.get("GITHUB_RUN_ID", ""),
                          "attempt": int(os.environ.get("GITHUB_RUN_ATTEMPT", "0")),
                          "ref": os.environ.get("GITHUB_REF", ""),
                          "workflow": RELEASE_WORKFLOW}
+        # WHY: A called workflow reports its caller here, so only the release workflow's jobs bind a release line.
         hosted_release = (os.environ.get("GITHUB_ACTIONS") == "true"
                           and os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
                           and os.environ.get("GITHUB_WORKFLOW_REF") ==
@@ -266,7 +225,7 @@ class Qualification:
         self.line = None
         self.toolchain = None
         raw_line = os.environ.get("NESTEDSET_RELEASE_LINE", "")
-        if not workspace and (hosted_release or raw_line):
+        if hosted_release or raw_line:
             require(hosted_release and bool(raw_line), "line_identity",
                     "Hosted qualification requires its independently authorized preflight line.")
             self.line = validate_snapshot(parse_json(raw_line, "frozen qualification line"),
@@ -280,18 +239,16 @@ class Qualification:
             release_version(version)
 
         self.publishable = bool(self.line and self.line["state"] == "active" and not self.line["qualificationOnly"])
-        self.notes = release_notes(self.repo, version, not bool(self.line))
         self.identity = {"schemaVersion": 2 if self.line else 1, "repository": REPOSITORY, "version": version,
-                         "source": self.source, "workflow": self.workflow, "publishable": self.publishable,
-                         "deadlineUtc": self.deadline_utc}
+                         "source": self.source, "workflow": self.workflow, "publishable": self.publishable}
         if self.line:
-            # WHY: Reuse the existing exact-attempt identity through every parallel lane; no second
+            # WHY: Reuse the existing exact-attempt identity from build to seal; no second
             # receipt/inventory protocol is needed for the frozen branch grant or its own toolchain.
             self.identity.update(line=self.line, toolchain=self.toolchain)
         if existing:
-            # WHY: Reusing a downloaded build is allowed only within the exact producer run and attempt.
+            # WHY: Sealing downloaded packages is allowed only within the exact producer run and attempt.
             require(previous_identity == self.identity, "build_identity",
-                    "Downloaded build belongs to another source, version, workflow attempt, or deadline.")
+                    "Downloaded packages belong to another source, version, or workflow attempt.")
         else:
             require(not self.output.exists() or not any(self.output.iterdir()),
                     "output_exists", "Output already contains evidence.", "Use a fresh output directory.")
@@ -304,7 +261,6 @@ class Qualification:
         require(remaining > 0, "deadline", "Qualification deadline elapsed.")
         log = self.output / "logs" / stage / f"{name}.log"
         log.parent.mkdir(parents=True, exist_ok=True)
-        self.command_logs.append(log)
         print(f"[{stage}] {name}; log: {log}", flush=True)
         environment = os.environ.copy()
         environment["DOKA_NESTEDSET_RELEASE_ARTIFACTS"] = str(self.output / "build")
@@ -354,7 +310,7 @@ class Qualification:
             try:
                 code = process.wait(timeout=remaining)
             except (subprocess.TimeoutExpired, KeyboardInterrupt):
-                # WHY: A timed-out database test must not leave its child runner writing after job failure.
+                # WHY: A timed-out command must not leave its child process writing after job failure.
                 stop_process_group()
                 raise ReleaseError("deadline", f"Stopped {name}; see {log}.") from None
             finally:
@@ -377,35 +333,15 @@ class Qualification:
     def properties(self):
         """Keep versioned locks and build outputs inside this run's owned directory."""
         # WHY: PackageVersion alone renames the archive while the SDK keeps the assembly's source VersionPrefix.
-        return [f"-p:Version={self.version}", f"-p:PackageVersion={self.version}", f"-p:ArtifactsPath={self.output / 'build'}",
-                f"-p:NestedSetReleaseLockRoot={self.output / 'locks'}"]
+        return [f"-p:Version={self.version}", f"-p:PackageVersion={self.version}",
+                f"-p:ArtifactsPath={self.output / 'build'}", f"-p:NestedSetReleaseLockRoot={self.output / 'locks'}"]
 
-    def assert_inputs(self, runtime=False):
-        """Refuse changed source, dependency locks, or actual execution copies."""
-        require(source_identity(self.repo, self.workspace) == self.source,
+    def assert_inputs(self):
+        """Refuse changed source or dependency locks."""
+        require(source_identity(self.repo) == self.source,
                 "source_changed", "Source changed while qualification was running.")
         if (self.output / "quality" / "dependencies.json").exists():
             verify_locks(self.output)
-
-        if runtime:
-            require(runtime_inventory(self.output) == read_json(self.output / "quality" / "runtime.json"),
-                    "runtime_changed", "Execution binaries changed after the qualified build.",
-                    "Keep this failed evidence; start a fresh run after diagnosing instrumentation or rebuilds.")
-
-    def quality(self):
-        """Run tooling checks and a locked, version-bound full solution build."""
-        self.engineering()
-        self.source_quality()
-        self.compile()
-
-    def engineering(self):
-        """Check existing release tooling without adding documentation or benchmark gates."""
-        # WHY: CI runs these offline regressions before merge; the RC rechecks its own release tools from exact main.
-        self.command("quality", "release-tooling-tests", ["python3", "-m", "unittest", "discover", "-s", "eng/tests",
-                                                          "-p", "test_*.py", "-v"])
-        for path in sorted((self.repo / "eng").rglob("*.sh")):
-            self.command("quality", "shell-" + path.relative_to(self.repo / "eng").as_posix().replace("/", "-"),
-                         ["bash", "-n", str(path)])
 
     def restore(self):
         """Restore the reviewed shipping locks and the complete selected solution graph."""
@@ -413,50 +349,13 @@ class Qualification:
         self.command("quality", "restore", ["dotnet", "restore", SOLUTION, "--locked-mode", *self.properties()])
         verify_locks(self.output)
 
-    def source_quality(self):
-        """Run Roslyn style/import checks with the selected version and owned restore paths."""
-        self.restore()
-        # WHY: dotnet format reads MSBuild properties through environment variables, not build-style -p arguments.
-        style_env = {"Version": self.version, "PackageVersion": self.version, "ArtifactsPath": str(self.output / "build"),
-                     "NestedSetReleaseLockRoot": str(self.output / "locks")}
-        self.command("quality", "style", ["dotnet", "format", SOLUTION, "style", "--severity", "warn",
-                                            "--verify-no-changes", "--no-restore"], style_env)
-        self.command("quality", "imports", ["dotnet", "format", SOLUTION, "style", "--diagnostics", "IDE0005",
-                                              "--severity", "hidden", "--verify-no-changes", "--no-restore"], style_env)
-
     def compile(self):
-        """Build once and retain the collector needed by precompiled tests on fresh runners."""
+        """Build the complete Release solution once with the selected version and owned locks."""
         self.command("quality", "build", ["dotnet", "build", SOLUTION, "-c", "Release", "--no-restore",
                                             *self.properties()])
-        project = test_projects(self.repo)[0]
-        self.command("quality", "collector-path", ["dotnet", "msbuild", str(project), "-nologo",
-                                                    "-getProperty:TraceDataCollectorDirectoryPath", *self.properties()])
-        collector = Path((self.output / "logs/quality/collector-path.log").read_text().strip())
-        require(collector.is_dir() and (collector / "Microsoft.VisualStudio.TraceDataCollector.dll").is_file(),
-                "collector_missing", "Restored coverage collector is absent.")
-        # WHY: The adapter is copied to test outputs, but the collector and native engine stay in the NuGet cache.
-        shutil.copytree(collector, self.output / "build/bin/.coverage-collector")
-        write_json(self.output / "quality" / "runtime.json", runtime_inventory(self.output))
-
-    def tests(self):
-        """Execute every test project and runnable sample, retaining provider query plans."""
-        directory = self.output / "tests"
-        self.command("tests", "docker", ["docker", "info"])
-        for project in test_projects(self.repo):
-            self.test_project(project.relative_to(self.repo).as_posix())
-
-        write_json(directory / "results.json", verify_results(self.repo, directory))
-        collect_query_plans(directory)
-        verify_query_plans(directory / "query-plans")
-        self.command("tests", "coverage", ["python3", "eng/verify-coverage.py", str(directory)])
-        for sample in ("FileSystem", "SignalLab", "UserGroups"):
-            self.command("tests", "sample-" + sample.lower(), ["dotnet", "run", "--project",
-                         "samples/" + sample, "-c", "Release", "--no-build", "--no-restore",
-                         *self.properties(), "--", "--provider", "sqlite", "--reset"],
-                         {"NESTEDSET_SAMPLE_SQLITE_DIRECTORY": str(directory / "sample-data")})
 
     def packages(self):
-        """Pack once from tested binaries and inspect primary/symbol payloads."""
+        """Pack once from the canonical build and inspect primary/symbol payloads."""
         from eng.release.packages import verify_packages, verify_symbol_rejection
         self.command("packages", "pack", ["dotnet", "pack", SOLUTION, "-c", "Release", "--no-build",
                                             "--no-restore", *self.properties(), "-o", str(self.output / "packages")])
@@ -466,17 +365,12 @@ class Qualification:
         write_json(self.output / "logs/packages/symbol-rejection.json",
                    verify_symbol_rejection(self.output / "packages", self.version))
 
-    def consumer(self):
-        """Exercise every exact candidate package through an independent package consumer."""
-        self.command("consumer", "package-consumers", ["bash", "eng/verify-package-consumer.sh", "--package-dir",
-                                                        str(self.output / "packages"), "--version", self.version,
-                                                        "--output", str(self.output / "consumer")])
-
-    def sbom(self):
-        """Generate and independently validate each package's actual resolved SPDX dependency closure."""
-        self.command("sbom", "generate-verify", ["bash", "eng/generate-sbom.sh", "--package-dir",
-                                                 str(self.output / "packages"), "--output", str(self.output / "sbom"),
-                                                 "--version", self.version])
+    def build(self):
+        """Produce the one inspected package set that consumers, SBOMs, and the seal verify."""
+        self.restore()
+        self.compile()
+        self.packages()
+        self.assert_inputs()
 
     def verify_package_inputs(self):
         """Require downloaded primary/symbol bytes to match the producer's inspected manifest."""
@@ -490,152 +384,35 @@ class Qualification:
                 require(record[extension] == name and sha256(self.output / "packages" / name) == record[field],
                         "package_inputs", "Downloaded package bytes differ from the inspected producer.")
 
-    def test_project(self, project):
-        """Run one producer-built assembly with its transported adapter and coverage collector."""
-        selected = {path.relative_to(self.repo).as_posix(): path.stem for path in test_projects(self.repo)}
-        require(project in selected, "test_project", "Selected project is not an executable solution test.")
-        name = selected[project]
-        directory = self.output / "tests" / name
-        binary = self.output / "build/bin" / name / "release" / f"{name}.dll"
-        collector = self.output / "build/bin/.coverage-collector"
-        require(binary.is_file() and (collector / "Microsoft.VisualStudio.TraceDataCollector.dll").is_file(),
-                "test_binary", "Producer test assembly or coverage collector is absent.")
-        command = ["dotnet", "test", str(binary), "--test-adapter-path", f"{binary.parent};{collector}"]
-        environment = {"DOKA_NESTEDSET_QUERY_PLAN_DIR": str(directory / "query-plans")}
-        if name == ALLOCATION_PROJECT:
-            # WHY: Measure actual allocation and collectible-module lifetimes before instrumentation changes them.
-            # Every remaining Unit case runs exactly once under coverage using the complementary filter.
-            self.command("tests", name + "-allocations", [*command, "--filter", "Category=Allocation",
-                         "--logger", "trx;LogFileName=allocations.trx", "--results-directory", str(directory)],
-                         environment)
-            command.extend(["--filter", "Category!=Allocation"])
-
-        logger = "trx;LogFileName=coverage.trx" if name == ALLOCATION_PROJECT else "trx"
-        self.command("tests", name, [*command, "--settings", "eng/coverage.runsettings",
-                     "--collect:Code Coverage", "--logger", logger, "--logger", "console;verbosity=normal",
-                     "--results-directory", str(directory)], environment)
-        write_json(directory / "results.json", verify_results(self.repo, directory, {name}))
-        require(bool(list(directory.rglob("*.cobertura.xml"))), "coverage_missing",
-                f"Selected project did not supply coverage: {name}.")
-
-        return "test-" + name, directory
-
-    def sample(self, name):
-        """Execute a complete producer-built SQLite sample without MSBuild evaluation."""
-        require(name in {path.parent.name for path in solution_projects(self.repo)
-                         if path.relative_to(self.repo).parts[0] == "samples"},
-                "sample", "Selected sample is absent from the solution.")
-        directory = self.output / "tests/samples" / name
-        binary = self.output / "build/bin" / name / "release" / f"{name}.dll"
-        require(binary.is_file(), "sample_binary", "Producer sample assembly is absent.")
-        self.command("tests", "sample-" + name, ["dotnet", str(binary), "--provider", "sqlite", "--reset"],
-                     {"NESTEDSET_SAMPLE_SQLITE_DIRECTORY": str(directory / "data")})
-        write_json(directory / "result.json", {"sample": name, "passed": True})
-
-        return "sample-" + name, directory
-
-    def export_job_outputs(self, label, directory=None):
-        """Copy ordinary logs and results for GitHub's artifact transport."""
-        evidence = self.output / "evidence"
-        evidence.mkdir()
-        for log in self.command_logs:
-            target = evidence / "logs" / label / log.relative_to(self.output / "logs")
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(log, target)
-
-        if directory is not None:
-            shutil.copytree(directory, evidence / directory.relative_to(self.output))
-
-    def aggregate(self):
-        """Verify the native jobs' merged results and seal the existing candidate."""
+    def seal(self):
+        """Verify the shared workflow's evidence for these exact packages and seal the candidate."""
+        require(self.line is not None, "line_identity", "Only the hosted release workflow can seal a candidate.")
+        self.assert_inputs()
+        self.verify_package_inputs()
         results = self.output / "tests"
         write_json(results / "results.json", verify_results(self.repo, results))
-        for project in test_projects(self.repo):
-            require(bool(list((results / project.stem).rglob("*.cobertura.xml"))), "coverage_missing",
-                    f"Project coverage is absent: {project.stem}.")
-
-        collect_query_plans(results)
-        verify_query_plans(results / "query-plans")
+        verify_query_plans(results)
         self.command("tests", "coverage", ["python3", "eng/verify-coverage.py", str(results)])
-        for project in solution_projects(self.repo):
-            if project.relative_to(self.repo).parts[0] != "samples":
-                continue
-
-            name = project.parent.name
-            require(read_json(results / "samples" / name / "result.json") == {"sample": name, "passed": True},
-                    "sample_result", "Sample success evidence is incomplete.")
-
         consumer = read_json(self.output / "consumer/result.json")
         require(consumer.get("success") is True and consumer.get("version") == self.version
                 and len(consumer.get("consumers", [])) == len(CONSUMERS)
                 and {item.get("name") for item in consumer["consumers"]} == {name for name, _ in CONSUMERS}
                 and all(item.get("success") is True for item in consumer["consumers"]),
                 "consumer_result", "All exact-version package consumers must have succeeded.")
-        # WHY: Consumers use the small package artifact; sealing uses the build artifact's package copies.
+        # WHY: Consumers ran in another job; the sealed bytes must be the archives they restored.
         expected_hashes = {record["id"]: record["nupkgSha256"] for record in
                            read_json(self.output / "packages/package-manifest.json")["packages"]}
         require(consumer.get("candidateSha256") == expected_hashes, "consumer_packages",
                 "Consumer package bytes differ from the inspected packages being sealed.")
         # WHY: Reuse the existing offline SBOM verifier; do not add a second result schema or validator.
-        self.command("sbom", "aggregate-verify", ["python3", "eng/verify-package-sbom.py", "verify", "--package-dir",
-                                                str(self.output / "packages"), "--output", str(self.output / "sbom"),
-                                                "--version", self.version])
-        self.verify_package_inputs()
-        self.assemble()
-
-    def run_job(self, job, project=None, sample=None):
-        """Execute only the fixed RC job selected by GitHub; no scheduling or partial-run recovery."""
-        require(job in {"source-quality", "engineering-tests", "build", "test", "sample", "consumer", "sbom",
-                        "aggregate"}, "job", "Unknown RC job.")
-        has_build = (self.output / "build/bin").is_dir()
-        self.assert_inputs(runtime=has_build)
-        if job in {"test", "sample", "consumer", "sbom", "aggregate"}:
-            self.verify_package_inputs()
-
-        label, directory = job, None
-        if job == "source-quality":
-            self.source_quality()
-        elif job == "engineering-tests":
-            self.engineering()
-        elif job == "build":
-            self.restore()
-            self.compile()
-            self.packages()
-        elif job == "test":
-            label, directory = self.test_project(project)
-        elif job == "sample":
-            label, directory = self.sample(sample)
-        elif job == "consumer":
-            self.consumer()
-            directory = self.output / "consumer"
-        elif job == "sbom":
-            self.sbom()
-            directory = self.output / "sbom"
-        elif job == "aggregate":
-            self.aggregate()
-
-        self.assert_inputs(runtime=has_build or job == "build")
-        require(time.monotonic() < self.deadline, "deadline", "Qualification deadline elapsed.")
-        if job not in {"build", "aggregate"}:
-            if has_build or job in {"consumer", "sbom"}:
-                self.verify_package_inputs()
-
-            self.export_job_outputs(label, directory)
-
-    def run(self):
-        """Run every check before sealing the candidate produced by this process."""
-        for stage in STAGES:
-            self.assert_inputs(runtime=stage != "quality")
-            (self.output / stage).mkdir()
-            getattr(self, stage)()
-            self.assert_inputs(runtime=True)
-
+        self.command("sbom", "verify", ["python3", "eng/verify-package-sbom.py", "verify", "--package-dir",
+                                        str(self.output / "packages"), "--output", str(self.output / "sbom"),
+                                        "--version", self.version])
         self.assemble()
 
     def assemble(self):
         """Seal a portable candidate without building, restoring, or modifying any verified artifact."""
-        require(time.monotonic() < self.deadline, "deadline", "Qualification deadline elapsed before sealing.")
-        self.assert_inputs(runtime=True)
+        self.assert_inputs()
         candidate = self.output / "candidate"
         require(not candidate.exists(), "candidate_exists", "Candidate output already exists.")
         candidate.mkdir()
@@ -648,8 +425,7 @@ class Qualification:
             shutil.copyfile(manifest, candidate / f"{package}.spdx.json")
 
         shutil.copyfile(self.output / "packages/package-manifest.json", candidate / "package-manifest.json")
-        (candidate / "release-notes.md").write_text(
-            self.notes, encoding="ascii")
+        (candidate / "release-notes.md").write_text(reviewed_release_notes(self.repo, self.version), encoding="ascii")
         with zipfile.ZipFile(candidate / "qualification-evidence.zip", "w", zipfile.ZIP_DEFLATED) as archive:
             for path in self.evidence_files():
                 archive.write(path, path.relative_to(self.output).as_posix())
@@ -664,14 +440,15 @@ class Qualification:
         write_json(candidate / "candidate.json", manifest)
         load_candidate(candidate, require_publishable=self.publishable)
         summary = (f"# Qualified candidate {self.version}\n\n"
-                   f"- Source commit: `{self.source['commit'] or 'uncommitted workspace'}`\n"
+                   f"- Source commit: `{self.source['commit']}`\n"
                    f"- Source fingerprint: `{self.source['fingerprint']}`\n"
                    f"- Publishable hosted candidate: `{str(self.publishable).lower()}`\n"
                    f"- Workflow run/producer attempt: `{self.workflow['runId']}/{self.workflow['attempt']}`\n"
                    f"- Candidate manifest SHA-256: `{sha256(candidate / 'candidate.json')}`\n"
                    "- Passed stages: " + ", ".join(STAGES) + "\n\n"
                    "Review candidate.json, package-manifest.json, qualification-evidence.zip, and the retained logs.\n"
-                   "A publishable candidate still requires provenance, the signed tag, and nuget environment approval.\n")
+                   "A publishable candidate still requires provenance, the signed tag, "
+                   "and nuget environment approval.\n")
         (self.output / "operator-summary.md").write_text(summary, encoding="ascii")
         if os.environ.get("GITHUB_STEP_SUMMARY"):
             with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a") as stream:
@@ -680,7 +457,7 @@ class Qualification:
         print(summary, flush=True)
 
     def evidence_files(self):
-        """Select portable evidence from this uninterrupted qualification."""
+        """Select portable evidence from this exact build and its sealed qualification."""
         files = [self.output / "identity.json"]
         for folder in (*STAGES, "logs"):
             files.extend(path for path in (self.output / folder).rglob("*")
@@ -690,23 +467,18 @@ class Qualification:
 
 
 def main():
-    """Expose a stable operator entry point; qualification performs no external publication."""
+    """Expose the shared build, the hosted seal, and read-only result verification."""
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--job", choices=("build", "seal"), help="Build exact packages or seal a hosted candidate.")
     parser.add_argument("--version")
     parser.add_argument("--output", type=Path)
-    parser.add_argument("--verify-results", type=Path, help="Read-only verification of existing passing TRX results.")
-    parser.add_argument("--workspace", action="store_true", help="Non-publishable verification of local changes.")
-    parser.add_argument("--timeout-seconds", type=int)
-    parser.add_argument("--deadline-utc", type=int, help="Shared Unix UTC deadline established by hosted preflight.")
-    parser.add_argument("--job", choices=("source-quality", "engineering-tests", "build", "test", "sample",
-                                          "consumer", "sbom", "aggregate"))
-    parser.add_argument("--project", help="Exact solution project for a test job, or assembly name for --verify-results.")
-    parser.add_argument("--sample", help="Exact solution sample name.")
+    parser.add_argument("--verify-results", type=Path,
+                        help="Read-only verification of passing TRX results; without --project also provider plans.")
+    parser.add_argument("--project", help="Executable test assembly name for --verify-results.")
     args = parser.parse_args()
     try:
         if args.verify_results is not None:
-            if any(value is not None for value in (args.version, args.output, args.timeout_seconds,
-                                                   args.deadline_utc, args.job, args.sample)) or args.workspace:
+            if any(value is not None for value in (args.job, args.version, args.output)):
                 parser.error("Qualification options are incompatible with --verify-results.")
 
             # WHY: CI consumes existing TRX files without source/release binding or output initialization.
@@ -714,22 +486,21 @@ def main():
             require(args.project is None or args.project in projects, "tests_identity",
                     "Selected assembly is not an executable solution test project.")
             results = verify_results(ROOT, args.verify_results, {args.project} if args.project else projects)
+            if args.project is None:
+                verify_query_plans(args.verify_results)
+
             print(json.dumps(results, sort_keys=True))
 
             return 0
 
-        if args.version is None or args.output is None:
-            parser.error("--version and --output are required for qualification.")
+        if args.job is None or args.version is None or args.output is None or args.project is not None:
+            parser.error("--job, --version and --output are required; --project only selects --verify-results.")
 
-        timeout_seconds = 7200 if args.timeout_seconds is None else args.timeout_seconds
-        require(60 <= timeout_seconds <= 14400, "deadline", "Timeout must be 60 through 14400 seconds.")
-        existing = args.job in {"test", "sample", "consumer", "sbom", "aggregate"}
-        runner = Qualification(ROOT, args.output, args.version, args.workspace, timeout_seconds,
-                               existing=existing, deadline_utc=args.deadline_utc)
-        if args.job:
-            runner.run_job(args.job, args.project, args.sample)
+        runner = Qualification(ROOT, args.output, args.version, existing=args.job == "seal")
+        if args.job == "build":
+            runner.build()
         else:
-            runner.run()
+            runner.seal()
 
         return 0
     except (ReleaseError, OSError, ValueError, ET.ParseError) as error:

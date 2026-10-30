@@ -155,8 +155,9 @@ tag, delete a published version or replace immutable assets to repair a retry.
 The default-branch maintenance coordinator runs daily transitive dependency
 audits and weekly full CI for active lines. Each selected line, including
 `main`, runs once using its own protected source and toolchain. The coordinator
-checks exact child ref, SHA, workflow and correlation, plus actual successful
-producer jobs, all nine test-project cells and all three sample cells. A green
+checks exact child ref, SHA, workflow and correlation, plus every actual
+successful `Qualification / ...` producer job derived from the CI caller and the
+shared quality workflow, including all test and sample cells. A green
 dispatcher or final wrapper with missing/skipped producers is insufficient.
 
 The retained Dependabot template preserves all four existing ecosystems:

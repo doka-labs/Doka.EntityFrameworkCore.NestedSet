@@ -1,0 +1,458 @@
+name: Quality gates
+
+on:
+  workflow_call:
+    inputs:
+      package-version:
+        description: Exact candidate version; empty builds the source version without release binding.
+        required: false
+        default: ''
+        type: string
+      release-line:
+        description: Frozen release-line identity from the release preflight; empty outside releases.
+        required: false
+        default: ''
+        type: string
+    outputs:
+      package-artifact-id:
+        description: Immutable artifact with the build identity, owned locks, logs, and inspected packages.
+        value: ${{ jobs.build.outputs.artifact-id }}
+      consumer-artifact-id:
+        description: Immutable artifact with the exact package consumer evidence.
+        value: ${{ jobs.consumer.outputs.artifact-id }}
+      sbom-artifact-id:
+        description: Immutable artifact with the generated and validated SPDX documents.
+        value: ${{ jobs.sbom.outputs.artifact-id }}
+
+permissions:
+  contents: read
+
+jobs:
+  source-quality:
+    name: C# style and unused imports
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Restore locked dependencies
+        run: dotnet restore Doka.EntityFrameworkCore.NestedSet.slnx --locked-mode
+
+      - name: Check C# style
+        run: dotnet format Doka.EntityFrameworkCore.NestedSet.slnx style --severity warn --verify-no-changes --no-restore
+
+      - name: Check unused imports
+        run: dotnet format Doka.EntityFrameworkCore.NestedSet.slnx style --diagnostics IDE0005 --severity hidden --verify-no-changes --no-restore
+
+  engineering-tests:
+    name: Engineering regression tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run release engineering regressions
+        run: python3 -m unittest discover -s eng/tests -p 'test_*.py'
+
+      - name: Run Dependabot diagnostic regressions
+        run: python3 -m unittest discover -s eng/ci-tests -p 'test_*.py'
+
+      - name: Check engineering shell syntax
+        run: find eng -name '*.sh' -print0 | sort -z | xargs -0 -n 1 bash -n
+
+      - name: Check active-line dependency targets
+        run: python3 -m eng.release.maintenance check-dependencies
+
+  build:
+    name: Release build and NuGet packages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      artifact-id: ${{ steps.packages.outputs.artifact-id }}
+      package-version: ${{ steps.version.outputs.package-version }}
+
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Restore locked dependencies
+        id: restore
+        run: dotnet restore Doka.EntityFrameworkCore.NestedSet.slnx --locked-mode
+
+      - name: Select package version
+        id: version
+        env:
+          REQUESTED_VERSION: ${{ inputs.package-version }}
+        run: |
+          version="$REQUESTED_VERSION"
+          if [[ -z "$version" ]]; then
+            version="$(dotnet msbuild src/Doka.NestedSet/Doka.NestedSet.csproj -nologo -getProperty:PackageVersion)"
+          fi
+
+          echo "package-version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Build once, pack once, and inspect primary and symbol packages
+        env:
+          NESTEDSET_RELEASE_LINE: ${{ inputs.release-line }}
+          PACKAGE_VERSION: ${{ steps.version.outputs.package-version }}
+        run: >-
+          python3 -m eng.release.qualification --job build
+          --version "$PACKAGE_VERSION" --output artifacts/qualification
+
+      - name: Retain exact packages and build evidence
+        id: packages
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: packages-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/qualification/identity.json
+            artifacts/qualification/quality
+            artifacts/qualification/locks
+            artifacts/qualification/packages
+            artifacts/qualification/logs
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Prepare failed Dependabot lockfile diagnostic
+        id: dependabot-diagnostic
+        if: failure() && steps.restore.outcome == 'failure' && github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
+        run: >-
+          python3 eng/prepare-lockfile-patch.py
+          --solution Doka.EntityFrameworkCore.NestedSet.slnx
+          --output artifacts/dependabot-lockfiles.patch
+
+      - name: Retain Dependabot lockfile diagnostic
+        if: always() && steps.dependabot-diagnostic.outcome == 'success'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dependabot-lockfile-patch-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/dependabot-lockfiles.patch
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Retain build failure logs
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: diagnostics-build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/qualification/logs
+          if-no-files-found: warn
+          retention-days: 30
+
+  consumer:
+    name: Verify exact package consumers
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      artifact-id: ${{ steps.evidence.outputs.artifact-id }}
+    env:
+      PACKAGE_ARTIFACT_ID: ${{ needs.build.outputs.artifact-id }}
+      PACKAGE_VERSION: ${{ needs.build.outputs.package-version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # WHY: Consumers restore into isolated caches, so the default NuGet cache would be unused.
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Validate exact package artifact ID
+        run: '[[ "$PACKAGE_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]'
+
+      - name: Download exact packages
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact-id }}
+          path: artifacts/qualification
+
+      - name: Verify exact package consumers
+        run: >-
+          bash eng/verify-package-consumer.sh --package-dir artifacts/qualification/packages
+          --version "$PACKAGE_VERSION" --output artifacts/qualification/consumer
+
+      # WHY: The consumer receipt records failed restores too; keep it visible for diagnosis.
+      - name: Retain consumer evidence
+        id: evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: consumer-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/qualification/consumer
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+  sbom:
+    name: Generate and verify package SBOMs
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      artifact-id: ${{ steps.evidence.outputs.artifact-id }}
+    env:
+      PACKAGE_ARTIFACT_ID: ${{ needs.build.outputs.artifact-id }}
+      PACKAGE_VERSION: ${{ needs.build.outputs.package-version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # WHY: SBOM generation restores into an isolated cache, so the default NuGet cache would be unused.
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Validate exact package artifact ID
+        run: '[[ "$PACKAGE_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]'
+
+      - name: Download exact packages
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact-id }}
+          path: artifacts/qualification
+
+      - name: Generate and verify package SBOMs
+        run: >-
+          bash eng/generate-sbom.sh --package-dir artifacts/qualification/packages
+          --output artifacts/qualification/sbom --version "$PACKAGE_VERSION"
+
+      - name: Retain SBOM evidence
+        id: evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/qualification/sbom
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+  tests:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 130
+
+    # WHY: Separate runners isolate Docker resources and coverage-instrumented
+    # outputs. Each lane builds its own project graph without a binary handoff.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: core
+            name: Core unit tests
+            project: tests/Doka.NestedSet.Tests/Doka.NestedSet.Tests.csproj
+            docker: false
+          - id: ef-unit
+            name: EF Core unit tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests.csproj
+            filter: Category!=Allocation
+            docker: false
+          - id: benchmark-contracts
+            name: Benchmark contract tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests.csproj
+            docker: false
+          - id: mysql
+            name: MySQL integration tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
+            filter: FullyQualifiedName!~.MariaDb.&Lane!=Allocation
+            docker: true
+          - id: mariadb
+            name: MariaDB integration tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
+            filter: FullyQualifiedName~.MariaDb.&Lane!=Allocation
+            docker: true
+          - id: mysql-capacity
+            name: MySQL capacity tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
+            filter: FullyQualifiedName!~.MariaDb.&Lane=Allocation&FullyQualifiedName~.CapacityTests.
+            docker: true
+          - id: mariadb-capacity
+            name: MariaDB capacity tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
+            filter: FullyQualifiedName~.MariaDb.&Lane=Allocation&FullyQualifiedName~.CapacityTests.
+            docker: true
+          - id: mysql-allocation
+            name: MySQL and MariaDB allocation measurements
+            project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
+            filter: Lane=Allocation&FullyQualifiedName!~.CapacityTests.
+            docker: true
+          - id: postgresql
+            name: PostgreSQL integration tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests.csproj
+            docker: true
+          - id: sqlserver
+            name: SQL Server integration tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests/Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests.csproj
+            docker: true
+          - id: sqlite
+            name: SQLite integration tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests.csproj
+            docker: false
+          - id: migrations
+            name: EF migration integration tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests.csproj
+            docker: true
+          - id: safe-migrations
+            name: SafeMigrations integration tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests.csproj
+            docker: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Restore locked test dependencies
+        run: dotnet restore "${{ matrix.project }}" --locked-mode
+
+      - name: Build test project
+        run: dotnet build "${{ matrix.project }}" --configuration Release --no-restore
+
+      - name: Check Docker availability
+        if: matrix.docker
+        run: docker info
+
+      - name: Measure Unit allocations without instrumentation
+        if: matrix.id == 'ef-unit'
+        run: >-
+          dotnet test "${{ matrix.project }}" --configuration Release --no-build --no-restore
+          --filter "Category=Allocation" --logger "trx;LogFileName=allocations.trx"
+          --results-directory artifacts/tests/${{ matrix.id }}
+
+      - name: Run tests with coverage
+        env:
+          DOKA_NESTEDSET_QUERY_PLAN_DIR: ${{ github.workspace }}/artifacts/tests/${{ matrix.id }}/query-plans
+          TEST_FILTER: ${{ matrix.filter }}
+        shell: bash
+        run: |
+          # WHY: Instrumentation changes allocation costs and collectible-module lifetimes; Unit measurement ran above.
+          # Cells sharing one project use complementary filters, so each of its tests still runs exactly once.
+          filter=()
+          if [[ -n "$TEST_FILTER" ]]; then
+            filter=(--filter "$TEST_FILTER")
+          fi
+
+          dotnet test "${{ matrix.project }}" --configuration Release --no-build --no-restore \
+            "${filter[@]}" --settings eng/coverage.runsettings --collect:"Code Coverage" \
+            --logger "trx;LogFileName=coverage.trx" --results-directory artifacts/tests/${{ matrix.id }}
+
+      - name: Verify complementary Unit result partitions
+        if: matrix.id == 'ef-unit'
+        run: >-
+          python3 -m eng.release.qualification
+          --verify-results artifacts/tests/ef-unit
+          --project Doka.EntityFrameworkCore.NestedSet.Unit.Tests
+
+      - name: Require this project's coverage report
+        run: test -n "$(find artifacts/tests/${{ matrix.id }} -type f -name '*.cobertura.xml' -print -quit)"
+
+      - name: Retain test, coverage, and query-plan reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tests-${{ matrix.id }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/tests/${{ matrix.id }}
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+  samples:
+    name: SQLite sample / ${{ matrix.sample }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        sample: [FileSystem, SignalLab, UserGroups]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Restore locked sample dependencies
+        run: dotnet restore "samples/${{ matrix.sample }}" --locked-mode
+
+      - name: Build sample
+        run: dotnet build "samples/${{ matrix.sample }}" --configuration Release --no-restore
+
+      - name: Run sample
+        env:
+          NESTEDSET_SAMPLE_SQLITE_DIRECTORY: ${{ github.workspace }}/artifacts/sample-data
+        run: >-
+          dotnet run --project "samples/${{ matrix.sample }}" --configuration Release --no-build --no-restore
+          -- --provider sqlite --reset
+
+  coverage:
+    name: Test evidence and coverage
+    needs: tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download all test reports from this attempt
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: tests-*-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/tests
+
+      - name: Verify every project's passing results and provider plans
+        run: python3 -m eng.release.qualification --verify-results artifacts/tests
+
+      - name: Verify coverage across all test projects
+        run: python3 eng/verify-coverage.py artifacts/tests

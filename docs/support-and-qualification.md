@@ -366,23 +366,19 @@ Do not skip cases or restore old rejection expectations to replace that
 qualification.
 
 Docker and supported Linux x64 execution must be available for the complete
-server matrix. Local ARM skips provide development feedback only:
+server matrix. Local ARM skips provide development feedback only; use the
+focused projects below locally.
 
-```sh
-bash eng/release-candidate.sh \
-  --version 10.1.0 \
-  --workspace \
-  --output artifacts/qualification-local
-```
-
-This executes the complete release candidate checks locally. Pull-request CI
-uses independent source-quality, engineering, build/package, test-project, and
-SQLite-sample jobs. Every executable test project has its own named matrix
-cell; the shared MySQL/MariaDB provider project is split into complementary
-filtered cells by engine and by its serial allocation collection. Cells can run concurrently
-on isolated runners. Coverage is verified across the complete test reports,
-and `Repository qualification` requires every gate to succeed. A workspace run
-is never publishable.
+Complete qualification runs only on hosted runners. Pull-request CI and the
+release candidate call the same
+[quality workflow](../.github/workflows/quality-gates.yml) with independent
+source-quality, engineering, build/package, package-consumer, SBOM,
+test-project, and SQLite-sample jobs. Every executable test project has its own
+named matrix cell; the shared MySQL/MariaDB provider project is split into
+complementary filtered cells by engine and by its serial allocation collection.
+Cells can run concurrently on isolated runners. Results, provider plans, and
+coverage are verified across the complete test reports, and
+`Repository qualification` requires the shared jobs to succeed.
 
 ### Focused projects
 

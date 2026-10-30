@@ -43,10 +43,9 @@ Before starting the candidate:
 4. Inspect the matching PR CI provider-lane durations and occupied-heap output
    for the capacity cases before starting RC. Local import observations approach
    the 512 MiB ceiling and do not establish hosted GC headroom. RC qualification
-   includes coverage and all five engines under one shared two-hour deadline;
-   successful parallel PR lanes do not by themselves prove that deadline. Retain
-   the actual RC result as qualification evidence without relaxing these
-   correctness or memory checks.
+   runs the same cells with coverage and all five engines; successful PR cells
+   do not replace the RC's own run of them. Retain the actual RC result as
+   qualification evidence without relaxing these correctness or memory checks.
 
 Prepare the versioned root/package READMEs, Getting Started, Support, and
 Security policy in the release PR before starting the candidate. They describe
@@ -171,32 +170,36 @@ Use `10.1.0` for this stable release. Other release versions use
 `X.Y.Z-rc.N` or `X.Y.Z`, without a leading `v`. Wait for:
 
 1. `Verify source and unused version`;
-2. independent `C# style and unused imports`, `Release engineering regression
-   tests`, and `Build exact candidate and inspect packages` jobs;
-3. all nine `RC / ...` test cells, three `RC / SQLite sample / ...` cells,
-   `Verify exact package consumers`, and the six-package SBOM verification job;
-4. `Qualify exact release candidate`; and
-5. `Sign and verify candidate provenance`.
+2. the shared `Qualification / ...` jobs that pull-request CI also runs: C#
+   style, engineering regressions, the release build with package inspection,
+   package consumers, SBOMs, thirteen test cells, three SQLite samples, and
+   `Qualification / Test evidence and coverage`;
+3. `Qualify exact release candidate`; and
+4. `Sign and verify candidate provenance`.
 
 Qualification runs the complete source, test, package, consumer, and SBOM
-checks from this selected commit. The build compiles once, packs each shipping
-package once, and inspects all primary/symbol archives. Subsequent jobs execute
-its compiled test/sample files or verify its exact packages. The final
-`qualify` job requires every prerequisite and complete matching evidence before
-sealing; its candidate artifact ID then flows to attestation and publication.
-See [Qualification stages](../release-process.md#qualification-stages) for the
+checks from this selected commit through the shared
+[quality workflow](../../.github/workflows/quality-gates.yml). The build
+compiles once with the exact version, packs each shipping package once, and
+inspects all primary/symbol archives. Consumers and SBOMs verify those exact
+packages; test cells and samples build their own projects from the same commit.
+The final `qualify` job requires every prerequisite and complete matching
+evidence before sealing; its candidate artifact ID then flows to attestation
+and publication. See
+[Qualification stages](../release-process.md#qualification-stages) for the
 fixed graph and artifact contract. Benchmarks and ADR profile validation are
-separate maintainer activities. No earlier CI artifact or local rehearsal is
-required for the release candidate.
+separate maintainer activities. No earlier CI artifact is required for the
+release candidate.
 
-Preflight establishes one 7,200-second UTC deadline shared by all qualification
-jobs. The budget does not restart for each cell. Follow each job's live steps,
-retained logs, results, and artifact IDs; failed cells retain diagnosis evidence.
-The final job checks GitHub's direct dependency results, downloads non-matrix
-evidence by producer artifact ID, and selects test/sample evidence only for the
-current run and attempt. It verifies all required retained results before sealing.
-There is no separate job-receipt registry or artifact-index API to configure.
-The final summary identifies the candidate and retained qualification evidence.
+Each job has its own timeout; there is no shared qualification deadline. The
+release candidate takes about as long as pull-request CI. Follow each job's live
+steps, retained logs, results, and artifact IDs; failed cells retain diagnosis
+evidence. The final job checks GitHub's direct dependency results, downloads
+the package, consumer, and SBOM evidence by artifact ID, and selects test
+evidence only for the current run and attempt. It verifies all required
+retained results before sealing. There is no separate job-receipt registry or
+artifact-index API to configure. The final summary identifies the candidate and
+retained qualification evidence.
 
 For a prepared line or a nonpublishing rehearsal, set `qualification-only=true`.
 The same applicable qualification and attestations run, but the entire

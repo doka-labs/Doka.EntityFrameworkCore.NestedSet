@@ -9,7 +9,7 @@ scope: "Local qualification, hosted candidate identity, approval, publication, a
 supersedes: []
 superseded-by: []
 amends: []
-amended-by: [D-021]
+amended-by: [D-021, D-022]
 madr-version: "4.0.0"
 doka-profile-version: "1.0"
 ---
@@ -46,84 +46,46 @@ jobs; it does not establish a qualified stable candidate or a parallel speedup.
 ## Decision Outcome
 
 Chosen option: "Shared qualification with immutable candidate evidence and guarded publication", because the
-published package is the consumer contract, and shared checks give local and hosted RCs the same definition
-of readiness. Pull-request CI uses direct .NET and offline engineering checks so release-only services cannot block a product change.
-Publication remains a separate authorized action. PR-only diagnostics do not enter the RC qualification run.
+published package is the consumer contract, and shared checks give pull requests and hosted RCs the same
+definition of readiness. Publication remains a separate authorized action. Dependabot lockfile diagnostics run
+only for pull requests.
 
 [D-021](D-021-release-lines-and-monotonic-publication.md) amends the main-only
 release assumptions with exact branch-owned qualification, current
 protected-main publication authority and monotonic Latest. It preserves this
 decision's parallel six-package and original-byte recovery boundaries.
 
-CI runs independent source, engineering, build/package, test-project, and sample
-jobs. Each executable test project and SQLite sample owns a named matrix cell
-and runner. The shared MySQL/MariaDB project is the exception: its serial
-allocation collection alone outlasted every other project, so CI splits it into
-filtered cells whose VSTest filters must partition the project. RC keeps one
-cell per project. Coverage waits for complete test evidence; the stable Repository
-qualification check rejects any failed, skipped, or canceled gate. Project-local
-builds avoid transporting or sharing coverage-instrumented binary outputs.
-The build job inspects all primary and symbol archives before uploading
-them, using the inspector already built with the solution. This binds package
-metadata, XML documentation, source commit, and PE/PDB identity without another
-pack or a dependency on consumer restores and SBOM services.
+[D-022](D-022-shared-ci-and-release-qualification.md) replaces the release-only
+job graph: CI and the release candidate call one shared quality workflow. Its
+build job restores owned shipping locks, builds the Release solution once with
+the selected version, packs each shipping package once and inspects all primary
+and symbol archives with the inspector built in that solution. Package
+consumers and SBOMs verify that immutable package artifact in every run. Test
+and sample cells build their own projects from the same commit; the shared
+MySQL/MariaDB project uses complementary filtered cells that must partition it.
 Development builds use the SDK's shared version prefix and suffix so package
 and assembly informational versions agree. Release qualification supplies the
 exact reviewed version to both the build and pack operations.
 
-Hosted RC preflight establishes one shared 7,200-second UTC deadline. Source
-quality, engineering regressions, and the canonical Release build run
-independently. The build packs each shipping package once and inspects all
-four primary/symbol archives. Its TAR transports complete compiled test,
-sample, and tool outputs plus the isolated coverage collector, preserving hidden
-mapping files and executable modes. Consumers and SBOMs use a separate small
-package artifact. Each build or package handoff selects the producing job's
-nonempty artifact ID.
+The final `qualify` job needs the preflight and the complete shared call and
+rejects failed, skipped, or canceled results. The package, consumer, and SBOM
+artifact IDs pass through workflow outputs; test artifacts are selected by
+their current run-and-attempt prefix, one directory per cell. The pinned
+artifact action verifies downloaded digests; no second job receipt schema,
+artifact-index API, or role/file inventory repeats that transport.
 
-Only source quality and the canonical build use the default NuGet cache.
-Compiled test/sample jobs need no restore; consumer and SBOM jobs restore in
-isolated caches. Their SDK setup does not enable unused cache restore/save,
-which could fail the post-job after successful execution on a cache miss.
-
-After the build, nine executable test-project cells, three compiled SQLite
-samples, package consumers, and SBOM verification run independently. Matrices
-use `fail-fast: false` without a repository-imposed parallelism cap. Tests and
-samples execute the canonical compiled bytes; runtime inventories and package
-hashes detect changes. The shared specification library is not a test cell.
-
-The final `qualify` job directly needs every prerequisite and rejects failed,
-skipped, or canceled jobs through GitHub's `needs` results. The build, source
-quality, engineering, consumer, and SBOM artifact IDs pass through job outputs;
-test and sample artifacts are selected by their current run-and-attempt prefix
-and merged into the qualification workspace. Uploads include hidden result
-files. The pinned artifact action verifies downloaded digests; no second job
-receipt schema, artifact-index API, or role/file inventory repeats that transport.
-
-Existing source/version/run/attempt identity, dependency locks, compiled runtime
-inventories, and package hashes remain checked. Final qualification requires
-all nine TRX results, coverage for each test project, executed lines in all six
-shipping modules across the reports, all required query plans, all three samples,
-successful version-matching core and EF consumers whose recorded primary-package
-hashes equal the inspected packages being sealed, and independently verified
-SBOM evidence. Missing or conflicting required results prevent sealing. It
-assembles the existing candidate without building or packing again; the candidate
-artifact ID passes unchanged to attestation and publication.
-
-The local entry point remains serial by default. Hosted `--job` selectors expose
-fixed checks; GitHub dependencies control their execution. The final job does
-not restore packages or set up .NET because it only verifies retained results
-and assembles the candidate. Before sealing, repeat all jobs or start a new
-dispatch to refresh every check and the preflight deadline. This is an operator
-recommendation, not a blanket rejection of logs from an earlier attempt:
-successful source-quality/engineering logs can survive a partial rerun of the
-same run and commit through their scalar artifact IDs. Downloaded build identity
-and test/sample selection require the current attempt; consumers and SBOMs must
-match the package bytes being sealed. A retained preflight keeps its original
-deadline. The concrete failed-build scenario in the
-[release contract](../../docs/release-process.md#recovery) is derived from the
-job graph and GitHub's documented rerun behavior, not hosted execution. Recovery
-of an already sealed candidate retains its original artifact IDs and the
-existing attestation/publication checks.
+Final qualification restores the build identity of the same run and attempt and
+requires passing, non-repeated results for every executable test project, every
+required query-plan family, executed lines in all six shipping modules,
+successful version-matching consumers whose recorded primary-package hashes
+equal the inspected packages being sealed, and independently verified SBOM
+evidence. Missing or conflicting required results prevent sealing. It assembles
+the existing candidate without building or packing again; the candidate
+artifact ID passes unchanged to attestation and publication. The final job does
+not restore packages or set up .NET. Repeat all jobs or start a new dispatch
+before sealing; build identity and test selection require the current attempt.
+Recovery of an already sealed candidate retains its original artifact IDs and
+the existing attestation/publication checks.
 
 Approved SSH release-tag signers are recorded in `.github/allowed_signers`,
 following Doka and SafeMigrations. Signer changes require a reviewed protected-line
@@ -133,13 +95,13 @@ GitHub's independent signature verdict, without extra hosted signer configuratio
 ### Consequences
 
 - Good, because a candidate can be reviewed through explicit manifests and operator evidence before any registry write.
-- Bad, because a fully passing local run cannot prove hosted OIDC, environment protection, signer configuration, or a completed public release.
+- Bad, because a fully passing pull-request run cannot prove hosted OIDC, environment protection, signer configuration, or a completed public release.
 
 ### Confirmation
 
 - Run `python3 -m unittest discover -s eng/tests` and expect identity, archive, fresh-run, and publication-boundary regression tests to pass. These fixtures must reject changed candidate bytes, signer mismatch, stale evidence, and conflicting public packages. ADR validation and its fixtures are separate documentation checks.
-- Run the complete local qualification procedure in the linked release runbook and require fresh full provider tests, coverage, sample, package-consumer, SBOM, and deterministic mutation evidence. Syntax or stub checks must not substitute for runtime qualification.
-- Qualify the parallel flow on fresh hosted Linux x86-64 runners. Require all nine compiled test projects and three compiled samples, complete matching evidence, unchanged binaries/packages, and successful candidate handoff. Compare serial and parallel timing on the same source, SDK, images, and test scope before claiming a speedup. This hosted confirmation remains pending for the evolved flow.
+- Run the shared quality workflow and require fresh full provider tests, coverage, samples, package consumers, SBOMs, and deterministic mutation evidence. Syntax or stub checks must not substitute for runtime qualification.
+- Qualify the shared flow on fresh hosted Linux x86-64 runners as [D-022](D-022-shared-ci-and-release-qualification.md) confirms. Require all executable test projects and three samples, complete matching evidence, unchanged packages, and successful candidate handoff.
 - Before publication, require the linked operator checklist to confirm exact run and attempt identity, approved signed tag, qualified-line reachability and current independent publication authority, protected environment approval, and verified public package/symbol readback. These external checks remain unexecuted until a real authorized release.
 
 ## Pros and Cons of the Options
@@ -210,17 +172,18 @@ conflicts before duplicate-tolerant pushes, and public package and PDB readback 
 - 2026-10-09: Corrected the blanket claim that partial reruns cannot retain evidence from an earlier attempt. Successful same-run, same-commit source/tooling logs may be reused by native job outputs; downloaded build identity, current-attempt test/sample selection, and package-byte checks remain enforced. Full reruns or new dispatches remain the operator recommendation; retaining preflight does not refresh its deadline. No code or additional enforcement layer was introduced.
 
 - 2026-10-28: D-021 records the owner-approved release-line extension, preserving parallel qualification, six packages and original-byte recovery while replacing main-only source and always-Latest assumptions. Extra lines remain inactive.
+- 2026-10-30: D-022 replaces the release-only job graph, compiled-byte transport, shared deadline and local serial qualification with the shared quality workflow. Packages, consumers, SBOMs, the sealed candidate, attestation and publication guards are unchanged.
 
 ### Implementation References
 
 - [Operator pre-tag entry point](../../eng/pre-tag-check.sh)
-- [Local release entry point](../../eng/release-candidate.sh)
 - [Shared identity and manifest checks](../../eng/release/common.py)
 - [Shared qualification runner](../../eng/release/qualification.py)
 - [Publication guards](../../eng/release/publication.py)
 - [Approved release signers](../../.github/allowed_signers)
 - [NuGet verification](../../eng/release/nuget.py)
 - [Hosted continuous integration](../../.github/workflows/ci.yml)
+- [Shared quality workflow](../../.github/workflows/quality-gates.yml)
 - [Hosted release candidate](../../.github/workflows/release-candidate.yml)
 - [Release contract](../../docs/release-process.md)
 - [Publication runbook](../../docs/operations/release-publication.md)
