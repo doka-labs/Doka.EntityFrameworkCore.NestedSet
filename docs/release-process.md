@@ -37,66 +37,64 @@ Current source is .NET 10 with `10.1.0`; additional lines remain inactive.
 
 ## Qualification stages
 
-Pull-request CI checks the offline engineering regressions, shipping package locks,
-C# style, Release build, all test projects, coverage reports, runnable samples,
-pack, and primary/symbol archive inspection. The PR-only lockfile diagnostic
-tests run there. The release candidate independently repeats the solution and
-release-tooling checks from its selected branch/commit and additionally verifies
-isolated package consumers and SBOMs. It checks source, dependency locks, and
-compiled binaries throughout qualification and seals the candidate only after
-every check passes. It consumes no prior CI artifacts.
+Pull-request CI and the release candidate call the same
+[quality workflow](../.github/workflows/quality-gates.yml). Both run the
+offline engineering regressions and shell syntax, shipping package locks, C#
+style, the Release build with pack and primary/symbol archive inspection,
+isolated package consumers, SBOMs, all test projects, results, query plans and
+coverage, and runnable samples. The Dependabot lockfile diagnostic runs only
+for pull requests. The release candidate starts from its selected
+branch/commit, consumes no prior CI artifacts, and seals the candidate only
+after every shared job passes. Complete qualification runs only on hosted
+runners; there is no local complete qualification.
 
-The local `eng/release-candidate.sh` entry point runs all checks serially by
-default. A failed local run requires a fresh output directory and a complete
-rerun. Hosted qualification uses the same checks through fixed `--job` selectors
-and this GitHub job graph:
+The release candidate's GitHub job graph:
 
 | Job | Direct prerequisites | Work |
 | --- | --- | --- |
-| `preflight` | Dispatch | Verify current line authorization, exact protected source, compatible toolchain and unused version; freeze line identity and establish one shared 7,200-second UTC deadline |
-| `source-quality` | `preflight` | Locked restore, C# style, and unused imports |
-| `engineering-tests` | `preflight` | Offline RC-tooling regressions and shell syntax |
-| `build` | `preflight` | Canonical Release solution build; pack each shipping package once; inspect primary and symbol archives |
-| `tests` | `build` | Nine executable test projects on separate runners, using compiled DLLs and coverage |
-| `samples` | `build` | Three compiled SQLite samples: FileSystem, SignalLab, and UserGroups |
-| `consumer`, `sbom` | `build` | Independently verify six isolated package roots, the FileSystem consumer, and all six SBOMs |
-| `qualify` | All jobs above | Validate complete evidence and assemble the unchanged candidate |
+| `preflight` | Dispatch | Verify current line authorization, exact protected source, compatible toolchain, unused version and dated release notes; freeze line identity |
+| `Qualification / C# style and unused imports` | `preflight` | Locked restore, C# style, and unused imports |
+| `Qualification / Engineering regression tests` | `preflight` | Offline release-tooling and Dependabot-diagnostic regressions, shell syntax, active-line dependency targets |
+| `Qualification / Release build and NuGet packages` | `preflight` | Release solution build with the exact version and owned locks; pack each shipping package once; inspect primary and symbol archives |
+| `Qualification / Verify exact package consumers`, `Qualification / Generate and verify package SBOMs` | build | Independently verify six isolated package roots, the FileSystem consumer, and all six SBOMs from the build's package artifact |
+| `Qualification / <test cell>` | `preflight` | Thirteen cells for nine executable test projects; each restores, builds, and tests its project with coverage |
+| `Qualification / SQLite sample / <sample>` | `preflight` | FileSystem, SignalLab, and UserGroups |
+| `Qualification / Test evidence and coverage` | test cells | Passing results for every project without repeated cases, every provider plan family, and coverage of all six shipping modules |
+| `qualify` | `preflight`, the shared call | Validate complete evidence and assemble the unchanged candidate |
 
-The build TAR preserves complete execution files, hidden mapping files, the
-isolated coverage collector, and executable modes. Consumers and SBOMs download
-a separate small package artifact. Build and package downloads use the exact
-producer's nonempty artifact ID. Test and sample matrices use `fail-fast: false` without a
-repository-imposed parallelism cap; their Docker and result directories are
-isolated. They do not rebuild or repack the candidate. The shared specification
-library is not an executable test project.
+Pull-request CI runs the same `Qualification / ...` jobs after
+`schedule-identity`; its `Repository qualification` gate requires them to
+succeed. Packages downloaded by consumers, SBOMs, and the seal use the build's
+exact nonempty artifact ID. Test and sample matrices use `fail-fast: false`
+without a repository-imposed parallelism cap; their Docker and result
+directories are isolated. The shared MySQL/MariaDB project runs as five
+filtered cells whose VSTest filters partition it, so each test runs exactly
+once. The shared specification library is not an executable test project.
 
-Only source quality and the canonical build use setup-dotnet's default NuGet
-cache, because they restore into that cache. Tests and samples execute compiled
-files; consumers and SBOMs restore into isolated caches. These four jobs set up
+Source quality, the build, test cells, and samples restore into setup-dotnet's
+default NuGet cache. Consumers and SBOMs restore into isolated caches and set up
 the pinned SDK without restoring or saving an unused default package cache.
 
 `qualify` checks GitHub's `needs` results with `jq` and rejects any prerequisite
-result other than `success`. Four scalar artifact IDs from the source-quality,
-engineering, consumer, and SBOM job outputs select those downloads directly.
-Test and sample outputs use only the current run-and-attempt name prefix and
-merge into the workspace. All evidence uploads include hidden files, and the
-pinned download action verifies artifact digests. There is no separate job
-receipt schema, artifact-index API, or duplicate role/file inventory.
+result other than `success`. The package, consumer, and SBOM artifact IDs from
+the shared call's outputs select those downloads directly. Test artifacts use
+only the current run-and-attempt name prefix and keep one directory per cell.
+Test, consumer, and SBOM evidence uploads include hidden files, and the pinned
+download action verifies artifact digests. There is no separate job receipt
+schema, artifact-index API, or duplicate role/file inventory.
 
 The existing source, version, workflow run, producer attempt, dependency-lock,
-runtime, and package guards still apply. Final qualification requires all nine
-test-project results, coverage for every project and executed lines in all six
-shipping modules across all reports, every query plan, and all three successful
-sample results. Consumer jobs verify the exact package hashes; final qualification
+and package guards still apply. Final qualification requires passing results
+for all nine executable test projects, no case repeated across cells, executed
+lines in all six shipping modules across all reports, and every query-plan
+family. Consumer jobs verify the exact package hashes; final qualification
 requires their successful version-matching `core`, `ef`, `mysql`, `postgres`,
-`sqlite`, `sqlserver`, and `filesystem` results and compares
-the recorded primary-package hashes with the inspected packages being sealed. The successful
-source/tooling jobs retain command logs, and qualification rechecks SBOM evidence
-with the existing offline verifier. The final job does
-not restore dependencies or set up .NET.
-Only then does it seal the candidate and pass its artifact ID unchanged to
-`attest` and `publish`. Every job derives its remaining budget from the same UTC
-deadline; the two-hour allowance does not restart per job.
+`sqlite`, `sqlserver`, and `filesystem` results and compares the recorded
+primary-package hashes with the inspected packages being sealed. Qualification
+rechecks SBOM evidence with the existing offline verifier. The final job does
+not restore dependencies or set up .NET. Only then does it seal the candidate
+and pass its artifact ID unchanged to `attest` and `publish`. Job timeouts and a
+bounded per-process budget limit each job; there is no shared deadline.
 
 All six shipping projects under `src/` commit dependency locks. RC
 qualification copies those locks into its owned workspace and verifies that
@@ -107,13 +105,15 @@ own graphs without additional committed lockfiles.
 | --- | --- |
 | `quality` | Offline release-tooling tests, shell syntax, reviewed shipping package locks, Roslyn style/import checks, warning-free Release build |
 | `tests` | Docker readiness, every test project, all provider cells, ordinary and optional migrations, coverage artifacts, query plans, and runnable samples |
-| `packages` | One pack per shipping package from the canonical build; exact primary/symbol metadata, assembly, PDB, XML docs, source, dependencies, and archive inventory |
+| `packages` | One pack per shipping package from the release build; exact primary/symbol metadata, assembly, PDB, XML docs, source, dependencies, and archive inventory |
 | `consumer` | Six isolated package roots plus the actual FileSystem sample restore the exact archives; bounds/SQLite/sample execution and real provider API/model/query translation are checked without external databases |
 | `sbom` | Standalone Microsoft SBOM binary generates and validates one SPDX 2.2 dependency closure per primary package; negative verifier cases run in offline tests |
 
 These stage names group completed evidence; they do not require serial hosted
-execution. Packages produced before the tests finish are qualification inputs
-until every required check passes and `qualify` seals them.
+execution. Test cells build their own projects from the same commit; the packed
+assemblies are bound by the same source, locked graph, and archive inspection.
+Packages produced before the tests finish are qualification inputs until every
+required check passes and `qualify` seals them.
 
 CPU time, wall-clock benchmark results, working set, and process-wide
 allocation are not release gates. Deterministic command, row, plan, memory-
@@ -130,8 +130,8 @@ The final candidate contains:
 - `release-notes.md`; and
 - `candidate.json`, which inventories every other file by size and SHA-256.
 
-A workspace qualification can verify uncommitted changes but sets
-`publishable: false`. Only the exact hosted release workflow on an authorized
+Pull-request CI builds the same packages without a release line and cannot
+seal a candidate. Only the exact hosted release workflow on an authorized
 active line can produce a publishable candidate. `qualification-only=true`
 permits complete nonpublishing qualification of prepared or active lines and
 skips the entire publisher environment. The frozen line travels with existing
@@ -199,27 +199,14 @@ continued Latest status.
 ## Recovery
 
 Before sealing, repeat qualification with **Re-run all jobs** or a new dispatch.
-This operator recommendation refreshes every check and the preflight deadline.
-The code enforces a narrower boundary: downloaded build identity must match the
-current source, version, run, attempt, and deadline; test/sample downloads select
-the current run and attempt. Consumer and SBOM evidence must match the package
-bytes being sealed.
-
-Successful `source-quality` and `engineering-tests` jobs can retain logs from an
-earlier attempt of the same run and commit, selected by their scalar artifact
-IDs. For example, if only `build` fails, **Re-run failed jobs** reruns the build
-and its dependent jobs while retaining those independent successful checks.
-Their logs are evidence about the source and tooling, not inputs to the compiled
-runtime or package archives. Qualification does not require those logs to come
-from the current attempt. This case follows from the job graph and GitHub's
-rerun behavior; it has not been exercised in a hosted run.
-
-A partial rerun that retains `preflight` also retains its original deadline; it
-does not receive another two-hour budget. Reusing a previous attempt's build for
-new test/sample jobs fails the build-identity check, so partial reruns are not a
-general recovery path. Source changes require a new reviewed candidate. Once
-sealed, the existing attestation/publication recovery continues to use the
-original candidate artifact IDs and exact bytes.
+The seal requires the build identity of the current source, version, run, and
+attempt, and it selects test artifacts of the current attempt only. Consumer
+and SBOM evidence must match the package bytes being sealed. A partial rerun
+that keeps the build or a successful test cell from an earlier attempt therefore
+fails sealing; partial reruns are not a general recovery path. Source changes
+require a new reviewed candidate. Once sealed, the existing
+attestation/publication recovery continues to use the original candidate
+artifact IDs and exact bytes.
 
 NuGet cannot atomically publish six package IDs. If a failure occurs after one
 upload, rerun only the failed `publish` job in the original workflow run. The
@@ -237,7 +224,7 @@ state before continuing.
 
 ## Evidence limits
 
-Local qualification proves local execution only. Hosted qualification proves
+Pull-request qualification proves the pull-request source only. Hosted qualification proves
 the exact hosted source and candidate only. A completed release additionally
 requires tag verification, protected approval, short-lived credential exchange,
 NuGet signing/readback, and immutable GitHub release readback.

@@ -9,7 +9,7 @@ scope: "Exact framework release lines, current publication authority and monoton
 supersedes: []
 superseded-by: []
 amends: [D-016]
-amended-by: []
+amended-by: [D-022]
 madr-version: "4.0.0"
 doka-profile-version: "1.0"
 ---
@@ -169,6 +169,7 @@ always-Latest assumptions without replacing its parallel qualification contract.
 - 2026-10-28: Owner requested the complete Doka/SafeMigrations release-line contract with parallel qualification preserved, updated documentation, no new Python framework and no commit. Implementation confirmation and real hosted activation remain distinct evidence boundaries.
 - 2026-10-28: Status changed from accepted to implemented.
 - 2026-10-28: Local engineering/CI regressions, Release build, complete advisory audit and scoped workflow checks confirmed the implementation. Scope review retained direct uploads from the sealed candidate and preserved original source-ref rejection before consumer asset copying. Extra lines remain inactive; no commit, hosted activation or publication is implied. Standalone full ADR validation still reports the separately proven pre-existing D-018/D-019 history/source-format diagnostics; this record and its D-016 amendment validate independently.
+- 2026-10-30: D-022 replaces the retained shared qualification deadline with job timeouts and a per-process budget; every release-line rule is unchanged.
 
 ### Implementation References
 

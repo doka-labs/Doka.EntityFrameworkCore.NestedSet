@@ -586,56 +586,72 @@ class WorkflowBoundaryTests(unittest.TestCase):
     def setUp(self):
         """Read the actual workflow sources under review."""
         self.ci_path = ROOT / ".github/workflows/ci.yml"
+        self.gates_path = ROOT / ".github/workflows/quality-gates.yml"
         self.release_path = ROOT / common.RELEASE_WORKFLOW
         self.ci = workflow_jobs(self.ci_path)
+        self.gates = workflow_jobs(self.gates_path)
         self.release = workflow_jobs(self.release_path)
 
-    def test_ci_checks_csharp_and_rc_qualifies_complete_candidate(self):
-        """PR checks stay direct while release-specific services belong to the RC."""
+    def test_ci_and_rc_call_one_shared_qualification(self):
+        """Pull requests and release candidates run the same jobs; only the RC binds a version and line."""
         # Arrange
-        ci = "\n".join(self.ci.values())
-        release = "\n".join(self.release.values())
+        gates = "\n".join(self.gates.values())
         triggers = self.ci_path.read_text(encoding="ascii").split("\non:\n", 1)[1].split("\npermissions:", 1)[0]
+        callers = {"ci": self.ci["qualification"], "release": self.release["qualification"]}
 
         # Act
-        ci_commands = {name for name in ("dotnet restore", "dotnet build", "dotnet test", "dotnet pack") if name in ci}
+        commands = {name for name in ("dotnet restore", "dotnet build", "dotnet test") if name in gates}
 
         # Assert
-        self.assertEqual({"dotnet restore", "dotnet build", "dotnet test", "dotnet pack"}, ci_commands)
-        self.assertNotIn("eng/release-candidate.sh", ci)
-        self.assertNotIn("generate-sbom.sh", ci)
-        self.assertIn("unittest discover -s eng/tests", ci)
-        self.assertIn("unittest discover -s eng/ci-tests", ci)
-        self.assertNotIn("--stage", release)
-        self.assertNotIn("--resume", release)
+        self.assertEqual({"dotnet restore", "dotnet build", "dotnet test"}, commands)
+        for name, caller in callers.items():
+            with self.subTest(caller=name):
+                self.assertIn("    uses: ./.github/workflows/quality-gates.yml\n", caller)
+                self.assertNotIn("matrix:", "\n".join(body for job, body in
+                                                     (self.ci if name == "ci" else self.release).items()))
+
+        self.assertNotIn("    with:", callers["ci"])
+        self.assertIn("      package-version: ${{ inputs.version }}", callers["release"])
+        self.assertIn("      release-line: ${{ needs.preflight.outputs.line-json }}", callers["release"])
+        self.assertIn("python3 -m eng.release.qualification --job build", gates)
+        self.assertIn("bash eng/verify-package-consumer.sh", gates)
+        self.assertIn("bash eng/generate-sbom.sh", gates)
+        self.assertIn("unittest discover -s eng/tests", gates)
+        self.assertIn("unittest discover -s eng/ci-tests", gates)
+        self.assertNotIn("--deadline-utc", gates + "\n".join(self.release.values()))
         self.assertNotIn("attest", self.ci)
-        self.assertIn('$CANDIDATE_VERSION', release)
+        self.assertNotIn("attest", self.gates)
+        self.assertIn('$CANDIDATE_VERSION', "\n".join(self.release.values()))
         self.assertIn("  pull_request:", triggers)
         self.assertIn("    branches: [main, 'maintenance/**', 'preview/**']", triggers)
         self.assertNotIn("  push:", triggers)
         self.assertNotIn("  schedule:", triggers)
 
-    def test_ci_producers_run_independently(self):
+    def test_shared_producers_run_independently(self):
         """Unrelated checks and all matrix cells remain eligible to run concurrently."""
         # Arrange
-        producers = ("source-quality", "engineering-tests", "build", "tests", "samples")
+        expected = {"source-quality": [], "engineering-tests": [], "build": [], "tests": [], "samples": [],
+                    "consumer": ["build"], "sbom": ["build"], "coverage": ["tests"]}
 
         # Act
-        dependencies = {name: re.findall(r"^    needs:.*$", self.ci[name], re.MULTILINE) for name in producers}
+        dependencies = {name: re.findall(r"^    needs: (.+)$", body, re.MULTILINE) for name, body in self.gates.items()}
 
         # Assert
-        self.assertEqual({name: ["    needs: schedule-identity"] for name in producers}, dependencies)
-        self.assertNotIn("max-parallel:", self.ci["tests"])
-        self.assertNotIn("max-parallel:", self.ci["samples"])
-        self.assertIn("fail-fast: false", self.ci["tests"])
-        self.assertIn("fail-fast: false", self.ci["samples"])
-        self.assertNotIn("-m:1", self.ci["tests"])
+        self.assertEqual(expected, dependencies)
+        self.assertEqual(["schedule-identity"],
+                         re.findall(r"^    needs: (.+)$", self.ci["qualification"], re.MULTILINE))
+        self.assertNotIn("max-parallel:", self.gates["tests"])
+        self.assertNotIn("max-parallel:", self.gates["samples"])
+        self.assertIn("fail-fast: false", self.gates["tests"])
+        self.assertIn("fail-fast: false", self.gates["samples"])
+        self.assertNotIn("-m:1", self.gates["tests"])
 
-    def test_ci_inspects_packed_archives_before_upload(self):
-        """PR qualification checks metadata and PE/PDB identity without a second pack or build."""
+    def test_build_packs_and_inspects_once_before_upload(self):
+        """The one release-mode build packs and inspects exactly the archives every later job verifies."""
         # Arrange
-        build = self.ci["build"]
-        boundaries = ("dotnet pack", "python3 -m eng.release.packages", "name: Retain NuGet packages")
+        build = self.gates["build"]
+        boundaries = ("id: restore", "-getProperty:PackageVersion", "--job build",
+                      "name: Retain exact packages and build evidence")
 
         # Act
         positions = [build.find(boundary) for boundary in boundaries]
@@ -643,23 +659,21 @@ class WorkflowBoundaryTests(unittest.TestCase):
         # Assert
         self.assertTrue(all(position >= 0 for position in positions))
         self.assertEqual(sorted(positions), positions)
-        self.assertEqual(1, build.count("dotnet pack"))
-        self.assertEqual(1, build.count("dotnet build"))
-        self.assertIn("-getProperty:PackageVersion", build)
-        self.assertIn('--version "$package_version"', build)
-        self.assertIn('--source-commit "$(git rev-parse HEAD)"', build)
-        self.assertIn("--package-dir artifacts/ci-packages", build)
-        self.assertIn("--output artifacts/ci-package-manifest.json", build)
-        self.assertIn("            artifacts/ci-package-manifest.json", build)
+        self.assertNotRegex(build, r"\bdotnet (?:build|pack)\b")
+        self.assertIn("REQUESTED_VERSION: ${{ inputs.package-version }}", build)
+        self.assertIn("NESTEDSET_RELEASE_LINE: ${{ inputs.release-line }}", build)
+        self.assertIn('--version "$PACKAGE_VERSION" --output artifacts/qualification', build)
+        self.assertIn("            artifacts/qualification/packages", build)
+        self.assertIn("            artifacts/qualification/identity.json", build)
 
-    def test_ci_matrix_covers_each_executable_test_project_once(self):
-        """Adding a suite cannot silently leave it outside pull-request qualification."""
+    def test_shared_matrix_covers_each_executable_test_project_once(self):
+        """Adding a suite cannot silently leave it outside pull-request or release qualification."""
         # Arrange
         projects = list((ROOT / "tests").rglob("*.csproj"))
         expected = {path.relative_to(ROOT).as_posix() for path in projects
                     if ET.parse(path).findtext(".//IsTestProject") != "false"}
         rows = [dict(re.findall(r"^\s*([a-z]+): (.+)$", row, re.MULTILINE))
-                for row in self.ci["tests"].split("        include:\n", 1)[1].split("\n    steps:", 1)[0]
+                for row in self.gates["tests"].split("        include:\n", 1)[1].split("\n    steps:", 1)[0]
                 .split("          - ")[1:]]
 
         # Act
@@ -669,32 +683,34 @@ class WorkflowBoundaryTests(unittest.TestCase):
 
         # Assert
         self.assertEqual(expected, set(selected))
+        self.assertEqual({path.relative_to(ROOT).as_posix() for path in qualification.test_projects(ROOT)},
+                         set(selected))
         self.assertEqual({"tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/"
                           "Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj"}, set(shards))
         self.assertTrue(all(partitions(filters) for filters in shards.values()))
-        self.assertIn('dotnet restore "${{ matrix.project }}" --locked-mode', self.ci["tests"])
-        self.assertIn('dotnet build "${{ matrix.project }}"', self.ci["tests"])
-        self.assertIn('dotnet test "${{ matrix.project }}"', self.ci["tests"])
-        self.assertNotIn("actions/download-artifact@", self.ci["tests"])
+        self.assertIn('dotnet restore "${{ matrix.project }}" --locked-mode', self.gates["tests"])
+        self.assertIn('dotnet build "${{ matrix.project }}"', self.gates["tests"])
+        self.assertIn('dotnet test "${{ matrix.project }}"', self.gates["tests"])
+        self.assertNotIn("actions/download-artifact@", self.gates["tests"])
 
-    def test_ci_runs_every_sample(self):
+    def test_shared_matrix_runs_every_sample(self):
         """Each independent SQLite sample is runnable in the sample matrix."""
         # Arrange
         expected = {path.parent.name for path in (ROOT / "samples").rglob("*.csproj")}
 
         # Act
-        selected = re.search(r"^        sample: \[(.+)\]$", self.ci["samples"], re.MULTILINE)
+        selected = re.search(r"^        sample: \[(.+)\]$", self.gates["samples"], re.MULTILINE)
         names = selected.group(1).split(", ") if selected else []
 
         # Assert
         self.assertEqual(expected, set(names))
         self.assertEqual(len(names), len(set(names)))
-        self.assertIn("--provider sqlite --reset", self.ci["samples"])
+        self.assertIn("--provider sqlite --reset", self.gates["samples"])
 
-    def test_ci_runs_allocation_budgets_before_coverage_with_complementary_filters(self):
+    def test_shared_matrix_runs_allocation_budgets_before_coverage_with_complementary_filters(self):
         """Only Unit separates native allocation measurements; no test category is silently skipped."""
         # Arrange
-        tests = self.ci["tests"]
+        tests = self.gates["tests"]
 
         # Act
         allocation = tests.index("name: Measure Unit allocations without instrumentation")
@@ -710,149 +726,115 @@ class WorkflowBoundaryTests(unittest.TestCase):
         self.assertIn("TEST_FILTER: ${{ matrix.filter }}", tests[coverage:verify])
         self.assertIn('filter=(--filter "$TEST_FILTER")', tests[coverage:verify])
         self.assertIn("python3 -m eng.release.qualification", tests[verify:])
-        self.assertIn("--verify-results artifacts/ci-tests/ef-unit", tests[verify:])
+        self.assertIn("--verify-results artifacts/tests/ef-unit", tests[verify:])
         self.assertIn("--project Doka.EntityFrameworkCore.NestedSet.Unit.Tests", tests[verify:])
         self.assertNotIn("python3 -c", tests[verify:].split("      - name:", 1)[0])
 
-    def test_ci_coverage_waits_for_complete_test_evidence(self):
-        """The shipping-module verifier reads isolated reports from the current run attempt."""
+    def test_shared_evidence_waits_for_complete_test_results(self):
+        """Results, provider plans, and shipping-module coverage are verified across the current attempt."""
         # Arrange
-        tests = self.ci["tests"]
-        coverage = self.ci["coverage"]
+        tests = self.gates["tests"]
+        coverage = self.gates["coverage"]
 
         # Act
         dependencies = re.findall(r"^    needs: (.+)$", coverage, re.MULTILINE)
 
         # Assert
         self.assertEqual(["tests"], dependencies)
-        self.assertIn("ci-tests-${{ matrix.id }}-${{ github.run_id }}-${{ github.run_attempt }}", tests)
-        self.assertIn("pattern: ci-tests-*-${{ github.run_id }}-${{ github.run_attempt }}", coverage)
+        self.assertIn("tests-${{ matrix.id }}-${{ github.run_id }}-${{ github.run_attempt }}", tests)
+        self.assertIn("pattern: tests-*-${{ github.run_id }}-${{ github.run_attempt }}", coverage)
         self.assertNotIn("merge-multiple: true", coverage)
-        self.assertIn("python3 eng/verify-coverage.py artifacts/ci-tests", coverage)
+        self.assertIn("python3 -m eng.release.qualification --verify-results artifacts/tests\n", coverage)
+        self.assertIn("python3 eng/verify-coverage.py artifacts/tests", coverage)
         self.assertIn("-type f -name '*.cobertura.xml' -print -quit", tests)
         self.assertIn("if-no-files-found: error", tests)
         self.assertNotIn("continue-on-error: true", tests)
 
     def test_rc_qualifies_without_prior_ci_artifacts(self):
-        """A release candidate rebuilds the selected source even if prior CI artifacts expired."""
+        """A release candidate builds and tests the selected source in its own run."""
         # Arrange
         preflight = self.release["preflight"]
-        build = self.release["build"]
+        qualify = self.release["qualify"]
 
         # Act
-        previous_artifact_reads = [body for body in (preflight, build) if "actions/download-artifact@" in body]
+        downloads = re.findall(r"(?:artifact-ids|pattern): (.+)", qualify)
 
         # Assert
-        self.assertEqual([], previous_artifact_reads)
-        self.assertIn("bash eng/release-candidate.sh --job build", build)
-        self.assertIn("--job aggregate", self.release["qualify"])
+        self.assertNotIn("actions/download-artifact@", preflight)
+        self.assertIn("--job seal", qualify)
+        self.assertEqual(["${{ needs.qualification.outputs.package-artifact-id }}",
+                          "${{ needs.qualification.outputs.consumer-artifact-id }}",
+                          "${{ needs.qualification.outputs.sbom-artifact-id }}",
+                          "tests-*-${{ github.run_id }}-${{ github.run_attempt }}"], downloads)
 
-    def test_rc_matrix_covers_all_executable_projects_without_rebuilding(self):
-        """Precompiled matrix jobs cover every test project and share the exact build artifact."""
-        # Arrange
-        tests = self.release["tests"]
-        expected = {path.relative_to(ROOT).as_posix() for path in qualification.test_projects(ROOT)}
-
-        # Act
-        projects = re.findall(r"^            project: (\S+)$", tests, re.MULTILINE)
-
-        # Assert
-        self.assertEqual(expected, set(projects))
-        self.assertEqual(len(projects), len(set(projects)))
-        self.assertIn("fail-fast: false", tests)
-        self.assertNotIn("max-parallel:", tests)
-        self.assertIn("needs: build", tests)
-        self.assertIn("artifact-ids: ${{ needs.build.outputs.build-id }}", tests)
-        self.assertIn("--job test --project", tests)
-        self.assertNotRegex(tests, r"\bdotnet (?:build|restore|pack)\b")
-
-    def test_rc_transports_hidden_files_and_executable_modes_in_tar(self):
-        """Artifact ZIP defaults cannot strip permissions inside the producer TAR."""
-        # Arrange
-        build, tests = self.release["build"], self.release["tests"]
-
-        # Act
-        transport = "\n".join((build, tests))
-
-        # Assert
-        self.assertIn("tar -czf artifacts/rc-build.tar.gz", build)
-        self.assertIn("identity.json quality locks build/bin packages logs", build)
-        self.assertIn("tar -xzf artifacts/transport/rc-build.tar.gz", tests)
-        self.assertNotIn("archive: false", transport)
-        self.assertIn('[[ "$RC_BUILD_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]', tests)
-
-    def test_rc_independent_consumers_and_samples_wait_only_for_build(self):
-        """The slowest test suite cannot serialize samples, package consumers or SBOMs."""
-        # Arrange
-        names = ("tests", "samples", "consumer", "sbom")
-
-        # Act
-        needs = {name: re.findall(r"^    needs: (.+)$", self.release[name], re.MULTILINE) for name in names}
-
-        # Assert
-        self.assertEqual({name: ["build"] for name in names}, needs)
-        self.assertIn("sample: [FileSystem, SignalLab, UserGroups]", self.release["samples"])
-        self.assertIn("fail-fast: false", self.release["samples"])
+    def test_consumers_and_sboms_verify_the_exact_built_packages(self):
+        """Package consumers and SBOMs download the build's immutable artifact instead of rebuilding."""
         for name in ("consumer", "sbom"):
             with self.subTest(job=name):
-                self.assertIn("needs.build.outputs.package-id", self.release[name])
-                self.assertIn('[[ "$RC_PACKAGE_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]', self.release[name])
-                self.assertNotIn("RC_BUILD_ARTIFACT_ID", self.release[name])
+                # Arrange
+                body = self.gates[name]
 
-    def test_rc_cache_is_reserved_for_jobs_that_restore_default_packages(self):
-        """DLL-only jobs and isolated consumer/SBOM restores cannot create the SDK action's default cache."""
+                # Act
+                downloads = re.findall(r"artifact-ids: (.+)", body)
+
+                # Assert
+                self.assertEqual(["${{ needs.build.outputs.artifact-id }}"], downloads)
+                self.assertIn("PACKAGE_ARTIFACT_ID: ${{ needs.build.outputs.artifact-id }}", body)
+                self.assertIn('[[ "$PACKAGE_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]', body)
+                self.assertIn("PACKAGE_VERSION: ${{ needs.build.outputs.package-version }}", body)
+                self.assertNotRegex(body, r"\bdotnet (?:build|restore|pack)\b")
+
+    def test_cache_is_reserved_for_jobs_that_restore_default_packages(self):
+        """Isolated consumer and SBOM restores cannot create the SDK action's default cache."""
         # Arrange
-        restored = ("source-quality", "build")
-        isolated = ("tests", "samples", "consumer", "sbom")
+        restored = ("source-quality", "build", "tests", "samples")
+        isolated = ("consumer", "sbom")
 
         # Act
-        cached = {name for name, body in self.release.items() if re.search(r"^          cache: true$", body, re.MULTILINE)}
+        cached = {name for name, body in self.gates.items()
+                  if re.search(r"^          cache: true$", body, re.MULTILINE)}
 
         # Assert
         self.assertEqual(set(restored), cached)
         for name in isolated:
             with self.subTest(job=name):
-                self.assertNotIn("cache-dependency-path:", self.release[name])
-                self.assertNotIn("cache: true", self.release[name])
+                self.assertNotIn("cache-dependency-path:", self.gates[name])
+                self.assertNotIn("cache: true", self.gates[name])
 
-    def test_rc_aggregate_requires_all_direct_jobs_and_current_attempt_evidence(self):
+    def test_rc_seal_requires_complete_shared_qualification_and_current_attempt_evidence(self):
         """A skipped parent or foreign artifact cannot produce a qualified candidate."""
         # Arrange
         qualify = self.release["qualify"]
 
         # Act
         dependencies = re.search(r"^    needs: \[(.+)\]$", qualify, re.MULTILINE).group(1).split(", ")
+        tests = next(step for step in qualify.split("\n      - ") if "pattern: tests-*-" in step)
 
         # Assert
         self.assertEqual(set(self.release) - {"qualify", "attest", "publish"}, set(dependencies))
         self.assertIn("if: ${{ !cancelled() }}", qualify)
         self.assertIn('all(.[]; .result == "success")', qualify)
-        for label in ("test", "sample"):
-            pattern = f"pattern: rc-evidence-{label}-*-${{{{ github.run_id }}}}-${{{{ github.run_attempt }}}}"
-            download = next((step for step in qualify.split("\n      - ") if pattern in step), "")
-            self.assertIn(pattern, download)
-            self.assertIn("merge-multiple: true", download)
-
-        for label in ("source-quality", "engineering-tests", "consumer", "sbom"):
-            self.assertIn(f"artifact-ids: ${{{{ needs.{label}.outputs.artifact-id }}}}", qualify)
+        self.assertIn("path: artifacts/qualification/tests", tests)
+        self.assertNotIn("merge-multiple", tests)
+        for name in ("PACKAGE", "CONSUMER", "SBOM"):
+            self.assertIn(f'"${name}_ARTIFACT_ID"', qualify)
 
         self.assertNotIn("gh api", qualify)
         self.assertNotIn("Set up .NET", qualify)
         self.assertNotRegex(qualify, r"\bdotnet (?:build|restore|pack)\b")
 
-    def test_rc_evidence_preserves_hidden_files_without_a_second_receipt_schema(self):
-        """Every job exports its owned ordinary files, including hidden VSTest outputs."""
+    def test_evidence_preserves_hidden_files_without_a_second_receipt_schema(self):
+        """Test, consumer, and SBOM evidence keeps hidden VSTest and tool outputs and fails when absent."""
         # Arrange
-        jobs = ("source-quality", "engineering-tests", "tests", "samples", "consumer", "sbom")
+        jobs = ("tests", "consumer", "sbom")
 
         # Act
-        evidence_steps = [body.split("- name: Retain verified job evidence", 1)[1].split("- name:", 1)[0]
-                          for name, body in self.release.items() if name in jobs]
+        uploads = [re.search(r"uses: actions/upload-artifact@.*?(?=\n      -|\Z)", self.gates[name], re.DOTALL).group(0)
+                   for name in jobs]
 
         # Assert
-        self.assertEqual(6, len(evidence_steps))
-        self.assertTrue(all("include-hidden-files: true" in step for step in evidence_steps))
-        self.assertTrue(all("if-no-files-found: error" in step for step in evidence_steps))
+        self.assertTrue(all("include-hidden-files: true" in upload for upload in uploads))
+        self.assertTrue(all("if-no-files-found: error" in upload for upload in uploads))
         self.assertNotIn("--artifact-index", self.release["qualify"])
 
     def test_rc_needs_guard_accepts_only_complete_success(self):
@@ -862,7 +844,8 @@ class WorkflowBoundaryTests(unittest.TestCase):
         command = qualify.split("        run: >-\n", 1)[1].split("\n", 1)[0].strip()
         passed = {name: {"result": "success"} for name in self.release if name not in {"qualify", "attest", "publish"}}
         cases = [(passed, 0), ({}, 1)]
-        cases.extend(({**passed, "tests": {"result": result}}, 1) for result in ("failure", "cancelled", "skipped"))
+        cases.extend(({**passed, "qualification": {"result": result}}, 1)
+                     for result in ("failure", "cancelled", "skipped"))
         for results, expected in cases:
             with self.subTest(results=results):
                 # Act
@@ -1182,7 +1165,7 @@ class WorkflowBoundaryTests(unittest.TestCase):
 
         # Assert
         self.assertEqual(1, len(matches))
-        self.assertIn("needs: [schedule-identity, source-quality, engineering-tests, build, tests, samples, coverage]", required)
+        self.assertIn("needs: [schedule-identity, qualification]", required)
         self.assertIn("if: always()", required)
         self.assertEqual(set(self.ci) - {"repository-qualification"}, results)
 
@@ -1231,7 +1214,7 @@ class WorkflowBoundaryTests(unittest.TestCase):
     def test_candidate_and_completion_artifacts_fail_if_missing(self):
         """Missing retained evidence cannot appear as a successful artifact upload."""
         # Arrange
-        bodies = (self.ci["build"], self.ci["tests"], self.release["qualify"],
+        bodies = (self.gates["build"], self.gates["tests"], self.release["qualify"],
                   self.release["attest"], self.release["publish"])
 
         # Act

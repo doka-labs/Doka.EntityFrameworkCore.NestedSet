@@ -110,18 +110,9 @@ dotnet run --project samples/UserGroups -c Release -- --provider sqlite --reset
 See the [sample catalog](samples/README.md) for Doka MySQL/MariaDB setup,
 scenario selection, and the meaning of `--reset`.
 
-For complete local qualification of the current workspace on supported Linux
-x64:
-
-```sh
-bash eng/release-candidate.sh \
-  --version 10.1.0 \
-  --workspace \
-  --output artifacts/qualification-local
-```
-
-Use a new output directory for each run. A workspace result cannot authorize
-publication.
+Complete qualification runs on hosted runners through the shared
+[quality workflow](.github/workflows/quality-gates.yml) that pull-request CI
+and release candidates call. There is no local complete qualification.
 
 Useful focused checks include:
 
@@ -136,7 +127,8 @@ bash eng/verify-package-consumer.sh
 A filtered or focused run is development feedback, not complete qualification.
 The local ARM platform skips are an explicit environment policy, applied before
 database work; never convert a container startup or live provider failure to a
-skip. Unsupported SQL Server CI hosts fail; RC qualification rejects skipped cases.
+skip. Unsupported SQL Server CI hosts fail; the shared result verification rejects
+skipped cases in pull-request CI and the release candidate.
 
 ## Secure development
 

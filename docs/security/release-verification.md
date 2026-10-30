@@ -178,14 +178,14 @@ authenticated; the attestation checks below provide that identity layer.
 
 Inspect `qualification-evidence.zip` against the
 [qualification contract](../release-process.md#qualification-stages). Hosted
-parallel qualification retains the source/tooling results, canonical build and
-package inventory, nine executable test-project results with per-project
-coverage, all required query plans, three compiled SQLite samples, consumers,
-and all six SBOM checks. GitHub's direct job dependencies require success, scalar
-producer artifact IDs select non-matrix outputs, and test/sample artifact names
-select the current run and attempt. Evidence uploads retain hidden files, and
-the pinned download action checks artifact digests. Existing source, version,
-run, attempt, runtime, dependency-lock, and package guards remain in place;
+qualification retains the release build and package inventory, passing results
+for all nine executable test projects from their cells with coverage, all
+required query plans, consumers, and all six SBOM checks. GitHub's direct job
+dependencies require success, scalar artifact IDs select the package, consumer,
+and SBOM outputs, and test artifact names select the current run and attempt.
+Evidence uploads retain hidden files, and the pinned download action checks
+artifact digests. Existing source, version, run, attempt, dependency-lock, and
+package guards remain in place;
 qualification does not add a separate job-receipt or file-inventory protocol.
 The consumer result's primary-package hashes must equal the inspected package
 manifest for the archives being sealed, in addition to successful core and EF

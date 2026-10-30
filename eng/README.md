@@ -22,61 +22,69 @@ The pre-tag command requires authenticated GitHub CLI read access to the
 selected protected branch and current protected-main policy; no additional
 secret or environment is needed.
 
-[`ci.yml`](../.github/workflows/ci.yml) runs independent jobs for C# style and
-unused imports, offline engineering regressions, the Release solution build,
-NuGet pack and archive inspection, nine executable test projects, and the
-three SQLite samples. The shared MySQL/MariaDB project runs as five filtered
-cells: one non-allocation cell per engine, one capacity cell per engine and
-one cell for the remaining serial allocation measurements. Its filters must
-partition the project, so each test still runs exactly once. Test and sample matrix cells run on separate runners without a repository-imposed
-parallelism cap. Each restores its own project graph while the shipping
-packages retain their reviewed locks, so Docker resources and instrumented
-outputs are isolated. Coverage
-verification waits for all test reports from the current run attempt. The stable
-`Repository qualification` check requires every job to succeed and rejects
-failed, canceled, or skipped gates.
-The CI Unit test job invokes the existing read-only results validator, without
-initializing a release qualification or duplicating its report checks in YAML:
+[`ci.yml`](../.github/workflows/ci.yml) and
+[`release-candidate.yml`](../.github/workflows/release-candidate.yml) both call
+[`quality-gates.yml`](../.github/workflows/quality-gates.yml), so pull requests
+and release candidates run the same jobs. It runs independent jobs for C# style
+and unused imports, offline engineering regressions and shell syntax, the
+Release build with NuGet pack and archive inspection, package consumers, SBOMs,
+nine executable test projects, and the three SQLite samples. The shared
+MySQL/MariaDB project runs as five filtered cells: one non-allocation cell per
+engine, one capacity cell per engine and one cell for the remaining serial
+allocation measurements. Its filters must partition the project, so each test
+still runs exactly once. Test and sample matrix cells run on separate runners
+without a repository-imposed parallelism cap. Each restores its own project
+graph while the shipping packages retain their reviewed locks, so Docker
+resources and instrumented outputs are isolated. The evidence job waits for all
+test reports from the current run attempt and verifies results, provider plans,
+and coverage. CI's stable `Repository qualification` check requires the shared
+call to succeed and rejects failed, canceled, or skipped gates.
+
+The build job runs the release-mode build once:
 
 ```bash
-python3 -m eng.release.qualification --verify-results artifacts/ci-tests/ef-unit \
+python3 -m eng.release.qualification --job build --version 10.1.0 --output artifacts/qualification
+```
+
+It copies the reviewed shipping locks, adapts internal project-version edges
+while keeping their external dependencies locked, builds the Release solution
+with the selected version, packs each shipping package once, and inspects all
+primary/symbol archives. CI selects the source version; the release candidate
+supplies its reviewed version and the frozen preflight line. Package consumers
+and SBOMs download the resulting immutable artifact by its exact nonempty ID.
+Tests, samples, benchmarks, and engineering tools do not require separate
+committed lockfiles.
+
+The Unit test cell and the evidence job invoke the read-only results validator,
+without initializing a release qualification or duplicating its report checks
+in YAML:
+
+```bash
+python3 -m eng.release.qualification --verify-results artifacts/tests/ef-unit \
   --project Doka.EntityFrameworkCore.NestedSet.Unit.Tests
 ```
 
-Omit `--project` to require results for every executable solution test project.
-Results-only mode rejects release qualification options and invalid report sets.
-[`release-candidate.yml`](../.github/workflows/release-candidate.yml) runs
-fixed [`release-candidate.sh`](release-candidate.sh) `--job` selectors from exact
-checkouts of the dispatch source. Preflight establishes one shared 7,200-second
-UTC deadline. Source quality, engineering regressions, and the canonical Release
-build run independently. The build packs each shipping package once and inspects
-all primary/symbol archives; its TAR preserves complete execution files, hidden
-mapping files, the isolated coverage collector, and executable modes. Consumers
-and SBOMs receive a separate small package artifact. Build and package downloads
-select exact nonempty producer artifact IDs.
+Omit `--project` to require passing results for every executable solution test
+project and every provider query-plan family. Reports of one project may come
+from several cells, but no test case may repeat. Results-only mode rejects
+build and seal options and invalid report sets.
 
-Nine test-project cells and three compiled SQLite samples execute the producer's
-compiled files on independent runners after the build. Consumers and SBOMs run
-alongside them. Test/sample matrices use `fail-fast: false` without a repository
-parallelism cap. The final `qualify` job checks all direct `needs` results with
-`jq`. Four scalar producer IDs select source-quality, engineering, consumer,
-and SBOM evidence; the test/sample artifact prefix selects only the current run
-and attempt, with merged downloads. All six evidence-upload declarations retain
-hidden files. The pinned artifact action checks download digests, so no new
-job-receipt schema, role/file inventory, or artifact-index API is needed.
+After the shared call, the release candidate's `qualify` job checks both direct
+`needs` results with `jq`, downloads the package, consumer, and SBOM artifacts
+by their scalar IDs plus the current-attempt test artifacts, and seals:
 
-Existing source/run/attempt, lock, runtime, and package guards remain required.
-The final job rejects missing test results, incomplete coverage, missing query
-plans or samples, unsuccessful or mismatched consumers, and invalid SBOMs.
+```bash
+python3 -m eng.release.qualification --job seal --version 10.1.0 --output artifacts/qualification
+```
+
+The seal restores the build identity of the same run and attempt. It rejects
+changed packages, missing or repeated test results, missing query plans,
+incomplete coverage, unsuccessful or mismatched consumers, and invalid SBOMs.
 It uses the existing offline SBOM verifier and requires neither .NET setup nor
-GitHub API credentials. It assembles the existing candidate
-without another build or pack, then passes its artifact ID to the unchanged
+GitHub API credentials. It assembles the existing candidate without another
+build or pack, then passes its artifact ID to the unchanged
 attestation/publication flow. See the
 [job graph](../docs/release-process.md#qualification-stages).
-
-The local entry point runs `quality`, `tests`, `packages`, `consumer`, and `sbom`
-serially by default, then assembles the candidate. Both paths require the same
-complete set of checks from the selected commit without downloading PR-CI results.
 
 Benchmarks are deliberately absent from this stage inventory. GitHub-hosted
 runner timing, CPU, working-set, and process-wide allocation results are not
@@ -84,17 +92,12 @@ stable release criteria. The test stage may enforce deterministic mutation
 properties such as hierarchy validity, SQL command counts, update counts, and
 affected rows. See [performance and capacity](../docs/performance.md).
 
-```bash
-bash eng/release-candidate.sh --version 10.1.0 --workspace --output artifacts/qualification-local
-```
-
-The default local two-hour deadline terminates the owned process group and retains failed logs. Use `--timeout-seconds`
-for a reviewed local workload deadline between 60 and 14400 seconds. Each local run requires a fresh output directory;
-a failed run cannot be resumed. Hosted jobs derive their remaining budget from the shared `--deadline-utc`, not a
-fresh two-hour budget. Before sealing, use **Re-run all jobs** or a new dispatch to refresh all checks and preflight.
-Partial reruns may retain successful source-quality/engineering logs from the same run and commit. Build identity
-and test/sample selection still require the current attempt; consumers and SBOMs must match the sealed package
-bytes. A retained preflight keeps its original deadline. See [rerun boundaries](../docs/release-process.md#recovery).
+There is no local complete qualification; hosted runs qualify candidates. Both
+jobs require clean committed source, and the build requires a fresh output
+directory. Before sealing, use **Re-run all jobs** or a new dispatch. Build
+identity and test selection require the current attempt; consumers and SBOMs
+must match the sealed package bytes. See
+[rerun boundaries](../docs/release-process.md#recovery).
 Existing recovery after sealing retains the original candidate IDs and bytes.
 Publication reads the already validated manifest in two Bash loops: every
 primary package in dependency order, then every symbol package. A failed push
@@ -102,14 +105,8 @@ stops the loop immediately and retains its package-specific workflow step log.
 `identity.json`, stage directories, and `logs/` preserve the source and failure
 context. GitHub retains these files even when qualification fails.
 The `candidate/` directory contains six primary and six symbol packages, six SBOMs, manifests, notes, and portable qualification evidence.
-`operator-summary.md` routes review to the exact source and candidate hashes. Build outputs and candidate lockfile
-copies stay in the run-owned directory. The six shipping package graphs have
-committed locks. Qualification copies those locks and adapts internal
-project-version edges while keeping their external dependencies locked.
-Tests, samples, benchmarks, and engineering tools do not require separate
-committed lockfiles.
+`operator-summary.md` routes review to the exact source and candidate hashes.
 
-A normal run requires clean committed source. `--workspace` verifies changes without making them publishable.
 Only the exact authorized active-line workflow-dispatch context produces a publication-eligible candidate, and it still requires
 provenance, the authorized signed tag, and protected approval. Do not set hosted identity variables manually.
 See [release publication](../docs/operations/release-publication.md) for external actions and recovery.
@@ -190,12 +187,12 @@ graphs, logs, and `result.json` remain, including on failure. Network access to 
 is required; Docker is not required for these package consumers. Native integration
 qualification remains a separate test stage.
 
-Hosted final qualification compares `candidateSha256` in the existing consumer result
-with the inspected primary-package hashes before sealing. This binds the small
-package artifact used by consumers to the package copies in the build artifact.
+The release seal compares `candidateSha256` in the consumer result with the
+inspected primary-package hashes. This binds the consumer receipt to the exact
+package bytes that the seal verifies.
 
-The no-argument developer convenience still packs before verification. RC uses explicit consumer mode after its
-single qualified pack; PR CI does not run package consumers. Both CI and RC use
+The no-argument developer convenience still packs before verification. The shared quality workflow uses explicit
+consumer mode after its single inspected pack, in pull-request CI and in the release candidate. Both CI and RC use
 [`packages.py`](release/packages.py) to check primary and symbol archives, metadata, dependencies, license,
 XML documentation, source commit, and actual PE/PDB identity. CI retains the inspection manifest alongside its
 packages. The framework-only [.NET 10 inspector](tools/Doka.NestedSet.PackageInspection/Program.cs) is built with the
@@ -227,11 +224,11 @@ The first command verifies the complete [MADR profile](../docs/decisions/MADR-PR
 and deterministic indexes. Use `bash eng/validate-adrs.sh --write-index` to update navigation after valid ADR edits;
 the check is separate from CI and RC qualification. The second command verifies the validator against positive and
 negative fixtures. Run the release engineering tests separately with
-`python3 -m unittest discover -s eng/tests -p 'test_*.py' -v`. Run the PR-only
+`python3 -m unittest discover -s eng/tests -p 'test_*.py' -v`. Run the Dependabot
 lockfile diagnostic fixtures with
 `python3 -m unittest discover -s eng/ci-tests -p 'test_*.py' -v`.
-Both suites run in pull-request CI; only the release suite reruns during RC
-qualification. Release fixtures include offline failure/retry/publication
+Both suites run in the shared quality workflow, so pull-request CI and the
+release candidate run them. Release fixtures include offline failure/retry/publication
 contracts and parse every engineering Python source with the standard library,
 including release entry points that unit discovery does not import. They do
 not perform external publication or establish hosted signature evidence.

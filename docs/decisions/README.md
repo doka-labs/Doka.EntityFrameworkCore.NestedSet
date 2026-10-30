@@ -29,12 +29,13 @@ Validate with `eng/validate-adrs.sh`; regenerate with `eng/validate-adrs.sh --wr
 | [D-013](D-013-provider-owned-integration-test-projects.md) | implemented | 2026-09-25 | Give each database provider its own integration test project | None |
 | [D-014](D-014-shared-database-images-and-developer-compose.md) | implemented | 2026-09-29 | Share database image pins with optional developer Compose | None |
 | [D-015](D-015-benchmarkdotnet-development-measurements.md) | accepted | 2026-09-28 | Use BenchmarkDotNet for optional development measurements | None |
-| [D-016](D-016-release-candidate-evidence-and-publication.md) | implemented | 2026-09-19 | Qualify immutable candidates before operator-controlled publication | amended-by D-021 |
+| [D-016](D-016-release-candidate-evidence-and-publication.md) | implemented | 2026-09-19 | Qualify immutable candidates before operator-controlled publication | amended-by D-021; amended-by D-022 |
 | [D-017](D-017-madr-profile-and-decision-validation.md) | implemented | 2026-09-19 | Validate decision records independently of release qualification | None |
 | [D-018](D-018-generic-hierarchy-query-composition.md) | accepted | 2026-10-16 | Compose generic hierarchy queries through ordinary EF expressions | None |
 | [D-019](D-019-optional-ancestor-index-and-source-binding.md) | implemented | 2026-10-19 | Opt into generated ancestor indexes and statement-local source binding | amended-by D-020 |
 | [D-020](D-020-provider-owned-runtime-packages.md) | implemented | 2026-10-26 | Own native integration in four provider packages | supersedes D-002; amends D-019 |
-| [D-021](D-021-release-lines-and-monotonic-publication.md) | implemented | 2026-10-28 | Separate release-line qualification from current publication authority | amends D-016 |
+| [D-021](D-021-release-lines-and-monotonic-publication.md) | implemented | 2026-10-28 | Separate release-line qualification from current publication authority | amends D-016; amended-by D-022 |
+| [D-022](D-022-shared-ci-and-release-qualification.md) | accepted | 2026-10-30 | Qualify releases through the shared CI workflow | amends D-016; amends D-021 |
 
 ## Relationships
 
@@ -45,4 +46,6 @@ flowchart LR
     D_020["D-020"] -->|amends| D_019["D-019"]
     D_020["D-020"] -->|supersedes| D_002["D-002"]
     D_021["D-021"] -->|amends| D_016["D-016"]
+    D_022["D-022"] -->|amends| D_016["D-016"]
+    D_022["D-022"] -->|amends| D_021["D-021"]
 ```

@@ -187,7 +187,8 @@
       "supersededBy": [],
       "amends": [],
       "amendedBy": [
-        "D-021"
+        "D-021",
+        "D-022"
       ]
     },
     {
@@ -250,6 +251,22 @@
       "supersededBy": [],
       "amends": [
         "D-016"
+      ],
+      "amendedBy": [
+        "D-022"
+      ]
+    },
+    {
+      "id": "D-022",
+      "title": "Qualify releases through the shared CI workflow",
+      "status": "accepted",
+      "date": "2026-10-30",
+      "path": "docs/decisions/D-022-shared-ci-and-release-qualification.md",
+      "supersedes": [],
+      "supersededBy": [],
+      "amends": [
+        "D-016",
+        "D-021"
       ],
       "amendedBy": []
     }

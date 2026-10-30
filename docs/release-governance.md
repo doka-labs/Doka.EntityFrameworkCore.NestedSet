@@ -100,9 +100,10 @@ The release operator must be able to inspect candidate hashes and retained
 evidence before creating the tag or approving the protected environment.
 Environment approval authorizes the exact waiting run only.
 
-Hosted qualification has independent source/tooling checks, one canonical build
-and pack, nine test-project cells, three compiled SQLite samples, consumers,
-and SBOMs. The final `qualify` job directly requires every prerequisite and
+Hosted qualification calls the same shared jobs as pull-request CI:
+independent source/tooling checks, one release build and pack, consumers, SBOMs,
+thirteen test cells for nine test projects, and three SQLite samples. The final
+`qualify` job directly requires the preflight and the complete shared call and
 validates the complete matching evidence before sealing. Parallel job success
 does not authorize publication; the operator still reviews the sealed candidate
 and provenance before the signed tag and protected approval.
@@ -137,7 +138,7 @@ The release record includes:
 
 Producer artifact IDs are transport references in GitHub job outputs and action
 logs. They are not additional fields or files in the portable qualification
-evidence; the retained source identity, runtime inventory, and package manifests
+evidence; the retained source identity, dependency locks, and package manifests
 bind that evidence to the inspected candidate bytes.
 
 Local benchmark timings are not release evidence. GitHub runner hardware is not
@@ -150,13 +151,11 @@ identity fails closed. Do not rebuild selected files, copy evidence from
 another run, move a tag, delete and reuse a published version, disable package
 signature checks, or approve a different run as a substitute.
 
-All qualification jobs share the preflight's 7,200-second UTC deadline. Before
-sealing, use **Re-run all jobs** or a new dispatch to refresh all checks and the
-deadline. Successful source-quality/engineering logs from the same run and
-commit may survive a partial rerun. Downloaded build identity and test/sample
-selection remain bound to the current attempt; consumers and SBOMs remain bound
-to the selected package bytes. A retained preflight keeps its original deadline.
-See [rerun boundaries](release-process.md#recovery). Recovery after sealing
+Pull-request CI and the release candidate run the same shared qualification
+jobs, each with its own timeout. Before sealing, use **Re-run all jobs** or a
+new dispatch to refresh all checks. Downloaded build identity and test selection
+remain bound to the current attempt; consumers and SBOMs remain bound to the
+selected package bytes. See [rerun boundaries](release-process.md#recovery). Recovery after sealing
 retains the original candidate artifact IDs, bytes, and attestation/publication
 controls.
 

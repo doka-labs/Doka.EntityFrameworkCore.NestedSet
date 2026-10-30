@@ -42,12 +42,10 @@ def text_file(path, content):
 
 def stage_fixture(runner):
     """Populate small offline outputs; these bytes never represent qualified .NET packages."""
-    text_file(runner.output / "build/bin/core/release/core.dll", "fixture execution bytes")
     for stage in common.STAGES:
         text_file(runner.output / stage / "fixture.txt", f"{stage} evidence")
         text_file(runner.output / "logs" / stage / "fixture.log", f"{stage} passed")
 
-    common.write_json(runner.output / "quality/runtime.json", qualification.runtime_inventory(runner.output))
     (runner.output / "packages/fixture.txt").unlink()
     records = []
     for package in common.PACKAGES:
@@ -93,10 +91,6 @@ class QualificationFixture(unittest.TestCase):
         self.addCleanup(environment_patch.stop)
         self.runner = qualification.Qualification(self.repo, self.root / "output", VERSION)
 
-    def mock_compile(self):
-        """Exclude artifact production when a regression only examines source/tooling commands."""
-        return patch.object(self.runner, "compile")
-
     def complete_fixture(self):
         """Seal a complete tiny candidate using the real assembly implementation."""
         stage_fixture(self.runner)
@@ -121,20 +115,21 @@ class BuildVersionTests(QualificationFixture):
         self.assertIn("-p:Version=0.2.0-rc.1", properties)
         self.assertIn("-p:PackageVersion=0.2.0-rc.1", properties)
 
-    def test_format_workspace_receives_the_same_selected_version(self):
-        """Design-time checks must resolve the same version and owned locks as the eventual build."""
+    def test_build_restores_compiles_packs_and_rechecks_inputs_in_order(self):
+        """The shared build produces one inspected package set from unchanged source and locks."""
         # Arrange
-        self.runner.version = "0.2.0-rc.1"
+        calls = []
+        patches = [patch.object(self.runner, name, side_effect=lambda name=name: calls.append(name))
+                   for name in ("restore", "compile", "packages", "assert_inputs")]
+        for item in patches:
+            item.start()
+            self.addCleanup(item.stop)
 
         # Act
-        with patch.object(self.runner, "command") as command, patch.object(qualification, "prepare_locks"), \
-                patch.object(qualification, "verify_locks"), patch.object(qualification, "runtime_inventory", return_value={}), self.mock_compile():
-            self.runner.quality()
+        self.runner.build()
 
         # Assert
-        inspections = [call.args[3] for call in command.call_args_list if call.args[1] in ("style", "imports")]
-        self.assertEqual(2, len(inspections))
-        self.assertTrue(all(value["Version"] == value["PackageVersion"] == "0.2.0-rc.1" for value in inspections))
+        self.assertEqual(["restore", "compile", "packages", "assert_inputs"], calls)
 
 
 class ReleaseSourceContractTests(QualificationFixture):
@@ -221,60 +216,33 @@ class ReleaseSourceContractTests(QualificationFixture):
         self.assertEqual("release-notes", error.code)
 
 
-class StagePrerequisiteTests(QualificationFixture):
-    """Keep documentation checks independent and container checks near provider tests."""
+class BuildPrerequisiteTests(QualificationFixture):
+    """Keep decision documents and containers out of the package build."""
 
-    def test_quality_does_not_gate_on_decision_documents(self):
+    def build_commands(self):
+        """Record the build's process names without running .NET or inspecting real archives."""
+        with patch.object(self.runner, "command") as command, patch.object(qualification, "prepare_locks"), \
+                patch.object(qualification, "verify_locks"), patch.object(self.runner, "packages"):
+            self.runner.build()
+
+        return command.call_args_list
+
+    def test_build_does_not_gate_on_decision_documents(self):
         """Invalid ADR content must not make package qualification fail."""
-        # Arrange
-        with patch.object(self.runner, "command") as command, patch.object(qualification, "prepare_locks"), \
-                patch.object(qualification, "verify_locks"), patch.object(qualification, "runtime_inventory", return_value={}), self.mock_compile():
-            # Act
-            self.runner.quality()
+        # Act
+        commands = self.build_commands()
 
         # Assert
-        self.assertNotIn("adrs", [call.args[1] for call in command.call_args_list])
-        self.assertNotIn("validate-adrs.sh", str(command.call_args_list))
+        self.assertNotIn("adrs", [call.args[1] for call in commands])
+        self.assertNotIn("validate-adrs.sh", str(commands))
 
-    def test_quality_does_not_require_docker(self):
-        """Local style and build feedback must remain usable without a running daemon."""
-        # Arrange
-        with patch.object(self.runner, "command") as command, patch.object(qualification, "prepare_locks"), \
-                patch.object(qualification, "verify_locks"), patch.object(qualification, "runtime_inventory", return_value={}), self.mock_compile():
-            # Act
-            self.runner.quality()
+    def test_build_does_not_require_docker(self):
+        """Package production must remain usable without a running daemon."""
+        # Act
+        commands = self.build_commands()
 
         # Assert
-        self.assertNotIn("docker", [call.args[1] for call in command.call_args_list])
-
-    def test_quality_runs_release_tooling_without_pr_only_diagnostics(self):
-        """The RC checks its release code but does not depend on Dependabot-only tests."""
-        # Arrange
-        with patch.object(self.runner, "command") as command, patch.object(qualification, "prepare_locks"), \
-                patch.object(qualification, "verify_locks"), patch.object(qualification, "runtime_inventory", return_value={}), self.mock_compile():
-            # Act
-            self.runner.quality()
-
-        # Assert
-        engineering = [call for call in command.call_args_list if call.args[1] == "release-tooling-tests"]
-        self.assertEqual(1, len(engineering))
-        self.assertIn("eng/tests", engineering[0].args[2])
-        self.assertNotIn("eng/ci-tests", str(command.call_args_list))
-
-    def test_tests_check_docker_before_provider_execution(self):
-        """Container failure must be reported before the long provider test run starts."""
-        # Arrange
-        with patch.object(self.runner, "command") as command, \
-                patch.object(qualification, "verify_results", return_value={}), \
-                patch.object(qualification, "verify_query_plans"), \
-                patch.object(qualification, "test_projects", return_value=[self.runner.repo / "tests/First.Tests/First.Tests.csproj"]), \
-                patch.object(self.runner, "test_project") as run_project:
-            # Act
-            self.runner.tests()
-
-        # Assert
-        self.assertEqual("docker", command.call_args_list[0].args[1])
-        run_project.assert_called_once_with("tests/First.Tests/First.Tests.csproj")
+        self.assertEqual(["restore", "build"], [call.args[1] for call in commands])
 
 
 class RunIdentityTests(QualificationFixture):
@@ -293,17 +261,34 @@ class RunIdentityTests(QualificationFixture):
         self.assertEqual("output_exists", error.code)
         self.assertEqual(original, (self.runner.output / "identity.json").read_bytes())
 
-    def test_workspace_mode_is_not_publishable(self):
-        """A hosted-looking environment cannot turn workspace evidence into an approved candidate."""
+    def test_ci_build_is_not_publishable_and_binds_no_line(self):
+        """The pull-request caller builds the same packages without release authority."""
         # Arrange
-        self.source["dirty"] = True
+        os.environ["GITHUB_EVENT_NAME"] = "pull_request"
+        os.environ["GITHUB_WORKFLOW_REF"] = f"{common.REPOSITORY}/.github/workflows/ci.yml@refs/pull/7/merge"
+        os.environ.pop("NESTEDSET_RELEASE_LINE")
 
         # Act
-        runner = qualification.Qualification(self.repo, self.root / "workspace", VERSION, workspace=True)
+        runner = qualification.Qualification(self.repo, self.root / "ci", "10.1.0")
 
         # Assert
+        self.assertIsNone(runner.line)
         self.assertFalse(runner.publishable)
-        self.assertTrue(common.read_json(runner.output / "identity.json")["source"]["dirty"])
+        self.assertEqual(1, common.read_json(runner.output / "identity.json")["schemaVersion"])
+
+    def test_ci_caller_cannot_borrow_a_release_line(self):
+        """A frozen grant only binds jobs that the release workflow itself called."""
+        # Arrange
+        os.environ["GITHUB_WORKFLOW_REF"] = f"{common.REPOSITORY}/.github/workflows/ci.yml@refs/heads/main"
+        output = self.root / "borrowed"
+
+        # Act
+        error = capture(lambda: qualification.Qualification(self.repo, output, VERSION))
+
+        # Assert
+        self.assertIsInstance(error, common.ReleaseError)
+        self.assertEqual("line_identity", error.code)
+        self.assertFalse(output.exists())
 
     def test_output_cannot_replace_source(self):
         """Qualification must not write evidence over the source or its parent directory."""
@@ -317,138 +302,9 @@ class RunIdentityTests(QualificationFixture):
         self.assertIsInstance(error, common.ReleaseError)
         self.assertEqual("output_scope", error.code)
 
-    def test_inherited_test_filter_is_rejected(self):
-        """An environment filter cannot silently turn every suite into a passing subset."""
-        # Arrange
-        os.environ["VSTestTestCaseFilter"] = "FullyQualifiedName~OneCase"
 
-        # Act
-        error = capture(lambda: qualification.Qualification(self.repo, self.root / "filtered", VERSION))
-
-        # Assert
-        self.assertIsInstance(error, common.ReleaseError)
-        self.assertEqual("test_filter", error.code)
-
-    def test_inherited_inline_settings_are_rejected(self):
-        """Inline runner settings need an explicit qualification contract before inheritance."""
-        # Arrange
-        os.environ["VSTestCLIRunSettings"] = "RunConfiguration.TestCaseFilter=OneCase"
-
-        # Act
-        error = capture(lambda: qualification.Qualification(self.repo, self.root / "filtered", VERSION))
-
-        # Assert
-        self.assertIsInstance(error, common.ReleaseError)
-        self.assertEqual("test_filter", error.code)
-
-    def test_case_insensitive_msbuild_filter_is_rejected(self):
-        """MSBuild resolves property names without case even on a case-sensitive host."""
-        # Arrange
-        os.environ["vstesttestcasefilter"] = "FullyQualifiedName~OneCase"
-
-        # Act
-        error = capture(lambda: qualification.Qualification(self.repo, self.root / "filtered", VERSION))
-
-        # Assert
-        self.assertIsInstance(error, common.ReleaseError)
-        self.assertEqual("test_filter", error.code)
-
-
-class RunAndAssemblyTests(QualificationFixture):
-    """The run executes every gate and seals only fresh evidence."""
-
-    def execution_file(self, name):
-        """Prepare an additional execution artifact before sealing the runtime inventory."""
-        stage_fixture(self.runner)
-        path = self.runner.output / "build/bin/core/release" / name
-        text_file(path, "original execution asset")
-        common.write_json(self.runner.output / "quality/runtime.json", qualification.runtime_inventory(self.runner.output))
-
-        return path
-
-    def test_run_executes_every_gate_in_order(self):
-        """The public entry point cannot select or skip an individual gate."""
-        # Arrange
-        calls = []
-        patches = [patch.object(self.runner, stage, side_effect=lambda name=stage: calls.append(name))
-                   for stage in common.STAGES]
-        for item in patches:
-            item.start()
-            self.addCleanup(item.stop)
-
-        with patch.object(self.runner, "assert_inputs"), patch.object(self.runner, "assemble", side_effect=lambda: calls.append("assemble")):
-            # Act
-            self.runner.run()
-
-        # Assert
-        self.assertEqual([*common.STAGES, "assemble"], calls)
-
-    def test_failed_gate_does_not_assemble(self):
-        """A test failure leaves diagnostics and cannot create a release candidate."""
-        # Arrange
-        failure = common.ReleaseError("command_failed", "Tests failed")
-
-        with patch.object(self.runner, "assert_inputs"), \
-                patch.object(self.runner, "quality"), \
-                patch.object(self.runner, "tests", side_effect=failure), \
-                patch.object(self.runner, "packages") as packages, \
-                patch.object(self.runner, "assemble") as assemble:
-            # Act
-            error = capture(self.runner.run)
-
-        # Assert
-        self.assertIs(error, failure)
-        packages.assert_not_called()
-        assemble.assert_not_called()
-
-    def test_runtime_mutation_rejects_next_operation(self):
-        """Execution copies are hashed independently of source and stage status."""
-        # Arrange
-        stage_fixture(self.runner)
-        text_file(self.runner.output / "build/bin/core/release/core.dll", "stale replacement")
-
-        # Act
-        error = capture(lambda: self.runner.assert_inputs(runtime=True))
-
-        # Assert
-        self.assertIsInstance(error, common.ReleaseError)
-        self.assertEqual("runtime_changed", error.code)
-
-    def test_native_runtime_file_mutation_is_rejected(self):
-        """Native provider dependencies are part of execution identity too."""
-        # Arrange
-        text_file(self.execution_file("runtimes/linux-x64/native/libsqlite3.so"), "changed native bytes")
-
-        # Act
-        error = capture(lambda: self.runner.assert_inputs(runtime=True))
-
-        # Assert
-        self.assertIsInstance(error, common.ReleaseError)
-        self.assertEqual("runtime_changed", error.code)
-
-    def test_apphost_mutation_is_rejected(self):
-        """An extensionless apphost replacement must invalidate the execution inventory."""
-        # Arrange
-        text_file(self.execution_file("Sample"), "changed apphost bytes")
-
-        # Act
-        error = capture(lambda: self.runner.assert_inputs(runtime=True))
-
-        # Assert
-        self.assertIsInstance(error, common.ReleaseError)
-        self.assertEqual("runtime_changed", error.code)
-
-    def test_runtime_xml_mutation_is_rejected(self):
-        """Packaged XML documentation must remain the version that passed qualification."""
-        # Arrange
-        text_file(self.execution_file("Doka.NestedSet.xml"), "changed XML bytes")
-
-        # Act
-        error = capture(lambda: self.runner.assert_inputs(runtime=True))
-
-        # Assert
-        self.assertIsInstance(error, common.ReleaseError)
-        self.assertEqual("runtime_changed", error.code)
+class AssemblyTests(QualificationFixture):
+    """Sealing copies verified evidence once and never overwrites a candidate."""
 
     def test_existing_candidate_is_rejected(self):
         """Assembly never overwrites a candidate from an earlier call."""
@@ -496,25 +352,24 @@ class SourceAndLockTests(unittest.TestCase):
         self.assertEqual("clean", result)
         self.assertEqual("0", execute.call_args.kwargs["env"]["GIT_OPTIONAL_LOCKS"])
 
-    def test_deleted_index_entry_is_recorded_in_workspace_identity(self):
-        """An uncommitted move retains the removed path in the fingerprint without reading it."""
+    def test_staged_move_is_rejected_as_unreviewed_source(self):
+        """A deleted index entry reaches the clean-source gate instead of a missing-file error."""
         # Arrange
         with tempfile.TemporaryDirectory() as directory:
             repo = Path(directory)
             text_file(repo / "new.cs", "new location")
             responses = {("ls-files", "--cached", "--others", "--exclude-standard", "-z"): "old.cs\0new.cs\0",
-                         ("rev-parse", "--verify", "HEAD"): None,
-                         ("rev-parse", "--verify", "HEAD^{tree}"): None,
+                         ("rev-parse", "--verify", "HEAD"): COMMIT,
+                         ("rev-parse", "--verify", "HEAD^{tree}"): TREE,
                          ("status", "--porcelain", "--untracked-files=all"): " D old.cs\n?? new.cs"}
 
             # Act
             with patch.object(qualification, "git", side_effect=lambda _, *args, **kwargs: responses[args]):
-                identity = qualification.source_identity(repo, workspace=True)
+                error = capture(lambda: qualification.source_identity(repo))
 
             # Assert
-            self.assertIsNone(identity["files"]["old.cs"])
-            self.assertEqual(common.sha256(repo / "new.cs"), identity["files"]["new.cs"])
-            self.assertTrue(identity["dirty"])
+            self.assertIsInstance(error, common.ReleaseError)
+            self.assertEqual("unreviewed_source", error.code)
 
     def test_dirty_source_cannot_be_a_normal_candidate(self):
         """Workspace acceptance does not relax the normal clean-source gate."""
@@ -524,7 +379,7 @@ class SourceAndLockTests(unittest.TestCase):
 
             # Act
             with patch.object(qualification, "git", side_effect=values):
-                error = capture(lambda: qualification.source_identity(Path(directory), workspace=False))
+                error = capture(lambda: qualification.source_identity(Path(directory)))
 
             # Assert
             self.assertIsInstance(error, common.ReleaseError)
@@ -668,9 +523,17 @@ class TestResultTests(unittest.TestCase):
         ET.SubElement(summary, "Counters", total=str(len(outcomes)), executed=str(sum(o != "NotExecuted" for o in outcomes)),
                       passed=str(outcomes.count("Passed")), failed=str(outcomes.count("Failed")))
         path = self.results / (name or f"{project}.trx")
+        path.parent.mkdir(parents=True, exist_ok=True)
         ET.ElementTree(root).write(path)
 
         return path
+
+    def plans(self):
+        """Retain every promised provider plan family in one test cell, as complete verification requires."""
+        for engine in ("MySql", "MariaDb", "PostgreSql", "SqlServer", "Sqlite"):
+            text_file(self.results / "cell/query-plans" / f"{engine}-key-filter.txt", "observed key-filter plan")
+            if engine != "Sqlite":
+                text_file(self.results / "cell/query-plans" / f"{engine}-hierarchy.txt", "observed hierarchy plan")
 
     def test_complete_results_pass(self):
         """Every executable suite supplies a result; the specification library supplies none."""
@@ -706,6 +569,7 @@ class TestResultTests(unittest.TestCase):
         # Arrange
         self.report("First.Tests")
         self.report("Second.Tests")
+        self.plans()
         before = {path.relative_to(self.repo): path.read_bytes() for path in self.repo.rglob("*") if path.is_file()}
 
         # Act
@@ -751,6 +615,7 @@ class TestResultTests(unittest.TestCase):
         unit = self.unit_project()
         self.report(unit, name="allocations.trx", identity_prefix="budget-")
         self.report(unit, name="coverage.trx", identity_prefix="covered-")
+        self.plans()
 
         # Act
         status, output, errors = self.run_result_command("--verify-results", self.results)
@@ -772,6 +637,20 @@ class TestResultTests(unittest.TestCase):
         self.assertEqual(1, status)
         self.assertEqual("", output)
         self.assertIn("tests_partitions", errors)
+
+    def test_result_command_rejects_missing_provider_plans_for_complete_results(self):
+        """Complete verification requires the live plan families, not only passing reports."""
+        # Arrange
+        self.report("First.Tests")
+        self.report("Second.Tests")
+
+        # Act
+        status, output, errors = self.run_result_command("--verify-results", self.results)
+
+        # Assert
+        self.assertEqual(1, status)
+        self.assertEqual("", output)
+        self.assertIn("query_plans_missing", errors)
 
     def test_result_command_rejects_missing_solution_project(self):
         """Without a selector the command requires evidence for every executable solution test."""
@@ -856,9 +735,7 @@ class TestResultTests(unittest.TestCase):
 
     def test_result_command_rejects_qualification_arguments(self):
         """Each release-only option is incompatible with a read-only result check."""
-        variants = (("--version", VERSION), ("--output", "unused"), ("--workspace",),
-                    ("--job", "test"), ("--sample", "FileSystem"), ("--deadline-utc", "1"),
-                    ("--timeout-seconds", "7200"))
+        variants = (("--version", VERSION), ("--output", "unused"), ("--job", "build"))
         for arguments in variants:
             with self.subTest(arguments=arguments):
                 # Arrange
@@ -875,7 +752,7 @@ class TestResultTests(unittest.TestCase):
     def test_qualification_still_requires_version(self):
         """Adding the results-only mode does not make release version optional for qualification."""
         # Arrange
-        arguments = ("--output", "unused")
+        arguments = ("--job", "build", "--output", "unused")
 
         # Act
         status, output, errors = self.run_result_command(*arguments)
@@ -888,7 +765,7 @@ class TestResultTests(unittest.TestCase):
     def test_qualification_still_requires_output(self):
         """Ordinary qualification cannot silently choose a new output location."""
         # Arrange
-        arguments = ("--version", VERSION)
+        arguments = ("--job", "build", "--version", VERSION)
 
         # Act
         status, output, errors = self.run_result_command(*arguments)
@@ -898,24 +775,37 @@ class TestResultTests(unittest.TestCase):
         self.assertEqual("", output)
         self.assertIn("--output", errors)
 
-    def test_qualification_preserves_normal_dispatch_and_default_timeout(self):
-        """The additional mode does not change existing release argument dispatch or its deadline."""
+    def test_qualification_requires_an_explicit_job(self):
+        """Version and output alone no longer select an implicit complete local run."""
         # Arrange
-        output = self.repo / "qualified"
-        arguments = ["qualification", "--version", VERSION, "--output", str(output)]
-        runner = Mock()
+        arguments = ("--version", VERSION, "--output", "unused")
 
         # Act
-        with patch.object(qualification, "ROOT", self.repo), patch.object(sys, "argv", arguments), \
-                patch.object(qualification, "Qualification", return_value=runner) as constructor:
-            status = qualification.main()
+        status, output, errors = self.run_result_command(*arguments)
 
         # Assert
-        self.assertEqual(0, status)
-        constructor.assert_called_once_with(self.repo, output, VERSION, False, 7200,
-                                            existing=False, deadline_utc=None)
-        runner.run.assert_called_once_with()
-        runner.run_job.assert_not_called()
+        self.assertEqual(2, status)
+        self.assertEqual("", output)
+        self.assertIn("--job", errors)
+
+    def test_build_and_seal_dispatch_to_their_fixed_operations(self):
+        """Only the seal restores the producer identity; the build starts from a fresh output."""
+        for job, existing in (("build", False), ("seal", True)):
+            with self.subTest(job=job):
+                # Arrange
+                output = self.repo / job
+                arguments = ["qualification", "--job", job, "--version", VERSION, "--output", str(output)]
+                runner = Mock()
+
+                # Act
+                with patch.object(qualification, "ROOT", self.repo), patch.object(sys, "argv", arguments), \
+                        patch.object(qualification, "Qualification", return_value=runner) as constructor:
+                    status = qualification.main()
+
+                # Assert
+                self.assertEqual(0, status)
+                constructor.assert_called_once_with(self.repo, output, VERSION, existing=existing)
+                getattr(runner, job).assert_called_once_with()
 
     def unit_project(self):
         """Include the one assembly whose allocation and coverage partitions are complementary."""
@@ -996,6 +886,34 @@ class TestResultTests(unittest.TestCase):
 
         # Assert
         self.assertEqual("tests_partitions", error.code)
+
+    def test_disjoint_project_partitions_are_combined(self):
+        """Complementary filtered cells of one project add up without repeating a case."""
+        # Arrange
+        self.report("First.Tests", name="engine-a/coverage.trx", identity_prefix="a-")
+        self.report("First.Tests", name="engine-b/coverage.trx", identity_prefix="b-")
+        self.report("Second.Tests")
+
+        # Act
+        result = qualification.verify_results(self.repo, self.results)
+
+        # Assert
+        self.assertEqual(2, result["First.Tests"]["passed"])
+        self.assertEqual({"engine-a/coverage.trx", "engine-b/coverage.trx"},
+                         {report["trx"] for report in result["First.Tests"]["reports"]})
+
+    def test_overlapping_project_partitions_are_rejected(self):
+        """A filter mistake that runs one case in two cells cannot inflate the result."""
+        # Arrange
+        self.report("First.Tests", name="engine-a/coverage.trx", identity_prefix="same-")
+        self.report("First.Tests", name="engine-b/coverage.trx", identity_prefix="same-")
+        self.report("Second.Tests")
+
+        # Act
+        error = capture(lambda: qualification.verify_results(self.repo, self.results))
+
+        # Assert
+        self.assertEqual("tests_duplicate", error.code)
 
     def test_library_report_cannot_replace_executable_suite(self):
         """A result attributed to a non-test library cannot satisfy missing executable coverage."""
@@ -1079,14 +997,14 @@ class QueryPlanEvidenceTests(unittest.TestCase):
     """The full provider run must retain every promised live plan family."""
 
     def setUp(self):
-        """Create four server hierarchy plans and five key-filter plans."""
+        """Create four server hierarchy plans and five key-filter plans across two test cells."""
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.directory = Path(temporary.name)
         for engine in ("MySql", "MariaDb", "PostgreSql", "SqlServer"):
-            text_file(self.directory / f"{engine}-hierarchy.txt", "observed hierarchy plan")
+            text_file(self.directory / "servers/query-plans" / f"{engine}-hierarchy.txt", "observed hierarchy plan")
         for engine in ("MySql", "MariaDb", "PostgreSql", "SqlServer", "Sqlite"):
-            text_file(self.directory / f"{engine}-key-filter.txt", "observed key-filter plan")
+            text_file(self.directory / "filters/query-plans" / f"{engine}-key-filter.txt", "observed key-filter plan")
 
     def test_complete_plan_inventory_is_accepted(self):
         """All promised engine/family pairs are present and nonempty."""
@@ -1099,10 +1017,34 @@ class QueryPlanEvidenceTests(unittest.TestCase):
         # Assert
         self.assertIsNone(error)
 
+    def test_same_plan_name_from_two_cells_is_accepted(self):
+        """Cells that partition one provider project keep their own copy of a shared plan name."""
+        # Arrange
+        text_file(self.directory / "capacity/query-plans/MySql-hierarchy.txt", "another cell's observed plan")
+
+        # Act
+        error = capture(lambda: qualification.verify_query_plans(self.directory))
+
+        # Assert
+        self.assertIsNone(error)
+
+    def test_plan_outside_a_test_cell_is_not_evidence(self):
+        """Loose files at the result root cannot replace a cell's retained plan."""
+        # Arrange
+        source = self.directory / "servers/query-plans/MariaDb-hierarchy.txt"
+        text_file(self.directory / "MariaDb-hierarchy.txt", source.read_text())
+        source.unlink()
+
+        # Act
+        error = capture(lambda: qualification.verify_query_plans(self.directory))
+
+        # Assert
+        self.assertEqual("query_plans_missing", error.code)
+
     def test_missing_server_plan_is_rejected(self):
         """A passing engine fixture does not replace its absent query-plan evidence."""
         # Arrange
-        (self.directory / "MariaDb-hierarchy.txt").unlink()
+        (self.directory / "servers/query-plans/MariaDb-hierarchy.txt").unlink()
 
         # Act
         error = capture(lambda: qualification.verify_query_plans(self.directory))
@@ -1114,7 +1056,7 @@ class QueryPlanEvidenceTests(unittest.TestCase):
     def test_empty_sqlite_plan_is_rejected(self):
         """An empty file cannot claim SQLite query-plan qualification."""
         # Arrange
-        text_file(self.directory / "Sqlite-key-filter.txt", "")
+        text_file(self.directory / "filters/query-plans/Sqlite-key-filter.txt", "")
 
         # Act
         error = capture(lambda: qualification.verify_query_plans(self.directory))

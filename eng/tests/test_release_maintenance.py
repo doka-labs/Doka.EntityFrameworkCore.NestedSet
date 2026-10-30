@@ -62,7 +62,7 @@ class NativeDispatchFixture:
         if route.startswith("actions/runs/") and "/jobs?" in route:
             run_id = int(route.split("/")[2])
             workflow = self.runs[run_id]["path"].split("/")[-1]
-            expected = (maintenance.qualification_producers((ROOT / ".github/workflows/ci.yml").read_text())
+            expected = (maintenance.qualification_producers(*current_sources())
                         if workflow == "ci.yml" else ["schedule-identity", "dependency-vulnerability-audit"])
             jobs = self.job_mutation([{"id": index + 1, "name": name, "status": "completed", "conclusion": "success"}
                                       for index, name in enumerate(expected)])
@@ -86,6 +86,11 @@ class NativeDispatchFixture:
                                  "status": "completed", "conclusion": "success", "run_attempt": 1}
 
         return {"workflow_run_id": run_id} if self.return_run_id else {}
+
+
+def current_sources():
+    """Read the actual CI caller and the shared qualification workflow it calls."""
+    return ((ROOT / ".github/workflows/ci.yml").read_text(), (ROOT / ".github/workflows/quality-gates.yml").read_text())
 
 
 class MaintenanceTests(unittest.TestCase):
@@ -168,25 +173,49 @@ class MaintenanceTests(unittest.TestCase):
         self.assertEqual([], self.fixture.dispatches)
 
     def test_current_ci_expands_every_test_and_sample_cell(self):
-        """The real workflow is the producer inventory rather than a copied matrix count."""
+        """The real workflows are the producer inventory rather than a copied matrix count."""
         # Arrange
-        source = (ROOT / ".github/workflows/ci.yml").read_text()
+        source, gates = current_sources()
 
         # Act
-        names = maintenance.qualification_producers(source)
+        names = maintenance.qualification_producers(source, gates)
 
         # Assert
-        self.assertEqual(22, len(names))
-        self.assertIn("MySQL integration tests", names)
-        self.assertIn("MariaDB capacity tests", names)
-        self.assertIn("SafeMigrations integration tests", names)
-        self.assertIn("SQLite sample / SignalLab", names)
+        self.assertEqual(24, len(names))
         self.assertIn("schedule-identity", names)
+        self.assertIn("Repository qualification", names)
+        self.assertIn("Qualification / MySQL integration tests", names)
+        self.assertIn("Qualification / MariaDB capacity tests", names)
+        self.assertIn("Qualification / SafeMigrations integration tests", names)
+        self.assertIn("Qualification / SQLite sample / SignalLab", names)
+        self.assertIn("Qualification / Verify exact package consumers", names)
+        self.assertNotIn("MySQL integration tests", names)
+
+    def test_ci_must_call_the_shared_qualification_workflow(self):
+        """A caller that drops or replaces the shared workflow cannot define a smaller producer set."""
+        # Arrange
+        source, gates = current_sources()
+        mutations = (source.replace("    uses: ./.github/workflows/quality-gates.yml",
+                                    "    uses: ./.github/workflows/other.yml"),
+                     source.replace("  qualification:\n", "  renamed:\n"),
+                     source.replace("    needs: schedule-identity\n    uses:", "    needs: schedule-identity\n"
+                                    "    strategy:\n      matrix:\n        cell: [a]\n    uses:"))
+
+        # Act
+        errors = []
+        for changed in mutations:
+            try:
+                maintenance.qualification_producers(changed, gates)
+            except ReleaseError as error:
+                errors.append(error.code)
+
+        # Assert
+        self.assertEqual(["maintenance-matrix"] * len(mutations), errors)
 
     def test_matrix_extra_fields_cannot_hide_a_producer(self):
         """Unknown, repeated, incomplete and expression-based row shapes fail closed."""
         # Arrange
-        source = (ROOT / ".github/workflows/ci.yml").read_text()
+        caller, source = current_sources()
         mutations = (source.replace("            docker: false", "            mystery: false", 1),
                      source.replace("            docker: false", "            docker: false\n            docker: true", 1),
                      source.replace("          - id: core", "          - strange: core", 1),
@@ -198,7 +227,7 @@ class MaintenanceTests(unittest.TestCase):
         errors = []
         for changed in mutations:
             try:
-                maintenance.qualification_producers(changed)
+                maintenance.qualification_producers(caller, changed)
             except ReleaseError as error:
                 errors.append(error.code)
 
@@ -208,19 +237,19 @@ class MaintenanceTests(unittest.TestCase):
     def test_matrix_mapping_key_order_does_not_change_producers(self):
         """Every key order of a literal include row identifies the same actual test producer."""
         # Arrange
-        source = (ROOT / ".github/workflows/ci.yml").read_text()
+        caller, source = current_sources()
         original = ("          - id: core\n            name: Core unit tests\n"
                     "            project: tests/Doka.NestedSet.Tests/Doka.NestedSet.Tests.csproj\n"
                     "            docker: false")
         fields = ("id: core", "name: Core unit tests",
                   "project: tests/Doka.NestedSet.Tests/Doka.NestedSet.Tests.csproj", "docker: false")
-        expected = maintenance.qualification_producers(source)
+        expected = maintenance.qualification_producers(caller, source)
 
         # Act
         observed = []
         for order in itertools.permutations(fields):
             replacement = "          - " + order[0] + "\n" + "\n".join("            " + value for value in order[1:])
-            observed.append(maintenance.qualification_producers(source.replace(original, replacement)))
+            observed.append(maintenance.qualification_producers(caller, source.replace(original, replacement)))
 
         # Assert
         self.assertEqual([expected] * 24, observed)
@@ -228,10 +257,12 @@ class MaintenanceTests(unittest.TestCase):
     def test_missing_duplicate_and_skipped_native_cells_are_rejected(self):
         """A green final wrapper does not excuse a missing concrete database producer."""
         # Arrange
-        variants = (lambda jobs: [job for job in jobs if job["name"] != "MariaDB capacity tests"],
-                    lambda jobs: [*jobs, {**next(job for job in jobs if job["name"] == "SQLite integration tests"),
+        variants = (lambda jobs: [job for job in jobs if job["name"] != "Qualification / MariaDB capacity tests"],
+                    lambda jobs: [*jobs, {**next(job for job in jobs
+                                                 if job["name"] == "Qualification / SQLite integration tests"),
                                          "id": 900}],
-                    lambda jobs: [{**job, "conclusion": "skipped"} if job["name"] == "SafeMigrations integration tests"
+                    lambda jobs: [{**job, "conclusion": "skipped"}
+                                  if job["name"] == "Qualification / SafeMigrations integration tests"
                                   else job for job in jobs])
         errors = []
 

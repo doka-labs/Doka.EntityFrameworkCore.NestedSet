@@ -94,27 +94,59 @@ def literal(value):
     return value
 
 
-def qualification_producers(source):
-    """Expand only NestedSet's literal CI shapes; unsupported matrix forms fail closed."""
-    require(source.count("\njobs:\n") == 1, "maintenance-matrix", "Expected one CI jobs block.")
+def workflow_jobs(source):
+    """Split one literal workflow jobs block into its ordered job identifiers and bodies."""
+    require(source.count("\njobs:\n") == 1, "maintenance-matrix", "Expected one workflow jobs block.")
     jobs = source.split("\njobs:\n", 1)[1]
     starts = list(re.finditer(r"^  ([a-z][a-z0-9-]+):\s*$", jobs, re.MULTILINE))
     require(bool(starts) and len({item[1] for item in starts}) == len(starts),
-            "maintenance-matrix", "Missing or repeated CI jobs.")
-    names = []
-    for index, match in enumerate(starts):
-        body = jobs[match.end():starts[index + 1].start() if index + 1 < len(starts) else len(jobs)]
-        display = re.findall(r"^    name: (.+)$", body, re.MULTILINE)
-        require(len(display) <= 1, "maintenance-matrix", "Repeated CI display name.")
-        name = display[0] if display else match[1]
-        matrices = re.findall(r"^      matrix:\s*$", body, re.MULTILINE)
-        if not matrices:
-            names.append(literal(name))
+            "maintenance-matrix", "Missing or repeated workflow jobs.")
+
+    return [(match[1], jobs[match.end():starts[index + 1].start() if index + 1 < len(starts) else len(jobs)])
+            for index, match in enumerate(starts)]
+
+
+def display_name(job, body):
+    """Return the one literal job display name GitHub reports, defaulting to the job identifier."""
+    display = re.findall(r"^    name: (.+)$", body, re.MULTILINE)
+    require(len(display) <= 1, "maintenance-matrix", "Repeated CI display name.")
+
+    return display[0] if display else job
+
+
+def qualification_producers(source, gates):
+    """Expand only NestedSet's literal CI caller and shared quality shapes; unsupported forms fail closed."""
+    ci_jobs = workflow_jobs(source)
+    names, prefix = [], None
+    for job, body in ci_jobs:
+        name = display_name(job, body)
+        if job == "qualification":
+            require(re.search(r"^    uses: \./\.github/workflows/quality-gates\.yml\s*$", body, re.MULTILINE)
+                    is not None and not re.search(r"^    strategy:", body, re.MULTILINE),
+                    "maintenance-matrix", "Scheduled qualification does not call the shared workflow once.")
+            # WHY: GitHub reports each called job as "<caller display name> / <called display name>".
+            prefix = literal(name) + " / "
             continue
 
-        require(len(matrices) == 1 and match[1] in ("tests", "samples"),
+        require(not re.search(r"^    uses:|^      matrix:", body, re.MULTILINE),
+                "maintenance-matrix", "Unexpected CI caller job shape.")
+        names.append(literal(name))
+
+    require(prefix is not None and {job for job, _ in ci_jobs} >= {"schedule-identity", "qualification",
+                                                                   "repository-qualification"},
+            "maintenance-matrix", "Missing CI qualification caller or gate.")
+    gate_jobs = workflow_jobs(gates)
+    gate_names = []
+    for job, body in gate_jobs:
+        name = display_name(job, body)
+        matrices = re.findall(r"^      matrix:\s*$", body, re.MULTILINE)
+        if not matrices:
+            gate_names.append(literal(name))
+            continue
+
+        require(len(matrices) == 1 and job in ("tests", "samples"),
                 "maintenance-matrix", "Unexpected CI matrix producer.")
-        if match[1] == "tests":
+        if job == "tests":
             require(name == "${{ matrix.name }}", "maintenance-matrix", "Test matrix display shape changed.")
             matrix = body.split("      matrix:\n", 1)[1].split("\n    steps:", 1)[0]
             require(matrix.startswith("        include:\n"), "maintenance-matrix", "Expected literal include rows.")
@@ -141,7 +173,7 @@ def qualification_producers(source):
                         "maintenance-matrix", "Repeated or malformed test producer.")
                 ids.add(identity)
                 projects.setdefault(values["project"], []).append("filter" in values)
-                names.append(values["name"])
+                gate_names.append(values["name"])
 
             # WHY: A project may own several cells only as filtered shards; an unfiltered repeat duplicates work.
             require(all(all(filtered) for filtered in projects.values() if len(filtered) > 1),
@@ -154,11 +186,13 @@ def qualification_producers(source):
             require(values is not None, "maintenance-matrix", "Unsupported sample matrix.")
             samples = [literal(value) for value in values[1].split(",")]
             require(len(samples) == len(set(samples)), "maintenance-matrix", "Duplicate sample producer.")
-            names.extend("SQLite sample / " + sample for sample in samples)
+            gate_names.extend("SQLite sample / " + sample for sample in samples)
 
-    require({item[1] for item in starts} >= {"schedule-identity", "tests", "samples", "source-quality",
-            "engineering-tests", "build", "coverage", "repository-qualification"}
-            and len(names) == len(set(names)), "maintenance-matrix", "Missing or duplicate qualification producer.")
+    require({job for job, _ in gate_jobs} >= {"source-quality", "engineering-tests", "build", "consumer", "sbom",
+                                              "tests", "samples", "coverage"},
+            "maintenance-matrix", "Missing shared qualification producer.")
+    names.extend(prefix + name for name in gate_names)
+    require(len(names) == len(set(names)), "maintenance-matrix", "Missing or duplicate qualification producer.")
 
     return names
 
@@ -167,7 +201,7 @@ def producer_names(commands, workflow, commit):
     """Derive actual CI producers or the two fixed audit producers from exact source."""
     source = source_file(commands, f".github/workflows/{workflow}", commit)
     if workflow == "ci.yml":
-        return qualification_producers(source)
+        return qualification_producers(source, source_file(commands, ".github/workflows/quality-gates.yml", commit))
 
     require(workflow == WORKFLOW and re.search(r"^  schedule-identity:", source, re.MULTILINE)
             and re.search(r"^  dependency-vulnerability-audit:", source, re.MULTILINE),
