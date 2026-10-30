@@ -15,6 +15,46 @@ semantics. [D-018](../decisions/D-018-generic-hierarchy-query-composition.md) an
 [D-019](../decisions/D-019-optional-ancestor-index-and-source-binding.md)
 record the architectural decisions.
 
+## SQL Server supervisor qualification 2026-10-30
+
+[CI run 40960256669](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/runs/40960256669)
+tested source `2d5a2ea55060` on supported x64. Every other lane and every SQL
+Server capacity case passed, including ten million nodes. One UserGroups
+supervisor case failed: 1,000 origins with 16 routing fields exceeded the
+command timeout. Its sibling cases with 1,000 origins took 94 and 130 seconds,
+against 1.0 and 1.2 seconds in CI run 40743938176 at `0bf2c3ee7781`. The
+earlier attribution of this timeout to host load below was wrong: the isolated
+reruns did not recreate the database shared by the whole supervisor class.
+
+The emulated container reproduced the failure only with that whole class, at
+101 and 140 seconds plus the timeout. The class shares one database among many
+small tenants. `OPTIMIZE FOR UNKNOWN` applies to the whole tagged statement, so
+average density estimated a few memberships for a source user that has 1,000.
+SQL Server then joined the origins to the witnesses behind `OFFSET 0` with
+nested loops and completed the witnesses again for every origin. Without
+`OPTIMIZE FOR UNKNOWN` the class passed, but both million-node cases timed out
+and three composition work guards failed on plans compiled for fewer origins;
+for example `mixed-wide-10000-origins-10` read 99,990 rows against 20,060
+allowed. The hint therefore stays.
+
+For `NthEligibleGroup` and `NthTypeGroupThenValidate`, the sample now groups one
+marker per origin with that origin's witness occurrences instead of joining
+origins to witnesses. Applying the same grouping to the other group rules
+changed the optimizer search of their statements, which ends at a timeout. Their
+evidence join then read 160,000 rows against 20,064 allowed in
+`groups-wide-10000-origins-16` although its SQL was unchanged. Those statements
+therefore keep the join form and the SQL of the CI-qualified source, including
+every ten-million-node supervisor statement. Their outer join can still meet the
+same skewed estimate; no current case exercises that combination.
+
+In the emulated container, the whole supervisor class and the composition,
+depth and million-node capacity cases then passed 258/258, with the 1,000-origin
+cases at 1.9 to 4.0 seconds. The complete SQL Server project apart from ten
+million nodes passed 2,039/2,044 while host suites ran; its five connection
+failures passed 7/7 with their sibling cases in isolation. SQLite passes
+2,071/2,071, PostgreSQL 2,047/2,047, MySQL and MariaDB 4,373/4,373, and Unit
+2,923/2,923. These local results do not replace hosted x64 qualification.
+
 ## SQL Server correction qualification 2026-10-29
 
 [CI run 40743938176](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/runs/40743938176)

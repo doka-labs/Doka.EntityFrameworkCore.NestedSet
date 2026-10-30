@@ -3,9 +3,10 @@ namespace Doka.EntityFrameworkCore.NestedSet.Samples.UserGroups;
 internal static partial class SupervisorQueries
 {
     /// <summary>
-    /// Reduces ranked people to a server witness, including exact occurrence fields for single-group rules.
+    /// Selects the ranked occurrences whose per-origin aggregate is the server witness, including exact occurrence
+    /// fields for single-group rules.
     /// </summary>
-    private static IQueryable<SupervisorPersonWitness> PersonWitnesses(
+    private static IQueryable<SupervisorCandidate> WitnessOccurrences(
         IQueryable<SupervisorCandidate> candidates,
         IQueryable<SupervisorOrigin> origins,
         SupervisorSelection selection
@@ -23,7 +24,7 @@ internal static partial class SupervisorQueries
 
             // WHY: An uncorrelated aggregate and equality join avoid probing the full candidate relation for every
             // better-priority comparison. Every person at the best priority remains admitted, including ties.
-            var best = candidates.Join(
+            return candidates.Join(
                 minima,
                 row => new
                 {
@@ -36,28 +37,34 @@ internal static partial class SupervisorQueries
                     minimum.Priority,
                 },
                 (row, minimum) => row);
-
-            return Witnesses(best);
         }
 
         if (selection.Kind != SupervisorSelectionKind.NthPerson)
         {
-            return Witnesses(candidates);
+            return candidates;
         }
 
         // WHY: Distance is a nonnegative Int32 and priority is a signed Int32. Shifting distance by 32 bits and
         // offsetting priority losslessly represents their lexicographic order in [0, Int64.MaxValue]. The cast
         // precedes multiplication. MIN therefore keeps each person's nearest distance and its best priority,
         // without repeated candidate anti-joins or a technical user-ID tie-breaker.
+        // WHY: The origin group determines tenant, tree and source person; keying them keeps each ranked
+        // person a complete candidate for the per-origin outcome.
         var ranks = candidates
             .GroupBy(row => new
             {
+                row.TenantId,
+                row.SourceUserId,
                 row.StartGroupId,
+                row.StartTreeId,
                 row.CandidateUserId
             })
             .Select(group => new
             {
+                group.Key.TenantId,
+                group.Key.SourceUserId,
                 group.Key.StartGroupId,
+                group.Key.StartTreeId,
                 group.Key.CandidateUserId,
                 Rank = group.Min(row => row.Distance * 4_294_967_296L + ((long)row.LeadershipPriority - int.MinValue)),
                 FoundGroupId = group.Min(row => row.FoundGroupId),
@@ -86,7 +93,7 @@ internal static partial class SupervisorQueries
             .Distinct();
 
         // WHY: Join the rank value rather than a technical identity so every tied person remains admitted.
-        var selected = originRanks.Join(
+        return originRanks.Join(
             ranks,
             origin => new
             {
@@ -98,18 +105,16 @@ internal static partial class SupervisorQueries
                 person.StartGroupId,
                 person.Rank,
             },
-            (origin, person) => person);
-
-        return selected
-            .GroupBy(row => row.StartGroupId)
-            .Select(group => new SupervisorPersonWitness
+            (origin, person) => new SupervisorCandidate
             {
-                StartGroupId = group.Key,
-                Minimum = group.Min(row => row.CandidateUserId),
-                Maximum = group.Max(row => row.CandidateUserId),
-                FoundGroupId = group.Min(row => row.FoundGroupId),
-                Distance = group.Min(row => row.Distance),
-                LeadershipPriority = group.Min(row => row.LeadershipPriority),
+                TenantId = person.TenantId,
+                SourceUserId = person.SourceUserId,
+                StartGroupId = person.StartGroupId,
+                StartTreeId = person.StartTreeId,
+                FoundGroupId = person.FoundGroupId,
+                CandidateUserId = person.CandidateUserId,
+                Distance = person.Distance,
+                LeadershipPriority = person.LeadershipPriority,
             });
     }
 

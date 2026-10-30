@@ -85,6 +85,44 @@ internal static partial class SupervisorQueries
         public string? Value { get; init; }
     }
 
+    /// <summary>Identifies one authorized origin by its group and the keys that group determines.</summary>
+    private sealed class SupervisorOriginKey
+    {
+        /// <summary>Gets the exact source membership group.</summary>
+        public int StartGroupId { get; init; }
+
+        /// <summary>Gets the stable tree of that group.</summary>
+        public Guid StartTreeId { get; init; }
+
+        /// <summary>Gets the source person whose membership defines the origin.</summary>
+        public int SourceUserId { get; init; }
+    }
+
+    /// <summary>Carries an origin marker or one witness occurrence into the per-origin outcome aggregate.</summary>
+    private sealed class SupervisorOutcomeInput
+    {
+        /// <summary>Gets the exact source membership group.</summary>
+        public int StartGroupId { get; init; }
+
+        /// <summary>Gets the stable tree of the source membership group.</summary>
+        public Guid StartTreeId { get; init; }
+
+        /// <summary>Gets the source person whose membership defines the origin.</summary>
+        public int SourceUserId { get; init; }
+
+        /// <summary>Gets the occurrence's candidate identity, or SQL NULL for an origin marker.</summary>
+        public int? CandidateUserId { get; init; }
+
+        /// <summary>Gets the occurrence's found group, or SQL NULL for an origin marker.</summary>
+        public int? FoundGroupId { get; init; }
+
+        /// <summary>Gets the occurrence's structural distance, or SQL NULL for an origin marker.</summary>
+        public int? Distance { get; init; }
+
+        /// <summary>Gets the occurrence's membership priority, or SQL NULL for an origin marker.</summary>
+        public int? LeadershipPriority { get; init; }
+    }
+
     /// <summary>Contains person extrema and the occurrence fields available under a single-group proof.</summary>
     private sealed class SupervisorPersonWitness
     {
@@ -110,8 +148,14 @@ internal static partial class SupervisorQueries
     /// <summary>Retains one visible origin and its server-proven zero, one, or multiple-person outcome.</summary>
     private sealed class SupervisorOriginOutcome
     {
-        /// <summary>Gets the exact source membership and mapped group.</summary>
-        public required SupervisorOrigin Origin { get; init; }
+        /// <summary>Gets the source person of the exact membership.</summary>
+        public int SourceUserId { get; init; }
+
+        /// <summary>Gets the exact source membership group.</summary>
+        public int StartGroupId { get; init; }
+
+        /// <summary>Gets the stable tree of the source membership group.</summary>
+        public Guid StartTreeId { get; init; }
 
         /// <summary>Gets the saturated distinct-person category: zero, one, or multiple.</summary>
         public long Count { get; init; }

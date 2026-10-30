@@ -1783,6 +1783,15 @@ evaluation; the actual-work guards below remain the acceptance criterion.
 Composition queries therefore give up parallel scans. Applications must not
 append a second `OPTION` clause to tagged composition commands.
 
+The hint applies to the whole tagged statement, including application
+predicates. For a skewed application parameter, such as one source user with
+1,000 memberships among many small tenants, average selectivity estimated a few
+rows. SQL Server then joined those rows to a relation completed behind
+`OFFSET 0` with nested loops and completed that relation again for every outer
+row. The UserGroups sample's single-group supervisor rules therefore group one
+marker per origin with that origin's witness occurrences instead of joining
+origins to the witnesses.
+
 The mixed-direction, deep-path and supervisor capacity profiles additionally
 read SQL Server's actual Showplan counters. They sum `ActualRows` and reported
 `ActualRowsRead` across each operator's threads, without multiplying by

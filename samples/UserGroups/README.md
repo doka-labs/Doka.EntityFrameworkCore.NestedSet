@@ -414,6 +414,12 @@ and the complete candidate evidence. This keeps empty origins explicit without
 joining every origin to a materialized evidence bag. Markers count as real rows
 against chain read and overflow budgets; they never become candidate evidence.
 
+Under `NthEligibleGroup` and `NthTypeGroupThenValidate`, the reader groups each
+origin's marker with that origin's witness occurrences and derives the person
+outcome from that group. Every origin keeps its status without joining all
+origins to the witness relation, whose plan would otherwise depend on the
+estimated origin count.
+
 | Group rule | Selection before person ranking |
 | --- | --- |
 | `AllEligibleGroups(types)` | Retain every group satisfying the complete role, routing, and path rule; an empty type list permits every type. |

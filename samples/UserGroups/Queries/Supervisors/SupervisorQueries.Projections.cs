@@ -105,6 +105,61 @@ internal static partial class SupervisorQueries
             LeadershipPriority = 0,
         };
 
+    /// <summary>Represents an origin without evidence; its absent values keep every occurrence aggregate.</summary>
+    private static readonly Expression<Func<SupervisorOrigin, SupervisorOutcomeInput>> s_originOutcomeMarker =
+        origin => new SupervisorOutcomeInput
+        {
+            StartGroupId = origin.Group.Id,
+            StartTreeId = origin.Group.TreeId,
+            SourceUserId = origin.Membership.UserId,
+            CandidateUserId = null,
+            FoundGroupId = null,
+            Distance = null,
+            LeadershipPriority = null,
+        };
+
+    /// <summary>Contributes one witness occurrence to its origin's outcome.</summary>
+    private static readonly Expression<Func<SupervisorCandidate, SupervisorOutcomeInput>> s_occurrenceOutcomeInput =
+        row => new SupervisorOutcomeInput
+        {
+            StartGroupId = row.StartGroupId,
+            StartTreeId = row.StartTreeId,
+            SourceUserId = row.SourceUserId,
+            CandidateUserId = row.CandidateUserId,
+            FoundGroupId = row.FoundGroupId,
+            Distance = row.Distance,
+            LeadershipPriority = row.LeadershipPriority,
+        };
+
+    /// <summary>Groups an origin marker with that origin's witness occurrences.</summary>
+    private static readonly Expression<Func<SupervisorOutcomeInput, SupervisorOriginKey>> s_outcomeOriginKey =
+        input => new SupervisorOriginKey
+        {
+            StartGroupId = input.StartGroupId,
+            StartTreeId = input.StartTreeId,
+            SourceUserId = input.SourceUserId,
+        };
+
+    /// <summary>Classifies one origin with the witness aggregates over its occurrences.</summary>
+    private static readonly Expression<Func<IGrouping<SupervisorOriginKey, SupervisorOutcomeInput>,
+        SupervisorOriginOutcome>> s_originOutcomeProjection = group => new SupervisorOriginOutcome
+        {
+            SourceUserId = group.Key.SourceUserId,
+            StartGroupId = group.Key.StartGroupId,
+            StartTreeId = group.Key.StartTreeId,
+            Count = group.Min(input => input.CandidateUserId) == null
+                ? 0L
+                : group.Min(input => input.CandidateUserId) == group.Max(input => input.CandidateUserId)
+                    ? 1L
+                    : 2L,
+            PersonId = group.Min(input => input.CandidateUserId) == group.Max(input => input.CandidateUserId)
+                ? group.Min(input => input.CandidateUserId)
+                : null,
+            FoundGroupId = group.Min(input => input.FoundGroupId),
+            Distance = group.Min(input => input.Distance),
+            LeadershipPriority = group.Min(input => input.LeadershipPriority),
+        };
+
     /// <summary>Preserves every source status and the unique occurrence proven by a single-group rule.</summary>
     private static readonly Expression<Func<SupervisorOriginOutcome, SupervisorReadRow>> s_singleGroupRowProjection =
         outcome => new SupervisorReadRow
@@ -114,9 +169,9 @@ internal static partial class SupervisorQueries
             StateOrdinal = 0,
             HasEvidence = outcome.PersonId != null,
             Count = outcome.Count,
-            SourceUserId = outcome.Origin.Membership.UserId,
-            StartGroupId = outcome.Origin.Group.Id,
-            StartTreeId = outcome.Origin.Group.TreeId,
+            SourceUserId = outcome.SourceUserId,
+            StartGroupId = outcome.StartGroupId,
+            StartTreeId = outcome.StartTreeId,
             CandidateUserId = outcome.PersonId ?? 0,
             FoundGroupId = outcome.FoundGroupId ?? 0,
             Distance = outcome.Distance ?? 0,

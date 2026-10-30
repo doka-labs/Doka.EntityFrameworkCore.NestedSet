@@ -160,7 +160,28 @@ internal static partial class SupervisorQueries
         // WHY: Equal minimum and maximum IDs prove exactly one distinct person, even with many occurrences.
         // Unequal IDs mean ambiguity; neither extreme chooses a business winner. This avoids a DISTINCT set
         // and keeps the grouped relation uncorrelated for MariaDB's derived-table restrictions.
-        var witnesses = PersonWitnesses(candidates, origins, selection);
+        var occurrences = WitnessOccurrences(candidates, origins, selection);
+
+        if (request.Groups is NthTypeGroupThenValidate or NthEligibleGroup)
+        {
+            // WHY: Both group windows admit at most one found group per origin. The exact membership key
+            // admits one occurrence of a person in that group, so a unique witness already contains every
+            // evidence field. Rejoining the full candidate relation would repeat routing and path checks.
+            // WHY: Each origin's marker keeps it present for missing or ambiguous witnesses and carries its
+            // exact membership's authorized source key. Grouping markers with witness occurrences avoids an
+            // origin join: SQL Server planned that join for its estimated origin count and, with 1,000 actual
+            // origins estimated as a few, completed the witnesses again for every origin.
+            var singleGroupRows = origins
+                .Select(s_originOutcomeMarker)
+                .Concat(occurrences.Select(s_occurrenceOutcomeInput))
+                .GroupBy(s_outcomeOriginKey)
+                .Select(s_originOutcomeProjection)
+                .Select(s_singleGroupRowProjection);
+
+            return sourceRows.Concat(singleGroupRows);
+        }
+
+        var witnesses = Witnesses(occurrences);
 
         if (context.Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer")
         {
@@ -169,6 +190,9 @@ internal static partial class SupervisorQueries
             witnesses = witnesses.OrderBy(witness => witness.StartGroupId).Skip(0);
         }
 
+        // WHY: This statement also joins evidence to unique people. Its optimizer search ends at a timeout;
+        // regrouping these outcomes changed that search, and SQL Server then rebuilt the evidence's ancestor
+        // range for every origin. The measured join form completed both relations once.
         var outcomes = origins
             .GroupJoin(
                 witnesses,
@@ -184,7 +208,9 @@ internal static partial class SupervisorQueries
                 (row, witness) => new SupervisorOriginOutcome
                 {
                     // WHY: EF lifts this LEFT JOIN scalar to SQL NULL; this coalesce never dereferences it in CLR code.
-                    Origin = row.origin,
+                    SourceUserId = row.origin.Membership.UserId,
+                    StartGroupId = row.origin.Group.Id,
+                    StartTreeId = row.origin.Group.TreeId,
                     Count = witness!.Minimum == null
                         ? 0L
                         : witness.Minimum == witness.Maximum
@@ -195,18 +221,6 @@ internal static partial class SupervisorQueries
                     Distance = witness.Distance,
                     LeadershipPriority = witness.LeadershipPriority,
                 });
-
-        if (request.Groups is NthTypeGroupThenValidate or NthEligibleGroup)
-        {
-            // WHY: Both group windows admit at most one found group per origin. The exact membership key
-            // admits one occurrence of a person in that group, so a unique witness already contains every
-            // evidence field. Rejoining the full candidate relation would repeat routing and path checks.
-            // WHY: The outer origin remains present for missing or ambiguous witnesses. Its exact
-            // membership carries the already authorized source key even when PersonId is SQL NULL.
-            var singleGroupRows = outcomes.Select(s_singleGroupRowProjection);
-
-            return sourceRows.Concat(singleGroupRows);
-        }
 
         // WHY: Only missing and ambiguous origins need status markers. Successful origins already carry their
         // complete status in each evidence row, so splitting the branches adds no physical transport rows.

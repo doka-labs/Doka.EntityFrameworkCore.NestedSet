@@ -94,7 +94,9 @@ the narrowly approved registration-removal exception.
   boundary and test each path through a scalar `TOP(1)` lookup,
   and separate unresolved supervisor markers from complete
   unique-person evidence. The UserGroups sample fences its supervisor
-  witnesses behind `OFFSET 0` on SQL Server before joining origins. Guard actual iterator
+  witnesses behind `OFFSET 0` on SQL Server. For single-group rules it groups
+  each origin's marker with its witness occurrences instead of joining origins
+  to witnesses. Guard actual iterator
   output and pre-filter reads against cardinality-derived budgets; retain native
   x64 qualification.
 - Project SQL Server's nearest decision once in equivalent descending coordinate

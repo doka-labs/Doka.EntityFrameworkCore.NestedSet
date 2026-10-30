@@ -115,6 +115,7 @@ public sealed class SupervisorProjectionCacheTests
         Assert.NotEmpty(fields);
         Assert.Contains(fields, field => field.Name == "s_originMarkerProjection");
         Assert.Contains(fields, field => field.Name == "s_singleGroupRowProjection");
+        Assert.Contains(fields, field => field.Name == "s_originOutcomeMarker");
         Assert.All(fields, field => Assert.True(field.IsInitOnly, field.Name));
         Assert.Empty(probe.CapturedNodes);
     }
@@ -158,7 +159,7 @@ public sealed class SupervisorProjectionCacheTests
         Assert.Single(probe.CapturedNodes);
     }
 
-    /// <summary>Origin markers and single-group outcomes read the current exact membership source key.</summary>
+    /// <summary>Origin markers and single-group outcomes read the current exact origin's source key.</summary>
     /// <param name="field">The actual cached projection being executed.</param>
     /// <param name="count">The missing, unique, or ambiguous person category; null selects an origin marker.</param>
     [Theory]
@@ -193,22 +194,51 @@ public sealed class SupervisorProjectionCacheTests
         });
     }
 
+    /// <summary>Single-group outcomes receive their source key from each origin's exact membership.</summary>
+    [Fact]
+    public void OriginOutcomeMarkersReadEachAuthorizedMembershipWithoutCapturingASource()
+    {
+        // Arrange
+        var selector = (LambdaExpression)typeof(SupervisorQueries)
+            .GetField("s_originOutcomeMarker", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
+
+        var read = selector.Compile();
+        var first = CreateProjectionInput(selector.Parameters[0].Type, 17, null);
+        var second = CreateProjectionInput(selector.Parameters[0].Type, 73, null);
+
+        // Act
+        var secondMarker = read.DynamicInvoke(second)!;
+        var firstMarker = read.DynamicInvoke(first)!;
+
+        // Assert
+        var markerType = selector.ReturnType;
+        Assert.Equal(17, markerType.GetProperty("SourceUserId")!.GetValue(firstMarker));
+        Assert.Equal(73, markerType.GetProperty("SourceUserId")!.GetValue(secondMarker));
+        Assert.All(new[] { firstMarker, secondMarker }, marker =>
+        {
+            Assert.Equal(31, markerType.GetProperty("StartGroupId")!.GetValue(marker));
+            Assert.Null(markerType.GetProperty("CandidateUserId")!.GetValue(marker));
+            Assert.Null(markerType.GetProperty("FoundGroupId")!.GetValue(marker));
+        });
+    }
+
     /// <summary>Creates only the private alias shape required by the actual selector under test.</summary>
     private static object CreateProjectionInput(Type inputType, int source, long? count)
     {
         // WHY: The alias types deliberately stay private in the sample. Reflecting their data-only
         // inputs here executes the real cached lambda without exposing a production testing API.
-        var originType = count is null ? inputType : inputType.GetProperty("Origin")!.PropertyType;
-        var origin = Activator.CreateInstance(originType, nonPublic: true)!;
-        originType.GetProperty("Membership")!.SetValue(origin, new UserGroupMembership { UserId = source });
-        originType.GetProperty("Group")!.SetValue(origin, new UserGroup { Id = 31 });
         if (count is null)
         {
+            var origin = Activator.CreateInstance(inputType, nonPublic: true)!;
+            inputType.GetProperty("Membership")!.SetValue(origin, new UserGroupMembership { UserId = source });
+            inputType.GetProperty("Group")!.SetValue(origin, new UserGroup { Id = 31 });
+
             return origin;
         }
 
         var outcome = Activator.CreateInstance(inputType, nonPublic: true)!;
-        inputType.GetProperty("Origin")!.SetValue(outcome, origin);
+        inputType.GetProperty("SourceUserId")!.SetValue(outcome, source);
+        inputType.GetProperty("StartGroupId")!.SetValue(outcome, 31);
         inputType.GetProperty("Count")!.SetValue(outcome, count.Value);
         inputType.GetProperty("PersonId")!.SetValue(outcome, count == 1 ? (int?)29 : null);
 
