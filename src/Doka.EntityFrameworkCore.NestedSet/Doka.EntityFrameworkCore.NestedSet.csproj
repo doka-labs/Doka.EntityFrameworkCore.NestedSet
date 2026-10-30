@@ -9,4 +9,54 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore"/>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational"/>
   </ItemGroup>
+  <ItemGroup Label="IDE file nesting">
+    <Compile Update="Providers/NestedSetProviderCapabilities.*.cs">
+      <DependentUpon>NestedSetProviderCapabilities.cs</DependentUpon>
+    </Compile>
+    <Compile Update="NestedSet.*.cs">
+      <DependentUpon>NestedSet.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Configuration/NestedSetBuilder.*.cs">
+      <DependentUpon>NestedSetBuilder.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Features/BulkImport/NestedSetBulkPlan.*.cs">
+      <DependentUpon>NestedSetBulkPlan.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Features/Queries/NestedSetDeferredQuery.*.cs">
+      <DependentUpon>NestedSetDeferredQuery.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Features/Insert/NestedSetInsert.*.cs">
+      <DependentUpon>NestedSetInsert.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Execution/NestedSetInsertionTracking.*.cs">
+      <DependentUpon>NestedSetInsertionTracking.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Features/Facade/NestedSetMutationInvoker.*.cs">
+      <DependentUpon>NestedSetMutationInvoker.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Features/Queries/NestedSetQuery.*.cs">
+      <DependentUpon>NestedSetQuery.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Features/Queries/NestedSetQueryEndpoint.*.cs">
+      <DependentUpon>NestedSetQueryEndpoint.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Features/Queries/NestedSetQuerySelection.*.cs">
+      <DependentUpon>NestedSetQuerySelection.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Features/ManagedSave/NestedSetSaveChanges.*.cs">
+      <DependentUpon>NestedSetSaveChanges.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Features/ManagedSave/NestedSetSaveGroup.*.cs">
+      <DependentUpon>NestedSetSaveGroup.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Storage/NestedSetStore.*.cs">
+      <DependentUpon>NestedSetStore.cs</DependentUpon>
+    </Compile>
+    <Compile Update="NestedSetTree.*.cs">
+      <DependentUpon>NestedSetTree.cs</DependentUpon>
+    </Compile>
+    <Compile Update="ScopedNestedSet.*.cs">
+      <DependentUpon>ScopedNestedSet.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
 </Project>

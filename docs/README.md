@@ -5,12 +5,15 @@ guide by the task you need to complete. Feature guides define supported
 behavior, architecture records explain why material decisions exist, and
 runbooks own operational procedures.
 
-These guides describe the stable `10.0.0` contract. See the
-[changelog](../CHANGELOG.md) for changes since `10.0.0-rc.1` and the
+These guides describe the stable `10.1.0` contract, including query composition
+and the breaking provider-package/registration transition from `10.0.0`.
+See the [upgrade guide](upgrading-provider-packages.md) and
+[changelog](../CHANGELOG.md) for changes, and the
 [support matrix](support-and-qualification.md) for qualified versions.
 
 ## Use NestedSet
 
+- [Provider Package Upgrade](upgrading-provider-packages.md) explains the breaking adapter installation and native-callback registration transition.
 - [Getting Started](getting-started.md) builds a complete Doka MySQL/MariaDB
   application and its first hierarchy.
 - [Hierarchy Model](hierarchy-model.md) defines scopes, forests, roots, parent
@@ -21,11 +24,14 @@ These guides describe the stable `10.0.0` contract. See the
   manual placement, and database comparison behavior.
 - [Operations](operations.md) covers composable queries and every insert, move,
   delete, validate, and rebuild operation.
+- [Query Composition](query-composition.md) covers multi-anchor projections,
+  upward and mixed-direction walks, complete paths, Any/Nearest visibility,
+  multiplicity, and ordinary EF execution.
 - [Bulk Import](bulk-import.md) covers atomic forest and subtree insertion.
 - [API Reference](api-reference.md) maps the public types and methods to their
   inputs, outputs, ordering, transaction behavior, and failure contracts.
 - [Runnable Samples](../samples/README.md) provides three independent console
-  projects: unscoped file systems, project KPIs, and tenant user groups with
+  projects: unscoped file systems, a fictional signal lab, and tenant user groups with
   role and privilege relationships. Each has Doka and SQLite migrations,
   selectable scenarios, persistent results, and an explicit owned reset.
 
@@ -41,6 +47,15 @@ These guides describe the stable `10.0.0` contract. See the
   activities, metrics, logging boundaries, and incident evidence.
 - [Performance](performance.md) explains read/write cost, memory ownership,
   mutation budgets, and how to measure an application workload.
+- [Query Composition Qualification](qualification/query-composition.md)
+  summarizes semantic/native-work controls and the optional ancestor-index trade-offs.
+- [Query and Consumer Performance](qualification/query-performance.md)
+  separates construction, complete-reader, materializer and framework observations.
+- [Provider and Migration Qualification](qualification/provider-migrations.md)
+  records exact local package inputs, actual migrations/replay, retained negatives
+  and the published-package/native SQL Server boundaries.
+- [Unicode Identity Qualification](qualification/unicode-identities.md)
+  records length units, strict malformed-text rejection and full native boundaries.
 - [Deployment and Recovery](runbooks/deployment-and-recovery.md) routes schema,
   lock, hierarchy, and partial-operation failures.
 
@@ -57,16 +72,20 @@ These guides describe the stable `10.0.0` contract. See the
   integration.
 - [Regression Coverage](regression-coverage.md) maps typed runtime risks to
   positive, negative, and adversarial tests and explains evidence limits.
+- [Query Composition Coverage](query-composition-regression-coverage.md) maps
+  all 160 generic and consumer contracts to their concrete test cases.
 - [Security Design](security/security-design.md) defines assets, trust
   boundaries, abuse cases, controls, and residual application responsibilities.
 - [Secure Development](security/secure-development.md) defines security review,
   analysis evidence, dependency handling, and private vulnerability follow-up.
 - [Release Process](release-process.md) defines qualification and publication
-  evidence for both packages.
+  evidence for all six shipping packages.
 - [Release Governance](release-governance.md) defines release authority,
   evidence, servicing, and compatibility policy.
 - [Release Publication](operations/release-publication.md) is the operator
   procedure for an RC or stable release.
+- [Release Lines](operations/release-lines.md) defines branch-owned framework
+  qualification, current publication authority, activation, servicing and Latest.
 - [Repository Security Settings](runbooks/repository-settings.md) records the
   hosted controls that cannot be proven from repository files.
 - [Release Verification](security/release-verification.md) shows consumers how

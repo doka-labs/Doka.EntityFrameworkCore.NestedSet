@@ -49,13 +49,16 @@ public abstract partial class OrderingTests
         var node = await verification.Set<OrderingNode>()
             .AsNoTracking()
             .SingleAsync(value => value.Id == 2, CancellationToken.None);
+
         Assert.Equal(secondTree, node.TreeId);
         Assert.Equal("Alpha", node.Name);
         var scope = verification.NestedSet<OrderingNode>().ForScope(1);
         var firstReport = await scope.InTree(firstTree)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+
         var secondReport = await scope.InTree(secondTree)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+
         Assert.True(firstReport.IsValid);
         Assert.True(secondReport.IsValid);
     }

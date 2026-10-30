@@ -19,6 +19,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
     /// <returns>Provider-neutral cases inherited by every supported engine.</returns>
     public static IEnumerable<TheoryDataRow<int, string>> Cases()
     {
+        // ReSharper disable once LoopCanBeConvertedToQuery
         foreach (var model in Enumerable.Range(0, 4))
         {
             foreach (var operation in new[]
@@ -103,7 +104,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
         var store = StoreObjectIdentifier.Table(designNode.GetTableName()!, designNode.GetSchema());
         var registryName = (string)node.FindAnnotation(NestedSetAnnotationNames.TreeRegistryEntity)!.Value!;
         var registry = designModel.FindEntityType(registryName)!;
-        var provider = source.GetService<IDatabaseProvider>().Name;
+        var provider = NestedSetProviderCapabilities.Resolve(source);
         var typeMappings = source.GetService<ITypeMappingSource>();
 
         // Act
@@ -127,6 +128,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
                 store,
                 provider,
                 typeMappings);
+
             var captured = NestedSetCollations.Resolve(source, node.FindProperty(name)!, node);
             Assert.Equal(expected, captured);
             Assert.Equal(
@@ -147,6 +149,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
 
         var providerType = node.FindProperty("Id")!.GetTypeMapping()
             .Converter!.ProviderClrType;
+
         if (providerType == typeof(string))
         {
             Assert.Contains(
@@ -157,7 +160,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
         else
         {
             Assert.Equal(typeof(int), providerType);
-            Assert.True(source.Database.IsSqlite() || provider == NestedSetProviderCapabilities.MySqlProviderName);
+            Assert.True(source.Database.IsSqlite() || provider.ProviderName == DatabaseTestTargets.MySqlProviderName);
             Assert.DoesNotContain(" COLLATE ", parentSql, StringComparison.OrdinalIgnoreCase);
         }
     }
@@ -210,11 +213,13 @@ public abstract class ConvertedTextCollationTests : ProviderTest
         var report = await hierarchy
             .InTree(treeId)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+
         Assert.True(report.IsValid);
         var stored = await hierarchy
             .InTree(treeId)
             .Nodes
             .ToArrayAsync(CancellationToken.None);
+
         Assert.Equal(2, stored.Length);
         Assert.Equal(
             EnumTextKey.Root,
@@ -222,6 +227,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
                 .ParentId);
         var property = context.Model.FindEntityType(typeof(ConvertedTextCollationNode<EnumTextKey?, EnumTextKey?>))!
             .FindProperty(nameof(ConvertedTextCollationNode<EnumTextKey?, EnumTextKey?>.Id))!;
+
         Assert.Equal(typeof(EnumTextKey?), property.ClrType);
         Assert.False(property.IsNullable);
         Assert.Equal(
@@ -375,7 +381,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
             // follow the effective conversion rather than inferring text identity from the column type name.
             Assert.Equal(typeof(int), property.GetTypeMapping().Converter!.ProviderClrType);
             Assert.True(context.Database.IsSqlite()
-                || context.GetService<IDatabaseProvider>().Name == NestedSetProviderCapabilities.MySqlProviderName);
+                || context.GetService<IDatabaseProvider>().Name == DatabaseTestTargets.MySqlProviderName);
             Assert.Null(collation);
             Assert.DoesNotContain(" COLLATE ", parents.ToQueryString(), StringComparison.OrdinalIgnoreCase);
         }
@@ -482,6 +488,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
             .InTree(treeId)
             .Nodes
             .ToArrayAsync(CancellationToken.None);
+
         Assert.All(
             tracked,
             node =>
@@ -665,6 +672,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
         var report = await hierarchy
             .InTree(treeId)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+
         Assert.True(report.IsValid);
     }
 }

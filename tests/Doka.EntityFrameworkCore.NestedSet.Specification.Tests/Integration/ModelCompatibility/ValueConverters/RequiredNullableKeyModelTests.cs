@@ -38,6 +38,7 @@ public abstract class RequiredNullableKeyModelTests : ProviderTest
             .InTree(treeId)
             .Nodes
             .SingleAsync(CancellationToken.None);
+
         Assert.Equal(1, stored.Id);
         Assert.Null(stored.ParentId);
         Assert.Equal((1L, 2L, 0, 0L), (stored.Left, stored.Right, stored.Depth, stored.Position));

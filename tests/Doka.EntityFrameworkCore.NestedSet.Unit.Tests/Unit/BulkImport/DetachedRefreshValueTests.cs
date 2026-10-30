@@ -160,8 +160,7 @@ public sealed class DetachedRefreshValueTests
         // Arrange
         var model = CompiledTreeContextModel.Instance;
         var options = new DbContextOptionsBuilder<CompiledTreeContext>()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .UseModel(model)
             .Options;
 

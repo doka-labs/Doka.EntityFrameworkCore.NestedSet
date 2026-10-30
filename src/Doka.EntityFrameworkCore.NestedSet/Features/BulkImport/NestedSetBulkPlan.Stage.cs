@@ -37,6 +37,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
 
         try
         {
+            // WHY: Correlate the active batch root slots with absolute plan indexes.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var relativeIndex = 0; relativeIndex < count; relativeIndex++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -252,6 +255,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
                 return true;
             });
 
+        // WHY: Capture only entries introduced by the current graph wave before changing their state.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = firstEntry; index < batchEntries.Count; index++)
         {
             var entry = batchEntries[index];
@@ -265,6 +271,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
             }
         }
 
+        // WHY: Install identities only for the newly collected suffix after capture is complete.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = firstEntry; index < batchEntries.Count; index++)
         {
             var entry = batchEntries[index];
@@ -328,6 +337,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
 
         var parentIndex = -1;
 
+        // WHY: Retain the ordinal of the parent property to verify its matching principal-key component.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < foreignKey.Properties.Count; index++)
         {
             if (foreignKey.Properties[index] == parentProperty)
@@ -345,6 +357,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
 
         // WHY: A scoped self-FK commonly maps (Scope, ParentId) to (Scope, NodeKey). EF can order those
         // inserts because every partition component other than the parent key is the same mapped property.
+        // Compare dependent and principal FK components at matching ordinals.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < foreignKey.Properties.Count; index++)
         {
             if (index != parentIndex
@@ -438,6 +453,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     {
         var roots = _activeRoots ?? throw new InvalidOperationException("No bulk insertion batch is active.");
 
+        // WHY: Validate staged roots against the matching absolute plan nodes.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var relativeIndex = 0; relativeIndex < roots.Length; relativeIndex++)
         {
             var node = Nodes[_activeOffset + relativeIndex];
@@ -483,6 +501,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     {
         var roots = _activeRoots ?? throw new InvalidOperationException("No bulk insertion batch is active.");
 
+        // WHY: Match each saved batch root to the plan node receiving its generated identity.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var relativeIndex = 0; relativeIndex < roots.Length; relativeIndex++)
         {
             var node = Nodes[_activeOffset + relativeIndex];

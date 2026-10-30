@@ -4,4 +4,15 @@
   <ItemGroup>
     <ProjectReference Include="../Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests.csproj"/>
   </ItemGroup>
+  <ItemGroup Label="IDE file nesting">
+    <Compile Update="Querying/Composition/Performance/AncestorIndexWorkTestBase.*.cs">
+      <DependentUpon>AncestorIndexWorkTestBase.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Querying/Composition/Performance/DensePathWorkTestBase.*.cs">
+      <DependentUpon>DensePathWorkTestBase.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Concurrency/TreeRegistry/UnicodeIdentityTestBase.*.cs">
+      <DependentUpon>UnicodeIdentityTestBase.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
 </Project>

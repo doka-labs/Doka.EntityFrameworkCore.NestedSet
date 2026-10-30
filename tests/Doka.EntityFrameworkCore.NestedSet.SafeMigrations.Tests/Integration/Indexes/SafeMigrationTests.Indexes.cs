@@ -96,6 +96,7 @@ public sealed partial class SafeMigrationTests
         await SafeMigrationTestServices.IntroduceIndexDriftAsync(context, definition, "entry_depth");
         var indexesBefore = IndexSignatures(await database.ReadIndexesAsync());
         var nodesBefore = await database.ReadNodesAsync();
+        var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         // Act
         var report = await context
@@ -108,14 +109,18 @@ public sealed partial class SafeMigrationTests
 
         var exception = await Record.ExceptionAsync(() =>
             SafeMigrationTestServices.ExecuteOperationsAsync(context, [operation]));
+
         var indexesAfter = IndexSignatures(await database.ReadIndexesAsync());
         var nodesAfter = await database.ReadNodesAsync();
+        var historyAfter = await context.Database.GetAppliedMigrationsAsync(CancellationToken.None);
 
         // Assert
         AssertRejectedIndexDrift(report, exception, engine);
         Assert.Equal(database.Schema, definition.Schema);
         Assert.Equal(indexesBefore, indexesAfter);
         Assert.Equal(nodesBefore, nodesAfter);
+        Assert.Equal(chain.MigrationIds, historyBefore);
+        Assert.Equal(historyBefore, historyAfter);
     }
 
     /// <summary>Verifies a pending migration rejects index drift before recording an unapplied upgrade.</summary>
@@ -150,11 +155,15 @@ public sealed partial class SafeMigrationTests
             .Keys
             .Select(key => key.Column)
             .SequenceEqual(["tree_scope", "tree_id", "left_bound"]));
+
         var definition = ((EnsureIndexIntent)operation.Intent).Definition;
 
         // WHY: The pending upgrade must classify an externally created index before EF records its history row.
         await SafeMigrationTestServices.CreateConflictingIndexAsync(context, definition, "entry_depth");
         var indexesBefore = IndexSignatures(await database.ReadIndexesAsync());
+        var checksBefore = await database.ReadChecksAsync();
+        var columnsBefore = await database.ReadColumnTypesAsync();
+        var foreignKeysBefore = ForeignKeySignatures(await database.ReadForeignKeysAsync());
         // WHY: The upgrade has not run; SQL Server still stores the historical Int32 coordinates.
         var nodesBefore = await database.ReadNodesAsync(MigrationStage.Baseline);
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
@@ -168,6 +177,9 @@ public sealed partial class SafeMigrationTests
                 CancellationToken.None);
 
         var indexesAfter = IndexSignatures(await database.ReadIndexesAsync());
+        var checksAfter = await database.ReadChecksAsync();
+        var columnsAfter = await database.ReadColumnTypesAsync();
+        var foreignKeysAfter = ForeignKeySignatures(await database.ReadForeignKeysAsync());
         var nodesAfter = await database.ReadNodesAsync(MigrationStage.Baseline);
         var historyAfter = await context.Database.GetAppliedMigrationsAsync(CancellationToken.None);
 
@@ -176,18 +188,17 @@ public sealed partial class SafeMigrationTests
         Assert.Equal(allOperations.Length, report.Assessments.Count);
         AssertRejectedIndexDrift(report, definition.Name);
 
-        if (engine == "SqlServer")
+        if (engine != "Sqlite")
         {
-            // WHY: Index drift remains a blocker even when valid integer rows prove the new CHECK predicates.
+            // WHY: Supported CHECK predicates must not conceal the independent, incompatible index definition.
             AssertApplicableIntegerChecks(report);
-        }
-        else if (engine != "Sqlite")
-        {
-            AssertOpaqueCheckConstraintBlockers(report);
         }
 
         Assert.Equal(database.Schema, definition.Schema);
         Assert.Equal(indexesBefore, indexesAfter);
+        Assert.Equal(checksBefore, checksAfter);
+        Assert.Equal(columnsBefore, columnsAfter);
+        Assert.Equal(foreignKeysBefore, foreignKeysAfter);
         Assert.Equal(nodesBefore, nodesAfter);
         Assert.Equal([baseline.MigrationIds[0]], historyBefore);
         Assert.Equal(historyBefore, historyAfter);
@@ -231,6 +242,15 @@ public sealed partial class SafeMigrationTests
             var runtimeException = Assert.IsType<InvalidOperationException>(exception);
             Assert.Contains("analysis=classified_different", runtimeException.Message, StringComparison.Ordinal);
             Assert.Contains("decision=different_reject", runtimeException.Message, StringComparison.Ordinal);
+        }
+        else if (engine is "MySql" or "MariaDb")
+        {
+            // WHY: SafeMigrations 10.5 correlates owned runtime guards while retaining the native rejection.
+            var runtimeException = Assert.IsType<SafeMigrationExecutionException>(exception);
+            Assert.Equal("doka_sm_different", runtimeException.GuardCode);
+
+            var databaseException = Assert.IsType<DbException>(runtimeException.InnerException, exactMatch: false);
+            Assert.Contains("doka_sm_different", databaseException.Message, StringComparison.OrdinalIgnoreCase);
         }
         else
         {

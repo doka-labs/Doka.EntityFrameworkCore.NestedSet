@@ -32,6 +32,9 @@ internal sealed class NestedSetOrdering
         _nullRankSelectors = new LambdaExpression?[properties.Length];
         var parameter = Expression.Parameter(entity.ClrType, "node");
 
+        // WHY: Fill selector and null-rank arrays at the same mapped-property ordinals.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < properties.Length; index++)
         {
             var property = properties[index];
@@ -85,6 +88,9 @@ internal sealed class NestedSetOrdering
         var descending = new bool[properties.Length];
         var nullSortOrders = new NullSortOrder?[properties.Length];
 
+        // WHY: Keep resolved properties, sort directions and null placement in matching slots.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < descriptor.Order.Count; index++)
         {
             var order = descriptor.Order[index];
@@ -128,6 +134,9 @@ internal sealed class NestedSetOrdering
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var table = StoreObjectIdentifier.Create(entity, StoreObjectType.Table);
 
+        // WHY: Validate each order property against the null-placement entry at the same ordinal.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < names.Count; index++)
         {
             var name = names[index];
@@ -197,6 +206,9 @@ internal sealed class NestedSetOrdering
 
         var expression = query.Expression;
 
+        // WHY: Apply each selector with its matching direction and null-rank expression.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < Properties.Count; index++)
         {
             if (_nullRankSelectors[index] is { } nullRankSelector)

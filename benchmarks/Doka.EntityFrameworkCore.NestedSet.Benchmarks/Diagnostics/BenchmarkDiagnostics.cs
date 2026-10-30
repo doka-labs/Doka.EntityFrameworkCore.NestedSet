@@ -32,7 +32,7 @@ internal static class BenchmarkDiagnostics
             var type = benchmarkCase.Descriptor.Type;
             var method = benchmarkCase.Descriptor.WorkloadMethod;
             var name = type.FullName + "." + method.Name;
-            var benchmark = (DatabaseBenchmark)(Activator.CreateInstance(type)
+            var benchmark = (IDatabaseBenchmark)(Activator.CreateInstance(type)
                 ?? throw new InvalidOperationException("The diagnostic benchmark must have a public constructor."));
 
             foreach (var parameter in benchmarkCase.Parameters.Items)

@@ -112,6 +112,11 @@ internal sealed class NestedSetTrackerSnapshot
 
             foreach (var entry in _entries)
             {
+                entry.RestoreIndexerMembership();
+            }
+
+            foreach (var entry in _entries)
+            {
                 entry.Verify();
             }
         }
@@ -146,6 +151,10 @@ internal sealed class NestedSetTrackerSnapshot
                     .ToArray());
 
             _properties = new PropertySnapshot[metadata.Length];
+
+            // WHY: Fill the snapshot array directly from the corresponding metadata slots.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var index = 0; index < metadata.Length; index++)
             {
                 // WHY: Successful saves never need a PropertyEntry wrapper per scalar. Public update entries
@@ -259,6 +268,15 @@ internal sealed class NestedSetTrackerSnapshot
             }
         }
 
+        /// <summary>Removes originally absent dictionary keys after every tracker and CLR write has finished.</summary>
+        internal void RestoreIndexerMembership()
+        {
+            foreach (var property in _properties)
+            {
+                property.RestoreIndexerMembership();
+            }
+        }
+
         /// <summary>Rejects incomplete restoration before the caller can unknowingly reuse changed state.</summary>
         internal void Verify()
         {
@@ -318,6 +336,9 @@ internal sealed class NestedSetTrackerSnapshot
                         continue;
                     }
 
+                    // WHY: Pair each complex collection value with the EF element entry at the same position.
+                    // ReSharper disable once ForCanBeConvertedToForeach
+                    // ReSharper disable once LoopCanBeConvertedToQuery
                     for (var index = 0; index < values.Count; index++)
                     {
                         if (values[index] is null)
@@ -400,6 +421,7 @@ internal sealed class NestedSetTrackerSnapshot
         private readonly bool _isModified;
         private readonly bool _isTemporary;
         private readonly bool _isConceptualNull;
+        private readonly bool _isIndexerAbsent;
 
         /// <summary>Copies mutable values with EF comparers and reads CLR state through mapped accessors.</summary>
         /// <param name="entry">The scalar entry for a complex leaf, absent for an ordinary entity scalar.</param>
@@ -449,12 +471,13 @@ internal sealed class NestedSetTrackerSnapshot
 
             _instance = metadata.IsShadowProperty() ? null : instance;
             _clrValue = null;
+            _isIndexerAbsent = metadata.IsIndexerProperty()
+                && instance is IDictionary<string, object?> dictionary
+                && !dictionary.ContainsKey(metadata.Name);
 
             if (_instance is not null)
             {
-                var clr = metadata
-                    .GetGetter()
-                    .GetClrValue(_instance);
+                var clr = ReadClrValue();
 
                 _clrValue = ReferenceEquals(clr, current) ? _currentValue : _comparer.Snapshot(clr);
             }
@@ -543,6 +566,21 @@ internal sealed class NestedSetTrackerSnapshot
         /// <summary>Restores a CLR sentinel separately from the temporary value observed through the entry.</summary>
         internal void RestoreClrValue()
         {
+            if (_instance is not null
+                && _metadata.IsIndexerProperty()
+                && _instance is IDictionary<string, object?> dictionary)
+            {
+                if (!_isIndexerAbsent
+                    && !NestedSetStructuralValue.Matches(_metadata, ReadClrValue(), _clrValue))
+                {
+                    // WHY: Typed EF setters normalize a present null to the property's CLR default.
+                    // Direct mapped-key assignment preserves the caller's raw dictionary representation.
+                    dictionary[_metadata.Name] = _comparer.Snapshot(_clrValue);
+                }
+
+                return;
+            }
+
             if (_instance is null
                 || _comparer.Equals(ReadClrValue(), _clrValue))
             {
@@ -572,6 +610,15 @@ internal sealed class NestedSetTrackerSnapshot
             }
         }
 
+        /// <summary>Restores absent membership only after EF fixup can no longer add the mapped key again.</summary>
+        internal void RestoreIndexerMembership()
+        {
+            if (_isIndexerAbsent)
+            {
+                ((IDictionary<string, object?>)_instance!).Remove(_metadata.Name);
+            }
+        }
+
         /// <summary>Checks the public tracker contract and the independently captured CLR value.</summary>
         internal void Verify()
         {
@@ -580,6 +627,9 @@ internal sealed class NestedSetTrackerSnapshot
                 || Entry.IsModified != _isModified
                 || Entry.IsTemporary != _isTemporary
                 || ReadConceptualNull() != _isConceptualNull
+                || (_metadata.IsIndexerProperty()
+                    && _instance is IDictionary<string, object?> dictionary
+                    && dictionary.ContainsKey(_metadata.Name) == _isIndexerAbsent)
                 || (_instance is not null && !_comparer.Equals(ReadClrValue(), _clrValue)))
             {
                 throw new InvalidOperationException(
@@ -598,6 +648,13 @@ internal sealed class NestedSetTrackerSnapshot
             if (_instance is null)
             {
                 return null;
+            }
+
+            if (_metadata.IsIndexerProperty()
+                && _instance is IDictionary<string, object?> dictionary
+                && dictionary.TryGetValue(_metadata.Name, out var value))
+            {
+                return value;
             }
 
             return _metadata

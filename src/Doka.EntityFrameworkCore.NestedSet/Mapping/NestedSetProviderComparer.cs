@@ -21,7 +21,12 @@ internal sealed class NestedSetProviderComparer<TValue> : IEqualityComparer<TVal
         // WHY: SQL may distinguish converted values whose model type implements broader equality.
         // Native values retain a typed fast path; binary provider values need structural equality.
         _comparer = ValueComparer.CreateDefault(providerType, favorStructuralComparisons: true);
-        _typedComparer = _converter is null ? _comparer as ValueComparer<TValue> : null;
+
+        // WHY: EF's structural byte-array comparer boxes each element. Binary values use the equivalent span
+        // path in Matches, while every other native scalar retains the existing typed fast path.
+        _typedComparer = _converter is null && providerType != typeof(byte[])
+            ? _comparer as ValueComparer<TValue>
+            : null;
 
         if (_converter is null
             && Nullable.GetUnderlyingType(providerType) == typeof(TValue))
@@ -56,6 +61,21 @@ internal sealed class NestedSetProviderComparer<TValue> : IEqualityComparer<TVal
 
         var providerValue = _converter is null ? value : _converter.ConvertToProvider(value);
 
+        if (_comparer is ValueComparer<byte[]>
+            && providerValue is byte[] bytes)
+        {
+            // WHY: Match Array's bounded structural hash over its last eight elements without boxing bytes;
+            // hashing the complete span would add length-dependent work and change the framework hash contract.
+            var hash = new HashCode();
+
+            foreach (var element in bytes.AsSpan(Math.Max(0, bytes.Length - 8)))
+            {
+                hash.Add((int)element);
+            }
+
+            return hash.ToHashCode();
+        }
+
         return _comparer.GetHashCode(providerValue!);
     }
 
@@ -81,6 +101,15 @@ internal sealed class NestedSetProviderComparer<TValue> : IEqualityComparer<TVal
 
         var firstValue = _converter is null ? first : _converter.ConvertToProvider(first);
         var secondValue = _converter is null ? second : _converter.ConvertToProvider(second);
+
+        if (_comparer is ValueComparer<byte[]>
+            && firstValue is byte[] firstBytes
+            && secondValue is byte[] secondBytes)
+        {
+            // WHY: The finalized binary provider mapping requires complete structural equality, not boxed
+            // per-byte comparisons. Object providers and unexpected values retain the framework fallback below.
+            return firstBytes.AsSpan().SequenceEqual(secondBytes);
+        }
 
         return _comparer.Equals(firstValue, secondValue);
     }

@@ -71,6 +71,7 @@ public abstract partial class SiblingReorderWriteTests : ProviderTest
         var stable = await context
             .Set<OrderingNode>()
             .SingleAsync(node => node.Id == 3, CancellationToken.None);
+
         Assert.Equal(6, stable.Left);
         Assert.Equal(1, stable.Position);
         Assert.True(

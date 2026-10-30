@@ -147,7 +147,7 @@ public sealed partial class SafeMigrationTests
         AssertCurrentIndexes("Sqlite", indexes);
     }
 
-    /// <summary>Verifies server preflight rejects opaque generated checks before any upgrade mutation.</summary>
+    /// <summary>Approves supported integer and CHECK upgrades without mutating the historical database.</summary>
     /// <param name="engine">The server database engine.</param>
     /// <param name="qualifySchema">Whether the model preserves an explicit schema or database qualifier.</param>
     /// <returns>A task that completes after comparing data, catalog, and migration history.</returns>
@@ -157,7 +157,7 @@ public sealed partial class SafeMigrationTests
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
     [InlineData("MariaDb", true)]
-    public async Task ServerUpgradePreflightRejectsOpaqueChecksWithoutMutation(
+    public async Task ServerUpgradePreflightApprovesSupportedChecksWithoutMutation(
         string engine,
         bool qualifySchema
     )
@@ -172,6 +172,9 @@ public sealed partial class SafeMigrationTests
         var operations = GetUpOperations(upgrade, context, 1);
         var indexOperations = GetIndexOperations(upgrade, context, 1);
         var indexesBefore = IndexSignatures(await database.ReadIndexesAsync());
+        var checksBefore = await database.ReadChecksAsync();
+        var columnsBefore = await database.ReadColumnTypesAsync();
+        var foreignKeysBefore = ForeignKeySignatures(await database.ReadForeignKeysAsync());
         var nodesBefore = await database.ReadNodesAsync(MigrationStage.Baseline);
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
@@ -184,6 +187,9 @@ public sealed partial class SafeMigrationTests
                 CancellationToken.None);
 
         var indexesAfter = IndexSignatures(await database.ReadIndexesAsync());
+        var checksAfter = await database.ReadChecksAsync();
+        var columnsAfter = await database.ReadColumnTypesAsync();
+        var foreignKeysAfter = ForeignKeySignatures(await database.ReadForeignKeysAsync());
         var nodesAfter = await database.ReadNodesAsync(MigrationStage.Baseline);
         var historyAfter = await context.Database.GetAppliedMigrationsAsync(CancellationToken.None);
 
@@ -193,8 +199,30 @@ public sealed partial class SafeMigrationTests
             indexOperations,
             operation => Assert.Equal(database.Schema, ((EnsureIndexIntent)operation.Intent).Definition.Schema));
         Assert.Equal(operations.Length, report.Assessments.Count);
-        AssertOpaqueCheckConstraintBlockers(report);
+        Assert.True(report.Status == SafeMigrationReportStatus.Ready, string.Join(
+            Environment.NewLine,
+            report.Assessments.Select(assessment =>
+                $"{assessment.OperationKind}: {assessment.Action}, {assessment.AnalysisCode}")));
+
+        AssertApplicableIntegerChecks(report);
+        var alterations = report.Assessments
+            .Where(assessment => assessment.OperationKind == SafeMigrationOperationKind.AlterColumn)
+            .ToArray();
+
+        Assert.Equal(3, alterations.Length);
+        Assert.All(alterations, assessment =>
+        {
+            // WHY: Widening repairs an existing, different column; Apply denotes creation of a missing object.
+            Assert.Equal(SafeMigrationObservedState.Different, assessment.ObservedState);
+            Assert.Equal(SafeMigrationAction.Repair, assessment.Action);
+            Assert.Equal("classified_different", assessment.AnalysisCode);
+            Assert.Equal("different_repair", assessment.DecisionCode);
+        });
+
         Assert.Equal(indexesBefore, indexesAfter);
+        Assert.Equal(checksBefore, checksAfter);
+        Assert.Equal(columnsBefore, columnsAfter);
+        Assert.Equal(foreignKeysBefore, foreignKeysAfter);
         Assert.Equal(nodesBefore, nodesAfter);
         Assert.Equal([baseline.MigrationIds[0]], historyBefore);
         Assert.Equal(historyBefore, historyAfter);

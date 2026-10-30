@@ -22,6 +22,7 @@ public abstract partial class SaveChangesTests
         var callback = new SaveBoundaryCallback();
         await using var context = new SaveBoundaryContext(
             SaveBoundaryTestSupport.Options(setup, probe, callback).Options);
+
         var node = await context
             .Set<OrderingNode>()
             .SingleAsync(value => value.Id == 1, CancellationToken.None);

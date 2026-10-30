@@ -118,6 +118,7 @@ public abstract class CompositeTextKeyTests : ProviderTest
         Assert.Equal((2L, 3L, 0L), Bounds(Node(22, "charlie")));
         Assert.Equal((4L, 5L, 1L), Bounds(Node(22, "alpha")));
         Assert.Equal((6L, 7L, 2L), Bounds(Node(22, "bravo")));
+
         return;
 
         CompositeTextKeyNode Node(

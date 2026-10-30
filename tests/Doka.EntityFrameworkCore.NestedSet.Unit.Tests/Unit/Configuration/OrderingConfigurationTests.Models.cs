@@ -167,6 +167,12 @@ public sealed partial class OrderingConfigurationTests
         /// <inheritdoc />
         object ITestModelVariant.ModelVariant => Identity;
 
+        /// <summary>Configures the same native provider and adapter for owned services and context options.</summary>
+        internal static DbContextOptionsBuilder<ConfigurationContext> CreateOptions()
+            => new DbContextOptionsBuilder<ConfigurationContext>()
+                .ConfigureTestWarnings()
+                .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets());
+
         /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder modelBuilder
@@ -190,9 +196,7 @@ public sealed partial class OrderingConfigurationTests
         /// <summary>Installs SQLite conventions and a model cache keyed by the explicit test identity.</summary>
         private static DbContextOptions<ConfigurationContext> Options(IServiceProvider? services)
         {
-            var options = new DbContextOptionsBuilder<ConfigurationContext>().ConfigureTestWarnings()
-                .UseSqlite("Data Source=:memory:")
-                .UseNestedSets();
+            var options = CreateOptions();
 
             if (services is null)
             {

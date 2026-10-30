@@ -126,7 +126,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels
             runtimeEntityType.AddAnnotation("Doka:NestedSet:Position", "Position");
             runtimeEntityType.AddAnnotation("Doka:NestedSet:Right", "Right");
             runtimeEntityType.AddAnnotation("Doka:NestedSet:Scope", "Scope");
+            runtimeEntityType.AddAnnotation("Doka:NestedSet:ScopeUnicodeScalarLength", false);
             runtimeEntityType.AddAnnotation("Doka:NestedSet:TreeId", "TreeId");
+            runtimeEntityType.AddAnnotation("Doka:NestedSet:TreeIdUnicodeScalarLength", false);
             runtimeEntityType.AddAnnotation("Doka:NestedSet:TreeRegistryEntity", "Doka.EntityFrameworkCore.NestedSet.TreeRegistry:Doka.EntityFrameworkCore.NestedSet.Tests.CompiledNumber");
             runtimeEntityType.AddAnnotation("Relational:FunctionName", null);
             runtimeEntityType.AddAnnotation("Relational:Schema", null);

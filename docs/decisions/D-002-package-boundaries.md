@@ -1,13 +1,13 @@
 ---
 id: D-002
-status: implemented
+status: superseded
 date: 2026-09-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
 scope: "Shipping package dependency direction and public responsibility"
 supersedes: []
-superseded-by: []
+superseded-by: [D-020]
 amends: []
 amended-by: []
 madr-version: "4.0.0"
@@ -86,6 +86,9 @@ decision.
 - 2026-09-28: The maintainer accepted the current decision and designated the core-maintainers audience.
 - 2026-09-28: Status changed from accepted to implemented.
 - 2026-09-28: Confirmed the separate core and EF projects, one-way project dependency, and core regression specifications against the linked repository evidence.
+
+- 2026-10-26: Status changed from implemented to superseded.
+- 2026-10-26: D-020 replaces the single-EF-package layout with four native integrations while retaining the ORM-independent core and common EF algorithms.
 
 ### Implementation References
 

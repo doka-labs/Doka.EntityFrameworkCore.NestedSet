@@ -41,6 +41,7 @@ public abstract partial class SingleInsertGuardTests : ProviderTest
             Depth = 3,
             Position = 4,
         };
+
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);

@@ -10,8 +10,7 @@ public class CompiledTreeContext : NestedSetDbContext
     public CompiledTreeContext() : this(
         new DbContextOptionsBuilder<CompiledTreeContext>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .Options,
         false) { }
 
@@ -96,7 +95,7 @@ public class CompiledTreeContext : NestedSetDbContext
             .HasMaxLength(64)
             .UseCollation(keyCollation);
 
-        if (Database.ProviderName == NestedSetProviderCapabilities.MySqlProviderName)
+        if (Database.ProviderName == DatabaseTestTargets.MySqlProviderName)
         {
             // WHY: The real generated Doka model must capture a known physical table default as well as explicit
             // key/parent column collations; runtime-only tests prohibit rebuilding the design metadata.

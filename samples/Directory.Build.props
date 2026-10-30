@@ -8,8 +8,9 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
 
-  <ItemGroup Label="Public library and existing providers">
-    <ProjectReference Include="$(MSBuildThisFileDirectory)../src/Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj"/>
+  <ItemGroup Label="Provider adapters and design tooling">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)../src/Doka.EntityFrameworkCore.NestedSet.MySql/Doka.EntityFrameworkCore.NestedSet.MySql.csproj"/>
+    <ProjectReference Include="$(MSBuildThisFileDirectory)../src/Doka.EntityFrameworkCore.NestedSet.Sqlite/Doka.EntityFrameworkCore.NestedSet.Sqlite.csproj"/>
     <PackageReference Include="Doka.EntityFrameworkCore.MySql"/>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite"/>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all"/>

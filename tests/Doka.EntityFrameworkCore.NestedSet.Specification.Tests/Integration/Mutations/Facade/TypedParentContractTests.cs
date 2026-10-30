@@ -165,6 +165,7 @@ public abstract class TypedParentContractTests : ProviderTest
         var child = await hierarchy
             .ChildrenOf(default(TKey))
             .SingleAsync(CancellationToken.None);
+
         Assert.Equal(childKey, child.Id);
         Assert.True(parent(child).HasValue);
         Assert.Equal(default, parent(child).GetValueOrDefault());

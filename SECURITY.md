@@ -9,8 +9,9 @@ discussion.
 ## System and Scope
 
 This policy covers the NestedSet repository, the `Doka.NestedSet` and
-`Doka.EntityFrameworkCore.NestedSet` packages, and the repository's build and
-release tooling.
+`Doka.EntityFrameworkCore.NestedSet` packages, its `.MySql`, `.Postgres`,
+`.Sqlite`, and `.SqlServer` adapters, and the repository's build and release
+tooling.
 
 `Doka.NestedSet` provides database-independent nested-set primitives.
 `Doka.EntityFrameworkCore.NestedSet` is an in-process EF Core library that
@@ -167,11 +168,20 @@ signal, resource boundary, or release trust boundary changes.
 
 ## Supported Versions
 
-This source defines the first stable `10.0.0` contract for both packages;
-the support policy below does not itself establish public package availability.
+Version `10.1.0` defines the stable contract across the common libraries and four
+provider adapters, including the documented breaking registration transition.
 Security fixes target the latest stable 10.x release. Reports against the
 earlier `10.0.0-rc.1` are accepted and triaged, but the RC has no separate
 maintenance or backport promise.
+
+The [release-line contract](docs/operations/release-lines.md) permits separately
+qualified servicing after main adopts another framework. Current main/10 is
+active; registered maintenance/10.x and optional preview/11.x remain inactive.
+Registration neither enables publication nor establishes .NET 11 support.
+Security work on an activated maintained line uses its own toolchain, advisory
+audit and reviewed fixes, while intake and private-disclosure duties remain
+unchanged. Historical release authenticity does not depend on today's active
+line policy or GitHub Latest status.
 
 | Release state | Security support |
 | --- | --- |

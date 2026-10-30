@@ -42,33 +42,49 @@ public sealed class MigrationDatabase : IAsyncDisposable
         Assembly? migrationsAssembly = null
     )
     {
-        var options = new DbContextOptionsBuilder<MigrationContext>().UseNestedSets();
+        var options = new DbContextOptionsBuilder<MigrationContext>();
         migrationsAssembly ??= typeof(MigrationContext).Assembly;
 
         if (Engine == "Sqlite")
         {
-            options.UseSqlite(_connection, x => x.MigrationsAssembly(migrationsAssembly));
+            options.UseSqlite(
+                _connection,
+                x => x
+                    .UseNestedSets()
+                    .MigrationsAssembly(migrationsAssembly));
         }
         else if (Engine == "PostgreSql")
         {
-            options.UseNpgsql(_connection, x => x.MigrationsAssembly(migrationsAssembly));
+            options.UseNpgsql(
+                _connection,
+                x => x
+                    .UseNestedSets()
+                    .MigrationsAssembly(migrationsAssembly));
         }
         else if (Engine == "SqlServer")
         {
-            options.UseSqlServer(_connection, x => x.MigrationsAssembly(migrationsAssembly));
+            options.UseSqlServer(
+                _connection,
+                x => x
+                    .UseNestedSets()
+                    .MigrationsAssembly(migrationsAssembly));
         }
         else
         {
             var version = Engine == "MariaDb" ? DatabaseTestTargets.MariaDb : DatabaseTestTargets.MySql;
 
-            options.UseMySql(_connection, version, x => x.MigrationsAssembly(migrationsAssembly));
+            options.UseMySql(
+                _connection,
+                version,
+                x => x
+                    .UseNestedSets()
+                    .MigrationsAssembly(migrationsAssembly));
         }
 
         // WHY: Every compiled test assembly and schema is unique; retaining their service providers globally
         // would accumulate test-only models across otherwise independent cases.
         options.EnableServiceProviderCaching(false);
         options.ReplaceService<IModelCacheKeyFactory, MigrationModelCacheKeyFactory>();
-        options.UseNestedSets();
         _configureOptions?.Invoke(options);
 
         return new MigrationContext(options.Options, stage, Schema);
@@ -101,7 +117,7 @@ public sealed class MigrationDatabase : IAsyncDisposable
 
         using var serviceProvider = services.BuildServiceProvider();
         var scaffolder = serviceProvider.GetRequiredService<IMigrationsScaffolder>();
-        var migration = scaffolder.ScaffoldMigration(name, "Doka.Generated", "Migrations", "C#", false);
+        var migration = scaffolder.ScaffoldMigration(name, "Doka.Generated", "Migrations", "C#");
         var sources = priorChain?.Sources.ToList() ?? [];
         sources.Add(migration.MigrationCode);
         sources.Add(migration.MetadataCode);
@@ -240,6 +256,7 @@ public sealed class MigrationDatabase : IAsyncDisposable
             .GetDbConnection()
             .CreateCommand()
             .CreateParameter();
+
         parent.ParameterName = "@parent";
         parent.DbType = DbType.Int32;
         parent.Value = node.ParentId is null ? DBNull.Value : node.ParentId.Value;
@@ -464,6 +481,7 @@ public sealed class MigrationDatabase : IAsyncDisposable
             .Database
             .GetDbConnection()
             .CreateCommand();
+
         command.CommandText = Engine switch
         {
             "Sqlite" =>
@@ -548,6 +566,7 @@ public sealed class MigrationDatabase : IAsyncDisposable
             .Database
             .GetDbConnection()
             .CreateCommand();
+
         command.CommandText = Engine switch
         {
             "Sqlite" => "SELECT name, type FROM pragma_table_info(@table) ORDER BY cid",

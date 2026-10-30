@@ -161,6 +161,7 @@ public sealed partial class SqliteQueryPlanTests
         await using var setup = await models.CreateContextAsync<MembershipCollisionContext>(
             Engine,
             static options => new MembershipCollisionContext(options));
+
         var treeId = Guid.NewGuid();
         var nodes = new[]
         {
@@ -221,6 +222,7 @@ public sealed partial class SqliteQueryPlanTests
             .AsNoTracking()
             .OrderBy(node => node.NodeId)
             .ToArrayAsync(CancellationToken.None);
+
         Assert.Equal(
             (101L, 102L, 7, 9L),
             (persisted[0].Start, persisted[0].End, persisted[0].Depth, persisted[0].Position));

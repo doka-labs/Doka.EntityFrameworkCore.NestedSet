@@ -20,8 +20,7 @@ public sealed partial class NullableParentIndexTests
         await using var source = database.CreateContext();
         var observer = new TreeEligibilityObserver();
         var options = new DbContextOptionsBuilder<TreeEligibilityContext>()
-            .UseNpgsql(source.Database.GetConnectionString())
-            .UseNestedSets()
+            .UseNpgsql(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .ReplaceService<IModelCacheKeyFactory, TestModelCacheKeyFactory>()
             .AddInterceptors(observer)
             .Options;

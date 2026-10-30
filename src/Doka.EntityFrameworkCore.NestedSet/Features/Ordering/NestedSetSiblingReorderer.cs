@@ -64,6 +64,9 @@ internal sealed class NestedSetSiblingReorderer<TEntity, TKey, TTreeId, TScope>
         var positions = new List<(long Left, long Position)>();
         var intervals = new List<NestedSetChangedInterval>();
 
+        // WHY: Derive persisted sibling positions directly from the canonical sibling ordinals.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < siblings.Count; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -124,6 +127,9 @@ internal sealed class NestedSetSiblingReorderer<TEntity, TKey, TTreeId, TScope>
                 var minimumRight = long.MaxValue;
                 var maximumRight = long.MinValue;
 
+                // WHY: Align moved subtrees and their fixed-stride command parameters within the active batch.
+                // ReSharper disable once ForCanBeConvertedToForeach
+                // ReSharper disable once LoopCanBeConvertedToQuery
                 for (var index = 0; index < count; index++)
                 {
                     var (node, delta, position) = moved[offset + index];
@@ -162,6 +168,9 @@ internal sealed class NestedSetSiblingReorderer<TEntity, TKey, TTreeId, TScope>
             var assignments = new StringBuilder($"CASE {left}");
             var filter = new string[count];
 
+            // WHY: Build matching position assignments, key filters and parameter slots from each batch ordinal.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var index = 0; index < count; index++)
             {
                 var item = positions[offset + index];
@@ -222,6 +231,9 @@ internal sealed class NestedSetSiblingReorderer<TEntity, TKey, TTreeId, TScope>
         var merged = new List<NestedSetChangedInterval>();
         var current = intervals[0];
 
+        // WHY: Merge the ordered suffix against the already initialized first interval.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 1; index < intervals.Count; index++)
         {
             var next = intervals[index];

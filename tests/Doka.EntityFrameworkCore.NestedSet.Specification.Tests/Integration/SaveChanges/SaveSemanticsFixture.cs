@@ -61,6 +61,7 @@ public sealed class SaveSemanticsFixture : IAsyncLifetime
 
         var options = new DbContextOptionsBuilder(new DbContextOptions<DbContext>(extensions))
             .ConfigureTestWarnings();
+
         var connection = source.Database.GetConnectionString()!;
 
         // WHY: One command per batch lets late-failure tests prove that both identity INSERT and payload UPDATE

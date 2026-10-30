@@ -26,61 +26,69 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         {
             var original = node.Original;
             var originalKey = node.HasAssignedKey ? node.CurrentKey : _store.Map.KeyProperty.Sentinel;
-            RestoreValue(node.Entity, _store.Map.KeyProperty, originalKey, ref errors);
+            RestoreValue(node, _store.Map.KeyProperty,
+                original is null ? originalKey : original.KeyOr(originalKey), 1 << 7, ref errors);
 
             if (_store.Map.ScopeProperty is { } scope)
             {
                 RestoreValue(
-                    node.Entity,
+                    node,
                     scope,
                     original is null ? scope.Sentinel : original.ScopeOr(scope.Sentinel),
+                    1 << 0,
                     ref errors);
             }
 
             RestoreValue(
-                node.Entity,
+                node,
                 _store.Map.TreeIdProperty,
                 original is null
                     ? _store.Map.TreeIdProperty.Sentinel
                     : original.TreeIdOr(_store.Map.TreeIdProperty.Sentinel),
+                1 << 1,
                 ref errors);
 
             RestoreValue(
-                node.Entity,
+                node,
                 _store.Map.ParentProperty,
                 original is null
                     ? _store.Map.ParentProperty.Sentinel
                     : original.ParentOr(_store.Map.ParentProperty.Sentinel),
+                1 << 2,
                 ref errors);
 
             RestoreValue(
-                node.Entity,
+                node,
                 _store.Map.LeftProperty,
                 original is null ? _store.Map.LeftProperty.Sentinel : original.LeftOr(_store.Map.LeftProperty.Sentinel),
+                1 << 3,
                 ref errors);
 
             RestoreValue(
-                node.Entity,
+                node,
                 _store.Map.RightProperty,
                 original is null
                     ? _store.Map.RightProperty.Sentinel
                     : original.RightOr(_store.Map.RightProperty.Sentinel),
+                1 << 4,
                 ref errors);
 
             RestoreValue(
-                node.Entity,
+                node,
                 _store.Map.DepthProperty,
                 original is null
                     ? _store.Map.DepthProperty.Sentinel
                     : original.DepthOr(_store.Map.DepthProperty.Sentinel),
+                1 << 5,
                 ref errors);
 
             RestoreValue(
-                node.Entity,
+                node,
                 _store.Map.PositionProperty,
                 original is null
                     ? _store.Map.PositionProperty.Sentinel
                     : original.PositionOr(_store.Map.PositionProperty.Sentinel),
+                1 << 6,
                 ref errors);
 
             RestoreGeneratedValues(node, ref errors);
@@ -121,6 +129,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
             return;
         }
 
+        // WHY: Match generated properties, original values and compiled setters by ordinal.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < _generatedProperties.Length; index++)
         {
             var property = _generatedProperties[index];
@@ -136,9 +147,12 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
             {
                 // WHY: EF can assign defaults and computed complex leaves before a later failure. The same
                 // compiled CLR setter restores their exact snapshots without retaining detached entry handles.
-                _generatedSetters[index].SetClrValueUsingContainingEntity(
-                    node.Entity,
-                    NestedSetStructuralValue.Snapshot(property, original));
+                if (!NestedSetInsertionValues.RestoreDictionaryValue(node.Entity, property, original))
+                {
+                    _generatedSetters[index].SetClrValueUsingContainingEntity(
+                        node.Entity,
+                        NestedSetStructuralValue.Snapshot(property, original));
+                }
             }
             catch (Exception exception)
             {
@@ -149,15 +163,23 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
 
     /// <summary>Restores one exact structural value while retaining errors from other cleanup attempts.</summary>
     private static void RestoreValue(
-        TEntity entity,
+        Node node,
         IProperty property,
         object? value,
+        byte field,
         ref List<Exception>? errors
     )
     {
         try
         {
-            NestedSetStructuralValue.Assign(entity, property, NestedSetStructuralValue.Snapshot(property, value));
+            var original = node.Original?.IsMissing(field) == true
+                ? NestedSetInsertionValues.MissingValue : value;
+
+            if (!NestedSetInsertionValues.RestoreDictionaryValue(node.Entity, property, original))
+            {
+                NestedSetStructuralValue.Assign(
+                    node.Entity, property, NestedSetStructuralValue.Snapshot(property, original));
+            }
         }
         catch (Exception exception)
         {

@@ -19,10 +19,11 @@ internal static class Program
 
         try
         {
-            var assemblyName = $"lib/net10.0/{args[2]}.dll";
+            var framework = TargetFramework();
+            var assemblyName = $"lib/{framework}/{args[2]}.dll";
             var pdbName = $"{args[2]}.pdb";
             var assembly = await ReadEntryAsync(args[0], assemblyName, CancellationToken.None);
-            var pdb = await ReadEntryAsync(args[1], $"lib/net10.0/{pdbName}", CancellationToken.None);
+            var pdb = await ReadEntryAsync(args[1], $"lib/{framework}/{pdbName}", CancellationToken.None);
             var probe = Verify(assembly, pdb, assemblyName, pdbName, args[2], args[3]);
 
             await Console.Out.WriteLineAsync(
@@ -42,6 +43,26 @@ internal static class Program
 
             return 1;
         }
+    }
+
+    /// <summary>Uses this inspector's compiled framework, which belongs to the same qualified source graph.</summary>
+    private static string TargetFramework()
+    {
+        const string prefix = ".NETCoreApp,Version=v";
+        var framework = AppContext.TargetFrameworkName;
+
+        // WHY: The branch-native build is authoritative. A hardcoded net10 payload path would reject a
+        // future main line even though its own SDK, package layout and symbols were qualified together.
+        if (framework is null
+            || !framework.StartsWith(prefix, StringComparison.Ordinal)
+            || !Version.TryParse(framework.AsSpan(prefix.Length), out var version)
+            || version.Major < 5
+            || version.Minor != 0)
+        {
+            throw new InvalidDataException("Inspector requires its own explicit .NET target framework.");
+        }
+
+        return $"net{version.Major}.0";
     }
 
     /// <summary>Validates assembly release identity, CodeView GUID, and the deterministic Portable PDB checksum.</summary>

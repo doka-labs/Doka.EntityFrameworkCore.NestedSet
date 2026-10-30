@@ -3,6 +3,12 @@ namespace Doka.EntityFrameworkCore.NestedSet.Samples.UserGroups;
 /// <summary>Represents a group in one tenant's hierarchy without requiring a tenant entity.</summary>
 public sealed class UserGroup
 {
+    /// <summary>Gets or sets the optional application group classification, independently of depth.</summary>
+    public int? TypeId { get; set; }
+
+    /// <summary>Gets or sets whether this group is visible in the authorized sample view.</summary>
+    public bool Visible { get; set; } = true;
+
     /// <summary>Gets or sets the generated group key.</summary>
     public int Id { get; set; }
 

@@ -24,6 +24,7 @@ public sealed class WriterTimeoutTests : ProviderTest, IClassFixture<ProviderFix
             var hierarchy = setup
                 .NestedSet<TreeNode>()
                 .ForScope(7);
+
             await hierarchy.InsertRootAsync(new TreeNode { NodeId = 1 }, firstTree, CancellationToken.None);
         }
 

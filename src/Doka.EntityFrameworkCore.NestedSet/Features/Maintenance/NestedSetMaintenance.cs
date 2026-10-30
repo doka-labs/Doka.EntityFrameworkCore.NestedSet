@@ -293,17 +293,11 @@ internal sealed class NestedSetMaintenance<TEntity, TKey, TTreeId, TScope>
     {
         cancellationToken.ThrowIfCancellationRequested();
         var context = _store.Context;
-        var kind = NestedSetProviderCapabilities.Resolve(context).Kind;
+        var provider = NestedSetProviderCapabilities.Resolve(context);
         var transaction = context.Database.CurrentTransaction;
         var isolation = transaction?.GetDbTransaction().IsolationLevel;
-        var serverSnapshot = kind is NestedSetProviderKind.PostgreSql or NestedSetProviderKind.MySql;
-
-        var safeCallerSnapshot = isolation is IsolationLevel.Serializable or IsolationLevel.Snapshot
-            || (serverSnapshot && isolation == IsolationLevel.RepeatableRead);
-
-        var singleReadSnapshot = singleStatement
-            && ((serverSnapshot && (transaction is null || isolation == IsolationLevel.ReadCommitted))
-                || (kind == NestedSetProviderKind.Sqlite && transaction is null));
+        var safeCallerSnapshot = provider.IsSafeReadSnapshot(isolation);
+        var singleReadSnapshot = singleStatement && provider.HasStatementReadSnapshot(isolation);
 
         if (AmbientTransaction.Current is null)
         {
@@ -319,7 +313,7 @@ internal sealed class NestedSetMaintenance<TEntity, TKey, TTreeId, TScope>
                 // WHY: InnoDB and PostgreSQL repeatable reads hold a stable MVCC snapshot across both SELECTs.
                 // SQL Server SERIALIZABLE protects the read ranges without assuming database snapshot opt-in.
                 // Read-only retries are safe: no hierarchy write or application tracker acceptance occurs here.
-                var readIsolation = serverSnapshot ? IsolationLevel.RepeatableRead : IsolationLevel.Serializable;
+                var readIsolation = provider.ReadSnapshotIsolation;
 
                 return await context
                     .Database

@@ -567,6 +567,8 @@ coverage mechanisms rather than claiming an unexecuted qualification result.
 - 2026-10-03: Converted string-backed NodeKeys retain principal collation through generic model-typed Parent expressions; mixed inherited saves bind to the cached configured hierarchy owner rather than concrete entry metadata.
 - 2026-10-04: Shared token refresh removed the unused managed-save adapter. Insertion identity comparisons reuse their already required native entry without changing the guard-reader acquisition trade-off.
 
+- 2026-10-26: The MySql translator implementation reference follows its native adapter owner in D-020; the typed hierarchy contracts remain shared.
+
 ### Implementation References
 
 - [Public unscoped facade](../../src/Doka.EntityFrameworkCore.NestedSet/NestedSet.cs)
@@ -584,7 +586,7 @@ coverage mechanisms rather than claiming an unexecuted qualification result.
 - [Registry request contracts](../../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetTreeLockRequest.cs)
 - [Native tracked-membership guard](../../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetTrackedIdentityGuard.cs)
 - [Typed native Scope marker](../../src/Doka.EntityFrameworkCore.NestedSet/Providers/Queries/NestedSetNativeScopeEquality.cs)
-- [Composable MySQL Scope translator](../../src/Doka.EntityFrameworkCore.NestedSet/Providers/Queries/NestedSetMySqlMethodCallTranslatorPlugin.cs)
+- [Composable MySQL Scope translator](../../src/Doka.EntityFrameworkCore.NestedSet.MySql/Queries/NestedSetMySqlMethodCallTranslatorPlugin.cs)
 - [Physical Scope collation regressions](../../tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Concurrency/NativeCollationTests.cs)
 - [Sparse original bulk rollback values](../../src/Doka.EntityFrameworkCore.NestedSet/Features/BulkImport/NestedSetBulkPlan.Models.cs)
 - [Transaction executor](../../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetMutationExecutor.cs)

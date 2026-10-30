@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Verifies sibling-order configuration, isolated model metadata, and immutable runtime mappings.</summary>
@@ -601,10 +603,10 @@ public sealed partial class OrderingConfigurationTests
 
         // WHY: EF's bounded model cache also stores queries; unrelated suite work can evict a shared model.
         // This experiment owns one ordinary service graph so it measures mapping reuse for the same model.
-        await using var services = new ServiceCollection()
-            .AddEntityFrameworkSqlite()
-            .AddSingleton<IModelCacheKeyFactory, TestModelCacheKeyFactory>()
-            .BuildServiceProvider();
+        await using var services = NestedSetTestAdapters.BuildServices(
+            ConfigurationContext.CreateOptions().Options,
+            collection => collection.Replace(
+                ServiceDescriptor.Singleton<IModelCacheKeyFactory, TestModelCacheKeyFactory>()));
 
         await using var firstContext = new ConfigurationContext(
             builder => builder.OrderBy(node => node.Name),

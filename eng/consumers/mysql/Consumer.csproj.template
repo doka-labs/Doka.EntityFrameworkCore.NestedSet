@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup Label="Exact candidate root">
+    <PackageReference Include="Doka.EntityFrameworkCore.NestedSet.MySql" Version="[$(CandidateVersion)]"/>
+  </ItemGroup>
+
+  <ItemGroup Label="Shared public-contract probe">
+    <Compile Include="../Shared/*.cs" Link="Shared/%(Filename)%(Extension)"/>
+  </ItemGroup>
+</Project>

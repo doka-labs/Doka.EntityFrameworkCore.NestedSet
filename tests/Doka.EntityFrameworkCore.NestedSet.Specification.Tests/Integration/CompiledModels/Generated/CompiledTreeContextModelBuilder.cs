@@ -11,7 +11,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels
     public partial class CompiledTreeContextModel
     {
         private CompiledTreeContextModel()
-            : base(skipDetectChanges: false, modelId: new Guid("a454a97e-e029-4ed3-92ec-359d7c66f768"), entityTypeCount: 5)
+            : base(skipDetectChanges: false, modelId: new Guid("8f684d0b-1d95-4bf9-8c5d-d5dd8e543aa7"), entityTypeCount: 5)
         {
         }
 
@@ -32,7 +32,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels
             CompiledNumber0EntityType.CreateAnnotations(compiledNumber0);
 
             AddAnnotation("Doka:NestedSet:CollationsCaptured", true);
-            AddAnnotation("ProductVersion", "10.0.12");
+            AddAnnotation("ProductVersion", "10.0.13");
         }
     }
 }

@@ -82,6 +82,7 @@ public abstract partial class OrderingRefreshTests
             .Commands
             .Skip(lastWrite + 1)
             .ToArray();
+
         Assert.InRange(refresh.Length, 1, 3);
         Assert.All(
             refresh,

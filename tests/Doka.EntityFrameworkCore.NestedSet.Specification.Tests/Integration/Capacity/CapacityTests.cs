@@ -102,8 +102,12 @@ public abstract partial class CapacityTests : ProviderTest
         }
 
         var report = await tree.ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+        var composition = await CompositionCapacityProfiles.MeasureAsync(database, Engine, count);
+        var consumers = await CompositionConsumerCapacityProfiles.MeasureAsync(database, Engine, count);
 
         // Assert
+        CompositionCapacityProfiles.AssertAll(composition, _output);
+        CompositionConsumerCapacityProfiles.AssertAll(consumers, _output);
         _output.WriteLine($"Engine={Engine}; persisted/read/full-validation nodes={count}; read count={readCount}");
         Assert.Equal(count, readCount);
         Assert.Equal(((long)count * (count + 1)) / 2, keySum);
@@ -147,7 +151,12 @@ public abstract partial class CapacityTests : ProviderTest
             WriteMeasurement("public forest import", count, probe);
         }
 
+        var composition = await CompositionCapacityProfiles.MeasureAsync(database, Engine, count);
+        var consumers = await CompositionConsumerCapacityProfiles.MeasureAsync(database, Engine, count);
+
         // Assert
+        CompositionCapacityProfiles.AssertAll(composition, _output);
+        CompositionConsumerCapacityProfiles.AssertAll(consumers, _output);
         Assert.InRange(probe.AdditionalOccupiedBytes, 0, AdditionalHeapBudget);
         Assert.Equal((count + 63) / 64, probe.CompletedSaves);
         Assert.Equal(0, probe.RepairCommands);
@@ -209,7 +218,12 @@ public abstract partial class CapacityTests : ProviderTest
             WriteMeasurement("deep public rebuild", count, probe);
         }
 
+        var composition = await CompositionCapacityProfiles.MeasureDeepAsync(database, Engine);
+        var consumers = await CompositionConsumerCapacityProfiles.MeasureAsync(database, Engine, count, deep: true);
+
         // Assert
+        CompositionCapacityProfiles.AssertAll(composition, _output);
+        CompositionConsumerCapacityProfiles.AssertAll(consumers, _output);
         Assert.True(before.IsValid);
         Assert.Equal(count, before.NodeCount);
         Assert.InRange(probe.AdditionalOccupiedBytes, 0, AdditionalHeapBudget);
@@ -235,7 +249,8 @@ public abstract partial class CapacityTests : ProviderTest
         await using var database = await TestDatabase.CreateAsync(Engine);
         await WarmAsync(database);
         await using var setup = CreateCapacityContext(database);
-        await CapacitySeed.SeedAsync(setup, Million, corrupt: true);
+        await CapacitySeed.SeedAsync(setup, Million);
+        await CompositionCapacityProfiles.BalanceAsync(setup, Million);
         var registry = await CapacitySeed.RegistryAsync(setup);
         await using var probe = new CapacityProbe();
         await using var context = CreateCapacityContext(database, probe);
@@ -244,9 +259,18 @@ public abstract partial class CapacityTests : ProviderTest
             .ForScope(1)
             .InTree(Guid.Empty);
 
+        // Act
+        // WHY: Reuse this existing million-row population for balanced read qualification before the repair
+        // observer starts. Restore the original wide adjacency while corrupting bounds for the existing repair.
+        var composition = await CompositionCapacityProfiles.MeasureAsync(database, Engine, Million, balanced: true);
+        var consumers = await CompositionConsumerCapacityProfiles.MeasureAsync(database, Engine, Million, balanced: true);
+        var balancedValidation = await setup.NestedSet<TreeNode>().ForScope(1).InTree(Guid.Empty)
+            .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+
+        await CompositionCapacityProfiles.CorruptWideForRepairAsync(setup, Million);
+
         probe.Start();
 
-        // Act
         try
         {
             await tree.RebuildAsync(CancellationToken.None);
@@ -258,6 +282,10 @@ public abstract partial class CapacityTests : ProviderTest
         }
 
         // Assert
+        CompositionCapacityProfiles.AssertAll(composition, _output);
+        CompositionConsumerCapacityProfiles.AssertAll(consumers, _output);
+        Assert.True(balancedValidation.IsValid);
+        Assert.Equal(Million, balancedValidation.NodeCount);
         Assert.InRange(probe.AdditionalOccupiedBytes, 0, AdditionalHeapBudget);
         Assert.Equal(15_625, probe.RepairCommands);
         Assert.Equal(15_625, probe.CompletedRepairs);
@@ -510,6 +538,7 @@ public abstract partial class CapacityTests : ProviderTest
             .ForScope(1)
             .InTree(Guid.Empty)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+
         Assert.True(report.IsValid);
         Assert.Equal(count, report.NodeCount);
         Assert.Empty(report.Issues);

@@ -1,0 +1,13 @@
+<Project>
+  <Target Name="PinNestedSetKernelPackage"
+          AfterTargets="_GetProjectReferenceVersions"
+          Condition="'$(IsPackable)' == 'true'">
+    <!-- WHY: Adapters use the kernel's private ABI, so their packed dependency must match exactly.
+         Change only the SDK's pack items; ProjectReference restore locks retain their SDK-defined ranges. -->
+    <ItemGroup>
+      <_ProjectReferencesWithVersions Condition="'%(_ProjectReferencesWithVersions.Filename)' == 'Doka.EntityFrameworkCore.NestedSet'">
+        <ProjectVersion>[%(_ProjectReferencesWithVersions.ProjectVersion)]</ProjectVersion>
+      </_ProjectReferencesWithVersions>
+    </ItemGroup>
+  </Target>
+</Project>

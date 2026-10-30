@@ -50,6 +50,12 @@ filter result nodes; they do not alter structural anchor resolution. Call
 `AsTracking()` explicitly when a result must participate in a later tracked
 payload or coordinated hierarchy save.
 
+For several anchors, ancestor ranks, complete-path pruning, Any/Nearest owner
+rules, and walks that combine directions, use the six deferred compositors in
+[Query Composition](query-composition.md). They keep origins and structural
+distances in ordinary LINQ projections. Unlike these single-anchor presentation
+queries, composition methods add no ordering and choose no aggregation grain.
+
 ## Create nodes
 
 `InsertRootAsync` requires a stable, never-used TreeId:

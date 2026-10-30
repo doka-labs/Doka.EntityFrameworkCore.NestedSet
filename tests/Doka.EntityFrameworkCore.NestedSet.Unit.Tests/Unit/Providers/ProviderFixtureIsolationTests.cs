@@ -1,3 +1,5 @@
+using Doka.EntityFrameworkCore.NestedSet.Tests.Samples.SignalLab;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Verifies executable fixture isolation and local collection registration.</summary>
@@ -139,6 +141,10 @@ public sealed class ProviderFixtureIsolationTests
                 typeof(TypedProviderComparerTests),
                 typeof(KeyComparerTests),
                 typeof(InsertionRefreshAllocationTests),
+                typeof(TrackedIdentityIterationAllocationTests),
+                typeof(SignalReportSnapshotAllocationTests),
+                typeof(SignalPathConstructionAllocationTests),
+                typeof(MappedMemberConstructionTests),
             },
             type => Assert.Equal(
                 "Allocation measurements",
@@ -155,6 +161,76 @@ public sealed class ProviderFixtureIsolationTests
                 Assert.True(local.Definition!.DisableParallelization);
             }
         }
+    }
+
+    /// <summary>The actual xUnit metadata path propagates the measurement collection's filter trait.</summary>
+    [Fact]
+    public void AllocationCollectionTraitsReachConcreteTestMethods()
+    {
+        // Arrange
+        var assembly = typeof(ProviderFixtureIsolationTests).Assembly;
+        var testAssembly = new XunitTestAssembly(assembly, null, assembly.Location);
+        var collection = new XunitTestCollection(
+            testAssembly,
+            typeof(AllocationMeasurementIsolation),
+            true,
+            "Allocation measurements");
+
+        var testClass = new XunitTestClass(typeof(TypedPropertyReadTests), collection);
+        var method = typeof(TypedPropertyReadTests)
+            .GetMethod(nameof(TypedPropertyReadTests.IntegerParentReadsLiveNullablePresence))!;
+
+        // Act
+        var metadata = new XunitTestMethod(testClass, method, []);
+
+        // Assert
+        Assert.Contains("Allocation", metadata.Traits["Category"]);
+    }
+
+    /// <summary>Unicode validation remains instrumented while only its fixed allocation budget is separated.</summary>
+    [Fact]
+    public void UnicodeValidationRemainsCoveredWhileBudgetRunsUninstrumented()
+    {
+        // Arrange
+        var assembly = typeof(ProviderFixtureIsolationTests).Assembly;
+        var testAssembly = new XunitTestAssembly(assembly, null, assembly.Location);
+        var collection = new XunitTestCollection(testAssembly, null, false, "Unicode semantics");
+        var testClass = new XunitTestClass(typeof(UnicodeIdentityLengthTests), collection);
+        var allocation = typeof(UnicodeIdentityLengthTests)
+            .GetMethod(nameof(UnicodeIdentityLengthTests.WarmCharacterCountingDoesNotAllocate))!;
+
+        var validation = typeof(UnicodeIdentityLengthTests)
+            .GetMethod(nameof(UnicodeIdentityLengthTests.EveryUnpairedSurrogateCodeUnitIsRejected))!;
+
+        // Act
+        var budgetMetadata = new XunitTestMethod(testClass, allocation, []);
+        var validationMetadata = new XunitTestMethod(testClass, validation, []);
+
+        // Assert
+        Assert.Contains("Allocation", budgetMetadata.Traits["Category"]);
+        Assert.False(validationMetadata.Traits.TryGetValue("Category", out var categories)
+            && categories.Contains("Allocation", StringComparer.Ordinal));
+    }
+
+    /// <summary>GC lifetime controls retain their assertions in the required uninstrumented measurement partition.</summary>
+    /// <param name="methodName">The released-root or intentionally live-root registration control.</param>
+    [Theory]
+    [InlineData(nameof(OptionsExtensionTests.RegistrationDoesNotRetainACollectibleAdapter))]
+    [InlineData(nameof(OptionsExtensionTests.LiveRegistrationRetainsItsCollectibleAdapter))]
+    public void RegistrationLifetimeControlsRunWithoutCoverage(string methodName)
+    {
+        // Arrange
+        var assembly = typeof(ProviderFixtureIsolationTests).Assembly;
+        var testAssembly = new XunitTestAssembly(assembly, null, assembly.Location);
+        var collection = new XunitTestCollection(testAssembly, null, false, "Registration lifetime");
+        var testClass = new XunitTestClass(typeof(OptionsExtensionTests), collection);
+        var method = typeof(OptionsExtensionTests).GetMethod(methodName)!;
+
+        // Act
+        var metadata = new XunitTestMethod(testClass, method, []);
+
+        // Assert
+        Assert.Contains("Allocation", metadata.Traits["Category"]);
     }
 
     /// <summary>Creates a concrete subclass in an isolated assembly with a real provider assembly identity.</summary>

@@ -47,51 +47,28 @@ internal static class PrivilegeQueries
         CancellationToken cancellationToken
     )
     {
-        // WHY: Bounds are meaningful only inside the same tree and tenant; each assigned group supplies both identities.
-        /* Query syntax alternative:
-        var applicableGroups = from membership in context.UserGroupMemberships
-            join assigned in context.Groups on new
-            {
-                membership.TenantId,
-                Id = membership.UserGroupId,
-            } equals new
-            {
-                assigned.TenantId,
-                assigned.Id,
-            }
-            join ancestor in context.Groups on new
-            {
-                assigned.TenantId,
-                assigned.TreeId,
-            } equals new
-            {
-                ancestor.TenantId,
-                ancestor.TreeId,
-            }
-            where membership.TenantId == tenantId
-                && membership.UserId == userId
-                && ancestor.Left <= assigned.Left
-                && ancestor.Right >= assigned.Right
-            select ancestor.Id;
-        */
+        var groups = context
+            .NestedSet<UserGroup>()
+            .ForScope(tenantId);
 
-        var applicableGroups = context
-            .UserGroupMemberships
-            .Join(
-                context.Groups,
-                membership => new { membership.TenantId, Id = membership.UserGroupId },
-                assigned => new { assigned.TenantId, assigned.Id },
-                (membership, assigned) => new { membership, assigned })
-            .Join(
-                context.Groups,
-                pair => new { pair.assigned.TenantId, pair.assigned.TreeId },
-                ancestor => new { ancestor.TenantId, ancestor.TreeId },
-                (pair, ancestor) => new { pair.membership, pair.assigned, ancestor })
-            .Where(row => row.membership.TenantId == tenantId
-                && row.membership.UserId == userId
-                && row.ancestor.Left <= row.assigned.Left
-                && row.ancestor.Right >= row.assigned.Right)
-            .Select(row => row.ancestor.Id);
+        var memberships = context.UserGroupMemberships.Where(membership =>
+            membership.TenantId == tenantId && membership.UserId == userId);
+
+        // WHY: Each own membership anchors a separate tenant/tree path; generic composition owns structural
+        // comparisons.
+        /* Query syntax alternative:
+        var applicableGroups = from groupId in groups.SelectAncestorsOrSelf(
+            selected => memberships.Any(membership => membership.UserGroupId == selected.Id),
+            (selected, ancestor, distance) => ancestor.Id)
+            select groupId;
+        */
+        var applicableGroups = groups.SelectAncestorsOrSelf(
+            selected => memberships.Any(membership => membership.UserGroupId == selected.Id),
+            (
+                selected,
+                ancestor,
+                distance
+            ) => ancestor.Id);
 
         return CodesForGroups(context, tenantId, applicableGroups)
             .ToListAsync(cancellationToken);

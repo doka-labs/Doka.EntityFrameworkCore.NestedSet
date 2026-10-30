@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup Label="Provider package metadata">
+    <IsPackable>true</IsPackable>
+    <Description>Nested-set hierarchy integration for the Postgres Entity Framework Core provider.</Description>
+    <PackageTags>efcore;nested-set;tree;hierarchy;postgres</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup Label="Common hierarchy and native provider">
+    <ProjectReference Include="../Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj"/>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL"/>
+  </ItemGroup>
+
+  <ItemGroup Label="IDE file nesting">
+    <Compile Update="Registry/PostgresNestedSetProvider.Rowsets.cs">
+      <DependentUpon>PostgresNestedSetProvider.Registry.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+</Project>

@@ -26,6 +26,7 @@
   </Folder>
   <Folder Name="/Config/src/">
     <File Path="src/Directory.Build.props" />
+    <File Path="src/Directory.Build.targets" />
   </Folder>
   <Folder Name="/Config/tests/">
     <File Path="tests/Directory.Build.props" />
@@ -41,7 +42,7 @@
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/FileSystem/FileSystem.csproj" />
-    <Project Path="samples/Kpis/Kpis.csproj" />
+    <Project Path="samples/SignalLab/SignalLab.csproj" />
     <Project Path="samples/UserGroups/UserGroups.csproj" />
   </Folder>
   <Folder Name="/src/" />
@@ -50,6 +51,10 @@
   </Folder>
   <Folder Name="/src/EntityFrameworkCore/">
     <Project Path="src/Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj" />
+    <Project Path="src/Doka.EntityFrameworkCore.NestedSet.MySql/Doka.EntityFrameworkCore.NestedSet.MySql.csproj" />
+    <Project Path="src/Doka.EntityFrameworkCore.NestedSet.Postgres/Doka.EntityFrameworkCore.NestedSet.Postgres.csproj" />
+    <Project Path="src/Doka.EntityFrameworkCore.NestedSet.Sqlite/Doka.EntityFrameworkCore.NestedSet.Sqlite.csproj" />
+    <Project Path="src/Doka.EntityFrameworkCore.NestedSet.SqlServer/Doka.EntityFrameworkCore.NestedSet.SqlServer.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests.csproj" />

@@ -47,30 +47,6 @@ public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
         .UpOperations
         .ToArray();
 
-    /// <summary>Asserts the exact fail-closed result for generated SQL check expressions.</summary>
-    private static void AssertOpaqueCheckConstraintBlockers(
-        SafeMigrationRunReport report
-    )
-    {
-        Assert.Equal(SafeMigrationReportStatus.Blocked, report.Status);
-        var blockers = report
-            .Assessments
-            .Where(assessment => assessment.Action == SafeMigrationAction.RejectUnsupported)
-            .ToArray();
-
-        Assert.Equal(4, blockers.Length);
-        Assert.All(
-            blockers,
-            assessment =>
-            {
-                Assert.Equal(SafeMigrationOperationKind.EnsureCheckConstraint, assessment.OperationKind);
-                Assert.Equal(SafeMigrationObservedState.Unsupported, assessment.ObservedState);
-                Assert.Equal("opaque_sql_expression", assessment.AnalysisCode);
-                Assert.Equal("unsupported", assessment.DecisionCode);
-                Assert.False(assessment.PostconditionSatisfied);
-            });
-    }
-
     /// <summary>Asserts the exact current-model indexes using the actual physical catalog.</summary>
     private static void AssertCurrentIndexes(
         string engine,
@@ -92,6 +68,7 @@ public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
                 "tree_scope,tree_id,parent_entry,sibling_position",
                 "tree_scope,tree_id,right_bound",
             ];
+
         Assert.Equal(engine == "PostgreSql"
             ? expected.Append("tree_scope,entry_id,parent_entry").Order(StringComparer.Ordinal)
             : expected,
@@ -203,6 +180,7 @@ public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
                         ? "parent_entry IS NULL"
                         : columns.Contains("tree_id", StringComparer.Ordinal) ? "tree_id IS NOT NULL" : null
                 : null;
+
             Assert.Equal(expectedFilter, definition.Filter);
         });
     }

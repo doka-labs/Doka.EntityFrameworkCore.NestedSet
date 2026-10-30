@@ -74,6 +74,7 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
             .Commands
             .Skip(lastWrite + 1)
             .ToArray();
+
         var affectedTracked = sparse
             ? 1
             : adjacent
@@ -126,8 +127,8 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
     {
         // Arrange
         await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, 5000);
-        await using var services = CacheTestServices.Create(Engine);
         await using var template = await _fixture.CreateContextAsync(Engine);
+        await using var services = CacheTestServices.Create(template.GetService<IDbContextOptions>());
         using var probe = new ScaleProbe();
         await using var context = OrderingRefreshTestSupport.CreateCacheContext(template, services, probe);
         var cardinalities = new[] { 1, 63, 64, 65, 5000 };
@@ -195,8 +196,8 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
     {
         // Arrange
         await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, 64);
-        await using var services = CacheTestServices.Create(Engine);
         await using var template = await _fixture.CreateContextAsync(Engine);
+        await using var services = CacheTestServices.Create(template.GetService<IDbContextOptions>());
         using var probe = new ScaleProbe();
         await using var context = OrderingRefreshTestSupport.CreateCacheContext(template, services, probe);
         var cardinalities = new[] { 1, 2, 63, 64 };

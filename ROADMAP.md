@@ -11,15 +11,22 @@ It is not a delivery-date promise. Released packages, release notes, and the
 - Preserve the published `10.0.0-rc.1` and its immutable release evidence.
   Stable `10.0.0` incorporates the subsequent correctness,
   memory-ownership, index, and capacity regressions.
-- Keep the accepted two-package `10.0.0` API in the shipped baselines and review
-  every subsequent public API change for compatibility. Each release retains
+- Keep the stable six-package `10.1.0` API in the shipped baselines and review
+  every subsequent public API change for compatibility. Retain the historical
+  `10.0.0` contract in its release tag and SDK compatibility baseline. Each
+  release retains
   its own qualified source, artifacts, and public readback.
 - Keep the EF-independent core limited to contracts useful without persistence.
+- Keep stable `10.1.0` query composition generic with the explicitly approved
+  provider-package/registration break in [D-020](docs/decisions/D-020-provider-owned-runtime-packages.md).
+  One shared EF engine serves the MySql, Postgres, Sqlite and SqlServer adapters.
+  SignalLab reporting, supervisor selection and finite chains remain consumer examples;
+  their business rules do not become structural library APIs.
 - Recheck hosted CI and security settings, then retain the stable candidate,
   signed tag, NuGet trusted publishing, provenance, and public readback evidence.
 - Qualify ordinary migrations on every supported provider and optional
   SafeMigrations integration independently.
-- Keep examples and operations documentation aligned with file systems, KPIs,
+- Keep examples and operations documentation aligned with file systems, instrument networks,
   organization/user groups, roles, and privileges.
 
 ### Preserve correctness at scale
@@ -63,7 +70,7 @@ Through September 2027 the project does not intend to:
 - add another ORM adapter without a concrete maintained consumer and full
   support decision;
 - implement authentication, group membership, role assignment, privilege
-  conflict rules, or application authorization;
+  conflict rules, or application authorization in the shipping library;
 - represent graphs with multiple parents or cycles;
 - promise a universal maximum tree size, latency, or throughput;
 - make GitHub benchmark timing a release gate;
@@ -74,7 +81,7 @@ Through September 2027 the project does not intend to:
 
 The lead maintainer reviews this roadmap at least quarterly and when:
 
-- the first public release completes;
+- a public release completes;
 - a supported platform publishes a new major or LTS line;
 - a vulnerability or data-integrity issue changes priorities;
 - production evidence requires a new scalability contract; or

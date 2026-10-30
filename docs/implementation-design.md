@@ -1,40 +1,67 @@
 # Implementation design
 
-NestedSet is a two-package library with one relational execution engine. The
-public EF package extends an application's existing model and `DbContext`; it
-does not introduce a second unit of work or a domain container entity.
+NestedSet has one shared relational hierarchy engine and four native provider
+integrations. Six packages express these dependencies. The common EF package
+extends an application's existing model and `DbContext`; it does not introduce
+a second unit of work or a domain container entity.
 
 ## Package boundaries
 
 ```mermaid
 flowchart TB
     App[Application entities and DbContext]
-    Core[Doka.NestedSet]
+    Pure[Doka.NestedSet]
     EF[Doka.EntityFrameworkCore.NestedSet]
-    Provider[Qualified EF Core provider]
+    MySql[NestedSet.MySql]
+    Postgres[NestedSet.Postgres]
+    Sqlite[NestedSet.Sqlite]
+    SqlServer[NestedSet.SqlServer]
+    Native[Matching native EF provider]
     DB[(Relational database)]
 
-    App --> EF
-    App --> Provider
-    EF --> Core
-    EF -.->|runtime provider services| Provider
-    Provider --> DB
+    App -->|Select its adapter| MySql
+    App -->|Alternative| Postgres
+    App -->|Alternative| Sqlite
+    App -->|Alternative| SqlServer
+    MySql --> EF
+    Postgres --> EF
+    Sqlite --> EF
+    SqlServer --> EF
+    EF --> Pure
+    MySql --> Native
+    Postgres --> Native
+    Sqlite --> Native
+    SqlServer --> Native
+    Native --> DB
 ```
 
 `Doka.NestedSet` contains optional entity contracts, bounds semantics, and pure
 relationship predicates. It has no EF Core dependency.
 
-`Doka.EntityFrameworkCore.NestedSet` owns model conventions, query composition,
-set-based mutations, ordering, transactions, typed tree locks, migrations,
-validation, rebuild, and diagnostics. The package uses the caller's context,
-connection, transaction, execution strategy, interceptors, and authorization
-decision.
+`Doka.EntityFrameworkCore.NestedSet` owns common model roles, structural query
+and mutation algorithms, ordering, transaction/savepoint coordination, tree
+lifecycle, validation, rebuild, and bounded diagnostics. Its shipping dependency
+graph contains EF/Relational and `Doka.NestedSet`, without a concrete provider.
+
+The `.MySql`, `.Postgres`, `.Sqlite`, and `.SqlServer` packages own their native
+SQL, registry rowset transport, physical model/index conventions, query
+translation, and physical strategy selection. They implement one internal
+selected-provider boundary; it is not a public extension framework. Common
+algorithms are not copied into the adapters. Each adapter uses the caller's
+context, connection, transaction, execution strategy, and authorization decision.
+Each adapter's packed kernel dependency is an exact release version because
+the boundary uses internal members. Source `ProjectReference` restore edges
+keep the SDK's ordinary minimum-range representation; a pack-only target pins
+the generated NuGet dependency without changing local restore semantics.
+The kernel uses only public `Doka.NestedSet` APIs and retains a minimum dependency.
+See [D-020](decisions/D-020-provider-owned-runtime-packages.md) and the
+[installation/registration migration](upgrading-provider-packages.md).
 
 ## Registration and finalized model
 
 ```mermaid
 flowchart LR
-    Options[options.UseNestedSets]
+    Options[Native provider callback UseNestedSets]
     Plugin[EF convention plugin]
     Entity[HasNestedSet mapping]
     Final[Final model validation]
@@ -46,8 +73,24 @@ flowchart LR
     Final --> Schema
 ```
 
-`UseNestedSets()` installs the convention plugin, SaveChanges guard, and
-relational persistence boundary in the EF internal service provider.
+The native provider callback's `UseNestedSets()` selects the exact adapter and
+installs the convention plugin, SaveChanges guard, relational persistence
+boundary and stateless query-expression interceptor in the EF internal service
+provider. Its immutable options identity includes the actual selected adapter,
+so contexts cannot reuse an incompatible provider service graph. Missing,
+conflicting, or mismatched registration is rejected before hierarchy I/O,
+including when a compiled model bypasses convention execution.
+
+The context-scoped `INestedSetProviderBinding` factory validates the completed
+options, actual native provider, and exact adapter/native assembly identities.
+It returns the existing immutable adapter singleton itself; no binding wrapper
+or context reference is added. EF caches that validated reference in the context
+scope, so warm `Resolve` calls do not repeat provider-name enumeration or options
+metadata inspection. The scope owns validation, while the adapter stays
+stateless across contexts.
+
+The query interceptor uses EF's public
+`IQueryExpressionInterceptor` contract and retains no context or query state.
 `HasNestedSet(...)` assigns structural roles on an ordinary entity, including
 a scalar NodeKey, stable TreeId, optional Scope,
 Parent, bounds, Depth, Position, and optional sibling order.
@@ -63,6 +106,16 @@ hierarchy's exact structural table. These owner-specific facets survive EF's
 runtime metadata trimming and compiled-model generation. A supplied or compiled
 model with incomplete older capture must be regenerated with the current
 NestedSet conventions; runtime does not silently replace its comparison rules.
+
+The selected adapter also recognizes native string-mapping length semantics.
+The same late capture persists two primitive hierarchy annotations,
+`Doka:NestedSet:ScopeUnicodeScalarLength` and
+`Doka:NestedSet:TreeIdUnicodeScalarLength`, after effective
+mapping facets settle. Registry mappings read these Boolean facts without
+retaining a provider service, delegate, or live context in model metadata.
+Generic Unicode scalar counting remains common. Missing or invalid captured
+facts reject an older supplied/compiled model with an instruction to regenerate
+it; runtime does not infer native semantics from store-type spelling alone.
 
 ## Runtime facade
 
@@ -351,6 +404,435 @@ then reapply the mandatory Scope and TreeId predicates owned by the library.
 Preorder is the persisted Left order. Additional application predicates remain
 composable before materialization.
 
+The [generic composition contract](query-composition.md) adds range-pair
+projections and existential row filters to the same query engine:
+
+```mermaid
+flowchart LR
+    Binding["Exact mapping / Scope / optional tree binding"] --> Pairs["Range-pair expressions"]
+    Binding --> Guard["Selected entity-alias validation"]
+    Pairs --> Linq["Application joins and projections"]
+    Linq --> Guard
+    Guard --> Filters["Path / Any / Nearest expressions"]
+    Filters --> Terminal["One ordinary EF async terminal"]
+```
+
+Projection substitution compares ParameterExpression identities and reduces
+anonymous or simple member-initializer members. It never compiles application
+predicates or invokes entity getters. Selected endpoints retain their exact
+mapped owner; unrelated fact roots remain legal payload. Direct foreign
+providers and LINQ-to-Objects sources are rejected before enumeration; nested
+foreign contexts remain subject to EF's pre-command translation guard.
+
+Endpoint analysis has three separate responsibilities:
+
+- Mapping resolution requires a real entity alias of the exact configured
+  mapping, including named mappings; an object with matching key values is
+  not an endpoint.
+- Source stability decides whether that resolution may be reused within the
+  current operation. Mutable expression metadata must be inspected again.
+- Visibility proof decides whether an additional membership check is
+  redundant. A stable `IgnoreQueryFilters` expression still fails this proof;
+  stability cannot authorize access to an otherwise hidden endpoint.
+
+The last two checks deliberately remain separate contracts. Shared primitive
+metadata checks may reduce duplication, but must not turn a stable source into
+a visibility guarantee or narrow supported entity-alias shapes.
+
+Source classification inspects children before reading a parent's derived
+expression type. Ordinary framework constructor and index expressions can
+forward that read to virtual constructor/property metadata; constant types can
+likewise carry application-owned `Type` wrappers. Both the query-operator
+pre-pass and fact-source inspection require actual runtime-owned metadata and
+types before type/assignability checks. Opaque metadata and dynamic expressions
+retain conservative strategy selection without getter execution or dynamic
+reduction. Ordinary runtime metadata retains its existing classification.
+The observation starts after the caller finishes building the expression:
+public expression factories can legitimately validate metadata during setup.
+
+Path checks join visible direct parents and children using the shared mapped
+Parent primitive, retain complete Scope/Tree identity, and require consecutive
+mapped depths. Their visible allowed-edge count must equal endpoint distance.
+Any remains a visible existence query. Nearest first selects one scalar NodeKey
+by descending mapped depth, exposes that key for the owner lookup, and gates
+the complete-path count after the selected owner's predicate. These choices
+were driven by actual provider plans, not an assumption that SQL evaluates
+AND predicates in source order.
+
+The expression helper caches closed public EF.Property MethodInfo metadata
+through weak Type keys. This removes repeated overload discovery during query
+construction without retaining contexts, entities, values, or result sets.
+Queryable expressions and captured application values remain owned by the
+individual deferred query. See [D-018](decisions/D-018-generic-hierarchy-query-composition.md)
+for alternatives and re-evaluation triggers.
+
+Scope and TreeId bindings accumulate typed comparisons in one library-owned AND
+predicate over the original visible root. Rebinding retains every earlier
+comparison and its private identity snapshot; a contradictory binding yields
+no rows. Only library-owned comparisons participate. Caller predicates remain
+separate, deferred expression occurrences, and global filters retain their
+ordinary EF behavior. This reduces actual repeated method visits without
+rewriting consumer expressions or weakening endpoint provenance.
+
+### Optional ancestor index and statement-local source binding
+
+Strict ancestors also have a source-bounded ordinary-model route in
+[independent ancestor pairs](../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQuery.AncestorPairs.cs).
+With verified public source-binding and ordered-join capabilities and an eligible
+independent selection, it completes only NodeKey, TreeId, Left, Right, and optional Scope. A fact-bearing
+selection retains its own structural `DISTINCT` boundary before completion;
+plain scalar selections do not add that boundary. Neither operation deduplicates
+consumer occurrences or fact payload.
+
+The completed source supplies per-Scope/tree envelopes. Nonleaf owner
+coordinates come from the unbound mapped root with global/model filters intact;
+source-derived native point comparisons supply library Scope/Tree restrictions
+so the existing Right index can range-check each envelope. Necessary envelope
+limits are followed by all four original interval comparisons. When the existing
+public engine API positively identifies MySQL, a nested binding then completes
+only matched source/owner key pairs, with no `DISTINCT` over their occurrences.
+Its recursive completion fence separates repeated direction changes from one
+merged payload-hydration/EXISTS optimizer search. MariaDB and unknown engine
+identification keep the outer source binding without the inner matched-key
+completion. Source hydration stays ordinary on both routes; one verified
+directed edge constrains final mapped-owner hydration. Exact final mapped
+containment and visibility checks remain. Completion is once for each binding,
+not once globally across distinct composition operations.
+
+No generated nonleaf property, new index, migration, or public API is required
+for this strict route. Missing either provider capability or a hierarchy-correlated
+selection keeps the established independent-coordinate path. MySQL's intermediate
+matched-pair relation may reduce downstream predicate pushdown; fewer optimizer
+edges do not guarantee cheaper reads or allocations. Applying that additional
+boundary to MariaDB exhausted the recorded branched-chain sample container, so
+it is not shared across engines. The existing public engine API suffices for
+this distinction. The optional generated-index
+and inclusive readers below retain their separate eligibility.
+
+The indexed path shares immutable source/candidate coordinate selectors through
+a weak cache keyed by the exact finalized `IEntityType`. Constant configured
+property names preserve EF translation and converters without retaining a model,
+context, request or query root. Eligible Left/Right roles use exact mapped CLR
+property or field expressions through the existing metadata-aware access helper;
+the member must resolve to that same finalized property and cannot be an indexer.
+Shadow, complex and otherwise ineligible storage retains EF property markers.
+Object-valued identity roles and the generated Boolean retain their translation
+markers. No mapped CLR getter runs during construction. Different models and
+named mappings remain independent. This template reuse does not reuse visibility proofs or finished
+queries. Upward projection substitutes the caller's original parameters once;
+one-, two- and three-argument expression visitors avoid temporary argument arrays
+while retaining the general path's exact simultaneous substitution semantics.
+
+The SignalLab sample consumes its catalog and aggregate readers into concrete scalar
+accumulators. Each reader reaches successful EOF and asynchronous disposal before
+catalog validation or aggregate-duplicate rejection. A later reader, cancellation
+or disposal failure therefore still precedes a previously observed invalid row.
+Catalog rejection remains authorization, then common unit, then exact metadata.
+Cancellation is checked again before aggregate construction. The synchronous
+collection adapter shares the accumulators but retains its existing immediate
+duplicate rejection.
+
+Catalog evidence uses exact identity and ordinal tuple sets. Aggregate state
+stores selected scalar sums by representable cell offsets and foreign identities for
+duplicate detection; larger selections build identity lookup maps lazily. It
+does not reserve the complete Cartesian grid before reading. Duplicate rejection
+still precedes final checked sizing, and the sample result remains one
+ordered cell array with missing values distinct from measured zero. DTO histories
+are not retained, but EF still creates projections and the evidence, sums and
+final output consume population-dependent memory. See the
+[isolated EF and read qualification](qualification/query-performance.md#ef-ownership-experiment)
+for the current measurement boundary.
+
+`HasAncestorIndex()` is an explicit schema choice, recorded as a simple
+property-name annotation in design, runtime, and compiled models. Configuration
+records that name; an early model-finalizing convention creates the flag and
+complete index only after application mapping choices are known and before
+provider index-key length budgeting. This ordering avoids declaring a flag on
+an inherited base too early: TPT needs the structural base table, whereas an
+independent concrete TPC hierarchy must not add the flag to sibling tables.
+Application code that configures an index on the flag before finalization
+declares its Boolean property explicitly first. The later final convention
+resolves the actual structural fragment and quoted boundary
+columns, validates or creates the generated Boolean flag, and reconciles an
+additive `(Scope?, flag, TreeId, Right, Left, NodeKey)` index. Existing structural
+and ordering indexes remain. PostgreSQL uses stored generation; Doka, SQLite,
+and SQL Server use their supported non-stored forms. Incompatible property
+facets or a physically separate application-owned flag fail finalization.
+Generated values participate in the existing bounded tracked refresh rather
+than the writable structural contract. Property bags use required indexer
+properties and retain their natural missing-key sentinel, so insertions do not
+need to initialize implementation details in the caller's dictionary.
+
+Early declaration does not repair the published Doka 10.5.0 string-budgeting
+defect. When Scope, TreeId, and NodeKey all have implicit `utf8mb4` lengths,
+Doka assigns 255 characters to each and promotes those inferred lengths to
+explicit metadata. The new index then needs 3,077 bytes against the tested
+3,072-byte InnoDB key limit and fails with native error 1071 on both engines.
+The provider cannot rebudget the later index despite its correct finalizer
+ordering. Explicit application-domain lengths are qualified separately; the
+library neither silently truncates identities nor imposes arbitrary lengths.
+
+The corrected private provider used for that qualification solved complete implicit index budgets and
+compatible principal/dependent groups before publishing facets. The actual
+NestedSet consumer passes its [separate native acceptance](qualification/query-composition.md#optional-ancestor-access)
+with Id, Scope, TreeId and ParentId all at length 254. This remains provider
+metadata work; NestedSet's identity validator is unchanged. That historical
+qualification predates the provider-package dependency boundary in D-020.
+The MySql adapter now declares published Doka 10.6.3 as its minimum native
+dependency and qualification input, independently of those frozen local results.
+
+The MySql adapter binds Doka's published public source-binding, ordered-join,
+and engine APIs directly. Its declared native dependency is Doka
+`[10.6.3,10.7.0)`; it does not discover optional declarations by names or share
+an assembly/signature/delegate lookup registry with the common kernel. The
+selected adapter and configured native provider must have matching exact
+runtime identities. Source and ordered-join method identities used for query
+provenance come from typed public methods. Query state, contexts, and request
+values are not cached in those identities.
+
+With the explicit model option, eligible strict ancestor queries bind their
+completed selected source within one SQL statement. Inclusive queries also use
+the adapter's required ordered-join API. Both require the independent-owner
+policy and an eligible selection. Other adapters retain their corresponding
+portable read strategies, including the informational schema-only ancestor
+index diagnosis. The
+[canonical selection rules](configuration.md#current-query-capabilities)
+distinguish independently inspected fact roots from hierarchy-bearing or opaque
+sources.
+
+#### EF-normalized captured sources
+
+[Deferred query dispatch](../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetDeferredQuery.cs)
+recognizes exactly five private operations:
+[strict/inclusive ancestors](../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetDeferredQuery.Ancestors.cs)
+and [Path/Any/Nearest filters](../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetDeferredQuery.Filters.cs).
+Markers carry existing query syntax, exact mapping identity and tree-bound
+mode. Construction reads no captured query, application field or getter.
+Source-sensitive ancestor normalization applies to every options-registered
+provider; choosing the optimized index reader still separately requires the
+opt-in schema, Doka and the verified public capabilities.
+
+A downstream filter defers only if its source already contains an exact owned
+marker. Existing source/scope/null/endpoint guards run before marker creation.
+At expansion the same normalized path, existence or nearest core performs its
+normal proof, including candidate-before-value rejection and no farther
+fallback. Unmarked filters keep their ordinary construction path. No second
+semantic implementation or application query provider is introduced.
+
+The [stateless injected interceptor](../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQueryExpressionInterceptor.cs)
+expands only those exact definitions after EF's ordinary parameter/capture
+processing and before relational translation when compilation is needed.
+EF owns capture values and the compiled-query cache. A later terminal sees a
+rebound source under EF's normal processing; the interceptor does not replace
+cache keys or replay application getters on cache hits.
+
+```mermaid
+flowchart LR
+    Build[Construct query without I/O] --> Extract[EF expands captures and extracts parameters]
+    Extract --> Cache{Compiled-query cache}
+    Cache -->|Hit| Execute[EF executes with current parameters]
+    Cache -->|Miss| Normalize[Expand owned markers and share admitted roots]
+    Normalize --> Translate[Existing hierarchy cores and provider translation]
+    Translate --> Execute
+```
+
+Expansion validates exact mapping against the compiling context and inspects
+actual normalized fact roots/filters before selecting the indexed or existing
+strategy. Scalar query parameters remain leaves; a query-valued parameter
+cannot prove independence. Nested operations expand with the same
+compilation-local visitor. Weak typed expansion delegates retain no context,
+model, application capture or completed query.
+
+[Normalized owned-root sharing](../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetNormalizedQueryRoots.cs)
+canonicalizes only the marker's visible and unbound roots within one compilation.
+EF can detach and rebuild equivalent root occurrences during extraction;
+restoring their reference sharing lets the existing endpoint proof recognize
+the same binding. Admission first checks the entire restricted grammar: exact
+EF metadata, scalar parameter identities and approved literal kinds remain
+part of equality. Custom values/arrays, reducible or application-owned syntax
+are not admitted to comparison. The comparer therefore cannot invoke an
+application equality/hash implementation, getter or reduction callback.
+No consumer source tree or global query cache is created by this mechanism.
+
+[Late closure normalization](../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetNormalizedQueryClosure.cs)
+folds only this library's compiler-generated fields introduced after EF's
+extraction boundary. Exact EF-owned query objects can supply their expression;
+application properties, fields and custom query objects are not evaluated.
+This prevents newly composed library closures from retaining a live context in
+the translated graph without stealing EF's application-evaluation responsibility.
+
+The interceptor exists only with options registration. Model-only contexts
+retain the previous expression strategy and emit no deferred marker. An absent
+index option or capability cannot be enabled by normalization. Some cold proof
+construction moves from the public builder to compilation; whole-reader cold
+and warm measurements must qualify its cost separately from builder allocation.
+
+[Shared syntax admission](../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQuerySyntax.cs)
+owns runtime/EF node and reflection-metadata checks. Query-bearing syntax,
+independent fact roots, memoization stability and exact endpoint
+mapping/visibility remain distinct proofs. Admitting one root does not grant
+another endpoint its provenance or permit mutable-source memoization.
+The measured SQL strategy families retain their separate qualification.
+
+An independently inspected query-bearing fact selection first keeps its narrow
+structural source in a separate query block with `DISTINCT`, before the public
+completed-source binding. The projected coordinates contain the authoritative
+root's complete unique NodeKey, TreeId, and optional Scope identity, so this
+boundary preserves its selected rows. It contains no consumer occurrences or
+fact payload; later fact joins and their bags are unchanged. Plain scalar selections do not add
+this boundary. The boundary reuses the eligibility result without another
+predicate inspection; query-bearing eligibility still uses its initial
+query-operator check followed by independent fact-source inspection.
+
+The boundary prevents the observed MariaDB merge of fact `EXISTS` into the
+recursive anchor, which otherwise repeated fact checks across the source-node
+population. It constrains that merge without a SQL hint or another provider
+API. Derived-table merge eligibility is not a universal cost guarantee: native
+qualification still checks exact fact selections and both engines' actual
+plans, work, and allocations. Hierarchy-bearing and opaque pivots keep their
+existing strategy.
+
+Source envelopes group by physical
+Scope when configured and TreeId,
+retaining maximum Left, minimum Right, and a nonempty-group marker. Candidate
+owners start at the original unbound mapped root with all application/global
+filters intact. Source-derived identity points supply the library's Scope/Tree
+restriction without copying its constant prefixes to that candidate root.
+Private translated closed-point ranges preserve native mapped types,
+converters, and collations while exposing source-dependent range work to
+MariaDB. They add neither a public knob nor an index hint.
+
+Strict candidate owners retain their own physical Key, optional Scope,
+TreeId, Left, and Right through DISTINCT. All four original strict comparisons
+then reject source/candidate nonmatches while both remain narrow coordinate
+rows. Only surviving matches project keys for the existing mapped identity
+joins; the final actual aliases still enforce all four original comparisons.
+Keeping only keys before this filter can turn the necessary source envelope
+into millions of rejected mapped-owner lookups. The inclusive
+strategy captures the generated flag in the completed selected source, in
+addition to Key, optional Scope, TreeId, Left, and Right. Each source enters
+nonleaf mode; only false-flag positive-width sources enter leaf mode. A
+thousand-node selected chain with one leaf therefore has 1,001 source modes,
+rather than two modes for every selected node.
+
+Each candidate arm projects its own physical Key, optional Scope, TreeId,
+Left, and Right and applies DISTINCT before mode/mask projection. Both arms
+therefore retain aligned native identifiers for EF collection shaping, without
+merging equal-bound nodes with different keys. Their union is completed by one
+additional dependent source binding; no actual entity or collection payload
+crosses that boundary. Equality mode/mask columns precede range coordinates
+in the structural projection so MySQL can retain its automatic composite key.
+
+The bounded source-mode and candidate-owner unions use one public
+`StraightJoin` call to place source modes before the completed narrow candidate
+relation. The key retains mode, complete partition identity and exact leaf or
+masked nonleaf coordinates. All four original comparisons reject nonmatches
+while they are still narrow structural rows.
+
+After ordinary source-entity hydration, a second call to the same API places
+the candidate-bearing selected relation before final mapped-owner hydration.
+The original source/candidate edge alone does not constrain that later owner
+alias: an optimizer can still drive payload owners before candidate matching
+and repeat a large prefix without changing the final result bag. The second
+edge constrains that exact owner boundary. Source hydration stays an ordinary
+join so the optimizer can reuse selected sources rather than forcing a lookup
+for every expanded pair. Other consumer and payload-source joins also stay
+ordinary. This is two invocations of the existing single-edge API, without a
+pair spool, new provider capability, option or relaxed work allowance.
+
+Each endpoint rejoins its own complete mapped identity, and final aliases
+retain all four comparisons and application filters. Neither union fences final
+pair output or deduplicates consumer bags. No SELECT-wide option or SQL-text
+rewriting is used. The directed edges alone do not prove bounded native work;
+exact bags, completed plans and unchanged work budgets require separate runs.
+Those aliases retain the existing database query-consistency boundary; the
+strategy does not introduce a stronger snapshot or read-uncommitted contract.
+The endpoint validator resolves the verified source binder's lexical parameter
+back to the exact original root. It separately recognizes only the exact
+verified public ordered-join method and retains each input's own mapping and
+visibility; the join is not treated as another source binder. It
+must not grant visibility to arbitrary methods, filter-stripped aliases,
+foreign contexts, or another named mapping.
+
+Neither directed join guarantees result ordering, a stronger snapshot,
+materialization or speed. Other joins remain subject to engine rules rather than a complete
+fixed order; MySQL semijoin eligibility can change as an engine consequence.
+The generated schema and optional API availability remain separate contracts,
+as recorded in [D-019](decisions/D-019-optional-ancestor-index-and-source-binding.md).
+
+Endpoint resolution retains one exact lexical scope per binding call and
+parent environment within the operation. Stable endpoint results use member
+paths relative to the current lambda parameter plus incoming visibility, so
+equivalent selectors share work while alternating members and mappings remain
+distinct. Captured query objects with mutable expression metadata are not
+eligible for that memo, including runtime queries carried in object-typed
+fields. Opaque query properties and static fields cannot supply endpoint
+provenance or bound-source visibility through casts, type-as conversions or
+AsQueryable. The guard does not execute application property getters to obtain
+that proof. Statically known query inputs and ordinary object payloads retain
+their respective supported visibility and stable-source reuse.
+Recreating a scope on each branch expanded a compact
+source DAG into exponentially repeated guard work; the operation-local map
+removes that expansion without introducing a cross-query visibility cache.
+
+```mermaid
+flowchart LR
+    Model["Explicit model option"] --> Flag["Generated flag and additive index"]
+    Capability["Exact public Doka source binding"] --> Select["Completed selected source"]
+    Flag --> Gate["Eligible ancestor query"]
+    Select --> Gate
+    Gate --> Coordinates["Narrow coordinates and envelope"]
+    Coordinates --> Direction{"Strict or inclusive?"}
+    Direction -->|Strict| Strict["Own physical coordinates DISTINCT"]
+    Direction -->|Inclusive| Ordered{"Exact public StraightJoin?"}
+    Ordered -->|Available| Lanes["Source modes before completed candidates"]
+    Ordered -->|Missing| Legacy["Existing inclusive strategy"]
+    Strict --> StrictBounds["All four strict structural comparisons"]
+    StrictBounds --> Keys["Matching keys only"]
+    Keys --> Owners["Actual mapped owners"]
+    Lanes --> SourceHydration["Ordinary mapped-source hydration"]
+    SourceHydration --> OwnerHydration["Selected candidates before mapped owner"]
+    OwnerHydration --> Owners
+    Owners --> Exact["Exact Scope / TreeId / four bounds"]
+    Exact --> Composition["Path / Any / Nearest / direction changes"]
+    Legacy --> Composition
+    Composition --> Execute["Ordinary EF async terminal"]
+```
+
+Hierarchy-bearing and opaque query predicates retain the established strategy
+rather than forcing an eager boundary onto correlated mixed-direction pivots.
+Explicit fact roots can complete independently only after the selection guard
+checks their actual model and inherited/named filters, retaining fallback for
+all EF navigation or skip-navigation expansion. A navigation target can hide
+another filtered hierarchy dependency. Captured query getters are not evaluated
+to establish that proof.
+The index remains
+available as schema metadata on all supported providers; the Doka source-sharing
+strategy is a separate provider capability. Only eligible Doka ancestor
+selections use the new strategy. PostgreSQL, SQLite, SQL Server, and Doka without
+the required capabilities retain the existing overflow-safe nonleaf read path, including when the index
+is configured. Neither schema availability nor source binding establishes an optimizer
+complexity guarantee. See [D-019](decisions/D-019-optional-ancestor-index-and-source-binding.md)
+and the [final local qualification](qualification/query-composition.md#optional-ancestor-access)
+for the storage/write trade-off and re-evaluation criteria.
+
+Ordinary EF schema creation and upgrades remain independent of migration
+adapters. Historical published SafeMigrations 10.5.0 server adapters reject the scaffolded
+raw computed expression; SQLite has a separately reproduced fresh-table
+catalog/postcondition mismatch, while its populated ADD path succeeds.
+Index-only replay/drift checks on ordinary EF-created schema do not imply
+automatic generated-schema support. The exact
+[adapter boundary](migrations.md#optional-safemigrations-generated-column-contracts)
+is documented separately from the query-provider integration. The current
+SafeMigrations contract covers canonical generated expressions and safe-owned
+SQLite facets; its tests independently require full migrations, physical schema,
+data/history preservation and guard-level replay. Existing schema drift and
+invalid coordinate rows must still be rejected. The fresh 2026-10-25 local
+public-graph run passed 11,726 cases with zero failures and 2,072 native SQL
+Server ARM exclusions; [the provider record](qualification/provider-migrations.md#published-runtime-qualification-2026-10-25)
+retains the nine-project scope. Dated private results keep their isolated graph
+and are not transferred to new binaries.
+
 ## Mutation and lock protocol
 
 ```mermaid
@@ -486,14 +968,27 @@ still depends on the retired generation.
 
 ## Provider boundary
 
-Provider capabilities isolate lock SQL, required isolation, identifier quoting,
-set-update details, self-referential delete behavior, and store-specific order.
-All value parameters come from finalized relational type mappings. Physical
-identifiers come only from trusted model metadata and the provider SQL helper.
+The selected provider service delegates native lock SQL, registry rowset
+encoding, session prerequisites, supported isolation/snapshot policies,
+set-update details, generated-column expressions, collation handling, physical
+query strategies, and SQL translations to the corresponding adapter. The common
+engine retains lifecycle validation, deterministic lock acquisition, mapped
+parameter execution, transaction ownership, and shared structural algorithms.
+It does not dispatch through concrete provider-name strings or a provider enum.
 
-The common contract is qualified for Doka MySQL/MariaDB, Npgsql PostgreSQL,
-Microsoft SQLite, and Microsoft SQL Server. Pomelo is outside the contract.
-Ordinary EF migrations are the required baseline; SafeMigrations is optional.
+MySql binds the required public Doka APIs directly. Exact source/ordered-join
+method identities still belong to query-provenance validation; they are captured
+from typed public methods rather than optional string/signature discovery.
+Neutral structural query markers remain common and are translated by the
+selected adapter only. No process-wide assembly discovery is introduced.
+
+All value parameters come from finalized relational type mappings. Physical
+identifiers come only from trusted model metadata and the selected provider's
+SQL identifier helper. Each adapter has a direct dependency on its native EF
+provider; the common kernel has none. Pomelo is outside the contract. Ordinary
+EF migrations remain the required baseline; SafeMigrations is independently
+optional. Package declarations and actual executed qualifications are separated
+in [the support matrix](support-and-qualification.md).
 
 ## Diagnostics boundary
 
@@ -519,18 +1014,56 @@ machine. Deferred query execution remains visible through EF Core diagnostics.
 | `Features/Ordering` and `Features/ManagedSave` | Sibling order and coordinated SaveChanges |
 | `Features/Maintenance` | Registry lifecycle, inspection, repair, and rebuild |
 | `Configuration` and `Mapping` | Structural roles, conventions, and finalized immutable metadata |
-| `Execution` and `Providers` | Transactions, tree locks, retries, and provider capabilities |
+| `Execution` and `Providers` in the common package | Shared transaction/tree-lifecycle coordination, retries, and the internal provider boundary |
+| The four adapter projects | Native SQL/rowsets, physical model conventions, query primitives/translators, and native callback registration |
 | `Storage` and `Shared/Structural` | Typed relational access and structural primitives shared by features |
 | `Diagnostics` and `Errors` | Bounded telemetry and stable failure codes |
 
 The public namespace stays `Doka.EntityFrameworkCore.NestedSet` regardless of
 the source folder. The internal feature namespaces reflect ownership; shared
 storage, mapping, and transaction code remains outside the feature folders
-because multiple operations consume it. The split is organizational: it does
-not add a project, a service registration, or a per-operation handler.
+because multiple operations consume it. Feature folders retain the common
+algorithm owners; the provider boundary is a real project/dependency boundary.
+Selecting an adapter does not create a per-node handler or duplicate a feature
+algorithm.
 
-[D-011](decisions/D-011-feature-oriented-source-layout.md) records the runtime
-source layout.
+[D-011](decisions/D-011-feature-oriented-source-layout.md) records common feature
+organization; [D-020](decisions/D-020-provider-owned-runtime-packages.md) records
+the provider project and registration boundary.
+
+The following files are the entry points for internal changes. Partials retain
+one owning type; moving a responsibility does not create a service, another
+cache, or an extra per-operation object. Static initializers whose order matters
+stay together, and independently consumed mapping types have their own files.
+
+| Responsibility | Source entry points |
+| --- | --- |
+| Convention validation and immutable mapping | [Validator](../src/Doka.EntityFrameworkCore.NestedSet/Mapping/NestedSetModelValidator.cs), [model descriptor](../src/Doka.EntityFrameworkCore.NestedSet/Mapping/NestedSetModelDescriptor.cs), [property descriptor](../src/Doka.EntityFrameworkCore.NestedSet/Mapping/NestedSetPropertyDescriptor.cs), [order descriptor](../src/Doka.EntityFrameworkCore.NestedSet/Mapping/NestedSetOrderPropertyDescriptor.cs) |
+| Query entry points and pair selection | [Composition](../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQuery.Composition.cs), [subtree pairs](../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQuery.SubtreePairs.cs) |
+| Complete paths and ancestor decisions | [Path proof](../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQuery.Path.cs), [Any and Nearest](../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQuery.AncestorDecisions.cs), [structural expressions](../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQuery.StructuralExpressions.cs), [edge carrier](../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQueryEdge.cs) |
+| Coordinated save order and boundaries | [Orchestration](../src/Doka.EntityFrameworkCore.NestedSet/Features/ManagedSave/NestedSetSaveChanges.cs), [guards](../src/Doka.EntityFrameworkCore.NestedSet/Features/ManagedSave/NestedSetSaveChanges.Guards.cs), [managed writes](../src/Doka.EntityFrameworkCore.NestedSet/Features/ManagedSave/NestedSetSaveChanges.ManagedSave.cs), [context-local state](../src/Doka.EntityFrameworkCore.NestedSet/Features/ManagedSave/NestedSetSaveChanges.State.cs) |
+| Insertion identity lifetime | [Owner and caches](../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetInsertionTracking.cs), [identity](../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetInsertionTracking.Identity.cs), [recovery](../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetInsertionTracking.Recovery.cs), [typed readers](../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetInsertionTracking.Readers.cs) |
+| Single insertion and owned graphs | [Insert](../src/Doka.EntityFrameworkCore.NestedSet/Features/Insert/NestedSetInsert.cs), [owned graph](../src/Doka.EntityFrameworkCore.NestedSet/Features/Insert/NestedSetInsert.OwnedGraph.cs), [validation](../src/Doka.EntityFrameworkCore.NestedSet/Features/Insert/NestedSetInsert.Validation.cs), [recovery](../src/Doka.EntityFrameworkCore.NestedSet/Features/Insert/NestedSetInsert.Recovery.cs) |
+
+These file boundaries preserve the existing separate proofs for query syntax,
+endpoint provenance, source stability, and normalized captures. Likewise,
+single-insert and bulk recovery retain their own lifecycle contracts. A shorter
+file does not justify combining those responsibilities.
+
+Application policy remains in the samples. Their source entry points separate
+query construction from asynchronous execution and result reconstruction:
+
+| Consumer responsibility | Source entry points |
+| --- | --- |
+| SignalLab snapshot and report query | [Read entry point](../samples/SignalLab/Reporting/SignalReportBuilder.cs), [query pipeline](../samples/SignalLab/Reporting/SignalReportBuilder.Query.cs), [domain predicates](../samples/SignalLab/Reporting/SignalReportBuilder.Predicates.cs), [intermediate scalar models](../samples/SignalLab/Reporting/SignalReportBuilder.Models.cs) |
+| Supervisor requests and one-hop decisions | [Application entry points](../samples/UserGroups/Queries/Supervisors/SupervisorQueries.cs), [candidates](../samples/UserGroups/Queries/Supervisors/SupervisorQueries.Candidates.cs), [status query](../samples/UserGroups/Queries/Supervisors/SupervisorQueries.Resolve.cs), [ranking](../samples/UserGroups/Queries/Supervisors/SupervisorQueries.Ranking.cs), [execution and reconstruction](../samples/UserGroups/Queries/Supervisors/SupervisorQueries.Execution.cs), [transport models](../samples/UserGroups/Queries/Supervisors/SupervisorQueries.Models.cs) |
+| Supervisor chains | [Frontier orchestration](../samples/UserGroups/Queries/Supervisors/SupervisorQueries.Chains.cs), [batched transport](../samples/UserGroups/Queries/Supervisors/SupervisorQueries.ChainTransport.cs), [branch advancement](../samples/UserGroups/Queries/Supervisors/SupervisorQueries.ChainBranches.cs), [path and budget state](../samples/UserGroups/Queries/Supervisors/SupervisorQueries.ChainState.cs) |
+
+SignalLab expression fields retain their original owner and initialization order;
+the catalog projection holder keeps its separate lazy initialization. Supervisor
+partials retain one owner and the same visibility, occurrence evidence, routing,
+ambiguity, snapshot, and budget contracts. Tests and benchmarks reference these
+actual sample implementations rather than another copy.
 
 ## Test project ownership
 
@@ -580,9 +1113,27 @@ intentionally change CLR and model-cache identity, while entity short names,
 explicit physical tables, inheritance mappings, and existing measurement
 warmups remain intact. Fresh builds and model tests qualify the changed identity.
 
-`QueryPlanTestSupport` owns shared asynchronous evidence writing independently
-of any query-plan suite. All six existing call paths use it directly, preserving
-the configured output directory, file names, spacing, and cancellation behavior.
+`QueryPlanTestSupport` owns shared statistics refresh, native plan explanation,
+and asynchronous evidence writing independently of any query-plan suite. Shared
+and provider-local callers use it directly, preserving provider-specific SQL,
+captured parameter bindings, command selection, output names, and cancellation.
+
+Key comparison and hierarchy-plan cases are separately discovered scenario rows.
+`KeyFilterComparisonFixture` owns one additional read-only comparison database
+for its 1,024-row seed, independent of its resettable sibling-test database.
+`ServerQueryPlanFixture` owns the immutable 4,000-node hierarchy-plan seed.
+Both acquire resources lazily after the database-platform
+hook and reuse the existing assembly-owned servers. Each scenario opens a fresh
+context. Class-owned evidence is emitted once during asynchronous disposal in
+the original deterministic scenario order; rows do not overwrite the legacy
+`<Engine>-key-filter` or `<Engine>-hierarchy` aggregate.
+
+Large metadata-guard and retention suites retain their owning test types while
+separating annotation, ownership, discovery, probe, helper, and model source
+files. This does not change test discovery, collection serialization, no-inline
+GC frames, or reference lifetimes. Project-level partial-family metadata is an
+IDE aid, not another compiled source owner; compiler inputs and actual discovery
+remain separate verification boundaries.
 
 Common suites are nongeneric and accept an `IProviderFixture<TResource>` view in
 a protected constructor. Each concrete leaf exposes one public constructor with

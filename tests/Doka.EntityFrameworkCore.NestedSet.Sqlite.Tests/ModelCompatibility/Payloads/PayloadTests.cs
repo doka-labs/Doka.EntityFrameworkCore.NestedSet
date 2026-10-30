@@ -125,7 +125,6 @@ public sealed class PayloadTests : ProviderTest, IClassFixture<ProviderFixture<P
     /// <summary>Builds one options instance with automatic nested-set integration.</summary>
     private static DbContextOptions<PayloadContext> Options() => new DbContextOptionsBuilder<PayloadContext>()
         .ConfigureTestWarnings()
-        .UseSqlite("Data Source=:memory:")
-        .UseNestedSets()
+        .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
         .Options;
 }

@@ -1,0 +1,16 @@
+global using System;
+global using System.Collections.Generic;
+global using System.Data;
+global using System.Data.Common;
+global using System.Reflection;
+global using System.Runtime.CompilerServices;
+global using System.Text;
+global using System.Threading;
+global using System.Threading.Tasks;
+global using Doka.EntityFrameworkCore.NestedSet.Execution;
+global using Doka.EntityFrameworkCore.NestedSet.Mapping;
+global using Doka.EntityFrameworkCore.NestedSet.Providers;
+global using Doka.EntityFrameworkCore.NestedSet.Storage;
+global using Microsoft.EntityFrameworkCore;
+global using Microsoft.EntityFrameworkCore.Infrastructure;
+global using Microsoft.EntityFrameworkCore.Metadata;

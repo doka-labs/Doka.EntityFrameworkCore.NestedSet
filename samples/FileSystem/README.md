@@ -42,7 +42,7 @@ dotnet run --project samples/FileSystem --configuration Release -- --inspect --d
 dotnet run --project samples/FileSystem --configuration Release -- --reset --scenario rename
 ```
 
-`--reset` recreates only this sample's owned database. It does not reset the KPI
+`--reset` recreates only this sample's owned database. It does not reset the SignalLab
 or user-group databases. `--inspect` does not apply migrations, seed data, or
 perform hierarchy writes, and cannot be combined with `--reset` or `--scenario`.
 
@@ -94,8 +94,8 @@ The shared endpoint setup registers the default Doka route as:
 
 ```csharp
 options
-    .UseMySql(connectionString, MySqlServerVersion.MariaDb(new Version(11, 8, 0)))
-    .UseNestedSets();
+    .UseMySql(connectionString, MySqlServerVersion.MariaDb(new Version(11, 8, 0)),
+        mysql => mysql.UseNestedSets());
 ```
 
 The optional `NestedSetDbContext` base coordinates tracked sort-field edits

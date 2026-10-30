@@ -98,6 +98,7 @@ public sealed partial class InsertionRefreshAllocationTests
         var property = entries[0]
             .Metadata
             .FindPrimaryKey()!.Properties[0];
+
         Assert.All(identities, identity => Assert.True(identity.Matches(property)));
         GC.KeepAlive(identities);
     }

@@ -153,6 +153,7 @@ public sealed class TypedTreeLockRequestTests
         Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
         Assert.Null(context.Database.CurrentTransaction);
         Assert.Empty(context.ChangeTracker.Entries());
+
         return;
 
         Task Operation(
@@ -178,8 +179,7 @@ public sealed class TypedTreeLockRequestTests
         internal RequestContext() : base(
             new DbContextOptionsBuilder<RequestContext>()
                 .ConfigureTestWarnings()
-                .UseSqlite("Data Source=:memory:")
-                .UseNestedSets()
+                .UseSqlite("Data Source=:memory:", sqlite => sqlite.UseNestedSets())
                 .Options) { }
 
         /// <inheritdoc />

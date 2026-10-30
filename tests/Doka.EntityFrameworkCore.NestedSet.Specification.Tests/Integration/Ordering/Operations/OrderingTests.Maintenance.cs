@@ -107,6 +107,7 @@ public abstract partial class OrderingTests
         await AssertIdsAsync(tree.SubtreeOf(4), 4, 6);
         var promoted = await Nodes(context)
             .SingleAsync(node => node.Id == 4, CancellationToken.None);
+
         Assert.Equal(childWidth, promoted.Right - promoted.Left + 1);
         Assert.Equal(1, promoted.Depth);
         Assert.Equal(

@@ -160,6 +160,7 @@ public abstract partial class InheritanceTests : ProviderTest
         Assert.Equal(rootId + 1, nodes[2].ParentId);
         Assert.Equal(2, nodes[2].Depth);
         Assert.Equal((1L, 6L), (nodes[0].Left, nodes[0].Right));
+
         return;
 
         InheritanceNode Node(

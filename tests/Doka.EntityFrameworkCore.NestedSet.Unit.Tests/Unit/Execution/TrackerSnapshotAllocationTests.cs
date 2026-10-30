@@ -12,6 +12,7 @@ public sealed partial class TrackerSnapshotAllocationTests
     }
 
     /// <summary>Bounds warm snapshot allocation for a representative large tracked unit of work.</summary>
+    [Trait("Category", "Allocation")]
     [Fact]
     public async Task TwentyThousandEntitiesUseCompactScalarSnapshots()
     {

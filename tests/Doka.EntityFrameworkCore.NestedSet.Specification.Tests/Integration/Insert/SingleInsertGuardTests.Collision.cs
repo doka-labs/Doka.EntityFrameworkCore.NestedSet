@@ -68,6 +68,7 @@ public abstract partial class SingleInsertGuardTests
                 .Set<TreeNode>()
                 .AsNoTracking()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal((102, legitimate.TreeId, 1L, 2L), (saved.NodeId, saved.TreeId, saved.Start, saved.End));
         Assert.Equal(
             1,
@@ -89,16 +90,11 @@ public abstract partial class SingleInsertGuardTests
         var treeId = Guid.NewGuid();
         var input = NewAssignedSingleScalarInput(treeId);
         var reference = new WeakReference(input);
-        EventHandler<SavingChangesEventArgs> mutate = (
-            _,
-            _
-        ) =>
+        EventHandler<SavingChangesEventArgs> mutate = (_, _) =>
         {
-            if (input is not null)
-            {
-                input.NodeId = 102;
-            }
+            input?.NodeId = 102;
         };
+
         context.SavingChanges += mutate;
         Exception? error;
 
@@ -122,6 +118,7 @@ public abstract partial class SingleInsertGuardTests
         var restored = (input.NodeId, input.Tree, input.TreeId, input.Parent, input.Start, input.End,
                 input.Depth, input.Position)
             == (101, 9, treeId, 8, 71L, 72L, 3, 4L);
+
         var originalError = error?.GetType() == typeof(InvalidOperationException);
 
         // WHY: Retaining the exception or callback capture can retain a completed asynchronous producer.

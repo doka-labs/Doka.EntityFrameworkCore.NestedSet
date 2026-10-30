@@ -5,7 +5,10 @@
     <EmbeddedResource Include="../../docker/database-images.Dockerfile" LogicalName="NestedSet.TestImages" Visible="false"/>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj"/>
+    <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet.MySql/Doka.EntityFrameworkCore.NestedSet.MySql.csproj"/>
+    <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet.Postgres/Doka.EntityFrameworkCore.NestedSet.Postgres.csproj"/>
+    <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet.Sqlite/Doka.EntityFrameworkCore.NestedSet.Sqlite.csproj"/>
+    <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet.SqlServer/Doka.EntityFrameworkCore.NestedSet.SqlServer.csproj"/>
     <PackageReference Include="Microsoft.NET.Test.Sdk"/>
     <PackageReference Include="xunit.v3.mtp-off"/>
     <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all"/>
@@ -17,5 +20,13 @@
     <PackageReference Include="Testcontainers.MySql"/>
     <PackageReference Include="Testcontainers.MsSql"/>
     <PackageReference Include="Testcontainers.PostgreSql"/>
+  </ItemGroup>
+  <ItemGroup Label="IDE file nesting">
+    <Compile Update="Integration/AncestorIndexLifecycleTests.*.cs">
+      <DependentUpon>AncestorIndexLifecycleTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/AncestorIndexReadbackTests.*.cs">
+      <DependentUpon>AncestorIndexReadbackTests.cs</DependentUpon>
+    </Compile>
   </ItemGroup>
 </Project>

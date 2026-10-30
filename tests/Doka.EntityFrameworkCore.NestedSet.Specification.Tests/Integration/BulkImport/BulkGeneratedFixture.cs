@@ -25,25 +25,24 @@ public sealed class BulkGeneratedFixture : IAsyncLifetime
         await using var source = database!.CreateContext();
         var connection = source.Database.GetConnectionString()!;
         var options = new DbContextOptionsBuilder<BulkGeneratedContext>()
-            .ConfigureTestWarnings()
-            .UseNestedSets();
+            .ConfigureTestWarnings();
 
         switch (engine)
         {
             case "Sqlite":
-                options.UseSqlite(connection);
+                options.UseSqlite(connection, provider => provider.UseNestedSets());
                 break;
             case "MySql":
-                options.UseMySql(connection, DatabaseTestTargets.MySql);
+                options.UseMySql(connection, DatabaseTestTargets.MySql, provider => provider.UseNestedSets());
                 break;
             case "MariaDb":
-                options.UseMySql(connection, DatabaseTestTargets.MariaDb);
+                options.UseMySql(connection, DatabaseTestTargets.MariaDb, provider => provider.UseNestedSets());
                 break;
             case "PostgreSql":
-                options.UseNpgsql(connection);
+                options.UseNpgsql(connection, provider => provider.UseNestedSets());
                 break;
             case "SqlServer":
-                options.UseSqlServer(connection);
+                options.UseSqlServer(connection, provider => provider.UseNestedSets());
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(engine));

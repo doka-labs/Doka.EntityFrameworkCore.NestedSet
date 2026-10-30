@@ -23,6 +23,7 @@ public abstract class PostCommitOutcomeTests : ProviderTest
         var tree = setup
             .NestedSet<OrderingNode>()
             .ForScope(1);
+
         var treeId = Guid.NewGuid();
         await tree.InsertRootAsync(
             new OrderingNode

@@ -107,18 +107,22 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels.PostgreSql
 
             var index = runtimeEntityType.AddIndex(
                 new[] { scope, treeId, left });
+            index.AddAnnotation("Relational:Filter", "\"TreeId\" IS NOT NULL");
             index.AddAnnotation("Relational:Name", "IX_NestedSet_991822CA708785BD40B48C3D");
 
             var index0 = runtimeEntityType.AddIndex(
                 new[] { scope, treeId, right });
+            index0.AddAnnotation("Relational:Filter", "\"TreeId\" IS NOT NULL");
             index0.AddAnnotation("Relational:Name", "IX_NestedSet_509B21AF483DD2E4C9EBA164");
 
             var index1 = runtimeEntityType.AddIndex(
                 new[] { scope, treeId, parentId, position });
+            index1.AddAnnotation("Relational:Filter", "\"TreeId\" IS NOT NULL");
             index1.AddAnnotation("Relational:Name", "IX_NestedSet_4E7A82A2AB7075CD2EB0F775");
 
             var index2 = runtimeEntityType.AddIndex(
                 new[] { scope, treeId, parentId, name, id });
+            index2.AddAnnotation("Relational:Filter", "\"TreeId\" IS NOT NULL");
             index2.AddAnnotation("Relational:Name", "IX_NestedSet_5E8397B91CAC71CA724524FC");
 
             return runtimeEntityType;
@@ -140,7 +144,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels.PostgreSql
             runtimeEntityType.AddAnnotation("Doka:NestedSet:Position", "Position");
             runtimeEntityType.AddAnnotation("Doka:NestedSet:Right", "Right");
             runtimeEntityType.AddAnnotation("Doka:NestedSet:Scope", "Scope");
+            runtimeEntityType.AddAnnotation("Doka:NestedSet:ScopeUnicodeScalarLength", true);
             runtimeEntityType.AddAnnotation("Doka:NestedSet:TreeId", "TreeId");
+            runtimeEntityType.AddAnnotation("Doka:NestedSet:TreeIdUnicodeScalarLength", false);
             runtimeEntityType.AddAnnotation("Doka:NestedSet:TreeRegistryEntity", "Doka.EntityFrameworkCore.NestedSet.TreeRegistry:Doka.EntityFrameworkCore.NestedSet.Tests.CompiledFolder");
             runtimeEntityType.AddAnnotation("Relational:FunctionName", null);
             runtimeEntityType.AddAnnotation("Relational:Schema", null);

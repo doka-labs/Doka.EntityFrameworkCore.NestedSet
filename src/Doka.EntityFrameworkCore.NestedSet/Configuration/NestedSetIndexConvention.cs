@@ -7,23 +7,23 @@ internal sealed class NestedSetIndexConvention : IEntityTypePrimaryKeyChangedCon
     private readonly ISqlGenerationHelper _sql;
 
     /// <summary>The registered provider identity controlling collation support.</summary>
-    private readonly string _providerName;
+    private readonly NestedSetProviderCapabilities _provider;
 
     /// <summary>The provider service resolving implicit conversions from configured store facets.</summary>
     private readonly ITypeMappingSource _typeMappings;
 
     /// <summary>Creates the hierarchy convention for one provider service graph.</summary>
     /// <param name="sql">The provider's SQL identifier service.</param>
-    /// <param name="providerName">The official registered database provider name.</param>
+    /// <param name="provider">The selected native provider implementation.</param>
     /// <param name="typeMappings">The provider's effective property-mapping service.</param>
     internal NestedSetIndexConvention(
         ISqlGenerationHelper sql,
-        string providerName,
+        NestedSetProviderCapabilities provider,
         ITypeMappingSource typeMappings
     )
     {
         _sql = sql;
-        _providerName = providerName;
+        _provider = provider;
         _typeMappings = typeMappings;
     }
 
@@ -35,7 +35,7 @@ internal sealed class NestedSetIndexConvention : IEntityTypePrimaryKeyChangedCon
         IConventionContext<IConventionKey> context
     ) =>
         // WHY: Waiting solely for finalization would add indexes after provider-specific index-length budgeting.
-        NestedSetIndexes.Reconcile(entityTypeBuilder.Metadata);
+        NestedSetIndexes.Reconcile(entityTypeBuilder.Metadata, provider: _provider);
 
     /// <inheritdoc />
     public void ProcessModelFinalizing(
@@ -52,10 +52,12 @@ internal sealed class NestedSetIndexConvention : IEntityTypePrimaryKeyChangedCon
 
             // WHY: Late application indexes can replace equivalent convention-owned paths without duplicate DDL.
             var mapping = NestedSetModelValidator.Validate(entity, true)!;
-            NestedSetIndexes.Reconcile(entity);
+            NestedSetAncestorIndex.Reconcile(entity, mapping, _sql, _provider, _typeMappings);
+            NestedSetIndexes.Reconcile(entity, provider: _provider);
+            NestedSetAncestorIndex.RemoveObsoleteProperties(entity);
             NestedSetConstraints.Reconcile(entity, mapping, _sql);
         }
 
-        NestedSetCollations.Capture(modelBuilder.Metadata, _providerName, _typeMappings);
+        NestedSetCollations.Capture(modelBuilder.Metadata, _provider, _typeMappings);
     }
 }

@@ -4,6 +4,7 @@ import argparse
 import base64
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -13,7 +14,9 @@ import zipfile
 from pathlib import Path
 from urllib.parse import unquote
 
-SHIPPING_PACKAGES = ("Doka.NestedSet", "Doka.EntityFrameworkCore.NestedSet")
+sys.path.insert(0, str(Path(__file__).resolve().parent / "release"))
+from common import PACKAGES as SHIPPING_PACKAGES
+from packages import target_framework
 TOOL_VERSION = "4.1.5"
 MANIFEST_PATH = Path("_manifest/spdx_2.2/manifest.spdx.json")
 FORBIDDEN_PREFIXES = ("xunit", "nunit", "mstest", "testcontainers", "coverlet", "benchmarkdotnet")
@@ -68,14 +71,15 @@ def package_metadata(archive):
 
 
 def package_dependencies(archive):
-    """Read the shipping package's net10.0 dependency declarations from the actual candidate bytes."""
+    """Read the source line's framework dependency declarations from actual candidate bytes."""
+    framework = target_framework()
     dependencies = package_metadata(archive).find("{*}dependencies")
     if dependencies is None:
         return {}
 
     groups = dependencies.findall("{*}group")
-    require(not groups or len(groups) == 1 and groups[0].get("targetFramework") == "net10.0",
-            "Shipping nuspec must declare the supported net10.0 dependency group")
+    require(not groups or len(groups) == 1 and groups[0].get("targetFramework") == framework,
+            f"Shipping nuspec must declare the supported {framework} dependency group")
     declarations = (groups[0] if groups else dependencies).findall("{*}dependency")
     result = {item.attrib["id"].lower(): item.attrib["version"] for item in declarations}
     require(len(result) == len(declarations), "Duplicate dependency in shipping nuspec")
@@ -85,7 +89,7 @@ def package_dependencies(archive):
 
 def verify_shipping_bindings(assets, archives, cache=None):
     """Bind each restored local shipping identity, dependency declaration and SHA512 to its actual candidate."""
-    targets = assets["targets"]["net10.0"]
+    targets = assets["targets"][target_framework()]
     libraries = assets["libraries"]
 
     for name, archive in archives.items():
@@ -121,7 +125,7 @@ def verify_shipping_bindings(assets, archives, cache=None):
 
 
 def shipping_archives(package_dir, version):
-    """Require exactly the two candidate shipping identities at the requested version."""
+    """Require the complete candidate shipping inventory at the requested version."""
     result = {}
 
     for archive in sorted(package_dir.glob("*.nupkg")):
@@ -131,21 +135,22 @@ def shipping_archives(package_dir, version):
         require(actual_version == version, f"Candidate version mismatch for {name}: {actual_version}")
         result[name] = archive.resolve()
 
-    require(set(result) == set(SHIPPING_PACKAGES), "Both shipping NuGet archives are required")
+    require(set(result) == set(SHIPPING_PACKAGES), "All shipping NuGet archives are required")
 
     return result
 
 
 def dependency_closure(assets, name, version):
     """Resolve the actual package closure from one isolated consumer's NuGet assets file."""
-    require(set(assets["targets"]) == {"net10.0"}, "Expected exactly the net10.0 consumer target")
-    dependencies = assets["project"]["frameworks"]["net10.0"]["dependencies"]
+    framework = target_framework()
+    require(set(assets["targets"]) == {framework}, f"Expected exactly the {framework} consumer target")
+    dependencies = assets["project"]["frameworks"][framework]["dependencies"]
     require(set(dependencies) == {name}, "Consumer must reference only its shipping package")
     require(dependencies[name]["version"] == f"[{version}, {version}]", "Consumer version must be exact")
-    require(not assets["project"]["restore"]["frameworks"]["net10.0"]["projectReferences"],
+    require(not assets["project"]["restore"]["frameworks"][framework]["projectReferences"],
             "Consumer must not contain project references")
 
-    target = assets["targets"]["net10.0"]
+    target = assets["targets"][framework]
     libraries = assets["libraries"]
     require(set(target) == set(libraries), "Restore target and package library inventory differ")
     resolved = {}
@@ -224,10 +229,11 @@ def verify_vendor(report):
             "Vendor report did not validate exactly one unmodified shipping archive")
 
 
-def run_logged(arguments, log, cwd):
-    """Keep complete native-tool output and fail visibly when a command fails."""
+def run_logged(arguments, log, cwd, environment=None):
+    """Keep native-tool output and optionally isolate a restore without changing the tool environment."""
     with log.open("w", encoding="utf-8") as stream:
-        result = subprocess.run(arguments, cwd=cwd, stdout=stream, stderr=subprocess.STDOUT, check=False)
+        result = subprocess.run(arguments, cwd=cwd, env=environment,
+                                stdout=stream, stderr=subprocess.STDOUT, check=False)
 
     if result.returncode:
         raise RuntimeError(f"Command failed ({result.returncode}); see {log}")
@@ -241,7 +247,7 @@ def prepare_consumer(work, archive, name, version, feed, repo):
     project = ET.Element("Project", {"Sdk": "Microsoft.NET.Sdk"})
     properties = ET.SubElement(project, "PropertyGroup")
 
-    for key, value in {"TargetFramework": "net10.0", "TreatWarningsAsErrors": "true", "NuGetAudit": "true",
+    for key, value in {"TargetFramework": target_framework(repo), "TreatWarningsAsErrors": "true", "NuGetAudit": "true",
                        "NuGetAuditMode": "all", "NuGetAuditLevel": "low"}.items():
         ET.SubElement(properties, key).text = value
 
@@ -260,10 +266,18 @@ def prepare_consumer(work, archive, name, version, feed, repo):
 
     ET.SubElement(ET.SubElement(mapping, "packageSource", {"key": "nuget"}), "package", {"pattern": "*"})
     ET.ElementTree(config).write(consumer / "NuGet.Config", encoding="utf-8", xml_declaration=True)
+    environment = os.environ.copy()
+    # WHY: Producer output/cache/CPM overrides can redirect assets out of this consumer's normal obj folder
+    # or repair its package graph. Keep the vendor scratch/runtime settings, but restore only this candidate.
+    for key in ("ArtifactsPath", "UseArtifactsOutput", "BaseIntermediateOutputPath", "BaseOutputPath",
+                "MSBuildProjectExtensionsPath", "DirectoryPackagesPropsPath", "RestorePackagesPath",
+                "NestedSetReleaseLockRoot", "NuGetLockFilePath", "RestoreLockedMode"):
+        environment.pop(key, None)
+
     run_logged(["dotnet", "restore", "Consumer.csproj", "--configfile", "NuGet.Config", "--packages",
                 str(work / "packages"), "--disable-parallel", "--disable-build-servers", "-m:1", "/nodeReuse:false",
                 "-p:ImportDirectoryBuildProps=false", "-p:ImportDirectoryBuildTargets=false",
-                "-p:ManagePackageVersionsCentrally=false"], archive / "restore.log", consumer)
+                "-p:ManagePackageVersionsCentrally=false"], archive / "restore.log", consumer, environment)
 
     return consumer
 

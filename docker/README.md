@@ -30,9 +30,11 @@ Arm emulation, including Docker Desktop on Apple Silicon, is unqualified and uns
 local startup does not establish support. Compose imposes no CPU or memory limits. Allocate enough Docker memory for
 the engines you start, especially SQL Server.
 
-The shared SQL Server baseline is 2022 CU27 on Ubuntu 22.04, selected on
-2026-10-09. Testcontainers, benchmarks, and Compose consume the same digest-pinned
-reference. Local ARM test runs keep SQL Server database cases visible as runtime
+The shared SQL Server baseline is 2022 CU27-GDR1 on Ubuntu 22.04, refreshed on
+2026-10-26 within the 2022 line selected on 2026-10-09. Testcontainers,
+benchmarks, and Compose consume the same digest-pinned reference. MySQL stays
+on the 8.4 LTS line at 8.4.13; MariaDB 11.8.9 and PostgreSQL 17.11 retain their
+tags with refreshed digests. Local ARM test runs keep SQL Server database cases visible as runtime
 skips before container startup; metadata and unit tests continue to run. Native
 Linux x64 CI must run every applicable SQL Server case, and unsupported CI
 platforms fail. See the
@@ -106,7 +108,7 @@ CREATE DATABASE nestedset;
 
 MySQL and MariaDB also provide three fixed databases for the
 [independent console samples](../samples/README.md): `nestedset_sample_filesystem`,
-`nestedset_sample_kpis`, and `nestedset_sample_usergroups`. They use the configured
+`nestedset_sample_signal_lab`, and `nestedset_sample_usergroups`. They use the configured
 application account with database-specific grants. Sample databases use
 `utf8mb4_bin` to keep the small ASCII demonstration datasets' comparison rules
 explicit on both engines.

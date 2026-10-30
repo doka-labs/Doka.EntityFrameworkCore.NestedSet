@@ -346,8 +346,7 @@ public sealed class TrackedIdentityCaptureTests
         internal CountedContext() : base(
             new DbContextOptionsBuilder<CountedContext>()
                 .ConfigureTestWarnings()
-                .UseSqlite("Data Source=:memory:")
-                .UseNestedSets()
+                .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
                 .Options) { }
 
         /// <inheritdoc />
@@ -382,8 +381,7 @@ public sealed class TrackedIdentityCaptureTests
         internal BinaryContext() : base(
             new DbContextOptionsBuilder<BinaryContext>()
                 .ConfigureTestWarnings()
-                .UseSqlite("Data Source=:memory:")
-                .UseNestedSets()
+                .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
                 .Options) { }
 
         /// <inheritdoc />

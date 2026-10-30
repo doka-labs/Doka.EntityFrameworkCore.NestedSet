@@ -3,6 +3,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Samples.UserGroups;
 /// <summary>Represents an employee in a tenant-owned supervisor hierarchy.</summary>
 public sealed class User
 {
+    /// <summary>Gets or sets whether this user is visible in the authorized sample view.</summary>
+    public bool Visible { get; set; } = true;
+
     /// <summary>Gets or sets the generated employee key.</summary>
     public int Id { get; set; }
 

@@ -12,6 +12,7 @@ public abstract partial class OrderingRefreshScaleTests
                 typeof(byte), typeof(sbyte), typeof(short), typeof(ushort),
                 typeof(int), typeof(uint), typeof(long), typeof(ulong),
             ];
+
             foreach (var type in types)
             {
                 yield return new TheoryDataRow<Type>(type);

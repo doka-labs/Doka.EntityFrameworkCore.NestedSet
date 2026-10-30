@@ -1,10 +1,151 @@
 # Changelog
 
 All notable changes to this project are documented here. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and released versions
-follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version review follows
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html), with the owner's
+explicit one-time `10.1.0` exception for the provider-package/registration break
+below. The package major follows the .NET family; `11.x` is reserved for .NET 11.
+This exception does not authorize other breaking minor releases.
 
-## Unreleased
+## 10.1.0 (2026-10-29)
+
+Stable contract for all six NestedSet packages on .NET 10 and EF Core 10.
+The provider-package and registration transition below is explicitly breaking;
+follow the [upgrade guide](docs/upgrading-provider-packages.md) when updating
+from `10.0.0`. The shipped API baselines record the `10.1.0` contract, while SDK
+package validation retains the published `10.0.0` compatibility baseline and
+the narrowly approved registration-removal exception.
+
+### Added
+
+- Support independently qualified framework release lines through the existing
+  parallel six-package pipeline. Keep `main`/10 active and the registered
+  maintenance/preview lines inactive; reuse protected publication, retain exact
+  candidate bytes, promote stable Latest monotonically, and service active
+  branches with their own audits, CI and dependency updates. See
+  [release lines](docs/operations/release-lines.md).
+- Compose multiple subtrees, strict ancestors and ancestors-or-self through the
+  existing scoped, unscoped and exact-tree bindings. Preserve source occurrences,
+  mapped distances, application filters and mixed-direction composition.
+- Filter complete visible paths, any visible ancestor or the nearest candidate
+  before its value/path checks, without preliminary entity loads or fallback to
+  a farther matching owner.
+- Opt into a generated nonleaf property and additive ancestor index with
+  `HasAncestorIndex()`. Use eligible directly bound public Doka source-binding
+  and ordered-join APIs through the `.MySql` adapter. See the
+  [capability and workload table](docs/configuration.md#optional-ancestor-index).
+- Report schema-only ancestor-index reads on adapters without an optimized
+  reader through filterable EF diagnostics, once per actual context.
+- Extend the independently synthetic SignalLab and UserGroups samples with
+  connection availability, typed tags, event aggregation, global/membership roles, ambiguity evidence and
+  bounded supervisor chains. Complete report/chain reads share one snapshot.
+
+### Changed
+
+- Use a self-contained fictional acquisition model in SignalLab, its tests,
+  benchmarks and migrations. Normalize distinct pulse, sweep and burst event
+  formats through explicit projections; retain independent event identity,
+  path/owner semantics, streaming results and fixed allocation/work contracts.
+  Historical measurements remain labeled with their original source scope.
+- Split native integration into `.MySql`, `.Postgres`, `.Sqlite`, and `.SqlServer`
+  shipping packages while retaining one common EF hierarchy engine. Each adapter
+  owns its native SQL, model/index conventions, registry transport, and query
+  integration through direct provider dependencies.
+- **Breaking:** install the selected NestedSet adapter and register
+  `UseNestedSets()` inside its native provider callback. Remove the former
+  `DbContextOptionsBuilder.UseNestedSets()` calls. Model mappings and public
+  hierarchy operations stay common. See the [upgrade guide](docs/upgrading-provider-packages.md)
+  and [D-020](docs/decisions/D-020-provider-owned-runtime-packages.md).
+- Bind each adapter to the exact common EF package version it was built with.
+  Update NestedSet adapters together; their private integration contract is not
+  a promise of compatibility with another kernel patch.
+- Reuse request-free supervisor projections while preserving per-request
+  authorization and deferred source values. Replace optional reflected Doka
+  feature discovery and its options/assembly lookup caches with the MySql
+  adapter's directly typed Doka 10.6.2 APIs and exact method identities.
+- Refresh the qualification graph to published Doka 10.6.3 and SafeMigrations
+  10.6.1 and EF Core 10.0.14. Preserve shipping
+  EF compatibility ranges and database LTS lines. The newer local adapter
+  contract, dated local evidence and fresh published-graph qualification are explicit in the
+  [qualification boundary](docs/qualification/provider-migrations.md).
+- Refresh the existing MySQL 8.4.13 and MariaDB 11.8.9 image digests from their
+  official registries. Pin CodeQL SARIF uploader 4.39.1 to its release commit
+  rather than the annotated tag object. Retain dated runtime evidence separately
+  from the updated package and image declarations.
+- Update property testing to FsCheck 3.6.0, Test SDK and Code Coverage to
+  18.11.0, and the qualification-only PKCS dependency to 10.0.14 for .NET 10.
+- Refresh MySQL to 8.4.13 and SQL Server 2022 to CU27-GDR1; refresh the existing
+  MariaDB 11.8.9 and PostgreSQL 17.11 image digests. Keep the supported engine
+  lines and update the CodeQL SARIF uploader to 4.39.1.
+- Tag public composition queries on SQL Server and plan only those commands with
+  `OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 1)` through an adapter-owned command
+  interceptor. In the measured capacity profiles, plans cached for one selected
+  source or rebuilt per worker thread no longer repeated population work for
+  later sources; neither hint fixes a physical plan. Ordinary
+  hierarchy reads, mutations and other adapters are unchanged. See
+  [SQL Server composition plans](docs/performance.md#sql-server-composition-plans).
+- Declare the SQL Server adapter's PKCS security floor as `9.0.21` without an
+  arbitrary upper bound, allowing applications to use newer compatible framework
+  packages. The common libraries retain no SQL Client dependency.
+
+### Fixed
+
+- Fence SQL Server's row-independent long-path failures behind an `OFFSET 0`
+  boundary and test each path through a scalar `TOP(1)` lookup,
+  and separate unresolved supervisor markers from complete
+  unique-person evidence. The UserGroups sample fences its supervisor
+  witnesses behind `OFFSET 0` on SQL Server. For single-group rules it groups
+  each origin's marker with its witness occurrences instead of joining origins
+  to witnesses. Guard actual iterator
+  output and pre-filter reads against cardinality-derived budgets; retain native
+  x64 qualification.
+- Project SQL Server's nearest decision once in equivalent descending coordinate
+  order. Refresh fixture statistics individually with unchanged `FULLSCAN` accuracy and deadlines;
+  retain the explicit native capacity qualification boundary.
+- Drive SQL Server's strict ancestors from visible nonleaf owners into one
+  fenced `Left` range each, and fence independent fact
+  selections by node key before inclusive ancestor ranges. Preserve owned
+  auto-includes, collection DTO identifiers and equal-bound owner occurrences
+  without a global owner window.
+- Select PostgreSQL's nearest-owner decision once while preserving `Depth`
+  ordering, rejection without fallback and complete-path validation. Guard
+  broad payload joins with actual native work to prevent quadratic rescans.
+- Include the existing Npgsql provider's PostgreSQL SPDX license in dependency
+  review while retaining vulnerability checks and exact package exceptions.
+- Keep exact-candidate consumer inputs as project templates so automatic NuGet
+  dependency submission restores only runnable projects. Materialize the same
+  reviewed projects for isolated package qualification without weakening
+  candidate-version, dependency-closure or archive-byte checks.
+- Preserve portable complete-path proofs through exact visible parent existence
+  per child.
+- Correct shared capacity setup at SQL Server's default compatibility level,
+  batch large payload seeds by primary key, and enable snapshot isolation in
+  indexed SignalLab fixtures. Check cancellation forwarding at the command and
+  reader boundaries rather than requiring a driver-specific exception token.
+- Separate instrumented plan replay from ordinary query deadlines, reject
+  interrupted MySQL plans, and retain failed deep-query SQL and estimated plans.
+  Result, allocation and native-work assertions remain unchanged. See the
+  [CI correction evidence](docs/qualification/query-composition.md#ci-correction-qualification-2026-10-28)
+  for executed checks and remaining native-platform limits.
+- Bound eligible strict ancestor owners by a shared selected source and the
+  existing structural index, without requiring generated ancestor schema.
+  Complete matched identities before payload hydration on known MySQL for
+  repeated direction changes; retain source-only binding on MariaDB.
+  Preserve the complete walk bag through the required public provider APIs.
+  Preserve portable strategies for ineligible sources, model filters, exact identities,
+  containment, and mapped endpoint checks.
+- Keep supervisor source selection selective through necessary membership
+  witnesses, then rejoin the original authorized users and groups before
+  candidate decisions. Preserve membership validity, visibility, source status,
+  and occurrence evidence.
+- Count supplementary characters correctly for known Doka/Npgsql character
+  mappings after conversion, and reject malformed surrogate sequences before
+  registry commands. Preserve binary byte limits and conservative custom mappings.
+- Recognize assigned property-bag keys using their raw EF sentinel. Failed single
+  and bulk insertions restore absent dictionary keys separately from present
+  null/default values while retaining unrelated application payload.
+- Preserve overflow-safe nonleaf classification at `Int64.MaxValue`, including
+  representable malformed split intervals, without changing mutation arithmetic.
 
 ## 10.0.0 (2026-10-09)
 
@@ -146,7 +287,7 @@ published yet.
   PostgreSQL, SQLite, and SQL Server.
 - Add optional SafeMigrations 10.4.5 integration tests for MySQL/MariaDB,
   PostgreSQL, and SQLite without making SafeMigrations a runtime prerequisite.
-- Add runnable folder, KPI, and tenant user-group samples, including role and
+- Add runnable hierarchy, aggregation, and tenant user-group samples, including role and
   privilege relationships owned by the application.
 
 ### Performance and reliability

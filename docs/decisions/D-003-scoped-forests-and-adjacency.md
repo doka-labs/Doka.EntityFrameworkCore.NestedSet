@@ -18,7 +18,7 @@ doka-profile-version: "1.0"
 
 ## Context and Problem Statement
 
-Folders, KPI trees, organizational units, and group hierarchies need several
+Folders, instrument networks, organizational units, and group hierarchies need several
 independent trees in one entity table. Bounds are local coordinates and may be
 identical in different trees. A tenant or volume is a separate application
 partition and must not be overloaded as tree identity. Queries from an

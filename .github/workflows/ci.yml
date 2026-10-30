@@ -1,20 +1,62 @@
 name: CI
+run-name: ${{ inputs.maintenance && format('maintenance {0}', inputs.schedule-correlation) || github.event.pull_request.title || github.event.head_commit.message || 'CI' }}
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, 'maintenance/**', 'preview/**']
   workflow_dispatch:
+    inputs:
+      maintenance:
+        description: Execute this branch's qualification after exact coordinator dispatch.
+        type: boolean
+        default: false
+      schedule-correlation:
+        description: Coordinator run and attempt identity.
+        type: string
+        default: ''
+      schedule-source-sha:
+        description: Exact protected branch head frozen by the coordinator.
+        type: string
+        default: ''
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}-${{ inputs.maintenance && inputs.schedule-correlation || 'normal' }}
   cancel-in-progress: true
 
 jobs:
+  schedule-identity:
+    name: schedule-identity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout branch-native guard
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate the exact scheduled source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_MAINTENANCE: ${{ inputs.maintenance || false }}
+          INPUT_CORRELATION: ${{ inputs.schedule-correlation }}
+          INPUT_SOURCE_SHA: ${{ inputs.schedule-source-sha }}
+        run: python3 -m eng.release.maintenance guard --workflow ci.yml
+
+      - name: Validate the registered pull request base
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -m eng.release.maintenance check-pr
+
   source-quality:
     name: C# style and unused imports
+    needs: schedule-identity
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
@@ -42,6 +84,7 @@ jobs:
 
   engineering-tests:
     name: Engineering regression tests
+    needs: schedule-identity
     runs-on: ubuntu-24.04
     timeout-minutes: 15
 
@@ -57,8 +100,12 @@ jobs:
       - name: Run Dependabot diagnostic regressions
         run: python3 -m unittest discover -s eng/ci-tests -p 'test_*.py'
 
+      - name: Check active-line dependency targets
+        run: python3 -m eng.release.maintenance check-dependencies
+
   build:
     name: Release build and NuGet packages
+    needs: schedule-identity
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
@@ -100,7 +147,7 @@ jobs:
             --output artifacts/ci-package-manifest.json
 
       - name: Retain NuGet packages
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ci-packages-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -119,7 +166,7 @@ jobs:
 
       - name: Retain Dependabot lockfile diagnostic
         if: always() && steps.dependabot-diagnostic.outcome == 'success'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dependabot-lockfile-patch-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/dependabot-lockfiles.patch
@@ -128,6 +175,7 @@ jobs:
 
   tests:
     name: ${{ matrix.name }}
+    needs: schedule-identity
     runs-on: ubuntu-24.04
     timeout-minutes: 130
 
@@ -144,14 +192,36 @@ jobs:
           - id: ef-unit
             name: EF Core unit tests
             project: tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests.csproj
+            filter: Category!=Allocation
             docker: false
           - id: benchmark-contracts
             name: Benchmark contract tests
             project: tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests.csproj
             docker: false
           - id: mysql
-            name: MySQL and MariaDB integration tests
+            name: MySQL integration tests
             project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
+            filter: FullyQualifiedName!~.MariaDb.&Lane!=Allocation
+            docker: true
+          - id: mariadb
+            name: MariaDB integration tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
+            filter: FullyQualifiedName~.MariaDb.&Lane!=Allocation
+            docker: true
+          - id: mysql-capacity
+            name: MySQL capacity tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
+            filter: FullyQualifiedName!~.MariaDb.&Lane=Allocation&FullyQualifiedName~.CapacityTests.
+            docker: true
+          - id: mariadb-capacity
+            name: MariaDB capacity tests
+            project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
+            filter: FullyQualifiedName~.MariaDb.&Lane=Allocation&FullyQualifiedName~.CapacityTests.
+            docker: true
+          - id: mysql-allocation
+            name: MySQL and MariaDB allocation measurements
+            project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
+            filter: Lane=Allocation&FullyQualifiedName!~.CapacityTests.
             docker: true
           - id: postgresql
             name: PostgreSQL integration tests
@@ -197,20 +267,43 @@ jobs:
         if: matrix.docker
         run: docker info
 
+      - name: Measure Unit allocations without instrumentation
+        if: matrix.id == 'ef-unit'
+        run: >-
+          dotnet test "${{ matrix.project }}" --configuration Release --no-build --no-restore
+          --filter "Category=Allocation" --logger "trx;LogFileName=allocations.trx"
+          --results-directory artifacts/ci-tests/${{ matrix.id }}
+
       - name: Run tests with coverage
         env:
           DOKA_NESTEDSET_QUERY_PLAN_DIR: ${{ github.workspace }}/artifacts/ci-tests/${{ matrix.id }}/query-plans
+          TEST_FILTER: ${{ matrix.filter }}
+        shell: bash
+        run: |
+          # WHY: Instrumentation changes allocation costs and collectible-module lifetimes; Unit measurement ran above.
+          # Cells sharing one project use complementary filters, so each of its tests still runs exactly once.
+          filter=()
+          if [[ -n "$TEST_FILTER" ]]; then
+            filter=(--filter "$TEST_FILTER")
+          fi
+
+          dotnet test "${{ matrix.project }}" --configuration Release --no-build --no-restore \
+            "${filter[@]}" --settings eng/coverage.runsettings --collect:"Code Coverage" \
+            --logger "trx;LogFileName=coverage.trx" --results-directory artifacts/ci-tests/${{ matrix.id }}
+
+      - name: Verify complementary Unit result partitions
+        if: matrix.id == 'ef-unit'
         run: >-
-          dotnet test "${{ matrix.project }}" --configuration Release --no-build --no-restore
-          --settings eng/coverage.runsettings --collect:"Code Coverage" --logger trx
-          --results-directory artifacts/ci-tests/${{ matrix.id }}
+          python3 -m eng.release.qualification
+          --verify-results artifacts/ci-tests/ef-unit
+          --project Doka.EntityFrameworkCore.NestedSet.Unit.Tests
 
       - name: Require this project's coverage report
         run: test -n "$(find artifacts/ci-tests/${{ matrix.id }} -type f -name '*.cobertura.xml' -print -quit)"
 
       - name: Retain test, coverage, and query-plan reports
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ci-tests-${{ matrix.id }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/ci-tests/${{ matrix.id }}
@@ -219,13 +312,14 @@ jobs:
 
   samples:
     name: SQLite sample / ${{ matrix.sample }}
+    needs: schedule-identity
     runs-on: ubuntu-24.04
     timeout-minutes: 15
 
     strategy:
       fail-fast: false
       matrix:
-        sample: [FileSystem, Kpis, UserGroups]
+        sample: [FileSystem, SignalLab, UserGroups]
 
     steps:
       - name: Checkout
@@ -266,7 +360,7 @@ jobs:
           persist-credentials: false
 
       - name: Download all test reports from this attempt
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: ci-tests-*-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/ci-tests
@@ -277,7 +371,7 @@ jobs:
   repository-qualification:
     name: Repository qualification
     if: always()
-    needs: [source-quality, engineering-tests, build, tests, samples, coverage]
+    needs: [schedule-identity, source-quality, engineering-tests, build, tests, samples, coverage]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
 
@@ -285,6 +379,7 @@ jobs:
       - name: Require every qualification job to succeed
         env:
           RESULTS: >-
+            schedule-identity=${{ needs.schedule-identity.result }}
             source-quality=${{ needs.source-quality.result }}
             engineering-tests=${{ needs.engineering-tests.result }}
             build=${{ needs.build.result }}

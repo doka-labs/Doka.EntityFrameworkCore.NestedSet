@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup Label="Existing sample source" Condition="'$(RepositoryRoot)' == ''">
+    <RepositoryRoot>$(MSBuildThisFileDirectory)../../..</RepositoryRoot>
+  </PropertyGroup>
+
+  <ItemGroup Label="Exact candidate roots">
+    <PackageReference Include="Doka.EntityFrameworkCore.NestedSet.MySql" Version="[$(CandidateVersion)]"/>
+    <PackageReference Include="Doka.EntityFrameworkCore.NestedSet.Sqlite" Version="[$(CandidateVersion)]"/>
+  </ItemGroup>
+
+  <ItemGroup Label="Actual sample without source-project dependencies">
+    <!-- WHY: The release probe exercises the maintained sample against archives, without duplicating its implementation. -->
+    <Compile Include="$(RepositoryRoot)/samples/FileSystem/**/*.cs"
+             Exclude="$(RepositoryRoot)/samples/FileSystem/**/obj/**/*.cs;$(RepositoryRoot)/samples/FileSystem/**/bin/**/*.cs"
+             Link="FileSystem/%(RecursiveDir)%(Filename)%(Extension)"/>
+    <Compile Include="$(RepositoryRoot)/samples/Shared/*.cs" Link="Shared/%(Filename)%(Extension)"/>
+  </ItemGroup>
+</Project>

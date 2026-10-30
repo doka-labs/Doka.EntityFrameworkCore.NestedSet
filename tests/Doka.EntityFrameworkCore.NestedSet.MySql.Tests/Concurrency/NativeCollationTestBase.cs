@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore.Storage;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
 
 /// <summary>Exercises the Doka family's native Scope collation and padding semantics.</summary>
@@ -133,11 +135,20 @@ public abstract class NativeCollationTestBase : ProviderTest
     {
         // Arrange
         var probe = new NativeGuardProbe();
+
+        // WHY: This scenario tests the database default itself. Other compatibility models legitimately change
+        // their database's default collation, so sharing only distinct tables would make this premise order-dependent.
+        // The isolated schema still reuses the assembly-owned server container.
+        await using var database = await TestDatabase.CreateAsync(Engine);
         await using BroadScopeContext context = convertedKeys
-            ? await _fixture.CreateContextAsync<ConvertedUnknownDatabaseScopeContext>(
-                Engine, static options => new ConvertedUnknownDatabaseScopeContext(options), probe)
-            : await _fixture.CreateContextAsync<UnknownDatabaseScopeContext>(
-                Engine, static options => new UnknownDatabaseScopeContext(options), probe);
+            ? await CreateUnknownDatabaseContextAsync<ConvertedUnknownDatabaseScopeContext>(
+                database,
+                static options => new ConvertedUnknownDatabaseScopeContext(options),
+                probe)
+            : await CreateUnknownDatabaseContextAsync<UnknownDatabaseScopeContext>(
+                database,
+                static options => new UnknownDatabaseScopeContext(options),
+                probe);
 
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var persistedScope = new BroadScope($"GUARD-UNKNOWN-DEFAULT-{root}");
@@ -257,6 +268,43 @@ public abstract class NativeCollationTestBase : ProviderTest
             .Select(row => (row.Scope.Value, row.TreeId, row.Revision, row.Lifecycle)).ToArray();
     }
 
+    /// <summary>Creates the unknown-facet model in a schema whose native default no other suite can change.</summary>
+    /// <typeparam name="TContext">The exact normal or converted-key compatibility model.</typeparam>
+    /// <param name="database">The independently owned schema on the existing assembly server.</param>
+    /// <param name="create">Constructs the exact mapped context from its provider options.</param>
+    /// <param name="probe">The observer for the guard operation.</param>
+    /// <returns>The ready context, whose lifetime transfers to the caller.</returns>
+    private async Task<TContext> CreateUnknownDatabaseContextAsync<TContext>(
+        TestDatabase database,
+        Func<DbContextOptions<TContext>, TContext> create,
+        NativeGuardProbe probe
+    )
+        where TContext : BroadScopeContext
+    {
+        await using var source = database.CreateContext();
+        var options = new DbContextOptionsBuilder<TContext>(
+                ModelCompatibilityDatabase.Options<TContext>(Engine, source.Database.GetConnectionString()!))
+            .AddInterceptors(probe)
+            .Options;
+
+        var context = create(options);
+
+        try
+        {
+            await context
+                .GetService<IRelationalDatabaseCreator>()
+                .CreateTablesAsync(CancellationToken.None);
+
+            return context;
+        }
+        catch
+        {
+            await context.DisposeAsync();
+
+            throw;
+        }
+    }
+
     /// <summary>Selects distinct cached models for inherited collations and verified/scalar key transport.</summary>
     /// <param name="engine">The immutable engine selected by the concrete suite fixture.</param>
     /// <param name="convertedKeys">Whether to exercise the converted NodeKey transport.</param>
@@ -274,15 +322,23 @@ public abstract class NativeCollationTestBase : ProviderTest
         {
             return convertedKeys
                 ? await _fixture.CreateContextAsync<ConvertedInheritedNoPadScopeContext>(
-                    engine, static options => new ConvertedInheritedNoPadScopeContext(options), probe)
+                    engine,
+                    static options => new ConvertedInheritedNoPadScopeContext(options),
+                    probe)
                 : await _fixture.CreateContextAsync<InheritedNoPadScopeContext>(
-                    engine, static options => new InheritedNoPadScopeContext(options), probe);
+                    engine,
+                    static options => new InheritedNoPadScopeContext(options),
+                    probe);
         }
 
         return convertedKeys
             ? await _fixture.CreateContextAsync<ConvertedInheritedBinaryScopeContext>(
-                engine, static options => new ConvertedInheritedBinaryScopeContext(options), probe)
+                engine,
+                static options => new ConvertedInheritedBinaryScopeContext(options),
+                probe)
             : await _fixture.CreateContextAsync<InheritedBinaryScopeContext>(
-                engine, static options => new InheritedBinaryScopeContext(options), probe);
+                engine,
+                static options => new InheritedBinaryScopeContext(options),
+                probe);
     }
 }

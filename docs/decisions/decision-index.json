@@ -17,11 +17,13 @@
     {
       "id": "D-002",
       "title": "Keep a small core separate from EF persistence",
-      "status": "implemented",
+      "status": "superseded",
       "date": "2026-09-19",
       "path": "docs/decisions/D-002-package-boundaries.md",
       "supersedes": [],
-      "supersededBy": [],
+      "supersededBy": [
+        "D-020"
+      ],
       "amends": [],
       "amendedBy": []
     },
@@ -184,7 +186,9 @@
       "supersedes": [],
       "supersededBy": [],
       "amends": [],
-      "amendedBy": []
+      "amendedBy": [
+        "D-021"
+      ]
     },
     {
       "id": "D-017",
@@ -195,6 +199,58 @@
       "supersedes": [],
       "supersededBy": [],
       "amends": [],
+      "amendedBy": []
+    },
+    {
+      "id": "D-018",
+      "title": "Compose generic hierarchy queries through ordinary EF expressions",
+      "status": "accepted",
+      "date": "2026-10-16",
+      "path": "docs/decisions/D-018-generic-hierarchy-query-composition.md",
+      "supersedes": [],
+      "supersededBy": [],
+      "amends": [],
+      "amendedBy": []
+    },
+    {
+      "id": "D-019",
+      "title": "Opt into generated ancestor indexes and statement-local source binding",
+      "status": "implemented",
+      "date": "2026-10-19",
+      "path": "docs/decisions/D-019-optional-ancestor-index-and-source-binding.md",
+      "supersedes": [],
+      "supersededBy": [],
+      "amends": [],
+      "amendedBy": [
+        "D-020"
+      ]
+    },
+    {
+      "id": "D-020",
+      "title": "Own native integration in four provider packages",
+      "status": "implemented",
+      "date": "2026-10-26",
+      "path": "docs/decisions/D-020-provider-owned-runtime-packages.md",
+      "supersedes": [
+        "D-002"
+      ],
+      "supersededBy": [],
+      "amends": [
+        "D-019"
+      ],
+      "amendedBy": []
+    },
+    {
+      "id": "D-021",
+      "title": "Separate release-line qualification from current publication authority",
+      "status": "implemented",
+      "date": "2026-10-28",
+      "path": "docs/decisions/D-021-release-lines-and-monotonic-publication.md",
+      "supersedes": [],
+      "supersededBy": [],
+      "amends": [
+        "D-016"
+      ],
       "amendedBy": []
     }
   ]

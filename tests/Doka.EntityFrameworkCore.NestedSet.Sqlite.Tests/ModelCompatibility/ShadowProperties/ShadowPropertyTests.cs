@@ -16,8 +16,7 @@ public sealed class ShadowPropertyTests : ProviderTest, IClassFixture<ProviderFi
         // Arrange
         var options = new DbContextOptionsBuilder<ShadowPropertyContext>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new ShadowPropertyContext(options);

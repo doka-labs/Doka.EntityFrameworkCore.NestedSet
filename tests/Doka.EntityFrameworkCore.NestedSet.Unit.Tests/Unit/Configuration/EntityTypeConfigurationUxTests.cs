@@ -15,6 +15,7 @@ public sealed class EntityTypeConfigurationUxTests
             .GetService<IDesignTimeModel>()
             .Model
             .FindEntityType(typeof(ScopedNode))!;
+
         var indexes = entity
             .GetIndexes()
             .Select(index => new
@@ -196,8 +197,7 @@ public sealed class EntityTypeConfigurationUxTests
         internal ScopedContext() : base(
             new DbContextOptionsBuilder<ScopedContext>()
                 .ConfigureTestWarnings()
-                .UseSqlite("Data Source=:memory:")
-                .UseNestedSets()
+                .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
                 .Options) { }
 
         /// <inheritdoc />
@@ -244,8 +244,7 @@ public sealed class EntityTypeConfigurationUxTests
         internal ScopelessContext() : base(
             new DbContextOptionsBuilder<ScopelessContext>()
                 .ConfigureTestWarnings()
-                .UseSqlite("Data Source=:memory:")
-                .UseNestedSets()
+                .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
                 .Options) { }
 
         /// <inheritdoc />

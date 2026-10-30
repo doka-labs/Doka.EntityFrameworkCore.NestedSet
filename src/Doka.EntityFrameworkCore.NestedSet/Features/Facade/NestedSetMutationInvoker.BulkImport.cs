@@ -34,6 +34,7 @@ internal sealed partial class
             var parentKey = SnapshotKey(binding, parent);
             var treeId = await ResolveTreeIdAsync(binding, parentKey, token)
                 .ConfigureAwait(false);
+
             var store = Store(binding, treeId);
 
             var insert = new NestedSetBulkInsert<TEntity, TKey, TTreeId, TScope>(

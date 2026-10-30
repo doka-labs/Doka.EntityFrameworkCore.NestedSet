@@ -226,36 +226,35 @@ public sealed class TestDatabase : IAsyncDisposable
             if (engine == "Sqlite")
             {
                 file = Path.Combine(Path.GetTempPath(), $"nestedset-{Guid.NewGuid():N}.db");
-                options.UseSqlite($"Data Source={file};Pooling=False;Default Timeout=60");
+                options.UseSqlite(
+                    $"Data Source={file};Pooling=False;Default Timeout=60",
+                    provider => provider.UseNestedSets());
             }
             else if (engine == "PostgreSql")
             {
                 var connection = await (await TestDatabaseServers.GetCurrentAsync()).NewConnectionStringAsync(engine);
-                options.UseNpgsql(connection);
+                options.UseNpgsql(connection, provider => provider.UseNestedSets());
             }
             else if (engine == "SqlServer")
             {
                 var connection = await (await TestDatabaseServers.GetCurrentAsync()).NewConnectionStringAsync(engine);
-                options.UseSqlServer(connection);
+                options.UseSqlServer(connection, provider => provider.UseNestedSets());
             }
             else if (engine == "MySql")
             {
                 var connection = await (await TestDatabaseServers.GetCurrentAsync()).NewConnectionStringAsync(engine);
-                options.UseMySql(connection, DatabaseTestTargets.MySql);
+                options.UseMySql(connection, DatabaseTestTargets.MySql, provider => provider.UseNestedSets());
             }
             else if (engine == "MariaDb")
             {
                 var connection = await (await TestDatabaseServers.GetCurrentAsync()).NewConnectionStringAsync(engine);
-                options.UseMySql(connection, DatabaseTestTargets.MariaDb);
+                options.UseMySql(connection, DatabaseTestTargets.MariaDb, provider => provider.UseNestedSets());
             }
             else
             {
                 throw new ArgumentOutOfRangeException(nameof(engine));
             }
 
-            // WHY: Keep the test suite on the documented provider-then-NestedSet registration order so equivalent
-            // contexts reuse EF's internal singleton service provider instead of differing only by extension order.
-            options.UseNestedSets();
 
             database = new TestDatabase(options.Options, file, ownsServerDatabase: file is null);
             await using var context = database.CreateContext();

@@ -12,6 +12,7 @@ public abstract partial class ContractTests
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
+
         var root = new TreeNode();
 
         // Act
@@ -39,6 +40,7 @@ public abstract partial class ContractTests
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
+
         var root = new TreeNode();
         await tree.InsertRootAsync(root, Guid.Empty, CancellationToken.None);
         var child = new TreeNode();

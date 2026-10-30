@@ -188,6 +188,7 @@ public abstract class TpcCollationTestBase : ProviderTest
             Id = "PARENT-" + suffix,
             Name = "Root",
         };
+
         var hierarchy = context
             .NestedSet<CaseInsensitiveTpcNode>()
             .ForScope(scope);
@@ -207,6 +208,7 @@ public abstract class TpcCollationTestBase : ProviderTest
             .ParentOf(child.Id)
             .AsNoTracking()
             .SingleAsync(CancellationToken.None);
+
         Assert.Equal(root.Id, parent.Id);
         Assert.Equal(
             (scope, treeId, 2L, 3L, 1, 0L),

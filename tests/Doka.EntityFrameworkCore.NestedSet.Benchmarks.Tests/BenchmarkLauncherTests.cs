@@ -78,6 +78,7 @@ public sealed class BenchmarkLauncherTests
             "--artifacts",
             wrapperArtifacts,
         };
+
         switch (form)
         {
             case "uppercase":
@@ -116,6 +117,7 @@ public sealed class BenchmarkLauncherTests
 
         using var diagnostics = JsonDocument.Parse(
             await File.ReadAllTextAsync(diagnosticsPath, CancellationToken.None));
+
         var result = Assert.Single(
             diagnostics
                 .RootElement

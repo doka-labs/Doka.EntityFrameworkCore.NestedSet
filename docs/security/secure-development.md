@@ -64,7 +64,7 @@ protection complement review; their enabled state is not proof of an empty
 alert history. Triage alerts rather than treating a green build as a substitute.
 
 Two reviewed Microsoft native-package licenses need targeted exceptions:
-[SNI.runtime 6.0.2](https://www.nuget.org/packages/Microsoft.Data.SqlClient.SNI.runtime/6.0.2/License)
+[SNI.runtime 6.0.3](https://www.nuget.org/packages/Microsoft.Data.SqlClient.SNI.runtime/6.0.3/License)
 and [NativeInterop 0.20.6](https://www.nuget.org/packages/Microsoft.Identity.Client.NativeInterop/0.20.6/License).
 These are license files, not MIT expressions. The exceptions apply to the test
 dependency graph; neither shipping NestedSet package gains these dependencies.
@@ -74,11 +74,25 @@ the following workflow step verifies the exact reviewed versions against the
 action's complete comparison output. A package update requires a new license
 review. Null license metadata and Scorecard results are separate inputs.
 
+The 2026-10-15 update rechecked the published SNI.runtime 6.0.3 license against
+6.0.2. The files are byte-identical, with SHA-256
+`9335e8bad875dd7be4eebd55d2335eb6433d1cea61aadb3817af7807bef8932a`.
+The exception and its positive/negative controls now require exactly 6.0.3;
+NativeInterop remains restricted to 0.20.6.
+
 Before a major production release, retain the actual static-analysis results
 for the proposed revision and fix confirmed exploitable medium-or-higher
 findings promptly. Do not count Scorecard configuration/process warnings as
 CodeQL source vulnerabilities, or dismiss source vulnerabilities because the
 Scorecard workflow succeeded.
+
+The [release-line maintenance contract](../operations/release-lines.md) adds
+branch-native daily transitive advisory audits and weekly full CI for each
+active line. Dependabot version targets follow active branches and framework
+major/prerelease ceilings; its security-update default-branch boundary does not
+replace audits of maintained branches. Full fresh advisory JSON, exact solution
+project coverage and successful real child producers are required. These source
+controls do not claim that an inactive line or hosted schedule is already active.
 
 ## Dynamic analysis evidence
 
@@ -106,7 +120,7 @@ criterion instead of adding artificial product instrumentation for a badge.
 
 The Passing definition permits an automated suite with at least 80% **branch**
 coverage as dynamic-analysis evidence. The existing collector emits Cobertura
-for the two shipping modules. A configured coverage check, line percentage, or
+for all six shipping modules. A configured coverage check, line percentage, or
 test count alone is not that evidence. The dated measured results and source
 comparison are in [Passing evidence](../openssf-best-practices.md#measured-analysis-evidence).
 Refresh those results for a changed runtime before making a release claim.
@@ -169,9 +183,12 @@ Retrieved 2026-10-01:
 
 Retrieved 2026-10-09:
 
-- [FsCheck xUnit v3 3.4.0 package and dependencies](https://www.nuget.org/packages/FsCheck.Xunit.v3/3.4.0).
 - [FsCheck property testing and shrinking](https://fscheck.github.io/FsCheck/).
 - [Scorecard 5.5.0 C# detection](https://github.com/ossf/scorecard/blob/v5.5.0/checks/raw/fuzzing.go).
 - [Pinned Scorecard action version](https://github.com/ossf/scorecard-action/blob/2d1146689b8cda280b9bc96326124645441f03bc/go.mod).
 - [Dependency Review v5.0.0 license handling](https://github.com/actions/dependency-review-action/blob/v5.0.0/src/licenses.ts).
 - [Dependency Review v5.0.0 PURL comparison](https://github.com/actions/dependency-review-action/blob/v5.0.0/src/purl.ts).
+
+Retrieved 2026-10-26:
+
+- [FsCheck xUnit v3 3.6.0 package and dependencies](https://www.nuget.org/packages/FsCheck.Xunit.v3/3.6.0).

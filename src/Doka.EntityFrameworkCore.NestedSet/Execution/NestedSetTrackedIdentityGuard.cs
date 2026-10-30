@@ -47,7 +47,7 @@ internal sealed class NestedSetTrackedIdentityGuard<TEntity, TKey, TTreeId, TSco
         _treeComparer = treeComparer;
         _usesNativeScopeComparison = map.ScopeProperty is { } scope
             && (scope.GetTypeMapping().Converter?.ProviderClrType ?? scope.ClrType) == typeof(string)
-            && NestedSetProviderCapabilities.Resolve(context).Kind == NestedSetProviderKind.MySql;
+            && NestedSetProviderCapabilities.Resolve(context).UsesNativeScopeComparison;
 
         _context.ChangeTracker.Tracked += OnTracked;
         _observing = true;
@@ -258,9 +258,12 @@ internal sealed class NestedSetTrackedIdentityGuard<TEntity, TKey, TTreeId, TSco
             // while still deduplicating the collection used by Doka's equality join.
             var keys = new HashSet<TKey>(_candidates.Count, _map.KeyComparer);
 
-            foreach (var candidate in _candidates)
+            // WHY: The owned block buffer allocates an iterator per traversal; indexing avoids that extra grouping cost.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            for (int index = 0, count = _candidates.Count; index < count; index++)
             {
-                keys.Add(candidate.Key);
+                keys.Add(_candidates[index].Key);
             }
 
             return [new NativeKeyGroup(default!, keys.ToArray())];
@@ -268,8 +271,13 @@ internal sealed class NestedSetTrackedIdentityGuard<TEntity, TKey, TTreeId, TSco
 
         var scopes = new Dictionary<TScope, HashSet<TKey>>(_map.ScopeComparer);
 
-        foreach (var candidate in _candidates)
+        // WHY: The captured block buffer is stable; indexing avoids its iterator while retaining every scoped identity.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (int index = 0, count = _candidates.Count; index < count; index++)
         {
+            var candidate = _candidates[index];
+
             if (!scopes.TryGetValue(candidate.Scope, out var keys))
             {
                 keys = new HashSet<TKey>(_map.KeyComparer);
@@ -295,8 +303,13 @@ internal sealed class NestedSetTrackedIdentityGuard<TEntity, TKey, TTreeId, TSco
             throw ChangedTracker();
         }
 
-        foreach (var (entry, entityState, propertyValues, tKey, tScope, tTreeId) in _candidates)
+        // WHY: Repeated late checks need no iterator: the owned snapshot stays fixed through the awaited boundary.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (int index = 0, count = _candidates.Count; index < count; index++)
         {
+            var (entry, entityState, propertyValues, tKey, tScope, tTreeId) = _candidates[index];
+
             if (entry.State != entityState
                 || !_keyComparer.Equals(
                     NestedSetTypedValue<TKey>.Read(propertyValues, _map.KeyProperty),
@@ -366,6 +379,9 @@ internal sealed class NestedSetTrackedIdentityGuard<TEntity, TKey, TTreeId, TSco
             {
                 var keys = new TKey[count];
 
+                // WHY: Copy only the active candidate slice into its matching key-array slots.
+                // ReSharper disable once ForCanBeConvertedToForeach
+                // ReSharper disable once LoopCanBeConvertedToQuery
                 for (var index = 0; index < count; index++)
                 {
                     keys[index] = _candidates[start + index].Key;
@@ -381,6 +397,9 @@ internal sealed class NestedSetTrackedIdentityGuard<TEntity, TKey, TTreeId, TSco
 
             var scopes = new Dictionary<TScope, List<TKey>>(_map.ScopeComparer);
 
+            // WHY: Traverse only the bounded candidate slice without allocating a slice iterator.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var index = 0; index < count; index++)
             {
                 var candidate = _candidates[start + index];

@@ -23,10 +23,10 @@
     # WHY: Underscores in GRANT database patterns are wildcards unless escaped, even inside backticks.
     MYSQL_PWD="$root_password" "$client" --protocol=socket --user=root --batch <<SQL
 CREATE DATABASE IF NOT EXISTS nestedset_sample_filesystem CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
-CREATE DATABASE IF NOT EXISTS nestedset_sample_kpis CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
+CREATE DATABASE IF NOT EXISTS nestedset_sample_signal_lab CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 CREATE DATABASE IF NOT EXISTS nestedset_sample_usergroups CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 GRANT ALL PRIVILEGES ON \`nestedset\\_sample\\_filesystem\`.* TO '$escaped_user'@'%';
-GRANT ALL PRIVILEGES ON \`nestedset\\_sample\\_kpis\`.* TO '$escaped_user'@'%';
+GRANT ALL PRIVILEGES ON \`nestedset\\_sample\\_signal\\_lab\`.* TO '$escaped_user'@'%';
 GRANT ALL PRIVILEGES ON \`nestedset\\_sample\\_usergroups\`.* TO '$escaped_user'@'%';
 SQL
 

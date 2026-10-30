@@ -23,8 +23,7 @@ public sealed class HistogramAdviceTests
 
         await using var context = new DbContext(
             new DbContextOptionsBuilder()
-                .UseSqlite("Data Source=:memory:")
-                .UseNestedSets()
+                .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
                 .Options);
 
         using var listener = new MeterListener();

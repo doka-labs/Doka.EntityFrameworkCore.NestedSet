@@ -67,6 +67,7 @@ public abstract partial class OrderingRefreshScaleTests
         var moved = await verification
             .Set<OrderingNode>()
             .SingleAsync(node => node.Id == 2, CancellationToken.None);
+
         Assert.Equal(3, moved.ParentId);
         Assert.Equal(2, moved.Depth);
         Assert.Equal(

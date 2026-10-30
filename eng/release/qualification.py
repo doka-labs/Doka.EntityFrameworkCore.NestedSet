@@ -18,6 +18,7 @@ from contextlib import suppress
 from pathlib import Path
 
 from eng.release.common import (
+    CONSUMERS,
     PACKAGES,
     RELEASE_WORKFLOW,
     REPOSITORY,
@@ -32,10 +33,13 @@ from eng.release.common import (
     sha256,
     write_json,
 )
+from eng.release.lines import inspect_toolchain, validate_snapshot
+from eng.release.publication import parse_json
 
 ROOT = Path(__file__).resolve().parents[2]
 SOLUTION = "Doka.EntityFrameworkCore.NestedSet.slnx"
 TRX = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
+ALLOCATION_PROJECT = "Doka.EntityFrameworkCore.NestedSet.Unit.Tests"
 
 
 def git(repo, *arguments, required=True):
@@ -102,7 +106,7 @@ def rebased_lock(value, version):
 
 
 def prepare_locks(repo, output, version):
-    """Copy both shipping-package locks without requiring locks for nonshipping solution projects."""
+    """Copy every shipping-package lock without requiring locks for nonshipping solution projects."""
     records = {}
     projects = set(solution_projects(repo))
     # WHY: Only the published package graphs are reviewed locks; tests, samples, and tools restore their own graphs.
@@ -147,11 +151,21 @@ def verify_query_plans(directory):
             "query_plans_missing", "Required provider hierarchy or key-filter plans are missing or empty.")
 
 
+def collect_query_plans(directory):
+    """Collect project-owned provider plans once, rejecting ambiguous duplicate names."""
+    for path in directory.glob("*/query-plans/*"):
+        target = directory / "query-plans" / path.name
+        require(not target.exists(), "query_plans_duplicate", f"Duplicate provider plan: {path.name}.")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(path, target)
+
+
 def verify_results(repo, directory, expected=None):
     """Reject missing projects, skipped/failed tests, or a zero-test success."""
     # WHY: Specification libraries share test sources but do not execute tests or produce TRX artifacts.
     expected = {path.stem for path in test_projects(repo)} if expected is None else set(expected)
     observed = {}
+    identities = {}
     for path in sorted(directory.rglob("*.trx")):
         tree = ET.parse(path)
         counters = tree.find(".//t:Counters", TRX)
@@ -162,7 +176,8 @@ def verify_results(repo, directory, expected=None):
         matches = {name for name in expected if name.casefold() in storage}
         require(len(matches) == 1, "tests_identity", f"TRX has ambiguous or unexpected project: {path.name}.")
         name = matches.pop()
-        require(name not in observed, "tests_duplicate", f"Duplicate project result: {name}.")
+        require(name == ALLOCATION_PROJECT or name not in observed,
+                "tests_duplicate", f"Duplicate project result: {name}.")
         case_ids = [item.get("testId") for item in cases]
         definition_ids = [item.get("id") for item in definitions]
         require(all(case_ids) and len(case_ids) == len(set(case_ids))
@@ -173,9 +188,28 @@ def verify_results(repo, directory, expected=None):
                 and int(counters.attrib["passed"]) == count and int(counters.attrib["failed"]) == 0
                 and all(item.attrib.get("outcome") == "Passed" for item in cases),
                 "tests_not_passed", f"Every selected test must pass without skipping: {name}.")
-        observed[name] = {"passed": count, "trx": str(path.relative_to(directory)), "sha256": sha256(path)}
+        record = {"passed": count, "trx": str(path.relative_to(directory)), "sha256": sha256(path)}
+        if name == ALLOCATION_PROJECT:
+            # WHY: Instrumentation can change allocations. Require both complementary Unit partitions,
+            # retaining their individual hashes and rejecting any repeated test identity across them.
+            require(path.name in {"allocations.trx", "coverage.trx"}, "tests_partitions",
+                    "Unit results must use the fixed allocation and coverage partition names.")
+            previous = identities.setdefault(name, set())
+            require(previous.isdisjoint(case_ids), "tests_duplicate", "Unit partitions repeat test identities.")
+            previous.update(case_ids)
+            group = observed.setdefault(name, {"passed": 0, "reports": []})
+            require(not any(Path(report["trx"]).name == path.name for report in group["reports"]),
+                    "tests_duplicate", "Unit partition was reported more than once.")
+            group["passed"] += count
+            group["reports"].append(record)
+        else:
+            observed[name] = record
 
     require(set(observed) == expected, "tests_missing", "Not every solution test project supplied a passing result.")
+    if ALLOCATION_PROJECT in expected:
+        require({Path(report["trx"]).name for report in observed[ALLOCATION_PROJECT]["reports"]}
+                == {"allocations.trx", "coverage.trx"}, "tests_partitions",
+                "Both uninstrumented allocation budgets and instrumented Unit semantics must pass.")
 
     return observed
 
@@ -227,18 +261,33 @@ class Qualification:
                          "workflow": RELEASE_WORKFLOW}
         hosted_release = (os.environ.get("GITHUB_ACTIONS") == "true"
                           and os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
-                          and os.environ.get("GITHUB_WORKFLOW_REF") == f"{REPOSITORY}/{RELEASE_WORKFLOW}@refs/heads/main")
-        self.publishable = bool(hosted_release and not workspace and self.workflow["ref"] == "refs/heads/main")
-        self.notes = release_notes(self.repo, version, not self.publishable)
-        if self.publishable:
+                          and os.environ.get("GITHUB_WORKFLOW_REF") ==
+                          f"{REPOSITORY}/{RELEASE_WORKFLOW}@{self.workflow['ref']}")
+        self.line = None
+        self.toolchain = None
+        raw_line = os.environ.get("NESTEDSET_RELEASE_LINE", "")
+        if not workspace and (hosted_release or raw_line):
+            require(hosted_release and bool(raw_line), "line_identity",
+                    "Hosted qualification requires its independently authorized preflight line.")
+            self.line = validate_snapshot(parse_json(raw_line, "frozen qualification line"),
+                                          source_ref=self.workflow["ref"], version=version)
+            self.toolchain = inspect_toolchain(self.repo, self.line)
             require(os.environ.get("GITHUB_REPOSITORY") == REPOSITORY
-                    and os.environ.get("GITHUB_SHA") == self.source["commit"],
+                    and os.environ.get("GITHUB_SHA") == self.source["commit"]
+                    and self.workflow["runId"].isdigit() and int(self.workflow["runId"]) > 0
+                    and self.workflow["attempt"] > 0,
                     "hosted_identity", "Hosted repository or checkout does not match the workflow source.")
             release_version(version)
 
-        self.identity = {"schemaVersion": 1, "repository": REPOSITORY, "version": version,
+        self.publishable = bool(self.line and self.line["state"] == "active" and not self.line["qualificationOnly"])
+        self.notes = release_notes(self.repo, version, not bool(self.line))
+        self.identity = {"schemaVersion": 2 if self.line else 1, "repository": REPOSITORY, "version": version,
                          "source": self.source, "workflow": self.workflow, "publishable": self.publishable,
                          "deadlineUtc": self.deadline_utc}
+        if self.line:
+            # WHY: Reuse the existing exact-attempt identity through every parallel lane; no second
+            # receipt/inventory protocol is needed for the frozen branch grant or its own toolchain.
+            self.identity.update(line=self.line, toolchain=self.toolchain)
         if existing:
             # WHY: Reusing a downloaded build is allowed only within the exact producer run and attempt.
             require(previous_identity == self.identity, "build_identity",
@@ -393,16 +442,14 @@ class Qualification:
         """Execute every test project and runnable sample, retaining provider query plans."""
         directory = self.output / "tests"
         self.command("tests", "docker", ["docker", "info"])
-        self.command("tests", "all-projects", ["dotnet", "test", SOLUTION, "-c", "Release", "--no-build",
-                                                "--no-restore", "-m:1", *self.properties(), "--settings",
-                                                "eng/coverage.runsettings", "--collect:Code Coverage", "--logger",
-                                                "trx", "--logger", "console;verbosity=normal",
-                                                "--results-directory", str(directory)],
-                     {"DOKA_NESTEDSET_QUERY_PLAN_DIR": str(directory / "query-plans")})
+        for project in test_projects(self.repo):
+            self.test_project(project.relative_to(self.repo).as_posix())
+
         write_json(directory / "results.json", verify_results(self.repo, directory))
+        collect_query_plans(directory)
         verify_query_plans(directory / "query-plans")
         self.command("tests", "coverage", ["python3", "eng/verify-coverage.py", str(directory)])
-        for sample in ("FileSystem", "Kpis", "UserGroups"):
+        for sample in ("FileSystem", "SignalLab", "UserGroups"):
             self.command("tests", "sample-" + sample.lower(), ["dotnet", "run", "--project",
                          "samples/" + sample, "-c", "Release", "--no-build", "--no-restore",
                          *self.properties(), "--", "--provider", "sqlite", "--reset"],
@@ -420,7 +467,7 @@ class Qualification:
                    verify_symbol_rejection(self.output / "packages", self.version))
 
     def consumer(self):
-        """Exercise the exact two candidate packages through independent package consumers."""
+        """Exercise every exact candidate package through an independent package consumer."""
         self.command("consumer", "package-consumers", ["bash", "eng/verify-package-consumer.sh", "--package-dir",
                                                         str(self.output / "packages"), "--version", self.version,
                                                         "--output", str(self.output / "consumer")])
@@ -453,11 +500,20 @@ class Qualification:
         collector = self.output / "build/bin/.coverage-collector"
         require(binary.is_file() and (collector / "Microsoft.VisualStudio.TraceDataCollector.dll").is_file(),
                 "test_binary", "Producer test assembly or coverage collector is absent.")
-        self.command("tests", name, ["dotnet", "test", str(binary), "--test-adapter-path",
-                                    f"{binary.parent};{collector}", "--settings", "eng/coverage.runsettings",
-                                    "--collect:Code Coverage", "--logger", "trx", "--logger",
-                                    "console;verbosity=normal", "--results-directory", str(directory)],
-                     {"DOKA_NESTEDSET_QUERY_PLAN_DIR": str(directory / "query-plans")})
+        command = ["dotnet", "test", str(binary), "--test-adapter-path", f"{binary.parent};{collector}"]
+        environment = {"DOKA_NESTEDSET_QUERY_PLAN_DIR": str(directory / "query-plans")}
+        if name == ALLOCATION_PROJECT:
+            # WHY: Measure actual allocation and collectible-module lifetimes before instrumentation changes them.
+            # Every remaining Unit case runs exactly once under coverage using the complementary filter.
+            self.command("tests", name + "-allocations", [*command, "--filter", "Category=Allocation",
+                         "--logger", "trx;LogFileName=allocations.trx", "--results-directory", str(directory)],
+                         environment)
+            command.extend(["--filter", "Category!=Allocation"])
+
+        logger = "trx;LogFileName=coverage.trx" if name == ALLOCATION_PROJECT else "trx"
+        self.command("tests", name, [*command, "--settings", "eng/coverage.runsettings",
+                     "--collect:Code Coverage", "--logger", logger, "--logger", "console;verbosity=normal",
+                     "--results-directory", str(directory)], environment)
         write_json(directory / "results.json", verify_results(self.repo, directory, {name}))
         require(bool(list(directory.rglob("*.cobertura.xml"))), "coverage_missing",
                 f"Selected project did not supply coverage: {name}.")
@@ -498,12 +554,7 @@ class Qualification:
             require(bool(list((results / project.stem).rglob("*.cobertura.xml"))), "coverage_missing",
                     f"Project coverage is absent: {project.stem}.")
 
-        for path in results.glob("*/query-plans/*"):
-            target = results / "query-plans" / path.name
-            require(not target.exists(), "query_plans_duplicate", f"Duplicate provider plan: {path.name}.")
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(path, target)
-
+        collect_query_plans(results)
         verify_query_plans(results / "query-plans")
         self.command("tests", "coverage", ["python3", "eng/verify-coverage.py", str(results)])
         for project in solution_projects(self.repo):
@@ -516,9 +567,10 @@ class Qualification:
 
         consumer = read_json(self.output / "consumer/result.json")
         require(consumer.get("success") is True and consumer.get("version") == self.version
-                and len(consumer.get("consumers", [])) == 2
-                and {item.get("name") for item in consumer["consumers"]} == {"core", "ef"},
-                "consumer_result", "Both exact-version package consumers must have succeeded.")
+                and len(consumer.get("consumers", [])) == len(CONSUMERS)
+                and {item.get("name") for item in consumer["consumers"]} == {name for name, _ in CONSUMERS}
+                and all(item.get("success") is True for item in consumer["consumers"]),
+                "consumer_result", "All exact-version package consumers must have succeeded.")
         # WHY: Consumers use the small package artifact; sealing uses the build artifact's package copies.
         expected_hashes = {record["id"]: record["nupkgSha256"] for record in
                            read_json(self.output / "packages/package-manifest.json")["packages"]}
@@ -603,10 +655,13 @@ class Qualification:
                 archive.write(path, path.relative_to(self.output).as_posix())
 
         identity = {name: value for name, value in self.source.items() if name != "files"}
-        write_json(candidate / "candidate.json",
-                   {"schemaVersion": 1, "repository": REPOSITORY, "version": self.version,
+        manifest = {"schemaVersion": 2 if self.line else 1, "repository": REPOSITORY, "version": self.version,
                     "tag": "v" + self.version, "source": identity, "workflow": self.workflow,
-                    "publishable": self.publishable, "stages": list(STAGES), "files": file_inventory(candidate)})
+                    "publishable": self.publishable, "stages": list(STAGES), "files": file_inventory(candidate)}
+        if self.line:
+            manifest.update(line=self.line, toolchain=self.toolchain)
+
+        write_json(candidate / "candidate.json", manifest)
         load_candidate(candidate, require_publishable=self.publishable)
         summary = (f"# Qualified candidate {self.version}\n\n"
                    f"- Source commit: `{self.source['commit'] or 'uncommitted workspace'}`\n"
@@ -637,20 +692,39 @@ class Qualification:
 def main():
     """Expose a stable operator entry point; qualification performs no external publication."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--version", required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--version")
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--verify-results", type=Path, help="Read-only verification of existing passing TRX results.")
     parser.add_argument("--workspace", action="store_true", help="Non-publishable verification of local changes.")
-    parser.add_argument("--timeout-seconds", type=int, default=7200)
+    parser.add_argument("--timeout-seconds", type=int)
     parser.add_argument("--deadline-utc", type=int, help="Shared Unix UTC deadline established by hosted preflight.")
     parser.add_argument("--job", choices=("source-quality", "engineering-tests", "build", "test", "sample",
                                           "consumer", "sbom", "aggregate"))
-    parser.add_argument("--project", help="Exact executable solution project for a test job.")
+    parser.add_argument("--project", help="Exact solution project for a test job, or assembly name for --verify-results.")
     parser.add_argument("--sample", help="Exact solution sample name.")
     args = parser.parse_args()
     try:
-        require(60 <= args.timeout_seconds <= 14400, "deadline", "Timeout must be 60 through 14400 seconds.")
+        if args.verify_results is not None:
+            if any(value is not None for value in (args.version, args.output, args.timeout_seconds,
+                                                   args.deadline_utc, args.job, args.sample)) or args.workspace:
+                parser.error("Qualification options are incompatible with --verify-results.")
+
+            # WHY: CI consumes existing TRX files without source/release binding or output initialization.
+            projects = {path.stem for path in test_projects(ROOT)}
+            require(args.project is None or args.project in projects, "tests_identity",
+                    "Selected assembly is not an executable solution test project.")
+            results = verify_results(ROOT, args.verify_results, {args.project} if args.project else projects)
+            print(json.dumps(results, sort_keys=True))
+
+            return 0
+
+        if args.version is None or args.output is None:
+            parser.error("--version and --output are required for qualification.")
+
+        timeout_seconds = 7200 if args.timeout_seconds is None else args.timeout_seconds
+        require(60 <= timeout_seconds <= 14400, "deadline", "Timeout must be 60 through 14400 seconds.")
         existing = args.job in {"test", "sample", "consumer", "sbom", "aggregate"}
-        runner = Qualification(ROOT, args.output, args.version, args.workspace, args.timeout_seconds,
+        runner = Qualification(ROOT, args.output, args.version, args.workspace, timeout_seconds,
                                existing=existing, deadline_utc=args.deadline_utc)
         if args.job:
             runner.run_job(args.job, args.project, args.sample)

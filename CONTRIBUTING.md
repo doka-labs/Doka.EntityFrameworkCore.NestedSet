@@ -48,10 +48,17 @@ dotnet test Doka.EntityFrameworkCore.NestedSet.slnx \
 | `Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests` | SQL Server behavior |
 | `Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests` | SQLite behavior |
 | `Doka.EntityFrameworkCore.NestedSet.Migrations.Tests` | Ordinary EF migrations and physical catalogs |
-| `Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests` | Optional published SafeMigrations adapters |
+| `Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests` | Optional SafeMigrations adapter contracts |
 
 The ordinary migration project must have no SafeMigrations reference.
 SafeMigrations tests extend the contract; they do not define runtime support.
+The current optional suite retains the adapter contract now declared with
+published Doka 10.6.3 and SafeMigrations Core/adapters 10.6.1. Use the central
+package graph; do not add legacy expectations, compatibility skips or weaker
+assertions to make it green. The
+[provider qualification](docs/qualification/provider-migrations.md) separates
+fresh published-package verification from the earlier same-source local
+Core/adapter measurements. A package update alone does not rerun those tests.
 
 All test projects appear directly under the solution's `tests` folder. The
 specification project is a non-packable library, not a test runner. Unit and
@@ -96,7 +103,7 @@ its previous sample results without requiring a developer server:
 
 ```sh
 dotnet run --project samples/FileSystem -c Release -- --provider sqlite --reset
-dotnet run --project samples/Kpis -c Release -- --provider sqlite --reset
+dotnet run --project samples/SignalLab -c Release -- --provider sqlite --reset
 dotnet run --project samples/UserGroups -c Release -- --provider sqlite --reset
 ```
 
@@ -108,7 +115,7 @@ x64:
 
 ```sh
 bash eng/release-candidate.sh \
-  --version 10.0.0 \
+  --version 10.1.0 \
   --workspace \
   --output artifacts/qualification-local
 ```
@@ -194,6 +201,19 @@ Use blank lines to make control flow and logical phases readable:
 - avoid decorative or repeated blank lines.
 
 Rider formatting does not replace review of these rules.
+
+Keep a feature's orchestration and execution order visible in its main file.
+Use cohesive partial files for the same owner's distinct responsibilities;
+give independently consumed internal types their own files. Preserve static
+initialization order, cache ownership, visibility, and method behavior when
+moving code. A partial-file boundary must not introduce another runtime object.
+
+Group confirmed partial families with a directory-specific `Compile Update`
+wildcard and `DependentUpon` in a labeled project `ItemGroup`. Keep a meaningful
+main file, and review cross-directory families and generic arities explicitly.
+Do not add another `Compile Include` or nest unrelated dotted filenames.
+Verify evaluated compiler inputs and actual test discovery after file moves;
+check Rider's resulting presentation separately from MSBuild metadata.
 
 ## Async and cancellation
 
@@ -337,8 +357,8 @@ changes alter EF's CLR model identity and require fresh qualification.
 Wide registry-rowset tests belong in `Concurrency/TreeRegistry` for every
 provider. Keep SQL Server's rowset-lock and Scope-validation cases in separate
 suites, and its row-version tests and support in `Ordering/Tracking/RowVersion`.
-Shared query-plan evidence belongs in `QueryPlanTestSupport`, rather than in
-a test suite that other suites must call.
+Shared statistics refresh, native plan explanation, and evidence writing belong
+in `QueryPlanTestSupport`, rather than in a test suite that other suites must call.
 
 The five `ProviderAnnotationTests` methods inspect executable-wide metadata
 once per executable. Their reasoned MariaDB exclusions remove exactly five
@@ -375,7 +395,30 @@ Assert the result and final state in Assert. A second action after assertions,
 or a repeated Arrange/Act/Assert sequence, belongs in another test. Multiple
 assertions about one outcome are appropriate.
 
+Keep a retry or rollback scenario together when the sequence establishes one
+contract. For example, prepare a failed save in Arrange, retry in Act, then
+assert its persisted result. A coordinated concurrent operation can likewise
+have one Act containing its workers and barriers. Separate independent input
+variants into discovered theory rows; do not hide them in an internal loop or
+recover their meaning from result-list positions.
+
+When splitting database comparisons, preserve the seed's ownership explicitly.
+Read-only scenario rows can share a once-initialized class fixture and use a
+fresh context per row. Resettable sibling tests must not invalidate that seed.
+Collect per-scenario plan evidence under the fixture and emit the required
+aggregate once; do not overwrite the same artifact from each row. Fixture
+constructors and initialization callbacks must not acquire database resources;
+defer that work until after the platform hook.
+
 Additional test rules:
+
+Consumer samples, fixtures, migrations and benchmark datasets must be
+independently synthetic. Preserve the query shape, multiplicity, boundary and
+failure properties needed by a regression without importing an application's
+schema, personal attributes or business calculation recipe. Use fixed invented
+identities and values. An exact application integration belongs with that
+application's private tests; historical benchmark numbers retain their frozen
+source scope when the public fixture model changes.
 
 - name one observable behavior per test;
 - use theories for the same behavior across inputs or providers;
@@ -388,6 +431,25 @@ Additional test rules:
   `EnsureCreated`; and
 - verify optional SafeMigrations replay/drift separately from ordinary EF
   migration history.
+
+### Coverage and GC-lifetime controls
+
+Keep Code Coverage 18.11.0 with the mandatory Unit execution split in
+[D-013](docs/decisions/D-013-provider-owned-integration-test-projects.md).
+`Category=Allocation` includes allocation budgets and registration GC-lifetime
+controls; run it without a collector in a separate test invocation from
+`Category!=Allocation`. Both partitions must pass, with no skipped controls or
+duplicate case identities. Preserve the released-adapter assertion, deliberately
+retained registration control, and actual xUnit classification guards.
+
+The collector's injected exit-event handlers and flush thread prevent unloading
+on the diagnosed macOS ARM64 static path. Partitioning protects the product
+measurement; it does not fix that tooling defect or promise instrumented
+unloadability. Follow the
+[paired commands and re-evaluation criteria](docs/performance.md#coverage-collector-18110-and-unloadability)
+when changing the collector, runtime, platform, instrumentation or partition
+selection. A new GC-reachability test needs an explicit measurement environment;
+do not relax it to accommodate collector-owned references.
 
 ## Performance evidence
 
@@ -402,7 +464,7 @@ and limitations in [Performance](docs/performance.md).
 
 ## Dependency updates
 
-A dependency change requires project-owner approval. Only the two shipping
+A dependency change requires project-owner approval. The six shipping
 packages under `src/` commit `packages.lock.json`; tests, samples, benchmarks,
 and engineering tools restore their own graphs without committed locks.
 Review affected shipping locks, including transitive changes. After approval,
@@ -416,9 +478,13 @@ dotnet restore Doka.EntityFrameworkCore.NestedSet.slnx --locked-mode
 
 Requalify the affected provider and migration contracts.
 
-Dependency Review retains the SPDX allowlist and vulnerability gate. Its only
+Dependency Review retains the SPDX allowlist and vulnerability gate. The
+allowlist includes the PostgreSQL SPDX license declared by the existing Npgsql
+provider, verified against its package metadata and
+[versioned license](https://github.com/npgsql/efcore.pg/blob/v10.0.3/LICENSE).
+This is a recognized permissive license, not an unknown-license exception. The only
 package-specific license exceptions are `Microsoft.Data.SqlClient.SNI.runtime`
-6.0.2 and `Microsoft.Identity.Client.NativeInterop` 0.20.6, which ship Microsoft
+6.0.3 and `Microsoft.Identity.Client.NativeInterop` 0.20.6, which ship Microsoft
 license files. The workflow checks the action's complete dependency delta to
 enforce those exact versions; a new version requires review of its license file
 and an explicit exception update. Do not allow `LicenseRef-scancode-unknown`
@@ -433,13 +499,22 @@ a successful restore.
 
 `PublicAPI.Shipped.txt` records the reviewed stable release contract.
 `PublicAPI.Unshipped.txt` contains additions for the next stable release,
-including declarations first published in an RC. The initial `10.0.0` contract
-is recorded in both shipped baselines; the unshipped files retain only the
-nullable directive until new declarations are added. The Public API analyzer
-must remain clean.
+including declarations first published in an RC. The shipped files now record
+the stable `10.1.0` contract: the pure core is unchanged, common EF includes
+query composition, and each native adapter owns its callback API. The removed
+options-level registration is absent from the current baseline; its historical
+`10.0.0` declaration remains in that release tag. SDK package validation retains
+the original `10.0.0` baseline and the narrow approved removal suppression.
+The architectural
+break is recorded in [D-020](docs/decisions/D-020-provider-owned-runtime-packages.md)
+and the [upgrade guide](docs/upgrading-provider-packages.md). The Public API
+analyzer must remain clean.
 
-Before a stable release, move reviewed additions into the shipped file in the
-release-preparation source commit. Removals and signature changes require an
+Before a stable release, move reviewed additions into the shipped file and
+apply approved removals to that current contract in the release-preparation
+source commit. Clear the processed unshipped entries; historical declarations
+remain in their release tags and SDK compatibility baselines. Removals and
+signature changes require an
 explicit compatibility and SemVer decision, tests, docs, changelog, and a MADR
 record when architectural.
 
@@ -485,6 +560,13 @@ for an untested provider.
 Use the pull request template. Describe the concrete consumer problem, final
 behavior, compatibility/security impact, and exact verification. Keep one
 cohesive concern per pull request.
+
+Target the protected release branch that owns the affected framework major.
+Registered inactive lines receive full preparation PR checks and exact
+base/head Dependency Review before they can qualify or publish a release.
+Keep each branch's SDK, EF graph and line policy intact; applicable fixes need
+reviewed ports and that destination's checks. Ordinary feature/manual CI remains
+nonpublishing. See [release lines](docs/operations/release-lines.md).
 
 A reviewer checks implementation, meaningful tests, public API, provider and
 migration impact, transactions/concurrency, security/privacy, documentation,

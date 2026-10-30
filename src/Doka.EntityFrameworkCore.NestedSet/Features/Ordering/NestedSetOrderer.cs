@@ -128,6 +128,9 @@ internal sealed class NestedSetOrderer<TEntity, TKey, TTreeId, TScope>
 
         var terms = new List<string>(checked(order.Properties.Count * 2));
 
+        // WHY: Align each ordering property with its direction and null-placement metadata.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < order.Properties.Count; index++)
         {
             var column = sql.DelimitIdentifier(

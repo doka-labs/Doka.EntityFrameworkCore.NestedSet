@@ -1,5 +1,37 @@
 # Typed runtime regression coverage
 
+The additive generic query contracts have their own
+[160-contract coverage map](query-composition-regression-coverage.md), including
+the actual signal and UserGroups consumers. This guide retains the existing typed
+runtime, mutation and tracker-restoration contracts.
+
+The [historical construction/read qualification](qualification/query-performance.md#historical-report-construction-and-materialization)
+adds matched warmup, scalar-binding and exact-bound reuse evidence to that
+composition map. Its positive and rejection tests cover deferred snapshot
+ownership and warmed parameter shapes; performance measurements remain
+separate from semantic coverage and do not become release gates.
+Its retained numbers describe predecessor sources. Current SignalLab test links
+identify the corresponding technical contracts, not new measurement evidence.
+
+`DenseStreamedGridRetainsBoundedTemporaryState` retains its 880,000-byte budget
+for 6,144 cells in Debug and Release. Its prepared test reader returns completed
+`ValueTask` instances for ordinary rows; per-row Debug state-machine allocations
+must not be attributed to the report accumulator. EOF cancellation, late read
+failures, disposal and duplicate precedence retain their existing tests.
+`PreparedReaderReturnsCancellationWithoutThrowingSynchronously` additionally
+checks cancellation through the returned read before any row is exposed.
+See the [dense-grid control](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/SignalLab/SignalReportValidationTests.DenseGridResources.cs)
+and [reader contracts](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/SignalLab/SignalReportValidationTests.ReaderContracts.cs).
+
+The subsequent [query-template reuse qualification](qualification/query-performance.md#historical-report-construction-and-materialization)
+adds `CompositionAnyConstructionTests`, projection/capture and collection-policy
+cases in `SignalReportConstructionTests`, and actual warmed SQLite template-reuse
+and missing/foreign selection rejection controls. `CompositionPlanWorkTests`
+checks summed executed iterator outputs and overflow rejection. Deep and broad
+MySQL consumer fixtures retain their existing maximum-work checks and now also
+bound summed work; the retained rejected JSON-policy runtime fails those guards.
+These work counts describe pinned fixtures, not physical I/O or timing gates.
+
 This document maps the typed runtime's important failure mechanisms to
 concrete tests. It helps maintainers select relevant regressions when changing
 dispatch, identity, Parent, staging, locking, or tracker restoration. Feature
@@ -41,6 +73,7 @@ hierarchy before the one operation being assessed.
 | Model cache leaks state | Same-model immutable metadata reuse | Different model and hierarchy separation |
 | Query UX adds hidden reads | Composed anchor query uses one command | Missing or filtered anchor returns no rows |
 | Structural work loses bounds | Existing statement/allocation limits | Wide, deep, and failed-operation regressions |
+| Hotpath traversal allocates or skips the final item | `TrackedIdentityIterationAllocationTests` and projection lookup allocation controls | Existing 63/64/65 guard edits, absent projection members, unevaluated getters, and two-owner save rollback |
 | SQLite keyed writes scan whole trees | Actual unanalyzed repair UPDATE plans | Excluded scope/tree keys and membership-alias collisions |
 | Capacity inferred from small fixtures | Actual ten-million reads and million-node import/rebuild | Last-wave failure/cancellation and complete rollback |
 | Background heap observation charges an unnecessary preceding cycle | Proven earlier allocation anchor and captured native scalar tuple | Completion/start race, unknown identities, counter epochs, and held allocations |
@@ -51,8 +84,171 @@ hierarchy before the one operation being assessed.
 | Native discovery loses mixed-source variants | Copied official runner configuration | Genuinely empty and over-filtered theories still fail |
 | Optional SQL Server adapter loses physical contracts | Generated schemas, absent indexes, integer widening, and populated CHECK proof/replay | Index columns/directions, disabled/untrusted CHECKs, invalid coordinates, narrowing, and complete rollback |
 
+## Independent comparison and plan scenarios
+
+`NativeContainsAndBalancedEqualityHaveEquivalentResults` discovers four mapped
+key representations and cardinalities `0`, `1`, `2`, and `64` as 16 separate
+scenario rows per applicable engine. Each row compares native membership,
+balanced equality, and the production filter as one contract. String cases keep
+the actual provider collation expectations; the empty case remains explicit.
+The sample's `CollectionMembershipBindsToEnumerableBeforeProviderNormalization`
+and `TrackedKeyCollectionsBindToEnumerableBeforeProviderNormalization` inspect
+the actual query graphs before EF can normalize C# 14 span overloads.
+`ActualAnchorMembershipSupportsInterpretation` interprets the catalog's real
+predicate with matching, missing, empty and duplicate keys; only the
+SQL-specific `EF.Parameter` marker is removed for that pure CLR check.
+`CatalogCollectionsUseEnumerableAndOriginsRemainQueryable` separately protects
+explicit catalog membership and the unchanged queryable origin subqueries.
+The tests are in the [SignalLab binding partial](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/SignalLab/SignalReportConstructionTests.CollectionBinding.cs)
+and [UserGroups binding suite](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/UserGroups/SupervisorCollectionBindingTests.cs).
+
+`ComparisonSeedIsReusedAcrossContexts` verifies the same immutable seed with
+fresh contexts, and `ResettingSiblingRowsPreservesComparisonSeed` verifies that
+the native-type and collection-mode database can reset without destroying it.
+
+`ScopedHierarchyQueriesHaveServerPlanEvidence` discovers 18 combinations of
+Scope, anchor offset, and Parent/Ancestors/Descendants query. Each row retains
+its own expected rows and native plan checks. The independent
+`ConfiguredPredecessorHasServerPlanEvidence` protects the configured-order
+lookup. The class-owned seed is prepared once; both suite fixtures collect
+scenario-keyed evidence and write the complete legacy artifacts in deterministic
+order at asynchronous disposal. Tests do not recover scenario meaning through
+numeric result-list positions, reseed per theory row, or overwrite each other's
+plan files.
+
+The complete MySQL/MariaDB family comparison on 2026-10-25 executed 108 before
+and 178 after cases without failures or skips. Both runs used two database
+containers and one Ryuk helper. Isolated databases increased from four to six:
+the immutable key fixture costs one extra database, 16 `CREATE TABLE` and 28
+`CREATE INDEX` statements per engine. Total seed saves stayed at 108 and actual
+payload readbacks at 30,592 rows; the separate cases do not seed sixteen times.
+The server-plan schema DDL multiset is unchanged. These are instrumented
+functional counts, not setup-speed measurements; observer queries and native
+versus EF command layers remain separate.
+
+`QueryPlanFixtureCleanupTests` covers successful teardown, synchronous and
+asynchronous failures, simultaneous evidence/cleanup failures, multiple failed
+cleanup tasks, cancellation, and preservation of an explicitly thrown aggregate.
+Both fixtures share this teardown boundary so diagnostic failures cannot hide
+resource failures or prevent cleanup.
+
+Sources: [key comparisons](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/KeyFilterComparisonTests.cs),
+[seed reuse and reset isolation](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/KeyFilterComparisonTests.Seed.cs),
+[isolated comparison fixture](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/KeyFilterComparisonFixture.cs),
+[hierarchy and predecessor plans](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/ServerQueryPlanTests.cs),
+[query-plan fixture](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/ServerQueryPlanFixture.cs),
+[shared native plan support](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/QueryPlanTestSupport.cs),
+and [fixture cleanup contracts](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Observation/QueryPlanFixtureCleanupTests.cs).
+
+The core `DefaultBoundsRemainPrintable` rows independently exercise direct,
+boxed `object`, and interpolated formatting of default bounds. The boxed case
+performs an actual object conversion; its name does not stand in for that path.
+The separate valid-bounds case retains its coordinate-format assertion.
+
+Source: [bounds formatting contracts](../tests/Doka.NestedSet.Tests/Unit/NestedSetBoundsTests.cs).
+
+Ordinary strict ancestor queries and supervisor membership witnesses have
+separate construction, rejection, visibility, identity, and native capacity
+controls in the [composition coverage map](query-composition-regression-coverage.md#ordinary-strict-source-bounds-and-origin-witnesses).
+These checks do not require generated ancestor schema and do not weaken source
+authorization or complete-path semantics. MySQL-only matched-key completion and
+both engines' directed owner hydration retain walk multiplicity; the repeated upward/downward/upward
+cases keep their zero-through-three complete-path variants.
+
+The [deferred supervisor controls](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Samples/UserGroups/GroupSupervisorTests.DeferredOrigins.cs)
+construct two tenant/source/date selections before executing them in reverse
+order. They retain exact candidate evidence and empty/ambiguous source markers,
+and reject source visibility or membership validity changes made after query
+construction. The [projection ownership controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/UserGroups/SupervisorProjectionCacheTests.cs)
+inspect actual cached selectors, exercise forbidden-capture controls and measure
+the real sample's warm construction without database I/O.
+
+The [independent supervisor evidence controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Samples/UserGroups/SupervisorEvidenceJoinTests.cs)
+combine missing, ambiguous and unique origins in one read. Shared winners,
+multiple found-group occurrences, duplicate role/period witnesses, hidden users
+and blocked intermediate edges retain exact evidence, cursors and physical
+transport rows. SQL Server translation checks protect independent marker and
+inner-joined evidence branches; SQLite executes the behavioral controls.
+The [SQL Server native-work controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/CompositionSqlServerPlanWorkTests.cs)
+protect parsing of actual per-thread output and pre-filter reads. Existing
+mixed, deep and supervisor capacity profiles apply the original cardinality-based
+path allowance to both observations. Their final native x64 execution is a
+separate qualification requirement.
+
+The [ancestor collection controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerAncestorCollectionTests.cs)
+use the shared ordinary and indexed navigation models. SQL Server translates
+owned auto-includes and collection DTOs as single queries; the
+[cross-provider navigation cases](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Composition/Models/AncestorIndexQueryTests.Navigations.cs)
+execute both collection forms natively. The
+[SQL Server strategy controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerCompositionStrategyTests.cs)
+check all five configured engine profiles, tree-bound and forest owner-first
+SQL and an unused public distance; [key controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerCompositionStrategyTests.NativeKeys.cs)
+keep converted, binary and binary-collated keys native, and
+[completed fact controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/CompositionAncestorIndexTests.CompletedFacts.cs)
+restrict the inclusive-ancestor completion boundary to independent fact
+selections on SQL Server. The
+[completed path-point controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerCompositionStrategyTests.PathPoints.cs)
+execute the exact failure relation on SQLite with scoped/unscoped, hidden or
+missing parent, depth, blocked edge, cross-tree/scope and partition-boundary
+cases. [Path translation controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerPathFailureTranslationTests.cs)
+require one uncorrelated completion boundary for path and nearest operations
+and the exact count for row-dependent rules. [Plan policy controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/SqlServerCompositionStrategyTests.PlanHint.cs)
+cover leading-tag recognition, every intercepted execution kind, terminators,
+idempotence and adapter-only registration. None substitutes for native SQL
+Server plans.
+
+The [adapter registration controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/OptionsExtensionTests.Providers.cs)
+verify actual native callbacks, stable repeated selection, distinct service
+identities, and rejection of missing, mismatched, conflicting or opaque adapter
+registrations before model/database I/O. The
+[selected-adapter allocation controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/SelectedAdapterAllocationTests.cs)
+exercise real warmed `Resolve` calls on all five engine profiles, with and
+without a preceding full GC, requiring zero allocated bytes across 10,000 calls.
+The [scoped binding controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/OptionsExtensionTests.Bindings.cs)
+verify once-per-scope native validation, reuse of the exact immutable adapter
+without a wrapper, stable repeated descriptors, and rejection of opaque or
+unvalidated bindings without mutating the service graph.
+The [load-context controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/OptionsExtensionTests.Identity.cs)
+reject equal-named foreign adapter/native assemblies and check collectible
+registration ownership. These replace the removed optional reflected feature
+cache tests; they do not weaken query visibility or endpoint provenance.
+`RegistrationDoesNotRetainACollectibleAdapter` and
+`LiveRegistrationRetainsItsCollectibleAdapter` keep opposing weak-reference
+assertions in the mandatory uninstrumented `Category=Allocation` partition.
+`RegistrationLifetimeControlsRunWithoutCoverage` in the
+[actual xUnit metadata guards](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/ProviderFixtureIsolationTests.cs)
+protects both classifications. The
+[D-013 collector boundary](decisions/D-013-provider-owned-integration-test-projects.md)
+retains 18.11.0 for the complementary covered cases; it neither skips these
+controls nor establishes unloading under an instrumented host. See the
+[independent root/control evidence](performance.md#coverage-collector-18110-and-unloadability)
+for the known collector retention and the criteria for reopening that decision.
+
 The sections below name the source methods behind the matrix. The matrix is a
 selection guide, not a replacement for the full provider suites.
+
+The [hotpath iteration qualification](qualification/query-performance.md#managed-hot-paths)
+distinguishes measured allocation savings from mixed timings and rejected loop
+changes. `CoordinatedGroupIterationTests` protects two independent hierarchy
+owners across the existing save phases and their failure cleanup.
+
+The [follow-up qualification](qualification/query-performance.md#managed-hot-paths) covers
+`BinaryProviderComparerTests` and the fixed-arity direct-binding regressions in
+`ExpressionInliningTests`. Binary tests protect complete content equality,
+bounded framework-compatible hashes, null/converter behavior, and exclusion of
+object-provider mappings. Binding tests preserve parameter identity, exception
+behavior, unvisited arguments and getters, and zero per-call visitor allocation.
+Seventeen allocation controls reject the frozen preceding implementation; the
+current unit and targeted provider runs are recorded separately.
+
+The [historical predecessor Nearest qualification](qualification/query-performance.md#historical-report-construction-and-materialization)
+adds `TypedEqualityConstructionTests` for method/lifting/null/converted equality
+parity and measured metadata savings, `CompositionCoordinateWidthTests` for
+deferred per-binding reuse and stale-scope rejection, and nearest-candidate
+capture-isolation cases. Seven controls reject frozen old libraries. The
+existing allocation collection now also isolates the guard allocation class
+and the separate `SignalReportSnapshotAllocationTests`, without changing their
+work or budgets; `ProviderFixtureIsolationTests` protects that registration.
 
 ## Generated invariant coverage
 
@@ -86,18 +282,54 @@ Sources: [core properties](../tests/Doka.NestedSet.Tests/Unit/NestedSetPropertyT
 [bulk-plan properties](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/BulkPlanPropertyTests.cs),
 and [generated-test guidance](../CONTRIBUTING.md#generated-invariant-tests).
 
+## Current-source optional migration contracts
+
+The suite now declares published Doka 10.6.3 and same-version SafeMigrations
+Core/all four adapters 10.6.1. The earlier Doka 10.6.2/SafeMigrations 10.6.0 public-graph run on 2026-10-25 passed all
+96 locally executable adapter cases; 54 native SQL Server cases remain excluded
+on ARM. Earlier local overlay results keep their exact source/package identities
+in the [provider qualification](qualification/provider-migrations.md).
+
+- `ServerUpgradePreflightApprovesSupportedChecksWithoutMutation` requires
+  approval of all three integer widenings and four CHECK predicates, with
+  unchanged columns, indexes, checks, foreign keys, rows, and history.
+- `ServerCoordinateUpgradePreservesDataHistoryAndReplays` actually applies the
+  populated historical migration, verifies the full target physical contract
+  and coordinates beyond Int32, then directly replays safe intents and checks
+  exact schema/data/history preservation and `Matching`/`NoOp` decisions.
+- `FreshComputedTableMigrationPreservesFacetsHistoryAndReplay` and
+  `PopulatedAncestorUpgradePreservesRowsWithOptionalAdapter` exercise real
+  generated migrations, physical type/nullability/storage/expression, generated
+  values, ordered index keys, exact history, and full operation replay.
+- `InvalidLegacyCoordinatesRejectSupportedChecksWithoutMutation` independently
+  violates each generated CHECK on MySQL, MariaDB, and PostgreSQL. Preflight
+  and execution of that rejected operation must preserve schema, rows, and
+  history. It does not promise rollback of earlier implicitly committed MySQL DDL.
+- `PendingUpgradeRejectsIndexDriftWithoutAdvancingHistory`,
+  `SameNameWrongColumnIndexFailsClosedAndPreservesData`, and
+  `AncestorIndexDriftFailsClosedAndPreservesData` retain real drift rejection.
+- `OrdinarySqliteComputedFacetsRejectGuardedTableReplayWithoutMutation`
+  rejects missing declared type/nullability facets in ordinary EF-created
+  SQLite schema, preserving its generated expression, rows, indexes, and history.
+
+The 17 previously failing expectations belonged to the older optional adapter
+contract. Their replacement accepts specifically supported migrations while
+retaining independent rejection tests; it does not accept arbitrary raw SQL.
+SQL Server cases still require the native x64 lane.
+
 ## Optional SQL Server migrations
 
-The optional suite consumes published SafeMigrations 10.4.9 with ordinary
-EF SQL Server 10.0.12. Every relational case runs with the default `dbo` schema
+The repository's published baseline pins SafeMigrations 10.6.1 with ordinary
+EF SQL Server 10.0.14. Its current public-graph qualification is separate from the
+recorded local overlay described above. Every relational case runs with the default `dbo` schema
 and an explicitly configured schema; package discovery is checked
 separately. Neither NestedSet package nor the ordinary migration test project
 references the adapter.
 
 Unqualified safe operations require `dbo` as the database user's default schema;
-other defaults require explicit schema mapping. SQL Server runs locally under
-x86-64 emulation on ARM; native hosted qualification remains a separate
-requirement. Exact dated totals are in the support and qualification guide.
+other defaults require explicit schema mapping. SQL Server database cases
+are visibly skipped on local ARM; native Linux x64 CI is required for their
+qualification. Exact dated totals are in the support and qualification guide.
 
 Positive coverage:
 
@@ -161,8 +393,8 @@ requested map operations compile lazily and are reused from that cache.
 typed readers retain the installed composite-key snapshot independently of
 changed current values. `IncompatibleFrameworkHasARegistrationDiagnostic`
 requires the loaded version, exact missing member, and registration guidance.
-`RegistrationValidatesWithoutCreatingAContext` exercises `UseNestedSets()`
-without a provider or model. Structural compatibility does not qualify the
+`RegistrationValidatesWithoutCreatingAContext` invokes the typed SQLite
+callback's `UseNestedSets()` before a context or model exists. Structural compatibility does not qualify the
 behavior of a future EF patch; its insertion and rollback matrix must still run.
 
 Source: [insertion contract controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/InsertionReflectionContractTests.cs).
@@ -247,7 +479,10 @@ Sources: [prepared generic-plan cases](../tests/Doka.EntityFrameworkCore.NestedS
 and [prepared session cleanup](../tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests/Indexes/NullableParentIndexTests.PreparedPlan.cs).
 
 The capacity heap observer has independent held-allocation controls and
-deterministic background-cycle guards. Qualified collection-start identities
+deterministic background-cycle guards. Its object/array calibration uses an
+isolated invocation of the existing Unit executable before runner initialization,
+comparing independently counted held allocations with collected heap growth at
+the original +/-10% accuracy bound. Qualified collection-start identities
 exclude unnecessary older allocation traffic; completion followed by another
 full start, invalid counts, and unknown counter epochs retain the conservative
 earlier anchor. A captured native MySQL tuple rejects the old unconditional
@@ -1003,6 +1238,59 @@ Sources: [metadata](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/
 [insert commands](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Mutations/Facade/NestedSetMutationFacadeBudgetTests.cs),
 and [move budgets](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Hierarchy/Movement/AutomaticMoveBudgetTests.cs).
 
+The [expression-factory qualification](qualification/query-performance.md#expression-construction)
+adds mapped-member construction counterexamples for mutable/custom metadata,
+exact named models, independent aliases and weak lifetimes. It rejects an
+additional cache rather than adding retained state without a demonstrated
+complete-report benefit. Fixed path literals have a direct reuse regression
+with an old-binary negative control; whole-proof bytes remain diagnostic.
+Interleaved row-aware and independent edge rules execute in reverse order
+alongside nearest-before-value rejection. The record retains native MariaDB/
+MySQL reads, deep work budgets and unfavorable elapsed observations separately
+from the pure construction measurements. Existing allocation ceilings remain.
+
+## Provider-specific identity lengths
+
+- `UnicodeIdentityLengthTests` verifies both roles before I/O using actual
+  provider mappings: scalar boundaries, combining sequences, malformed
+  surrogates, converter output, byte limits, custom mappings and bounded
+  PostgreSQL aliases. Runtime clones retain their concrete policy; another
+  assembly cannot authorize character counting with the same type name.
+- `WarmCharacterCountingDoesNotAllocate` checks ASCII, BMP, supplementary and
+  mixed inputs over 10,000 warmed operations with an exact zero-byte budget.
+  Both Debug and Release exercise the same immutable surrogate search;
+  unoptimized generic-helper boxing must not change that budget.
+  It runs in the mandatory uninstrumented `Category=Allocation` Unit partition;
+  the complementary Unit cases run with coverage. Instrumentation-only boxing
+  is not included in production allocation budgets, and no budget is relaxed.
+- `RuntimeModelRetainsPrimitiveNativeIdentityPolicies` and
+  `CapturedIdentityPolicyKeepsBothBooleanDecisions` protect the adapter's
+  captured Scope/TreeId decisions. Missing, non-Boolean, namesake-assembly and
+  mapping-subclass controls reject invalid capture or unsupported recognition
+  instead of inferring a native policy.
+- `EveryNonSurrogateCodeUnitCountsOnce` covers every BMP code unit outside
+  `D800..DFFF`. `EverySurrogateCodeUnitCountsInsideValidPairs` covers every high
+  and low surrogate in a valid pair; `EveryUnpairedSurrogateCodeUnitIsRejected`
+  rejects every unpaired surrogate. These exercise the actual cached
+  surrogate-range search and common counter, including both ends and interior
+  of the range. Positive/negative Unicode semantics remain in the covered
+  partition rather than being omitted with the allocation budget.
+- MySQL/MariaDB `UnicodeIdentityTests` verify real stored values and native
+  `CHAR_LENGTH`/`OCTET_LENGTH`, neighboring identity isolation, coordinated
+  ordering saves, scopeless requests, zero-command rejection, scalar/JSON
+  transport and duplicate rejection. Binary converters retain byte boundaries.
+- `UnicodeIdentityCompiledModelTests` use actual generated and compiled C#
+  models for native positive/rejection cases, including `bpchar(8)`. The shared
+  `CompiledModelTestSupport` also serves the existing ancestor-index suite.
+
+Sources: [Unit boundaries](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Execution/UnicodeIdentityLengthTests.cs),
+[captured policy and ownership](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Execution/UnicodeIdentityLengthTests.Metadata.cs),
+[complete code-unit range controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Execution/UnicodeIdentityLengthTests.Ranges.cs),
+[warm allocation budget](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Execution/UnicodeIdentityLengthTests.Allocations.cs),
+[native tests](../tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Concurrency/TreeRegistry/UnicodeIdentityTestBase.cs),
+[generated-model tests](../tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests/Integration/UnicodeIdentityCompiledModelTests.cs),
+and [qualification](qualification/unicode-identities.md).
+
 ## Execution and evidence limits
 
 `ConfiguredDiscoveryRetainsMixedSources` loads the copied runner configuration
@@ -1117,9 +1405,10 @@ resources. It examines every `ICollectionFixture<>` registration without
 initializing it, so an unrelated registration cannot disappear through a
 recognized-fixture filter. Catalog and registration controls complement
 the existing constructor, named-collection, and fixture-lifetime regressions.
-Shared query-plan evidence is written by the independent `QueryPlanTestSupport`
-helper from all six existing call paths; preserve output-directory selection,
-file naming, double-newline formatting, and asynchronous cancellation behavior.
+Shared statistics refresh, native plan explanation, and evidence writing belong
+to the independent `QueryPlanTestSupport` helper. Preserve provider SQL,
+captured bindings, command selection, output-directory selection, file naming,
+double-newline formatting, and asynchronous cancellation behavior.
 
 The complete local migration accounts for 17 former legacy suites, 35 methods,
 and 57 engine/scenario variants. Every database behavior variant remains a

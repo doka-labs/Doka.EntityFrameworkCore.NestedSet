@@ -175,6 +175,7 @@ public abstract partial class OrderingRefreshTests : ProviderTest
                 var name = context
                     .Entry(node)
                     .Property(value => value.Name);
+
                 Assert.Equal("Alpha", name.OriginalValue);
                 Assert.Equal("Zulu", name.CurrentValue);
                 Assert.True(name.IsModified);
@@ -184,6 +185,7 @@ public abstract partial class OrderingRefreshTests : ProviderTest
         var payload = context
             .Entry(unrelated)
             .Property(node => node.Payload);
+
         Assert.Equal("original", payload.OriginalValue);
         Assert.Equal("pending payload", payload.CurrentValue);
         Assert.True(payload.IsModified);

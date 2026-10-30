@@ -10,15 +10,13 @@ public sealed class TestModelServiceReuseTests
         // Arrange
         var scopeOptions = new DbContextOptionsBuilder<ScopeMappingContext>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .ReplaceService<IModelCacheKeyFactory, TestModelCacheKeyFactory>()
             .Options;
 
         var indexOptions = new DbContextOptionsBuilder<IndexMappingContext>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .ReplaceService<IModelCacheKeyFactory, TestModelCacheKeyFactory>()
             .Options;
 

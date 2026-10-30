@@ -16,8 +16,7 @@ public sealed class StrongIdTests : ProviderTest, IClassFixture<ProviderFixture<
         // Arrange
         var options = new DbContextOptionsBuilder<StrongIdContext>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new StrongIdContext(options);

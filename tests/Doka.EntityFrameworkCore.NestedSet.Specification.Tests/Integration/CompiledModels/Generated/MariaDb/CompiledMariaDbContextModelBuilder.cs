@@ -13,7 +13,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels.MariaDb
     {
         private CompiledMariaDbContextModel() : base(
             skipDetectChanges: false,
-            modelId: new Guid("b7a68516-7e24-4889-9a81-42245765e23c"),
+            modelId: new Guid("a313adff-9d11-4381-bdcb-8731ad8eba75"),
             entityTypeCount: 5) { }
 
         partial void Initialize()
@@ -33,7 +33,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels.MariaDb
             CompiledNumber0EntityType.CreateAnnotations(compiledNumber0);
 
             AddAnnotation("Doka:NestedSet:CollationsCaptured", true);
-            AddAnnotation("ProductVersion", "10.0.12");
+            AddAnnotation("ProductVersion", "10.0.13");
             AddAnnotation("Relational:MaxIdentifierLength", 64);
         }
     }

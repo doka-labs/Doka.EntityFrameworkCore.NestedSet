@@ -7,17 +7,20 @@ FileSystem demonstrates the same public API without a required scope.
 
 ## Install
 
-Install the EF package and the application's database provider. These commands
-use this source's stable `10.0.0` package contract and the qualified Doka MySQL/MariaDB provider:
+Install the NestedSet adapter for the application's database. It supplies the
+common EF kernel, the ORM-independent package, and its native EF provider.
+This command installs the stable `10.1.0` contract with the Doka
+MySQL/MariaDB adapter baseline. The [qualification matrix](support-and-qualification.md)
+separates package declarations from executed evidence:
 
 ```bash
-dotnet package add Doka.EntityFrameworkCore.NestedSet --version 10.0.0
-dotnet package add Doka.EntityFrameworkCore.MySql --version 10.4.4
+dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.1.0
 ```
 
-The core package is included transitively. Use the exact version from the
-matching [GitHub release](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/releases)
-or NuGet package page.
+The core package is included transitively. Keep all selected adapters and the
+common EF package at `10.1.0` to satisfy the exact adapter/kernel dependency.
+For an existing `10.0.0` application, follow the
+[provider-package upgrade guide](upgrading-provider-packages.md).
 
 ## Define the entity
 
@@ -103,14 +106,14 @@ Omit `.HasScope(...)` completely for an unscoped hierarchy. In that model,
 
 ## Configure the context
 
-`UseNestedSets()` is the only infrastructure registration:
+Call `UseNestedSets()` inside Doka's provider callback. This selects the MySQL/
+MariaDB adapter and installs the shared infrastructure in one registration:
 
 ```csharp
 var serverVersion = MySqlServerVersion.MariaDb(new Version(11, 8, 0));
 
 services.AddDbContext<ApplicationDbContext>(options => options
-    .UseMySql(connectionString, serverVersion)
-    .UseNestedSets());
+    .UseMySql(connectionString, serverVersion, mysql => mysql.UseNestedSets()));
 ```
 
 The context remains an ordinary EF Core context. This version derives from the

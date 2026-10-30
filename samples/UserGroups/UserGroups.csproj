@@ -3,4 +3,9 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Doka.EntityFrameworkCore.NestedSet.Samples.UserGroups</RootNamespace>
   </PropertyGroup>
+  <ItemGroup Label="IDE file nesting">
+    <Compile Update="Queries/Supervisors/SupervisorQueries.*.cs">
+      <DependentUpon>SupervisorQueries.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
 </Project>

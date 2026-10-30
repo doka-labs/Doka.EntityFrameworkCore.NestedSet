@@ -58,11 +58,11 @@ public sealed class SampleDatabaseLifecycleTests
         // Arrange
         await using var directory = new SampleLifecycleDirectory();
         var configuration = directory.Configuration();
-        var otherConfiguration = directory.Configuration("kpis");
+        var otherConfiguration = directory.Configuration("signal-lab");
         await using var context = SampleLifecycleDirectory.CreateContext(configuration);
         await using var otherContext = SampleLifecycleDirectory.CreateContext(otherConfiguration);
         await SampleLifecycleDirectory.SeedAsync(context, "filesystem-data", CancellationToken.None);
-        await SampleLifecycleDirectory.SeedAsync(otherContext, "kpi-data", CancellationToken.None);
+        await SampleLifecycleDirectory.SeedAsync(otherContext, "signal-data", CancellationToken.None);
 
         // Act
         await SampleDatabase.PrepareAsync(context, configuration, reset: true, CancellationToken.None);
@@ -73,7 +73,7 @@ public sealed class SampleDatabaseLifecycleTests
             .AsNoTracking()
             .SingleAsync(CancellationToken.None);
 
-        Assert.Equal("kpi-data", preserved.Value);
+        Assert.Equal("signal-data", preserved.Value);
         Assert.Empty(
             await context
                 .Sentinels
@@ -184,7 +184,9 @@ public sealed class SampleDatabaseLifecycleTests
             endpoint + "Database=application;",
             MySqlServerVersion.MariaDb(new Version(11, 8, 0))).Options;
 
-        await using var context = new SampleLifecycleContext(options);
+        await using var services = SampleTestServices.Create(options);
+        await using var context = new SampleLifecycleContext(
+            new DbContextOptionsBuilder<SampleLifecycleContext>(options).UseInternalServiceProvider(services).Options);
 
         // Act
         var error = await Record.ExceptionAsync(() => SampleDatabase.PrepareAsync(

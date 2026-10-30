@@ -93,6 +93,9 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
                     var scopeValues = new TScope[batch.Length];
                     var keys = new TKey[batch.Length];
 
+                    // WHY: Keep scope values and node keys aligned for exact scoped-rowset correlation.
+                    // ReSharper disable once ForCanBeConvertedToForeach
+                    // ReSharper disable once LoopCanBeConvertedToQuery
                     for (var index = 0; index < batch.Length; index++)
                     {
                         var values = batch[index].CurrentValues;
@@ -331,6 +334,7 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
                 .OrderBy(interval => interval.First)
                 .ThenBy(interval => interval.Last)
                 .ToArray();
+
             var first = ordered[0].First;
             var last = ordered[0].Last;
             for (var index = 1; index <= ordered.Length; index++)

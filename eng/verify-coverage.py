@@ -1,11 +1,14 @@
-"""Reject empty Cobertura artifacts and require execution of both shipping libraries."""
+"""Reject empty Cobertura artifacts and require execution of every shipping library."""
 
 import argparse
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-REQUIRED_MODULES = {"Doka.NestedSet", "Doka.EntityFrameworkCore.NestedSet"}
+sys.path.insert(0, str(Path(__file__).resolve().parent / "release"))
+from common import PACKAGES
+
+REQUIRED_MODULES = set(PACKAGES)
 
 
 def verify_reports(results_directory: Path) -> int:
@@ -51,7 +54,7 @@ def main() -> int:
 
         return 1
 
-    print(f"Verified {count} coverage reports with executed lines in both shipping modules.")
+    print(f"Verified {count} coverage reports with executed lines in all {len(REQUIRED_MODULES)} shipping modules.")
 
     return 0
 

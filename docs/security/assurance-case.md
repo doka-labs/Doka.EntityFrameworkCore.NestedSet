@@ -108,6 +108,13 @@ business audit or external-reference evidence required before identity reuse.
 
 ## Case 7: Released evidence represents released bytes
 
+The [release-line contract](../operations/release-lines.md) separates frozen
+source/toolchain evidence from current protected-main permission. Publication
+rechecks the selected active line and original candidate before irreversible
+boundaries; a historical signed release remains verifiable independently of
+today's activation or GitHub Latest. Branch-native audits and full qualification
+cover active maintained lines, with hosted operation requiring separate evidence.
+
 **Claim.** A completed release binds source, packages, symbols, SBOMs,
 provenance, NuGet copies, and GitHub assets to one candidate.
 

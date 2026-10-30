@@ -37,7 +37,9 @@ internal static class RetryBoundaryServices
 
         // WHY: UseInternalServiceProvider makes the caller responsible for every options-extension service. Apply
         // the production extension's registrations so this retry graph builds the same registry-enabled model.
-        ((IDbContextOptionsExtension)NestedSetOptionsExtension.Instance).ApplyServices(services);
+        var options = ModelCompatibilityDatabase.Options<TreeContext>(engine);
+
+        ((IDbContextOptionsExtension)options.FindExtension<NestedSetOptionsExtension>()!).ApplyServices(services);
 
         return services.BuildServiceProvider();
     }

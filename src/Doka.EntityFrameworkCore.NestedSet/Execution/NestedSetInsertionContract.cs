@@ -350,6 +350,9 @@ internal sealed class NestedSetInsertionContract
 
             var matches = true;
 
+            // WHY: Compare actual and required parameter types at the same signature ordinal.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var index = 0; index < parameters.Length; index++)
             {
                 matches &= actual[index].ParameterType == parameters[index];

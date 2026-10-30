@@ -39,7 +39,6 @@ global using Microsoft.EntityFrameworkCore.Metadata;
 global using Microsoft.EntityFrameworkCore.Metadata.Builders;
 global using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 global using Microsoft.EntityFrameworkCore.Query;
-global using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 global using Microsoft.EntityFrameworkCore.Storage;
 global using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 global using Microsoft.EntityFrameworkCore.Update;

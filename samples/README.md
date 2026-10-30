@@ -6,13 +6,24 @@ through the public NestedSet API. Each owns its normal DbSets, entities,
 MariaDB 11.8 is the default; MySQL 8.4 and persistent SQLite files are optional.
 All projects appear directly under `samples` in Rider.
 
+The scenarios use independently designed synthetic models, generated identities
+and fixed demonstration data. SignalLab describes a fictional acquisition lab;
+its channel and connection rules are application examples, not NestedSet domain
+contracts. Shared tests and benchmarks execute those same sample components.
+
+The sample projects reference the NestedSet `.MySql` and `.Sqlite` adapters.
+Their shared endpoint setup selects the corresponding adapter inside the
+native provider callback. Entity mappings and domain flows use the same common
+hierarchy API; [the upgrade guide](../docs/upgrading-provider-packages.md)
+explains the package and registration boundary.
+
 | Project | Start here to learn | Scope |
 | --- | --- | --- |
 | [FileSystem](FileSystem/README.md) | Independent trees, alphabetical siblings, queries, moves, delete semantics, bulk and maintenance | Omitted entirely |
-| [Kpis](Kpis/README.md) | Adapt an existing model, aggregate leaf measurements in SQL, use manual sibling order | ProjectId |
-| [UserGroups](UserGroups/README.md) | Tenant isolation, inherited privileges from multiple user groups, supervisor lines with shadow coordinates, and atomic transactions | TenantId |
+| [SignalLab](SignalLab/README.md) | Instrument trees, connection availability, typed tags, Any/Nearest owners, and event aggregation over pulse/sweep/burst acquisition formats | Application-selected scope |
+| [UserGroups](UserGroups/README.md) | Tenant isolation, privileges, shadow-coordinate user lines, role/metadata-based group supervision, and bounded chains | TenantId |
 
-FileSystem and Kpis use the optional `NestedSetDbContext` convenience base.
+FileSystem and SignalLab use the optional `NestedSetDbContext` convenience base.
 UserGroups keeps an ordinary `DbContext` and integrates NestedSet into its
 existing asynchronous save customization. All expose normal DbSets and use
 `context.NestedSet<TEntity>()`; no additional hierarchy property is required.
@@ -42,9 +53,10 @@ administrative credentials. The connection defaults match [Docker setup](../dock
 
 ```sh
 dotnet run --project samples/FileSystem -c Release -- --help
-dotnet run --project samples/Kpis -c Release -- --scenario aggregate
+dotnet run --project samples/SignalLab -c Release -- --scenario aggregate
 dotnet run --project samples/UserGroups -c Release -- --scenario inheritance
 dotnet run --project samples/UserGroups -c Release -- --scenario supervisors
+dotnet run --project samples/SignalLab -c Release -- --scenario report
 ```
 
 Without `--scenario`, a project executes all its flows in the documented order.
@@ -72,7 +84,7 @@ Each project has a fixed database:
 | Project | Server database | SQLite filename |
 | --- | --- | --- |
 | FileSystem | nestedset_sample_filesystem | nestedset_sample_filesystem.sqlite |
-| Kpis | nestedset_sample_kpis | nestedset_sample_kpis.sqlite |
+| SignalLab | nestedset_sample_signal_lab | nestedset_sample_signal_lab.sqlite |
 | UserGroups | nestedset_sample_usergroups | nestedset_sample_usergroups.sqlite |
 
 Results remain stored after successful runs and unexpected failures. Add these
@@ -147,7 +159,13 @@ They do not implement a scenario framework or hide hierarchy calls.
 Each project includes separate `Migrations/MySql/` and `Migrations/Sqlite/`
 chains and construct-only design-time factories. Its migrations include
 the structural columns, self-FK, derived indexes and tree registry. UserGroups
-has one initial migration per provider that includes both its group and supervisor hierarchies and user-group memberships.
+retains its original initial migration per provider and adds one cohesive
+supervisor-query migration. SignalLab owns a separate database and a two-stage
+synthetic chain per provider: the initial instrument tree, followed by the
+acquisition catalog, tags and heterogeneous event inputs. Tests can upgrade
+between those two stages while preserving instrument payload. Its migrations
+do not upgrade another sample's database or transfer data from an application.
+Normal rerun/reset ownership still applies.
 The selected local sample applies its migration before populating a fresh database;
 schema and scenario data are separate steps.
 

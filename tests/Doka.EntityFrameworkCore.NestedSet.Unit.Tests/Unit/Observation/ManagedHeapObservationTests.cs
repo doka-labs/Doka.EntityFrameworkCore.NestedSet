@@ -191,6 +191,7 @@ public sealed class ManagedHeapObservationTests
 
         GC.KeepAlive(baselineState);
         GC.KeepAlive(held);
+
         return;
 
         long AllocateWave(
@@ -235,33 +236,26 @@ public sealed class ManagedHeapObservationTests
         return (() => noise = null, released);
     }
 
-    /// <summary>
-    /// Collected heap agrees with allocated object sizes instead of double-counting promoted survivors.
-    /// </summary>
-    [Fact]
-    public void CollectedObservationMatchesHeldObjectAllocation()
+    /// <summary>The collected-heap helper agrees with independent live-allocation counters outside runner state.</summary>
+    /// <param name="shape">The independently counted small-object or small-array survivor shape.</param>
+    [Theory]
+    [InlineData("objects")]
+    [InlineData("arrays")]
+    public async Task CollectedObservationMatchesIndependentlyHeldAllocations(string shape)
     {
         // Arrange
-        // WHY: The runner can release completed-test state between the two collections. A 2.4 MiB held
-        // allocation keeps that fixed noise below the tolerance while still rejecting double-counted survivors.
-        var held = new object[100_000];
-        var before = ManagedHeapObservation.CollectedBytes();
-        var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        const int expectedObjects = 100_000;
 
         // Act
-        for (var index = 0; index < held.Length; index++)
-        {
-            held[index] = new object();
-        }
-
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
-        var retained = ManagedHeapObservation.CollectedBytes() - before;
+        var measurement = await ManagedHeapProbe.RunIsolatedAsync(shape);
 
         // Assert
-        // WHY: The ten-percent allowance covers fixed runner and observer state; it still rejects the
-        // reproduced twofold survivor overcount rather than changing any production allocation budget.
-        Assert.InRange(retained, allocated - (allocated / 10), allocated + (allocated / 10));
-        Assert.All(held, Assert.NotNull);
-        GC.KeepAlive(held);
+        // WHY: The child isolates ownership rather than tolerating arbitrary runner-state release. Keep the
+        // original accuracy bound, which rejects both doubled survivors and missing retained allocations.
+        Assert.Equal(expectedObjects, measurement.Objects);
+        Assert.True(measurement.Allocated > 0);
+        Assert.InRange(measurement.Retained,
+            measurement.Allocated - measurement.Allocated / 10,
+            measurement.Allocated + measurement.Allocated / 10);
     }
 }

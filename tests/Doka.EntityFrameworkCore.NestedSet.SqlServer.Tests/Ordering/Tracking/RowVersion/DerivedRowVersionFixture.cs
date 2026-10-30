@@ -21,8 +21,7 @@ public sealed class DerivedRowVersionFixture : IAsyncLifetime
         await using var source = _database.CreateContext();
         var builder = new DbContextOptionsBuilder<DerivedRowVersionContext>()
             .ConfigureTestWarnings()
-            .UseSqlServer(source.Database.GetConnectionString())
-            .UseNestedSets();
+            .UseSqlServer(source.Database.GetConnectionString(), provider => provider.UseNestedSets());
 
         if (interceptor is not null)
         {

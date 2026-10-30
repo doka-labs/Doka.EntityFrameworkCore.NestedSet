@@ -41,7 +41,7 @@ public abstract partial class OrderingRefreshScaleTests
         var actual = await context
             .Set<GuidNode>()
             .AsNoTracking()
-            .Where(node => ((IEnumerable<Guid>)EF.Parameter(keys)).Contains(node.Id))
+            .Where(node => Enumerable.Contains(EF.Parameter(keys), node.Id))
             .Select(node => node.Id)
             .ToArrayAsync(CancellationToken.None);
 

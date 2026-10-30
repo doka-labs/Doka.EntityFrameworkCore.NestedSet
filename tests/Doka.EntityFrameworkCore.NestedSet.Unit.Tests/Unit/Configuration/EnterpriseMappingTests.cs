@@ -38,8 +38,7 @@ public sealed class EnterpriseMappingTests
     {
         var options = new DbContextOptionsBuilder<ScopeMappingContext>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .ReplaceService<IModelCacheKeyFactory, TestModelCacheKeyFactory>()
             .Options;
 

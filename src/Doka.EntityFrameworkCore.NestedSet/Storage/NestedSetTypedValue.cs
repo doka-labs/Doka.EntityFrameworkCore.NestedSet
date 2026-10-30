@@ -99,7 +99,17 @@ internal static class NestedSetTypedEquality<TValue>
 
         try
         {
-            _ = Expression.Equal(value, value);
+            var equality = Expression.Equal(value, value);
+
+            if (equality.Method is { } method)
+            {
+                // WHY: The probe already resolved the operator. Retain that exact method so repeated builds
+                // preserve native/lifted equality without rediscovering operators through reflection.
+                return (
+                    left,
+                    right
+                ) => Expression.Equal(left, right, liftToNull: false, method);
+            }
 
             return static (
                 left,
@@ -108,7 +118,15 @@ internal static class NestedSetTypedEquality<TValue>
         }
         catch (InvalidOperationException)
         {
-            var equals = typeof(TValue).GetMethod(nameof(object.Equals), [typeof(TValue)]);
+            // WHY: Nullable operator-free structs expose Equals(object), not Equals(TValue). A relaxed
+            // reflection lookup can return that overload and produce an invalid unboxed call expression.
+            // Only an exact typed overload belongs here; the explicit object marker below handles the rest.
+            var equals = typeof(TValue).GetMethod(
+                nameof(object.Equals),
+                BindingFlags.Public | BindingFlags.Instance | BindingFlags.ExactBinding,
+                binder: null,
+                types: [typeof(TValue)],
+                modifiers: null);
 
             if (equals is not null)
             {
@@ -122,13 +140,20 @@ internal static class NestedSetTypedEquality<TValue>
 
             // WHY: An operator-free struct can expose only Equals(object). This erasure exists solely inside the
             // provider-translated expression; no runtime key, scope or parent is transported as object.
-            return static (
+            var objectEquals = typeof(object).GetMethod(
+                nameof(object.Equals),
+                BindingFlags.Public | BindingFlags.Static | BindingFlags.ExactBinding,
+                binder: null,
+                types: [typeof(object), typeof(object)],
+                modifiers: null)!;
+
+            // WHY: The exact framework overload is stable and already known; name-based Expression.Call would
+            // repeat reflection and overload discovery for every equality node.
+            return (
                 left,
                 right
             ) => Expression.Call(
-                typeof(object),
-                nameof(object.Equals),
-                [],
+                objectEquals,
                 Expression.Convert(left, typeof(object)),
                 Expression.Convert(right, typeof(object)));
         }

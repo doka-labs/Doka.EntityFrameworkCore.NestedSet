@@ -11,7 +11,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels.SqlServer
     public partial class CompiledSqlServerContextModel
     {
         private CompiledSqlServerContextModel()
-            : base(skipDetectChanges: false, modelId: new Guid("e80f9959-64f6-4ece-acfe-0c838c2514c5"), entityTypeCount: 5)
+            : base(skipDetectChanges: false, modelId: new Guid("c80faf3a-1c91-4bf8-9eac-50ebca5a36ee"), entityTypeCount: 5)
         {
         }
 
@@ -32,7 +32,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels.SqlServer
             CompiledNumber0EntityType.CreateAnnotations(compiledNumber0);
 
             AddAnnotation("Doka:NestedSet:CollationsCaptured", true);
-            AddAnnotation("ProductVersion", "10.0.12");
+            AddAnnotation("ProductVersion", "10.0.13");
             AddAnnotation("Relational:MaxIdentifierLength", 128);
             AddAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
         }

@@ -13,6 +13,7 @@ public abstract partial class RelationalTests
         var tree = context
             .NestedSet<GuidNode>()
             .ForScope(1);
+
         var parent = Guid.NewGuid();
         var child = Guid.NewGuid();
         await tree.InsertRootAsync(new GuidNode { Id = parent }, Guid.Empty, CancellationToken.None);

@@ -22,14 +22,12 @@ public sealed class RegistryRenameTests : ProviderTest, IClassFixture<ProviderFi
         // Arrange
         var beforeOptions = new DbContextOptionsBuilder<RegistryRenameContext<PreviousFolder>>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .Options;
 
         var afterOptions = new DbContextOptionsBuilder<RegistryRenameContext<RenamedFolder>>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .Options;
 
         using var before = new RegistryRenameContext<PreviousFolder>(beforeOptions);
@@ -63,14 +61,12 @@ public sealed class RegistryRenameTests : ProviderTest, IClassFixture<ProviderFi
         await connection.OpenAsync(CancellationToken.None);
         var beforeOptions = new DbContextOptionsBuilder<RegistryRenameContext<PreviousFolder>>()
             .ConfigureTestWarnings()
-            .UseSqlite(connection)
-            .UseNestedSets()
+            .UseSqlite(connection, provider => provider.UseNestedSets())
             .Options;
 
         var afterOptions = new DbContextOptionsBuilder<RegistryRenameContext<RenamedFolder>>()
             .ConfigureTestWarnings()
-            .UseSqlite(connection)
-            .UseNestedSets()
+            .UseSqlite(connection, provider => provider.UseNestedSets())
             .Options;
 
         var activeTree = Guid.NewGuid();
@@ -121,14 +117,12 @@ public sealed class RegistryRenameTests : ProviderTest, IClassFixture<ProviderFi
         await connection.OpenAsync(CancellationToken.None);
         var beforeOptions = new DbContextOptionsBuilder<RegistryRenameContext<PreviousFolder>>()
             .ConfigureTestWarnings()
-            .UseSqlite(connection)
-            .UseNestedSets()
+            .UseSqlite(connection, provider => provider.UseNestedSets())
             .Options;
 
         var afterOptions = new DbContextOptionsBuilder<RegistryRenameContext<RenamedFolder>>()
             .ConfigureTestWarnings()
-            .UseSqlite(connection)
-            .UseNestedSets()
+            .UseSqlite(connection, provider => provider.UseNestedSets())
             .Options;
 
         var activeTree = Guid.NewGuid();

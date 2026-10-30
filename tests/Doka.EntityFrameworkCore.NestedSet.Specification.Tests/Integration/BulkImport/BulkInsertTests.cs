@@ -257,6 +257,7 @@ public abstract class BulkInsertTests : ProviderTest
                 .Set<TreeNode>()
                 .AsNoTracking()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal((1, 2), (persisted.Start, persisted.End));
     }
 

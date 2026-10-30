@@ -14,12 +14,26 @@ import packages
 
 
 def make_packages(directory, version="0.1.0-dev", commit="a" * 40):
-    """Create both actual ZIP shapes with injectable contents for isolated rejection probes."""
+    """Create every primary/symbol pair with independent declared package-boundary fixtures."""
     for package_id in packages.PACKAGE_IDS:
-        dependency = "" if package_id == packages.PACKAGE_IDS[0] else (
-            f'<dependency id="Doka.NestedSet" version="{version}" />'
-            '<dependency id="Microsoft.EntityFrameworkCore" version="[10.0.12, 11.0.0)" />'
-            '<dependency id="Microsoft.EntityFrameworkCore.Relational" version="[10.0.12, 11.0.0)" />')
+        if package_id == packages.PACKAGE_IDS[0]:
+            dependency = ""
+        elif package_id == packages.PACKAGE_IDS[1]:
+            dependency = (f'<dependency id="Doka.NestedSet" version="{version}" />'
+                          '<dependency id="Microsoft.EntityFrameworkCore" version="[10.0.12, 11.0.0)" />'
+                          '<dependency id="Microsoft.EntityFrameworkCore.Relational" version="[10.0.12, 11.0.0)" />')
+        else:
+            providers = {
+                "Doka.EntityFrameworkCore.NestedSet.MySql": ("Doka.EntityFrameworkCore.MySql", "[10.6.3,10.7.0)"),
+                "Doka.EntityFrameworkCore.NestedSet.Postgres": ("Npgsql.EntityFrameworkCore.PostgreSQL", "[10.0.3,11.0.0)"),
+                "Doka.EntityFrameworkCore.NestedSet.Sqlite": ("Microsoft.EntityFrameworkCore.Sqlite", "[10.0.13,11.0.0)"),
+                "Doka.EntityFrameworkCore.NestedSet.SqlServer": ("Microsoft.EntityFrameworkCore.SqlServer", "[10.0.13,11.0.0)"),
+            }
+            provider, supported = providers[package_id]
+            dependency = (f'<dependency id="Doka.EntityFrameworkCore.NestedSet" version="[{version}]" />'
+                          f'<dependency id="{provider}" version="{supported}" />')
+            if package_id.endswith(".SqlServer"):
+                dependency += '<dependency id="System.Security.Cryptography.Pkcs" version="9.0.21" />'
 
         for extension in ("nupkg", "snupkg"):
             spec = (f'<package><metadata><id>{package_id}</id><version>{version}</version>'
@@ -87,7 +101,7 @@ class PackageTests(unittest.TestCase):
         self.primary = self.directory / "Doka.NestedSet.0.1.0-dev.nupkg"
 
     def test_complete_candidate_is_deterministic(self):
-        """The receipt carries both identities and exact primary/symbol hashes."""
+        """The receipt carries every package identity and exact primary/symbol hashes."""
         # Arrange
         expected = list(packages.PACKAGE_IDS)
 
@@ -148,7 +162,7 @@ class PackageTests(unittest.TestCase):
         self.assertRegex(str(error), "Wrong-version probe was accepted or did not report a controlled failure")
 
     def test_unexpected_archive_is_rejected(self):
-        """Extra archives cannot hide behind a valid two-package subset."""
+        """Extra archives cannot hide behind a valid subset of shipping packages."""
         # Arrange
         (self.directory / "unexpected.nupkg").write_bytes(b"other")
 
@@ -156,7 +170,7 @@ class PackageTests(unittest.TestCase):
         error = capture(lambda: packages.verify_packages(self.directory, "0.1.0-dev"))
 
         # Assert
-        self.assertRegex(str(error), "exactly two primary")
+        self.assertRegex(str(error), "exactly 6 primary")
 
     def test_missing_symbols_are_rejected(self):
         """A primary-only candidate is insufficient for publication."""
@@ -193,7 +207,7 @@ class PackageTests(unittest.TestCase):
         self.assertRegex(str(error), "identity mismatch")
 
     def test_wrong_dependency_binding_is_rejected(self):
-        """The EF nuspec must resolve to the exact candidate Core version."""
+        """The EF nuspec must declare its own release's ORM-independent dependency floor."""
         # Arrange
         for suffix in ("nupkg", "snupkg"):
             path = self.directory / f"Doka.EntityFrameworkCore.NestedSet.0.1.0-dev.{suffix}"
@@ -205,7 +219,7 @@ class PackageTests(unittest.TestCase):
         error = capture(lambda: packages.verify_packages(self.directory, "0.1.0-dev"))
 
         # Assert
-        self.assertRegex(str(error), "candidate Core")
+        self.assertRegex(str(error), "candidate Doka.NestedSet")
 
     def change_ef_dependencies(self, before, after):
         """Alter both nuspecs consistently so a range defect is not hidden by symbol-pair mismatch rejection."""
@@ -223,7 +237,7 @@ class PackageTests(unittest.TestCase):
         error = capture(lambda: packages.verify_packages(self.directory, "0.1.0-dev"))
 
         # Assert
-        self.assertRegex(str(error), "bounded inclusive-floor/exclusive-major range")
+        self.assertRegex(str(error), "bounded inclusive-floor/exclusive-upper range")
 
     def test_wrong_ef_major_bound_is_rejected(self):
         """A syntactically bounded range cannot broaden the supported EF major contract."""
@@ -256,7 +270,7 @@ class PackageTests(unittest.TestCase):
         error = capture(lambda: packages.verify_packages(self.directory, "0.1.0-dev"))
 
         # Assert
-        self.assertRegex(str(error), "Unexpected EF dependency closure")
+        self.assertRegex(str(error), "Unexpected shipping dependency closure")
 
     def test_missing_relational_dependency_is_rejected(self):
         """The EF package cannot omit the relational API dependency declared by its shipping project."""
@@ -268,7 +282,152 @@ class PackageTests(unittest.TestCase):
         error = capture(lambda: packages.verify_packages(self.directory, "0.1.0-dev"))
 
         # Assert
-        self.assertRegex(str(error), "Unexpected EF dependency closure")
+        self.assertRegex(str(error), "Unexpected shipping dependency closure")
+
+    def change_adapter_dependencies(self, package_id, before, after):
+        """Alter both archive declarations without hiding the tested defect behind pair disagreement."""
+        for suffix in ("nupkg", "snupkg"):
+            path = self.directory / f"{package_id}.0.1.0-dev.{suffix}"
+            spec = package_id + ".nuspec"
+            rewrite_archive(path, lambda entries: entries.update({spec: entries[spec].replace(before, after)}))
+
+    def test_adapter_requires_its_exact_common_ef_release(self):
+        """An adapter cannot bind another common engine while retaining the expected outer version."""
+        # Arrange
+        self.change_adapter_dependencies("Doka.EntityFrameworkCore.NestedSet.MySql",
+            b'id="Doka.EntityFrameworkCore.NestedSet" version="[0.1.0-dev]"',
+            b'id="Doka.EntityFrameworkCore.NestedSet" version="[9.0.0]"')
+
+        # Act
+        error = capture(lambda: packages.verify_packages(self.directory, "0.1.0-dev"))
+
+        # Assert
+        self.assertRegex(str(error), "candidate Doka.EntityFrameworkCore.NestedSet dependency version")
+
+    def test_adapter_cannot_declare_only_a_kernel_minimum(self):
+        """A release-matching lower bound still permits incompatible private kernel implementations."""
+        # Arrange
+        self.change_adapter_dependencies("Doka.EntityFrameworkCore.NestedSet.MySql",
+            b'id="Doka.EntityFrameworkCore.NestedSet" version="[0.1.0-dev]"',
+            b'id="Doka.EntityFrameworkCore.NestedSet" version="[0.1.0-dev, )"')
+
+        # Act
+        error = capture(lambda: packages.verify_packages(self.directory, "0.1.0-dev"))
+
+        # Assert
+        self.assertRegex(str(error), "candidate Doka.EntityFrameworkCore.NestedSet dependency version")
+
+    def test_adapter_cannot_declare_a_bounded_kernel_interval(self):
+        """Even a patch-sized interval cannot promise compatibility with private future members."""
+        # Arrange
+        self.change_adapter_dependencies("Doka.EntityFrameworkCore.NestedSet.Sqlite",
+            b'id="Doka.EntityFrameworkCore.NestedSet" version="[0.1.0-dev]"',
+            b'id="Doka.EntityFrameworkCore.NestedSet" version="[0.1.0-dev,0.1.1)"')
+
+        # Act
+        error = capture(lambda: packages.verify_packages(self.directory, "0.1.0-dev"))
+
+        # Assert
+        self.assertRegex(str(error), "candidate Doka.EntityFrameworkCore.NestedSet dependency version")
+
+    def test_adapter_cannot_replace_its_native_provider(self):
+        """A valid-looking foreign provider dependency cannot satisfy the selected adapter contract."""
+        # Arrange
+        self.change_adapter_dependencies("Doka.EntityFrameworkCore.NestedSet.MySql",
+            b'id="Doka.EntityFrameworkCore.MySql"', b'id="Npgsql.EntityFrameworkCore.PostgreSQL"')
+
+        # Act
+        error = capture(lambda: packages.verify_packages(self.directory, "0.1.0-dev"))
+
+        # Assert
+        self.assertRegex(str(error), "Unexpected shipping dependency closure")
+
+    def test_adapter_native_range_cannot_become_unbounded(self):
+        """Direct typed APIs require the adapter's declared and reviewed native compatibility range."""
+        # Arrange
+        self.change_adapter_dependencies("Doka.EntityFrameworkCore.NestedSet.MySql",
+            b'version="[10.6.3,10.7.0)"', b'version="10.6.3"')
+
+        # Act
+        error = capture(lambda: packages.verify_packages(self.directory, "0.1.0-dev"))
+
+        # Assert
+        self.assertRegex(str(error), "bounded inclusive-floor/exclusive-upper range")
+
+    def test_adapter_cannot_omit_the_owned_sqlclient_security_floor(self):
+        """A consumer receives the PKCS correction from SqlServer's shipping package itself."""
+        # Arrange
+        self.change_adapter_dependencies("Doka.EntityFrameworkCore.NestedSet.SqlServer",
+            b'<dependency id="System.Security.Cryptography.Pkcs" version="9.0.21" />', b"")
+
+        # Act
+        error = capture(lambda: packages.verify_packages(self.directory, "0.1.0-dev"))
+
+        # Assert
+        self.assertRegex(str(error), "Unexpected shipping dependency closure")
+
+    def test_sqlclient_security_dependency_cannot_impose_an_upper_bound(self):
+        """A correct security floor cannot unnecessarily reject a consumer's newer framework package."""
+        # Arrange
+        self.change_adapter_dependencies("Doka.EntityFrameworkCore.NestedSet.SqlServer",
+            b'id="System.Security.Cryptography.Pkcs" version="9.0.21"',
+            b'id="System.Security.Cryptography.Pkcs" version="[9.0.21,10.0.0)"')
+
+        # Act
+        error = capture(lambda: packages.verify_packages(self.directory, "0.1.0-dev"))
+
+        # Assert
+        self.assertRegex(str(error), "only an inclusive security minimum")
+
+    def test_sqlclient_security_dependency_cannot_weaken_its_floor(self):
+        """A minimum-only dependency must still enforce the reviewed corrected framework version."""
+        # Arrange
+        self.change_adapter_dependencies("Doka.EntityFrameworkCore.NestedSet.SqlServer",
+            b'id="System.Security.Cryptography.Pkcs" version="9.0.21"',
+            b'id="System.Security.Cryptography.Pkcs" version="9.0.11"')
+
+        # Act
+        error = capture(lambda: packages.verify_packages(self.directory, "0.1.0-dev"))
+
+        # Assert
+        self.assertRegex(str(error), "range differs from the shipping contract")
+
+    def test_sqlclient_security_dependency_accepts_equivalent_open_range(self):
+        """NuGet's explicit minimum notation must preserve the same patched consumer contract."""
+        # Arrange
+        self.change_adapter_dependencies("Doka.EntityFrameworkCore.NestedSet.SqlServer",
+            b'id="System.Security.Cryptography.Pkcs" version="9.0.21"',
+            b'id="System.Security.Cryptography.Pkcs" version="[9.0.21, )"')
+
+        # Act
+        result = packages.verify_packages(self.directory, "0.1.0-dev")
+
+        # Assert
+        self.assertEqual(len(packages.PACKAGE_IDS), len(result["packages"]))
+
+    def test_sqlclient_security_dependency_cannot_require_a_servicing_update(self):
+        """The archive must not silently raise the minimum beyond the reviewed first security fix."""
+        # Arrange
+        self.change_adapter_dependencies("Doka.EntityFrameworkCore.NestedSet.SqlServer",
+            b'id="System.Security.Cryptography.Pkcs" version="9.0.21"',
+            b'id="System.Security.Cryptography.Pkcs" version="9.0.22"')
+
+        # Act
+        error = capture(lambda: packages.verify_packages(self.directory, "0.1.0-dev"))
+
+        # Assert
+        self.assertRegex(str(error), "range differs from the shipping contract")
+
+    def test_final_adapter_archive_is_required(self):
+        """The full package inventory cannot pass after only the original two packages remain valid."""
+        # Arrange
+        (self.directory / "Doka.EntityFrameworkCore.NestedSet.SqlServer.0.1.0-dev.nupkg").unlink()
+
+        # Act
+        error = capture(lambda: packages.verify_packages(self.directory, "0.1.0-dev"))
+
+        # Assert
+        self.assertRegex(str(error), "exactly 6 primary and 6 symbol")
 
     def test_missing_documentation_is_rejected(self):
         """Consumers need XML documentation in the actual published payload."""
@@ -382,7 +541,7 @@ class PackageTests(unittest.TestCase):
         self.assertNotEqual(before, after)
 
     def test_sealed_manifest_validates_without_executing_metadata_helper(self):
-        """A hosted job may verify the qualified manifest and exact four bytes without rebuilding tooling."""
+        """A hosted job verifies every qualified archive byte without rebuilding tooling."""
         # Arrange
         manifest = packages.verify_packages(self.directory, "0.1.0-dev")
         path = self.directory / "package-manifest.json"

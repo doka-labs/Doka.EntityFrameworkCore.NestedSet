@@ -218,6 +218,7 @@ public abstract partial class OrderingTests
             .Where(node => node.TreeId == unchangedTreeId)
             .Select(node => (node.Id, node.Left, node.Right, node.Depth, node.Position))
             .ToArray();
+
         var changedOrder = new[] { 3, 2 };
         var unchangedOrder = new[] { 11, 12 };
 

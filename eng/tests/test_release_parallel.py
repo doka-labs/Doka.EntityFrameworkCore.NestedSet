@@ -25,7 +25,7 @@ from eng.tests.test_release_qualification import (
 )
 
 PROJECTS = ("First.Tests", "Second.Tests")
-SAMPLES = ("FileSystem", "Kpis", "UserGroups")
+SAMPLES = ("FileSystem", "SignalLab", "UserGroups")
 
 
 class ParallelFixture(QualificationFixture):
@@ -67,18 +67,18 @@ class ParallelFixture(QualificationFixture):
         return qualification.Qualification(self.repo, self.runner.output, arguments.pop("version", VERSION),
                                            existing=True, **arguments)
 
-    def report(self, runner, project):
+    def report(self, runner, project, *, filename=None, identity="1"):
         """Write one internally bound passing test case and a nonempty coverage artifact."""
         root = ET.Element("TestRun", xmlns=qualification.TRX["t"])
         definitions = ET.SubElement(root, "TestDefinitions")
-        ET.SubElement(definitions, "UnitTest", id="1", storage=f"/bin/{project}.dll")
+        ET.SubElement(definitions, "UnitTest", id=identity, storage=f"/bin/{project}.dll")
         results = ET.SubElement(root, "Results")
-        ET.SubElement(results, "UnitTestResult", testId="1", executionId="1", outcome="Passed")
+        ET.SubElement(results, "UnitTestResult", testId=identity, executionId=identity, outcome="Passed")
         summary = ET.SubElement(root, "ResultSummary")
         ET.SubElement(summary, "Counters", total="1", executed="1", passed="1", failed="0")
         directory = runner.output / "tests" / project
         directory.mkdir(parents=True, exist_ok=True)
-        ET.ElementTree(root).write(directory / f"{project}.trx")
+        ET.ElementTree(root).write(directory / (filename or f"{project}.trx"))
         text_file(directory / "coverage.cobertura.xml", "<coverage />")
 
         return directory
@@ -115,7 +115,7 @@ class RestoredIdentityTests(ParallelFixture):
         cases = (
             (patch.object(qualification, "source_identity", return_value=different), {}, different["commit"]),
             (patch.dict(os.environ, {"GITHUB_RUN_ATTEMPT": "2"}), {}, COMMIT),
-            (patch.dict(os.environ, {}), {"version": "0.1.0-rc.2"}, COMMIT),
+            (patch.dict(os.environ, {}), {"version": "10.1.0-rc.2"}, COMMIT),
             (patch.dict(os.environ, {}), {"deadline_utc": self.runner.deadline_utc + 1}, COMMIT),
         )
 
@@ -198,6 +198,55 @@ class PrebuiltJobTests(ParallelFixture):
         self.assertEqual("test-First.Tests", role)
         self.assertEqual(self.runner.output / "tests/First.Tests", directory)
         self.assertEqual(str(directory / "query-plans"), command.call_args.args[3]["DOKA_NESTEDSET_QUERY_PLAN_DIR"])
+
+    def unit_project(self):
+        """Declare the real split assembly without running a database or SDK process."""
+        name = qualification.ALLOCATION_PROJECT
+        relative = f"tests/{name}/{name}.csproj"
+        text_file(self.repo / relative, "<Project />")
+        solution = ET.parse(self.repo / qualification.SOLUTION)
+        ET.SubElement(solution.getroot(), "Project", Path=relative)
+        solution.write(self.repo / qualification.SOLUTION)
+        text_file(self.runner.output / "build/bin" / name / "release" / f"{name}.dll", "Unit test bytes")
+
+        return name, relative
+
+    def test_unit_job_measures_allocations_before_instrumenting_complementary_cases(self):
+        """Only Unit has two complementary modes; both consume the same producer-built DLL."""
+        # Arrange
+        name, project = self.unit_project()
+        self.report(self.runner, name, filename="allocations.trx", identity="budget")
+        self.report(self.runner, name, filename="coverage.trx", identity="covered")
+
+        # Act
+        with patch.object(self.runner, "command") as command:
+            role, directory = self.runner.test_project(project)
+
+        # Assert
+        self.assertEqual(2, command.call_count)
+        allocation, coverage = [call.args[2] for call in command.call_args_list]
+        self.assertEqual("Category=Allocation", allocation[allocation.index("--filter") + 1])
+        self.assertEqual("Category!=Allocation", coverage[coverage.index("--filter") + 1])
+        self.assertNotIn("--collect:Code Coverage", allocation)
+        self.assertNotIn("--settings", allocation)
+        self.assertIn("--collect:Code Coverage", coverage)
+        self.assertEqual(allocation[:3], coverage[:3])
+        self.assertEqual("test-" + name, role)
+        self.assertEqual(2, common.read_json(directory / "results.json")[name]["passed"])
+
+    def test_unit_job_cannot_accept_instrumented_success_without_allocation_results(self):
+        """A green collector run cannot silently replace the required native allocation measurements."""
+        # Arrange
+        name, project = self.unit_project()
+        self.report(self.runner, name, filename="coverage.trx", identity="covered")
+
+        # Act
+        with patch.object(self.runner, "command"):
+            error = capture(lambda: self.runner.test_project(project))
+
+        # Assert
+        self.assertEqual("tests_partitions", error.code)
+        self.assertFalse((self.runner.output / "tests" / name / "results.json").exists())
 
     def test_sample_job_targets_the_prebuilt_dll(self):
         """A fresh sample runner consumes the build directly and records its own SQLite success."""
@@ -290,6 +339,58 @@ class PrebuiltJobTests(ParallelFixture):
         self.assertFalse((self.runner.output / "evidence").exists())
 
 
+class LocalTestStageTests(ParallelFixture):
+    """The local test stage collects the same project-owned query plans as parallel aggregation."""
+
+    def setUp(self):
+        """Place actual provider plan files exclusively in project result subdirectories."""
+        super().setUp()
+        self.sources = {}
+        for index, engine in enumerate(("MySql", "MariaDb", "PostgreSql", "SqlServer", "Sqlite")):
+            project = PROJECTS[index % len(PROJECTS)]
+            families = ("key-filter",) if engine == "Sqlite" else ("key-filter", "hierarchy")
+            for family in families:
+                name = f"{engine}-{family}.txt"
+                source = self.runner.output / "tests" / project / "query-plans" / name
+                text_file(source, f"{engine} {family} observed plan")
+                self.sources[name] = source
+
+    def execute_project(self, project):
+        """Write a real project TRX while replacing only external test execution."""
+        name = Path(project).stem
+
+        return "test-" + name, self.report(self.runner, name)
+
+    def test_local_stage_collects_project_plans_before_verifying_the_complete_inventory(self):
+        """A normal local run validates real plan bytes after per-project result routing."""
+        # Arrange
+        target = self.runner.output / "tests/query-plans"
+        existed = target.exists()
+
+        # Act
+        with self.fake_command(self.runner), patch.object(self.runner, "test_project", side_effect=self.execute_project):
+            self.runner.tests()
+
+        # Assert
+        self.assertFalse(existed)
+        self.assertEqual(set(self.sources), {path.name for path in target.iterdir()})
+        for name, source in self.sources.items():
+            self.assertEqual(source.read_bytes(), (target / name).read_bytes())
+
+    def test_local_stage_rejects_duplicate_provider_plans(self):
+        """Two project lanes cannot silently overwrite the same provider/family evidence."""
+        # Arrange
+        duplicate = self.runner.output / "tests" / PROJECTS[1] / "query-plans/MySql-key-filter.txt"
+        text_file(duplicate, "another project's duplicate observed plan")
+
+        # Act
+        with self.fake_command(self.runner), patch.object(self.runner, "test_project", side_effect=self.execute_project):
+            error = capture(self.runner.tests)
+
+        # Assert
+        self.assertEqual("query_plans_duplicate", error.code)
+
+
 class AggregationTests(ParallelFixture):
     """Merged native artifacts must contain every required executable result before sealing."""
 
@@ -311,7 +412,8 @@ class AggregationTests(ParallelFixture):
 
         packages = common.read_json(self.runner.output / "packages/package-manifest.json")["packages"]
         common.write_json(self.runner.output / "consumer/result.json",
-                          {"success": True, "version": VERSION, "consumers": [{"name": "core"}, {"name": "ef"}],
+                          {"success": True, "version": VERSION,
+                           "consumers": [{"name": name, "success": True} for name, _ in common.CONSUMERS],
                            "candidateSha256": {record["id"]: record["nupkgSha256"] for record in packages}})
 
     def aggregate_error(self):
@@ -337,6 +439,19 @@ class AggregationTests(ParallelFixture):
             self.assertIn("tests/samples/UserGroups/result.json", archive.namelist())
             self.assertFalse(any(name.endswith("receipt.json") for name in archive.namelist()))
 
+    def test_aggregate_rejects_duplicate_provider_plans_before_sealing(self):
+        """Parallel aggregation retains the local stage's duplicate-plan rejection contract."""
+        # Arrange
+        duplicate = self.runner.output / "tests/Second.Tests/query-plans/MySql-key-filter.txt"
+        text_file(duplicate, "a second lane's conflicting provider plan")
+
+        # Act
+        error = self.aggregate_error()
+
+        # Assert
+        self.assertEqual("query_plans_duplicate", error.code)
+        self.assertFalse((self.runner.output / "candidate").exists())
+
     def test_missing_project_coverage_or_plan_rejects_partial_artifacts(self):
         """A native pattern may match zero or fewer artifacts; complete result verification must reject it."""
         # Arrange
@@ -361,8 +476,8 @@ class AggregationTests(ParallelFixture):
     def test_missing_or_failed_sample_rejects_partial_artifacts(self):
         """A passing matrix cannot replace its promised retained sample result."""
         # Arrange
-        path = self.runner.output / "tests/samples/Kpis/result.json"
-        cases = (None, {"sample": "Kpis", "passed": False})
+        path = self.runner.output / "tests/samples/SignalLab/result.json"
+        cases = (None, {"sample": "SignalLab", "passed": False})
         for value in cases:
             if value is None:
                 path.unlink()
@@ -380,11 +495,11 @@ class AggregationTests(ParallelFixture):
             shutil.rmtree(self.runner.output / "tests/query-plans", ignore_errors=True)
 
     def test_false_wrong_version_or_incomplete_consumer_is_rejected(self):
-        """Existing consumer success must name both applications and the selected version."""
+        """Existing consumer success must name every application and the selected version."""
         # Arrange
         path = self.runner.output / "consumer/result.json"
         original = common.read_json(path)
-        cases = ({"success": False}, {"version": "0.1.0-rc.2"}, {"consumers": [{"name": "core"}]})
+        cases = ({"success": False}, {"version": "10.1.0-rc.2"}, {"consumers": [{"name": "core"}]})
         for change in cases:
             common.write_json(path, {**original, **change})
             with self.subTest(change=change):

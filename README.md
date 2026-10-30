@@ -3,6 +3,10 @@
 [![CI](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/workflows/ci.yml/badge.svg?event=pull_request)](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/workflows/ci.yml)
 [![NuGet Core](https://img.shields.io/nuget/v/Doka.NestedSet.svg?label=NuGet%20Core)](https://www.nuget.org/packages/Doka.NestedSet)
 [![NuGet EF Core](https://img.shields.io/nuget/v/Doka.EntityFrameworkCore.NestedSet.svg?label=NuGet%20EF%20Core)](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet)
+[![NuGet MySql](https://img.shields.io/nuget/v/Doka.EntityFrameworkCore.NestedSet.MySql.svg?label=NuGet%20MySql)](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet.MySql)
+[![NuGet Postgres](https://img.shields.io/nuget/v/Doka.EntityFrameworkCore.NestedSet.Postgres.svg?label=NuGet%20Postgres)](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet.Postgres)
+[![NuGet Sqlite](https://img.shields.io/nuget/v/Doka.EntityFrameworkCore.NestedSet.Sqlite.svg?label=NuGet%20Sqlite)](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet.Sqlite)
+[![NuGet SqlServer](https://img.shields.io/nuget/v/Doka.EntityFrameworkCore.NestedSet.SqlServer.svg?label=NuGet%20SqlServer)](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet.SqlServer)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/badge)](https://scorecard.dev/viewer/?uri=github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15143/badge)](https://www.bestpractices.dev/projects/15143)
@@ -12,13 +16,13 @@ hierarchies to ordinary Entity Framework Core entities. It keeps `TreeId`,
 `Parent`, `Left`, `Right`, `Depth`, and sibling `Position` consistent while
 nodes are inserted, moved, sorted, deleted, imported, validated, or rebuilt.
 
-Typical uses include file systems, project KPIs, organizational units, user
+Typical uses include file systems, instrument networks, organizational units, user
 groups, and permission groups. Domain data and relationships remain ordinary
 EF Core data. The hierarchy does not implement authorization or domain-specific
 aggregation rules.
 
 The [runnable samples](samples/README.md) demonstrate these uses in independent
-FileSystem, Kpis, and UserGroups console projects. They use Doka and MariaDB by
+FileSystem, SignalLab, and UserGroups console projects. They use Doka and MariaDB by
 default, with optional MySQL and SQLite routes and persistent, inspectable results.
 
 ## Packages
@@ -26,48 +30,61 @@ default, with optional MySQL and SQLite routes and persistent, inspectable resul
 | Package | Purpose |
 | --- | --- |
 | [`Doka.NestedSet`](https://www.nuget.org/packages/Doka.NestedSet) | Small EF-independent node and bounds contracts |
-| [`Doka.EntityFrameworkCore.NestedSet`](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet) | EF mapping, queries, mutations, ordering, transactions, validation, and rebuild |
+| [`Doka.EntityFrameworkCore.NestedSet`](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet) | Shared EF mapping, hierarchy algorithms, queries, mutations, ordering, transactions, and repair |
+| [`Doka.EntityFrameworkCore.NestedSet.MySql`](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet.MySql) | Doka integration for MySQL and MariaDB |
+| [`Doka.EntityFrameworkCore.NestedSet.Postgres`](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet.Postgres) | Npgsql integration for PostgreSQL |
+| [`Doka.EntityFrameworkCore.NestedSet.Sqlite`](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet.Sqlite) | Microsoft SQLite integration |
+| [`Doka.EntityFrameworkCore.NestedSet.SqlServer`](https://www.nuget.org/packages/Doka.EntityFrameworkCore.NestedSet.SqlServer) | Microsoft SQL Server integration |
 
-The 10.x package line targets .NET 10 and EF Core 10. The EF package references
-`Doka.NestedSet` transitively.
+The 10.x package line targets .NET 10 and EF Core 10. Install the adapter for
+the application's database. It brings in the common EF package, `Doka.NestedSet`,
+and its actual EF provider transitively. The common EF package has no concrete
+provider dependency. SafeMigrations remains independently optional.
+
+[Release lines](docs/operations/release-lines.md) separates future framework
+development on `main` from maintenance of older framework majors. The current
+source remains .NET/EF Core 10; additional release lines are registered inactive.
 
 ## Install
 
-This source defines the first stable package contract, `10.0.0`. Its changes since
-`10.0.0-rc.1` are recorded in the [changelog](CHANGELOG.md):
+Version `10.1.0` is the stable six-package contract, including a breaking
+installation and infrastructure-registration change from `10.0.0`. The hierarchy
+API and its data/transaction contracts stay shared. See the
+[upgrade guide](docs/upgrading-provider-packages.md) and [changelog](CHANGELOG.md).
+For Doka MySQL/MariaDB, install the selected adapter:
 
 ```bash
-dotnet package add Doka.EntityFrameworkCore.NestedSet --version 10.0.0
+dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.1.0
 ```
 
-Add the EF Core provider used by the application separately. For Doka
-MySQL/MariaDB:
-
-```bash
-dotnet package add Doka.EntityFrameworkCore.MySql --version 10.4.4
-```
-
-Use the exact version from the matching
-[GitHub release](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/releases)
-or NuGet package page when installing a published release.
+Keep all selected NestedSet adapters and the common EF package at `10.1.0`.
+Each adapter requires its exact matching common EF kernel version.
 
 The provider qualification matrix is:
 
-| Database | Provider |
-| --- | --- |
-| MySQL and MariaDB | `Doka.EntityFrameworkCore.MySql` |
-| PostgreSQL | `Npgsql.EntityFrameworkCore.PostgreSQL` |
-| SQLite | `Microsoft.EntityFrameworkCore.Sqlite` |
-| SQL Server | `Microsoft.EntityFrameworkCore.SqlServer` |
+| Database | NestedSet adapter | EF provider dependency |
+| --- | --- | --- |
+| MySQL and MariaDB | `.MySql` | `Doka.EntityFrameworkCore.MySql` |
+| PostgreSQL | `.Postgres` | `Npgsql.EntityFrameworkCore.PostgreSQL` |
+| SQLite | `.Sqlite` | `Microsoft.EntityFrameworkCore.Sqlite` |
+| SQL Server | `.SqlServer` | `Microsoft.EntityFrameworkCore.SqlServer` |
+
+Adapter names in this table are suffixes of `Doka.EntityFrameworkCore.NestedSet`.
+The MySQL adapter supports Doka `[10.6.3,10.7.0)`; its effective EF Relational
+range is `[10.0.12,10.1.0)` after intersecting the common kernel and Doka ranges.
+See [supported versions](docs/support-and-qualification.md#provider-and-engine-matrix)
+for the other adapter ranges and actual qualification evidence.
 
 Pomelo is not a supported provider. Ordinary EF migrations are the required
-baseline. SafeMigrations is an optional integration. The published 10.4.9
-adapters are qualified with the current source model for MySQL, MariaDB,
-PostgreSQL, SQLite, and SQL Server, including PostgreSQL's canonical null-filter
-indexes. SQL Server's optional adapter supports proven integer widening and
-CHECK validation over existing rows, with explicit schema and repair boundaries;
-see the [adapter qualification](docs/support-and-qualification.md#migration-matrix)
-and [SQL Server registration](docs/migrations.md#optional-sql-server-safemigrations).
+baseline. SafeMigrations is an optional integration. Repository qualification
+uses published Doka 10.6.3 and SafeMigrations 10.6.1. The optional tests retain
+the current adapter contract without a legacy mode or compatibility skip. See the
+[adapter qualification](docs/support-and-qualification.md#migration-matrix)
+for the current graph, the earlier 2026-10-25 executed local qualification, separate
+dated private migration/replay evidence, and the remaining native SQL Server
+qualification.
+[SQL Server registration](docs/migrations.md#optional-sql-server-safemigrations)
+describes the independently optional adapter setup.
 
 `Doka.EntityFrameworkCore.NestedSet` 10.x does not support `PublishTrimmed` or
 `PublishAot`. Its runtime model dispatch and dynamically composed EF queries
@@ -96,6 +113,13 @@ Equal bounds in these trees do not collide. Anchor-based queries and structural
 mutations use the configured Scope and the resolved or explicit `TreeId`.
 `InTree(treeId)` selects one complete tree without mixing bounds from other trees.
 
+[Query composition](docs/query-composition.md) projects several subtrees or
+ancestor paths in one deferred EF query. It retains origins and structural
+distances, supports complete-path pruning, and distinguishes any matching
+ancestor from the nearest candidate. Joins, filters, aggregates, and the async
+terminal operation remain ordinary LINQ. Connection availability, tags, roles, and
+supervisor selection are application rules demonstrated in the samples.
+
 ```csharp
 public sealed class Folder
 {
@@ -119,8 +143,8 @@ positions.
 
 ## Register once
 
-Register the provider and NestedSet through the context options. Doka and
-MariaDB 11.8 are the primary example:
+Register NestedSet inside the selected provider's callback. Doka and MariaDB
+11.8 are the primary example:
 
 ```csharp
 using Doka.EntityFrameworkCore.MySql;
@@ -129,13 +153,12 @@ using Doka.EntityFrameworkCore.NestedSet;
 var serverVersion = MySqlServerVersion.MariaDb(new Version(11, 8, 0));
 
 services.AddDbContext<ApplicationDbContext>(options => options
-    .UseMySql(connectionString, serverVersion)
-    .UseNestedSets());
+    .UseMySql(connectionString, serverVersion, mysql => mysql.UseNestedSets()));
 ```
 
-`UseNestedSets()` installs the final model conventions, typed tree registry,
-indexes, save guard, relational persistence boundary, provider capabilities,
-and diagnostics. No `ConfigureConventions`, `modelBuilder.UseNestedSets()`,
+The callback's `UseNestedSets()` selects that adapter and installs the common
+model conventions, typed tree registry, indexes, save guard, relational
+persistence boundary, provider services, and diagnostics. No `ConfigureConventions`, `modelBuilder.UseNestedSets()`,
 constructor hook, or separate service registration is required.
 
 Configure each hierarchy in its normal `IEntityTypeConfiguration<TEntity>`:
@@ -184,7 +207,7 @@ Scope.
 
 ## Compose SaveChanges
 
-Explicit hierarchy operations need only `UseNestedSets()`. Normal payload
+Explicit hierarchy operations need only the provider-callback registration. Normal payload
 updates remain normal EF saves. Automatic reordering after a tracked Parent or
 sort-property change requires the coordinated save wrapper.
 

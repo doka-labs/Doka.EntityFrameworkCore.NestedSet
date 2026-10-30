@@ -30,8 +30,7 @@ public sealed class CollationCaptureTests
         internal DefaultCollationContext() : base(
             new DbContextOptionsBuilder<DefaultCollationContext>()
                 .ConfigureTestWarnings()
-                .UseSqlite("Data Source=:memory:")
-                .UseNestedSets()
+                .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
                 .Options) { }
 
         /// <inheritdoc />

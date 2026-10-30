@@ -3,24 +3,26 @@ namespace Doka.EntityFrameworkCore.NestedSet;
 /// <summary>Represents one stable TreeId selected from a configured nested-set hierarchy.</summary>
 /// <typeparam name="TEntity">The configured hierarchy entity.</typeparam>
 /// <typeparam name="TTreeId">The mapped TreeId type.</typeparam>
-public sealed class NestedSetTree<TEntity, TTreeId>
+public sealed partial class NestedSetTree<TEntity, TTreeId>
     where TEntity : class
     where TTreeId : notnull
 {
+    private readonly NestedSetQuery<TEntity> _query;
     private readonly NestedSetMutationBinding<TEntity> _operations;
     private readonly TTreeId _treeId;
 
     /// <summary>Creates a tree facade from its already validated identity query.</summary>
-    /// <param name="nodes">The complete tree query in stable preorder.</param>
+    /// <param name="query">The immutable filtered tree binding shared by composition and the ordered view.</param>
     /// <param name="operations">The validated operations binding for this hierarchy.</param>
     /// <param name="treeId">The owned snapshot already shared with the identity query.</param>
     internal NestedSetTree(
-        IQueryable<TEntity> nodes,
+        NestedSetQuery<TEntity> query,
         NestedSetMutationBinding<TEntity> operations,
         TTreeId treeId
     )
     {
-        Nodes = nodes;
+        _query = query;
+        Nodes = query.OrderedNodes;
         _operations = operations;
         // WHY: InTree already created one immutable identity for both the deferred query and maintenance.
         // Cloning again would duplicate configured snapshot work without adding an ownership boundary.

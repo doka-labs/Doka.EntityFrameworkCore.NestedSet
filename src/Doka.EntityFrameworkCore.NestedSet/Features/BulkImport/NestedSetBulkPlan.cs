@@ -113,10 +113,7 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
             RequireDetached(item.Branch.Entity, knownTracked, store.Map.EntityType);
             var key = NestedSetTypedValue<TKey>.Read(item.Branch.Entity, keyProperty);
 
-            var assignedKey = keyProperty.ValueGenerated == ValueGenerated.Never
-                || !keyProperty
-                    .GetValueComparer()
-                    .Equals(key, keyProperty.Sentinel);
+            var assignedKey = NestedSetInsertionValues.HasAssignedKey(keyProperty, item.Branch.Entity, key);
 
             if (assignedKey && !assignedKeys.Add(key))
             {

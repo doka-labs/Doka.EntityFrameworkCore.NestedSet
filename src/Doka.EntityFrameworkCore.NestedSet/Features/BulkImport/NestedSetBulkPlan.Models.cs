@@ -90,6 +90,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         {
             object?[]? captured = null;
 
+            // WHY: Keep property metadata and lazily captured generated values in matching slots.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var index = 0; index < properties.Count; index++)
             {
                 var property = properties[index];
@@ -103,9 +106,10 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
 
                 // WHY: Creating a detached EF entry before an application getter succeeds retains the input
                 // on failure. The public containing-entity getter also resolves nested complex CLR leaves.
-                var value = property.GetGetter().GetClrValueUsingContainingEntity(Entity);
+                var value = NestedSetInsertionValues.ReadClr(property, Entity);
 
                 if (captured is null
+                    && !NestedSetInsertionValues.IsMissing(value)
                     && NestedSetStructuralValue.Matches(property, value, property.Sentinel))
                 {
                     continue;
@@ -115,6 +119,10 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
                 {
                     captured = new object?[properties.Count];
 
+                    // WHY: Backfill only the sentinel prefix when the first actual snapshot allocation becomes
+                    // necessary.
+                    // ReSharper disable once ForCanBeConvertedToForeach
+                    // ReSharper disable once LoopCanBeConvertedToQuery
                     for (var previous = 0; previous < index; previous++)
                     {
                         captured[previous] = NestedSetStructuralValue.Snapshot(
@@ -123,7 +131,7 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
                     }
                 }
 
-                captured[index] = NestedSetStructuralValue.Snapshot(property, value);
+                captured[index] = NestedSetInsertionValues.SnapshotValue(property, value);
             }
 
             OriginalGeneratedValues = captured;
@@ -131,10 +139,13 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         }
     }
 
-    /// <summary>Retains rollback values only for inputs whose structure differs from mapped sentinels.</summary>
+    /// <summary>Retains non-sentinel values and dictionary membership without allocating for conventional sentinels.</summary>
     internal sealed class OriginalStructure
     {
+        // WHY: Each role uses (_fields, _membership): 00 sentinel, 10 captured value,
+        // 01 absent key, 11 present null. The second byte fits existing scalar padding.
         private readonly byte _fields;
+        private readonly byte _membership;
         private readonly long _left;
         private readonly long _right;
         private readonly int _depth;
@@ -146,6 +157,7 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         /// <summary>Creates one sparse snapshot after determining that at least one value is non-sentinel.</summary>
         private OriginalStructure(
             byte fields,
+            byte membership,
             object? scope,
             object? treeId,
             object? parent,
@@ -156,6 +168,7 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         )
         {
             _fields = fields;
+            _membership = membership;
             Scope = scope;
             TreeId = treeId;
             Parent = parent;
@@ -173,6 +186,12 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
 
         /// <summary>Gets the original non-sentinel Parent, or null when Parent used its sentinel.</summary>
         internal object? Parent { get; }
+
+        /// <summary>Distinguishes an originally absent structural key from a present null or sentinel.</summary>
+        internal bool IsMissing(byte field) => (_membership & field) != 0 && (_fields & field) == 0;
+
+        /// <summary>Retains a present null key that EF's typed getter normalizes to the nonnullable CLR default.</summary>
+        internal object? KeyOr(object? original) => (_fields & (1 << 7)) != 0 ? null : original;
 
         /// <summary>Returns the captured Scope representation, including null, or the mapped sentinel.</summary>
         internal object? ScopeOr(
@@ -192,22 +211,22 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         /// <summary>Returns the captured left representation, including null, or the mapped sentinel.</summary>
         internal object? LeftOr(
             object? sentinel
-        ) => (_fields & (1 << 3)) != 0 ? _left : sentinel;
+        ) => (_fields & _membership & (1 << 3)) != 0 ? null : (_fields & (1 << 3)) != 0 ? _left : sentinel;
 
         /// <summary>Returns the captured right representation, including null, or the mapped sentinel.</summary>
         internal object? RightOr(
             object? sentinel
-        ) => (_fields & (1 << 4)) != 0 ? _right : sentinel;
+        ) => (_fields & _membership & (1 << 4)) != 0 ? null : (_fields & (1 << 4)) != 0 ? _right : sentinel;
 
         /// <summary>Returns the captured depth representation, including null, or the mapped sentinel.</summary>
         internal object? DepthOr(
             object? sentinel
-        ) => (_fields & (1 << 5)) != 0 ? _depth : sentinel;
+        ) => (_fields & _membership & (1 << 5)) != 0 ? null : (_fields & (1 << 5)) != 0 ? _depth : sentinel;
 
         /// <summary>Returns the captured position representation, including null, or the mapped sentinel.</summary>
         internal object? PositionOr(
             object? sentinel
-        ) => (_fields & (1 << 6)) != 0 ? _position : sentinel;
+        ) => (_fields & _membership & (1 << 6)) != 0 ? null : (_fields & (1 << 6)) != 0 ? _position : sentinel;
 
         /// <summary>Captures exact non-sentinel structure without allocating for a conventional new entity.</summary>
         internal static OriginalStructure? Capture(
@@ -216,18 +235,32 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         )
         {
             byte fields = 0;
-            var scope = CaptureValue(entity, map.ScopeProperty, 1 << 0, ref fields);
-            var treeId = CaptureValue(entity, map.TreeIdProperty, 1 << 1, ref fields);
-            var parent = CaptureValue(entity, map.ParentProperty, 1 << 2, ref fields);
-            var left = CaptureValue(entity, map.LeftProperty, 1 << 3, ref fields);
-            var right = CaptureValue(entity, map.RightProperty, 1 << 4, ref fields);
-            var depth = CaptureValue(entity, map.DepthProperty, 1 << 5, ref fields);
-            var position = CaptureValue(entity, map.PositionProperty, 1 << 6, ref fields);
+            byte membership = 0;
+            var scope = CaptureValue(entity, map.ScopeProperty, 1 << 0, ref fields, ref membership);
+            var treeId = CaptureValue(entity, map.TreeIdProperty, 1 << 1, ref fields, ref membership);
+            var parent = CaptureValue(entity, map.ParentProperty, 1 << 2, ref fields, ref membership);
+            var left = CaptureValue(entity, map.LeftProperty, 1 << 3, ref fields, ref membership);
+            var right = CaptureValue(entity, map.RightProperty, 1 << 4, ref fields, ref membership);
+            var depth = CaptureValue(entity, map.DepthProperty, 1 << 5, ref fields, ref membership);
+            var position = CaptureValue(entity, map.PositionProperty, 1 << 6, ref fields, ref membership);
 
-            return fields == 0
+            if (map.KeyProperty.IsIndexerProperty() && entity is IDictionary<string, object?> dictionary)
+            {
+                if (!dictionary.TryGetValue(map.KeyProperty.Name, out var key))
+                {
+                    membership |= 1 << 7;
+                }
+                else if (key is null)
+                {
+                    fields |= 1 << 7;
+                }
+            }
+
+            return fields == 0 && membership == 0
                 ? null
                 : new OriginalStructure(
                     fields,
+                    membership,
                     scope,
                     treeId,
                     parent,
@@ -242,7 +275,8 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
             TEntity entity,
             IProperty? property,
             byte field,
-            ref byte fields
+            ref byte fields,
+            ref byte membership
         )
         {
             if (property is null)
@@ -250,7 +284,14 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
                 return null;
             }
 
-            var value = NestedSetStructuralValue.Read(entity, property);
+            var value = NestedSetInsertionValues.ReadClr(property, entity);
+
+            if (NestedSetInsertionValues.IsMissing(value))
+            {
+                membership |= field;
+
+                return null;
+            }
 
             if (NestedSetStructuralValue.Matches(property, value, property.Sentinel))
             {
@@ -258,6 +299,13 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
             }
 
             fields |= field;
+
+            // WHY: Numeric structure is stored without boxes. Two bits distinguish absence, a CLR
+            // sentinel, an ordinary value, and a present null without another per-node heap allocation.
+            if (value is null)
+            {
+                membership |= field;
+            }
 
             return NestedSetStructuralValue.Snapshot(property, value);
         }

@@ -3,6 +3,8 @@
 This document defines who may decide, qualify, authorize, and verify a release.
 The executable contract is in [Release process](release-process.md); exact
 commands are in [Release publication](operations/release-publication.md).
+[Release lines](operations/release-lines.md) defines exact branch ownership,
+activation, maintenance and historical verification.
 
 ## Roles
 
@@ -20,30 +22,55 @@ history and organization access do not demonstrate.
 
 ## Version policy
 
-Both package IDs publish one identical canonical version:
+All six package IDs publish one identical canonical version:
 
 - `Doka.NestedSet`;
-- `Doka.EntityFrameworkCore.NestedSet`.
+- `Doka.EntityFrameworkCore.NestedSet`;
+- `Doka.EntityFrameworkCore.NestedSet.MySql`;
+- `Doka.EntityFrameworkCore.NestedSet.Postgres`;
+- `Doka.EntityFrameworkCore.NestedSet.Sqlite`; and
+- `Doka.EntityFrameworkCore.NestedSet.SqlServer`.
 
 Accepted release versions are `X.Y.Z-rc.N` and `X.Y.Z`, without a leading `v`
 or build metadata. The source tag is `v<version>`. NuGet versions are never
-reused or repointed.
+reused or repointed. The package major follows the .NET family: `10.x` targets
+.NET 10 and `11.x` is reserved for .NET 11.
+
+The owner explicitly retained `10.1.0` for the provider-package and registration
+break in [D-020](decisions/D-020-provider-owned-runtime-packages.md). This is a
+narrow, documented exception to SemVer's major-version treatment of breaking
+changes, not permission for unrelated breaking changes in future minor releases.
+The upgrade guide and changelog must identify the removed options-level API and
+selected-adapter installation. Consumers must review/pin their qualified graph
+rather than infer compatibility solely from the unchanged package major.
 
 An RC communicates a candidate public contract. A stable release communicates
 the reviewed stable contract and moves the public API additions from
 `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt` in the source commit before
 qualification.
 
-For the first stable `10.0.0`, the accepted Core and EF declarations are in
-their shipped files and both unshipped files contain only the nullable
-directive. The source version is `10.0.0` without a prerelease suffix.
+The current shipped API files record the stable `10.1.0` contract: Core is
+unchanged, the common EF API includes query composition, and each adapter owns
+its native callback. The removed options-level registration is absent from the
+current contract. All unshipped files are ready for subsequent changes. The
+two original package IDs retain SDK compatibility validation against the
+published `10.0.0` baseline with only the approved registration removal
+suppressed. Historical declarations remain in the original release tag. The
+provider-package/registration break is approved in
+[D-020](decisions/D-020-provider-owned-runtime-packages.md) and documented in
+the [upgrade guide](upgrading-provider-packages.md). The source uses
+`VersionPrefix=10.1.0` without a prerelease suffix and the dated
+`10.1.0 (2026-10-29)` changelog entry. Publication evidence remains the exact
+release's hosted qualification and successful public readback.
 
 ## Entry conditions
 
-- Exact source is reviewed and current on protected `main`.
+- Exact source is reviewed and current on its protected authorized release line.
+- Independent current protected-main policy admits its exact ref, major and
+  channel. Prepared lines use qualification-only and cannot publish.
 - Worktree is clean and dependency locks match source.
 - Version and dated changelog entry are reviewed.
-- Both package IDs are unused at that version.
+- All six package IDs are unused at that version.
 - Public API baselines and compatibility impact are correct.
 - Required provider, migration, package, SBOM, and consumer checks pass.
 - No unresolved security or data-integrity blocker applies.
@@ -57,7 +84,7 @@ created only after all reversible candidate work succeeds.
 
 ```mermaid
 flowchart LR
-    A[Reviewed main source]
+    A[Reviewed authorized line source]
     B[Reversible qualification]
     C[Signed provenance and SBOM]
     D[Operator signed tag]
@@ -92,12 +119,13 @@ The release record includes:
 
 - source commit, tree, and content fingerprint;
 - workflow run and attempt;
+- frozen exact source-line/toolchain identity and observed authority;
 - canonical build identity;
 - candidate and package manifests;
 - primary and symbol package SHA-256 hashes;
 - locked dependency evidence;
 - full test and provider results;
-- coverage for every executable test project, executed lines in both shipping
+- coverage for every executable test project, executed lines in all six shipping
   modules across the reports, every required query plan, and all three samples;
 - package-only consumer results with matching primary-package hashes;
 - per-package SPDX 2.2 SBOMs;
@@ -132,10 +160,36 @@ See [rerun boundaries](release-process.md#recovery). Recovery after sealing
 retains the original candidate artifact IDs, bytes, and attestation/publication
 controls.
 
-NuGet publication across two package IDs is not atomic. Recovery uses only the
+NuGet publication across six package IDs is not atomic. Recovery uses only the
 same failed publish job and candidate. Already visible matching packages may be
 skipped; conflicting public content is terminal. The GitHub release remains a
 draft until public packages are verified.
+
+## Release-line ownership
+
+The reviewed policy admits exact refs and at most one active publication line
+per package major. Main/10 is initially active; maintenance/10.x and optional
+preview/11.x remain inactive. When main adopts a new framework, the old major
+can transfer to its separately prepared and activated maintenance branch.
+Current source and dependencies remain .NET 10.
+
+The existing `nuget` environment, reviewer arrangement, administrator bypass
+and Trusted Publishing identity are preserved. Qualification-only skips that
+environment entirely. After approval, a publisher rechecks current protected-main
+authority before irreversible boundaries; frozen evidence is not a standing
+permission grant. Complete affected releases before changing line ownership.
+
+All publishers share one non-cancelling queue with `queue: max`. Stable and
+GitHub Latest are separate: an older major or patch may publish without replacing
+a higher stable Latest. Prereleases never become Latest. Historical evidence
+retains its original source ref/schema and does not require current activation
+or continued Latest status.
+
+Active lines receive branch-native daily dependency audits, weekly full CI and
+reviewed dependency-update targets. Preparation PRs receive full CI and exact
+base/head Dependency Review before publication is activated. The
+[release-line procedure](operations/release-lines.md) owns setup, servicing and
+retirement; hosted changes remain separately authorized.
 
 ## Security fixes
 
@@ -151,7 +205,7 @@ After publication:
 
 1. verify the public tag, assets, provenance, SBOMs, packages, signatures, and
    symbols independently;
-2. confirm stable/prerelease and latest flags;
+2. confirm stable/prerelease and version-ordered Latest behavior;
 3. archive exact run and attempt links in the release record;
 4. update support/changelog statements that depend on actual availability; and
 5. open findings for every manual recovery or unexpected warning.

@@ -7,13 +7,19 @@ on:
         description: Reviewed exact version (X.Y.Z-rc.N or X.Y.Z), without v.
         required: true
         type: string
+      qualification-only:
+        description: Qualify the selected line without publication or its environment.
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
 concurrency:
-  group: nestedset-release-${{ inputs.version }}
+  group: nestedset-release-${{ github.ref }}-${{ inputs.version }}
   cancel-in-progress: false
+  queue: max
 
 env:
   CANDIDATE_VERSION: ${{ inputs.version }}
@@ -25,6 +31,8 @@ jobs:
     timeout-minutes: 10
     outputs:
       deadline-utc: ${{ steps.preflight.outputs.deadline-utc }}
+      line-json: ${{ steps.preflight.outputs.line-json }}
+      publish-allowed: ${{ steps.preflight.outputs.publish-allowed }}
     permissions:
       contents: read
       actions: read
@@ -40,10 +48,21 @@ jobs:
 
       - name: Reject stale source, existing tag, and used package version
         id: preflight
+        env:
+          QUALIFICATION_ONLY: ${{ inputs.qualification-only }}
         run: |
+          qualification=()
+          if [[ "$QUALIFICATION_ONLY" == true ]]; then
+            qualification=(--qualification-only)
+          fi
+
           python3 -m eng.release.publication preflight \
-            --version "$CANDIDATE_VERSION" --output artifacts/preflight.json
-          echo "deadline-utc=$(( $(date +%s) + 7200 ))" >> "$GITHUB_OUTPUT"
+            --version "$CANDIDATE_VERSION" "${qualification[@]}" --output artifacts/preflight.json
+          {
+            echo "line-json=$(jq -c '.line' artifacts/preflight.json)"
+            echo "publish-allowed=$(jq -r '.publishAllowed' artifacts/preflight.json)"
+            echo "deadline-utc=$(( $(date +%s) + 7200 ))"
+          } >> "$GITHUB_OUTPUT"
 
   source-quality:
     name: C# style and unused imports
@@ -52,6 +71,8 @@ jobs:
     outputs:
       artifact-id: ${{ steps.evidence.outputs.artifact-id }}
     timeout-minutes: 30
+    env:
+      NESTEDSET_RELEASE_LINE: ${{ needs.preflight.outputs.line-json }}
 
     steps:
       - name: Checkout exact candidate source
@@ -75,7 +96,7 @@ jobs:
 
       - name: Retain verified job evidence
         id: evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-evidence-source-quality-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/qualification/evidence
@@ -85,7 +106,7 @@ jobs:
 
       - name: Retain failure logs
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-diagnostics-source-quality-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/qualification/logs
@@ -99,6 +120,8 @@ jobs:
     outputs:
       artifact-id: ${{ steps.evidence.outputs.artifact-id }}
     timeout-minutes: 15
+    env:
+      NESTEDSET_RELEASE_LINE: ${{ needs.preflight.outputs.line-json }}
 
     steps:
       - name: Checkout exact candidate source
@@ -115,7 +138,7 @@ jobs:
 
       - name: Retain verified job evidence
         id: evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-evidence-engineering-tests-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/qualification/evidence
@@ -125,7 +148,7 @@ jobs:
 
       - name: Retain failure logs
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-diagnostics-engineering-tests-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/qualification/logs
@@ -140,6 +163,9 @@ jobs:
     outputs:
       build-id: ${{ steps.build.outputs.artifact-id }}
       package-id: ${{ steps.packages.outputs.artifact-id }}
+      line-json: ${{ needs.preflight.outputs.line-json }}
+    env:
+      NESTEDSET_RELEASE_LINE: ${{ needs.preflight.outputs.line-json }}
 
     steps:
       - name: Checkout exact candidate source
@@ -168,7 +194,7 @@ jobs:
 
       - name: Retain exact producer build
         id: build
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-build-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/rc-build.tar.gz
@@ -177,7 +203,7 @@ jobs:
 
       - name: Retain exact package inputs
         id: packages
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-packages-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -190,7 +216,7 @@ jobs:
 
       - name: Retain build failure evidence
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-diagnostics-build-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/qualification/logs
@@ -203,6 +229,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 130
     env:
+      NESTEDSET_RELEASE_LINE: ${{ needs.build.outputs.line-json }}
       RC_BUILD_ARTIFACT_ID: ${{ needs.build.outputs.build-id }}
 
     # WHY: Independent runners isolate Docker and coverage while testing the same producer-built bytes.
@@ -272,7 +299,7 @@ jobs:
         run: '[[ "$RC_BUILD_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]'
 
       - name: Download exact producer build
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.build.outputs.build-id }}
           path: artifacts/transport
@@ -292,7 +319,7 @@ jobs:
           --version "$CANDIDATE_VERSION" --output artifacts/qualification
 
       - name: Retain verified job evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-evidence-test-${{ matrix.assembly }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/qualification/evidence
@@ -302,7 +329,7 @@ jobs:
 
       - name: Retain failure evidence
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-diagnostics-test-${{ matrix.assembly }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -319,11 +346,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
+      NESTEDSET_RELEASE_LINE: ${{ needs.build.outputs.line-json }}
       RC_BUILD_ARTIFACT_ID: ${{ needs.build.outputs.build-id }}
     strategy:
       fail-fast: false
       matrix:
-        sample: [FileSystem, Kpis, UserGroups]
+        sample: [FileSystem, SignalLab, UserGroups]
 
     steps:
       - name: Checkout exact candidate source
@@ -341,7 +369,7 @@ jobs:
         run: '[[ "$RC_BUILD_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]'
 
       - name: Download exact producer build
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.build.outputs.build-id }}
           path: artifacts/transport
@@ -357,7 +385,7 @@ jobs:
           --version "$CANDIDATE_VERSION" --output artifacts/qualification
 
       - name: Retain verified job evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-evidence-sample-${{ matrix.sample }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/qualification/evidence
@@ -367,7 +395,7 @@ jobs:
 
       - name: Retain failure evidence
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-diagnostics-sample-${{ matrix.sample }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -386,6 +414,7 @@ jobs:
       artifact-id: ${{ steps.evidence.outputs.artifact-id }}
     timeout-minutes: 30
     env:
+      NESTEDSET_RELEASE_LINE: ${{ needs.build.outputs.line-json }}
       RC_PACKAGE_ARTIFACT_ID: ${{ needs.build.outputs.package-id }}
 
     steps:
@@ -404,7 +433,7 @@ jobs:
         run: '[[ "$RC_PACKAGE_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]'
 
       - name: Download exact package inputs
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.build.outputs.package-id }}
           path: artifacts/qualification
@@ -416,7 +445,7 @@ jobs:
 
       - name: Retain verified job evidence
         id: evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-evidence-consumer-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/qualification/evidence
@@ -426,7 +455,7 @@ jobs:
 
       - name: Retain failure evidence
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-diagnostics-consumer-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -445,6 +474,7 @@ jobs:
       artifact-id: ${{ steps.evidence.outputs.artifact-id }}
     timeout-minutes: 30
     env:
+      NESTEDSET_RELEASE_LINE: ${{ needs.build.outputs.line-json }}
       RC_PACKAGE_ARTIFACT_ID: ${{ needs.build.outputs.package-id }}
 
     steps:
@@ -463,7 +493,7 @@ jobs:
         run: '[[ "$RC_PACKAGE_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]'
 
       - name: Download exact package inputs
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.build.outputs.package-id }}
           path: artifacts/qualification
@@ -475,7 +505,7 @@ jobs:
 
       - name: Retain verified job evidence
         id: evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-evidence-sbom-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/qualification/evidence
@@ -485,7 +515,7 @@ jobs:
 
       - name: Retain failure evidence
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rc-diagnostics-sbom-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -506,8 +536,10 @@ jobs:
       contents: read
     env:
       RC_BUILD_ARTIFACT_ID: ${{ needs.build.outputs.build-id }}
+      NESTEDSET_RELEASE_LINE: ${{ needs.preflight.outputs.line-json }}
     outputs:
       artifact-id: ${{ steps.candidate.outputs.artifact-id }}
+      publish-allowed: ${{ needs.preflight.outputs.publish-allowed }}
 
     steps:
       - name: Require every qualification job to pass
@@ -535,7 +567,7 @@ jobs:
           done
 
       - name: Download exact producer build
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.build.outputs.build-id }}
           path: artifacts/transport
@@ -546,38 +578,38 @@ jobs:
           tar -xzf artifacts/transport/rc-build.tar.gz -C artifacts/qualification
 
       - name: Download source-quality evidence from its successful job
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.source-quality.outputs.artifact-id }}
           path: artifacts/qualification
 
       - name: Download engineering-tests evidence from its successful job
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.engineering-tests.outputs.artifact-id }}
           path: artifacts/qualification
 
       - name: Download consumer evidence from its successful job
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.consumer.outputs.artifact-id }}
           path: artifacts/qualification
 
       - name: Download sbom evidence from its successful job
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.sbom.outputs.artifact-id }}
           path: artifacts/qualification
 
       - name: Download current-attempt test results
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: rc-evidence-test-*-${{ github.run_id }}-${{ github.run_attempt }}
           merge-multiple: true
           path: artifacts/qualification
 
       - name: Download current-attempt sample results
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: rc-evidence-sample-*-${{ github.run_id }}-${{ github.run_attempt }}
           merge-multiple: true
@@ -590,7 +622,7 @@ jobs:
 
       - name: Retain qualification and failure evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-qualification-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -607,7 +639,7 @@ jobs:
 
       - name: Retain exact complete candidate
         id: candidate
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-candidate-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/qualification/candidate
@@ -635,7 +667,7 @@ jobs:
           persist-credentials: false
 
       - name: Download this run's exact qualified candidate
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.qualify.outputs.artifact-id }}
           merge-multiple: true
@@ -667,24 +699,60 @@ jobs:
           subject-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.${{ inputs.version }}.nupkg
           sbom-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.spdx.json
 
+      - name: Attest MySQL adapter SBOM
+        id: mysql-sbom
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.MySql.${{ inputs.version }}.nupkg
+          sbom-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.MySql.spdx.json
+
+      - name: Attest PostgreSQL adapter SBOM
+        id: postgres-sbom
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.Postgres.${{ inputs.version }}.nupkg
+          sbom-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.Postgres.spdx.json
+
+      - name: Attest SQLite adapter SBOM
+        id: sqlite-sbom
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.Sqlite.${{ inputs.version }}.nupkg
+          sbom-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.Sqlite.spdx.json
+
+      - name: Attest SQL Server adapter SBOM
+        id: sqlserver-sbom
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.SqlServer.${{ inputs.version }}.nupkg
+          sbom-path: artifacts/candidate/Doka.EntityFrameworkCore.NestedSet.SqlServer.spdx.json
+
       - name: Materialize and verify portable signed bundles
         env:
           PROVENANCE_BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
           CORE_BUNDLE: ${{ steps.core-sbom.outputs.bundle-path }}
           EF_BUNDLE: ${{ steps.ef-sbom.outputs.bundle-path }}
+          MYSQL_BUNDLE: ${{ steps.mysql-sbom.outputs.bundle-path }}
+          POSTGRES_BUNDLE: ${{ steps.postgres-sbom.outputs.bundle-path }}
+          SQLITE_BUNDLE: ${{ steps.sqlite-sbom.outputs.bundle-path }}
+          SQLSERVER_BUNDLE: ${{ steps.sqlserver-sbom.outputs.bundle-path }}
         shell: bash
         run: |
           mkdir -p artifacts/provenance
           cp "$PROVENANCE_BUNDLE" artifacts/provenance/release-provenance.jsonl
           cp "$CORE_BUNDLE" artifacts/provenance/sbom-Doka.NestedSet.jsonl
           cp "$EF_BUNDLE" artifacts/provenance/sbom-Doka.EntityFrameworkCore.NestedSet.jsonl
+          cp "$MYSQL_BUNDLE" artifacts/provenance/sbom-Doka.EntityFrameworkCore.NestedSet.MySql.jsonl
+          cp "$POSTGRES_BUNDLE" artifacts/provenance/sbom-Doka.EntityFrameworkCore.NestedSet.Postgres.jsonl
+          cp "$SQLITE_BUNDLE" artifacts/provenance/sbom-Doka.EntityFrameworkCore.NestedSet.Sqlite.jsonl
+          cp "$SQLSERVER_BUNDLE" artifacts/provenance/sbom-Doka.EntityFrameworkCore.NestedSet.SqlServer.jsonl
           python3 -m eng.release.publication attest-verify \
             --candidate artifacts/candidate \
             --provenance artifacts/provenance
 
       - name: Retain exact provenance artifact
         id: upload
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-provenance-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/provenance
@@ -694,6 +762,12 @@ jobs:
   publish:
     name: Publish approved candidate
     needs: [qualify, attest]
+    if: ${{ !inputs.qualification-only && needs.qualify.outputs.publish-allowed == 'true' }}
+    # WHY: Every version and source line shares one publisher; lower or late patches cannot race Latest.
+    concurrency:
+      group: nestedset-publication
+      cancel-in-progress: false
+      queue: max
     environment: nuget
     runs-on: ubuntu-24.04
     # WHY: NuGet package and symbol indexing has exceeded an hour in actual releases; readback needs its full budget.
@@ -705,6 +779,8 @@ jobs:
       id-token: write
     env:
       GH_TOKEN: ${{ github.token }}
+      NESTEDSET_PUBLICATION_LOCK_GROUP: nestedset-publication
+      NESTEDSET_PUBLICATION_LOCK_HELD: '1'
 
     steps:
       - name: Checkout qualified source and signed tags
@@ -719,14 +795,14 @@ jobs:
           global-json-file: global.json
 
       - name: Download original candidate by immutable artifact ID
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.qualify.outputs.artifact-id }}
           merge-multiple: true
           path: artifacts/candidate
 
       - name: Download original provenance by immutable artifact ID
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.attest.outputs.artifact-id }}
           merge-multiple: true
@@ -735,11 +811,12 @@ jobs:
       - name: Revalidate source and operator-signed tag
         shell: bash
         run: |
-          git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
+          git fetch --no-tags origin "$GITHUB_REF:refs/remotes/origin/${GITHUB_REF#refs/heads/}"
           git fetch --no-tags origin "refs/tags/v$CANDIDATE_VERSION:refs/tags/v$CANDIDATE_VERSION"
           python3 -m eng.release.publication authorize \
             --candidate artifacts/candidate \
-            --provenance artifacts/provenance
+            --provenance artifacts/provenance \
+            --output artifacts/publication/authorization.json
 
       - name: Reject conflicting public package bytes
         shell: bash
@@ -759,52 +836,58 @@ jobs:
           --provenance artifacts/provenance
           --output artifacts/publication/draft.json
 
+      - name: Recheck current line permission before credentials
+        run: >-
+          python3 -m eng.release.publication recheck
+          --candidate artifacts/candidate --provenance artifacts/provenance
+          --authorization artifacts/publication/authorization.json
+
       - name: Obtain short-lived NuGet credential
         id: login
         uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
         with:
           user: ${{ secrets.NUGET_USER }}
 
-      # WHY: A symbol-service failure must not block the dependent EF primary package.
-      - name: Publish Core package
+      # WHY: Manifest order places dependencies before adapters; every primary must precede every symbol upload.
+      - name: Publish primary packages
         env:
           NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         shell: bash
-        run: >-
-          dotnet nuget push "artifacts/packages/Doka.NestedSet.$CANDIDATE_VERSION.nupkg"
-          --source https://api.nuget.org/v3/index.json
-          --api-key "$NUGET_API_KEY"
-          --no-symbols --skip-duplicate --timeout 300
+        run: |
+          packages="$(jq -er '[.packages[].nupkg] |
+            if length > 0 and all(.[]; type == "string" and length > 0)
+            then .[] else error("Missing primary package filenames") end' artifacts/candidate/package-manifest.json)"
+          while IFS= read -r package; do
+            echo "::group::Publish $package"
+            python3 -m eng.release.publication recheck \
+              --candidate artifacts/candidate --provenance artifacts/provenance \
+              --authorization artifacts/publication/authorization.json
+            dotnet nuget push "artifacts/candidate/$package" \
+              --source https://api.nuget.org/v3/index.json \
+              --api-key "$NUGET_API_KEY" \
+              --no-symbols --skip-duplicate --timeout 300
+            echo "::endgroup::"
+          done <<< "$packages"
 
-      - name: Publish EF package
+      - name: Publish symbol packages
         env:
           NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         shell: bash
-        run: >-
-          dotnet nuget push "artifacts/packages/Doka.EntityFrameworkCore.NestedSet.$CANDIDATE_VERSION.nupkg"
-          --source https://api.nuget.org/v3/index.json
-          --api-key "$NUGET_API_KEY"
-          --no-symbols --skip-duplicate --timeout 300
-
-      - name: Publish Core symbols
-        env:
-          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
-        shell: bash
-        run: >-
-          dotnet nuget push "artifacts/packages/Doka.NestedSet.$CANDIDATE_VERSION.snupkg"
-          --source https://api.nuget.org/v3/index.json
-          --api-key "$NUGET_API_KEY"
-          --skip-duplicate --timeout 300
-
-      - name: Publish EF symbols
-        env:
-          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
-        shell: bash
-        run: >-
-          dotnet nuget push "artifacts/packages/Doka.EntityFrameworkCore.NestedSet.$CANDIDATE_VERSION.snupkg"
-          --source https://api.nuget.org/v3/index.json
-          --api-key "$NUGET_API_KEY"
-          --skip-duplicate --timeout 300
+        run: |
+          packages="$(jq -er '[.packages[].snupkg] |
+            if length > 0 and all(.[]; type == "string" and length > 0)
+            then .[] else error("Missing symbol package filenames") end' artifacts/candidate/package-manifest.json)"
+          while IFS= read -r package; do
+            echo "::group::Publish $package"
+            python3 -m eng.release.publication recheck \
+              --candidate artifacts/candidate --provenance artifacts/provenance \
+              --authorization artifacts/publication/authorization.json
+            dotnet nuget push "artifacts/candidate/$package" \
+              --source https://api.nuget.org/v3/index.json \
+              --api-key "$NUGET_API_KEY" \
+              --skip-duplicate --timeout 300
+            echo "::endgroup::"
+          done <<< "$packages"
 
       - name: Verify signed public packages and indexed Portable PDBs
         run: >-
@@ -833,7 +916,7 @@ jobs:
 
       - name: Retain completion or interrupted publication evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: publication-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/publication

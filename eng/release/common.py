@@ -10,7 +10,18 @@ from datetime import date
 from pathlib import Path
 
 REPOSITORY = "doka-labs/Doka.EntityFrameworkCore.NestedSet"
-PACKAGES = ("Doka.NestedSet", "Doka.EntityFrameworkCore.NestedSet")
+PACKAGES = ("Doka.NestedSet", "Doka.EntityFrameworkCore.NestedSet",
+            "Doka.EntityFrameworkCore.NestedSet.MySql", "Doka.EntityFrameworkCore.NestedSet.Postgres",
+            "Doka.EntityFrameworkCore.NestedSet.Sqlite", "Doka.EntityFrameworkCore.NestedSet.SqlServer")
+PROVIDER_PACKAGES = {
+    "Doka.EntityFrameworkCore.NestedSet.MySql": "Doka.EntityFrameworkCore.MySql",
+    "Doka.EntityFrameworkCore.NestedSet.Postgres": "Npgsql.EntityFrameworkCore.PostgreSQL",
+    "Doka.EntityFrameworkCore.NestedSet.Sqlite": "Microsoft.EntityFrameworkCore.Sqlite",
+    "Doka.EntityFrameworkCore.NestedSet.SqlServer": "Microsoft.EntityFrameworkCore.SqlServer",
+}
+CONSUMERS = tuple((name, (package,)) for name, package in zip(
+    ("core", "ef", "mysql", "postgres", "sqlite", "sqlserver"), PACKAGES, strict=True)) + (
+    ("filesystem", ("Doka.EntityFrameworkCore.NestedSet.MySql", "Doka.EntityFrameworkCore.NestedSet.Sqlite")),)
 STAGES = ("quality", "tests", "packages", "consumer", "sbom")
 RELEASE_WORKFLOW = ".github/workflows/release-candidate.yml"
 
@@ -140,7 +151,7 @@ def load_candidate(candidate, require_publishable=True):
     """Verify the complete candidate file set and its bounded release identity."""
     candidate = Path(candidate)
     value = read_json(candidate / "candidate.json")
-    require(isinstance(value, dict) and type(value.get("schemaVersion")) is int and value["schemaVersion"] == 1,
+    require(isinstance(value, dict) and type(value.get("schemaVersion")) is int and value["schemaVersion"] in (1, 2),
             "candidate_schema", "Unsupported candidate manifest.")
     version = release_version(value.get("version"), allow_development=not require_publishable)
     require(value.get("repository") == REPOSITORY and value.get("tag") == "v" + version,
@@ -161,18 +172,56 @@ def load_candidate(candidate, require_publishable=True):
     require(isinstance(source, dict) and isinstance(source.get("fingerprint"), str)
             and re.fullmatch(r"[a-f0-9]{64}", source["fingerprint"]) is not None,
             "source_identity", "Missing source content fingerprint.")
+    source_ref = candidate_source_ref(value) if value["schemaVersion"] == 2 or value["publishable"] else None
     if require_publishable:
         require(value["publishable"], "workspace_only", "Workspace verification cannot authorize publication.",
-                "Qualify a reviewed, clean main commit through the release-candidate workflow.")
+                "Qualify a reviewed, clean authorized line through the release-candidate workflow.")
         require(all(isinstance(source.get(field), str) and re.fullmatch(r"[a-f0-9]{40}", source[field])
                     for field in ("commit", "tree")),
                 "source_identity", "Missing qualified Git commit or tree.")
         workflow = value.get("workflow", {})
         require(isinstance(workflow, dict) and workflow.get("workflow") == RELEASE_WORKFLOW
-                and workflow.get("ref") == "refs/heads/main"
+                and workflow.get("ref") == source_ref
                 and isinstance(workflow.get("runId"), str) and workflow["runId"].isdigit()
                 and int(workflow["runId"]) > 0
                 and type(workflow.get("attempt")) is int and workflow["attempt"] > 0,
                 "workflow_identity", "Candidate lacks its exact hosted release run and producer attempt.")
 
     return value
+
+
+def candidate_source_ref(manifest):
+    """Read the original source identity without granting current publication permission."""
+    workflow = manifest.get("workflow", {})
+    require(isinstance(workflow, dict), "workflow_identity", "Candidate workflow must be an object.")
+    reference = workflow.get("ref")
+    if manifest.get("schemaVersion", 1) == 1:
+        # WHY: Historical schema-1 evidence authorized only main. A later maintenance policy cannot
+        # reinterpret its signed source identity or silently grant an old candidate a different branch.
+        require(reference == "refs/heads/main", "workflow_identity", "Historical candidates require main identity.")
+
+        return reference
+
+    line = manifest.get("line")
+    require(isinstance(line, dict) and type(line.get("schemaVersion")) is int and line["schemaVersion"] == 1
+            and line.get("repository") == REPOSITORY and line.get("sourceRef") == reference
+            and isinstance(reference, str)
+            and re.fullmatch(r"refs/heads/(?:main|(?:maintenance|preview)/[1-9][0-9]*[.]x)", reference),
+            "line_identity", "Candidate lacks its exact frozen release-line identity.")
+    require(type(line.get("packageMajor")) is int
+            and line["packageMajor"] == int(manifest["version"].split(".", 1)[0])
+            and line.get("role") in ("main", "maintenance", "preview")
+            and line.get("channel") in ("stable-and-prerelease", "prerelease")
+            and line.get("upstreamStage") in ("ga", "rc")
+            and line.get("state") in ("prepared", "active")
+            and type(line.get("qualificationOnly")) is bool
+            and line.get("workflowPath") == RELEASE_WORKFLOW and line.get("publisherEnvironment") == "nuget"
+            and isinstance(line.get("authorityCommit"), str)
+            and re.fullmatch(r"[a-f0-9]{40}", line["authorityCommit"])
+            and isinstance(line.get("policySha256"), str)
+            and re.fullmatch(r"[a-f0-9]{64}", line["policySha256"]),
+            "line_identity", "Frozen line facts do not match the candidate version or authority.")
+    require(manifest.get("publishable") == (line["state"] == "active" and not line["qualificationOnly"]),
+            "line_identity", "Publication classification differs from the frozen line permission.")
+
+    return reference

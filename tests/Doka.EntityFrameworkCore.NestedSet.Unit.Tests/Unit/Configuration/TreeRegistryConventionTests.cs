@@ -10,8 +10,7 @@ public sealed class TreeRegistryConventionTests
         // Arrange
         var options = new DbContextOptionsBuilder<RegistryContext>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .Options;
 
         using var context = new RegistryContext(options);
@@ -36,8 +35,7 @@ public sealed class TreeRegistryConventionTests
         // Arrange
         var options = new DbContextOptionsBuilder<RegistryContext>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .Options;
 
         using var context = new RegistryContext(options);

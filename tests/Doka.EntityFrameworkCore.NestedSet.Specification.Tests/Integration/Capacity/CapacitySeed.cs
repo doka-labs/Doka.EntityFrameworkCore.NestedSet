@@ -38,8 +38,10 @@ internal static class CapacitySeed
             nameof(TreeNode.NodeId), nameof(TreeNode.TreeId), nameof(TreeNode.Tree), nameof(TreeNode.Parent),
             nameof(TreeNode.Start), nameof(TreeNode.End), nameof(TreeNode.Depth), nameof(TreeNode.Position),
         };
+
         var columns = string.Join(", ", names.Select(name =>
             helper.DelimitIdentifier(entity.FindProperty(name)!.GetColumnName(store)!)));
+
         var offset = helper.GenerateParameterName("offset");
         var limit = helper.GenerateParameterName("limit");
         var total = helper.GenerateParameterName("total");

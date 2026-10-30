@@ -95,8 +95,9 @@ public sealed partial class SafeMigrationTests
         var baseline = database.Scaffold(MigrationStage.Baseline, "SafeBaseline");
         await database.MigrateAsync(baseline);
         await database.SeedAsync(MigrationStage.Baseline);
+
         // WHY: Physical insertion bypasses managed writes to represent corrupt legacy data before checks existed.
-        await database.InsertNodeDirectlyAsync(CreateInvalidSqlServerNode(checkName));
+        await database.InsertNodeDirectlyAsync(CreateInvalidCoordinateNode(checkName));
         var upgrade = database.Scaffold(MigrationStage.Current, "SafeScopeKey", baseline);
         await using var context = database.CreateContext(MigrationStage.Current, upgrade.Assembly);
         var indexesBefore = IndexSignatures(await database.ReadIndexesAsync());

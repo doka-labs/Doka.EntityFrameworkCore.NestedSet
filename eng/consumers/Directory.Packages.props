@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup Label="Consumer-owned dependency graph">
+    <!-- WHY: Producer transitive pinning could hide a missing or vulnerable shipping dependency. -->
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+</Project>

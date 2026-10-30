@@ -27,8 +27,7 @@ public sealed class RowVersionFixture : IAsyncLifetime
         await source.Database.ExecuteSqlRawAsync(isolationSql, CancellationToken.None);
         var options = new DbContextOptionsBuilder<RowVersionContext>()
             .ConfigureTestWarnings()
-            .UseSqlServer(source.Database.GetConnectionString())
-            .UseNestedSets()
+            .UseSqlServer(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
             .Options;
 
         var context = new RowVersionContext(options);

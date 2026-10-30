@@ -2,6 +2,7 @@
 
 import base64
 import copy
+import hashlib
 import json
 import os
 import subprocess
@@ -9,6 +10,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+from urllib.parse import unquote
 
 from eng.release import publication as release
 from eng.release.common import STAGES, file_inventory, sha256, write_json
@@ -50,6 +52,15 @@ class HostedFixture:
         self.signing_key = "key::ssh-ed25519 fixture"
         self.api_overrides = {}
         self.during_signer_verification = None
+        self.latest = None
+        self.ignore_latest = False
+        self.authority_commit = "d" * 40
+        self.policy = {"schemaVersion": 1, "revision": "fixture.1", "repository": release.REPOSITORY,
+                       "authorityRef": "refs/heads/main", "lines": [
+                           {"sourceRef": "refs/heads/main", "role": "main",
+                            "packageMajor": int(manifest["version"].split(".", 1)[0]),
+                            "channel": "stable-and-prerelease", "upstreamStage": "ga", "state": "active",
+                            "workflowPath": release.WORKFLOW, "publisherEnvironment": "nuget"}]}
 
     @property
     def writes(self):
@@ -69,7 +80,7 @@ class HostedFixture:
         self.assets = [{"name": name, "size": expected[name]["size"], "digest": "sha256:" + expected[name]["sha256"],
                         "state": "uploaded"} for name in selection]
 
-    def run(self, arguments):
+    def run(self, arguments, *, allow_failure=False, input_text=None):
         """Return deterministic fake CLI responses and reject unmodeled operations."""
         arguments = list(arguments)
         self.calls.append(arguments)
@@ -84,7 +95,12 @@ class HostedFixture:
             return self.git(arguments)
 
         if arguments[:2] == ["gh", "api"]:
-            return self.api(arguments[-1])
+            response = self.api(arguments[-1])
+            if "--include" in arguments:
+                return "HTTP/2.0 " + ("404" if response == "null" else "200") + "\r\n\r\n" + (
+                    '{"message":"Not Found"}' if response == "null" else response)
+
+            return response
 
         if arguments[:3] == ["gh", "release", "create"]:
             self.existing_release(assets=[])
@@ -101,6 +117,8 @@ class HostedFixture:
         if arguments[:3] == ["gh", "release", "edit"]:
             self.releases[0]["draft"] = False
             self.releases[0]["immutable"] = True
+            if "--latest=true" in arguments and not self.ignore_latest:
+                self.latest = copy.deepcopy(self.releases[0])
 
             return ""
 
@@ -136,8 +154,8 @@ class HostedFixture:
 
             reference = arguments[-1]
 
-            if reference == "refs/heads/main":
-                return f"{self.remote_commit}\trefs/heads/main\n"
+            if reference == "refs/heads/" + self.branch:
+                return f"{self.remote_commit}\t{reference}\n"
 
             return f"{'b' * 40}\t{reference}\n" if self.remote_tag_exists else ""
 
@@ -174,10 +192,24 @@ class HostedFixture:
         if not path:
             value = {"full_name": release.REPOSITORY, "private": False, "archived": False}
         elif path == "branches/main":
-            value = {"protected": True}
+            value = {"name": "main", "protected": True, "commit": {"sha": self.authority_commit}}
+        elif path.startswith("branches/") and unquote(path[9:]) == self.branch:
+            value = {"name": self.branch, "protected": True, "commit": {"sha": self.remote_commit}}
+        elif path == "environments/nuget":
+            value = {"name": "nuget", "protection_rules": [
+                {"type": "required_reviewers", "reviewers": [{"id": 1}], "prevent_self_review": False}],
+                "can_admins_bypass": True,
+                "deployment_branch_policy": {"protected_branches": True, "custom_branch_policies": False}}
+        elif path == f"contents/eng/release/lines-policy.json?ref={self.authority_commit}":
+            content = json.dumps(self.policy).encode("ascii")
+            value = {"type": "file", "path": "eng/release/lines-policy.json", "size": len(content),
+                     "encoding": "base64", "content": base64.b64encode(content).decode("ascii"),
+                     "sha": hashlib.sha1(f"blob {len(content)}\0".encode("ascii") + content,
+                                         usedforsecurity=False).hexdigest()}
         elif path.startswith("actions/runs/"):
             value = {"id": 1234, "run_attempt": int(path.rsplit("/", 1)[1]), "path": release.WORKFLOW,
-                     "head_sha": self.manifest["source"]["commit"], "head_branch": "main", "event": "workflow_dispatch",
+                     "head_sha": self.manifest["source"]["commit"], "head_branch": self.branch,
+                     "event": "workflow_dispatch",
                      "repository": {"full_name": release.REPOSITORY}}
         elif path.startswith("git/ref/tags/"):
             value = {"object": {"type": "tag", "sha": "b" * 40}}
@@ -197,7 +229,7 @@ class HostedFixture:
 
             value = [entries[:1], entries[1:]]
         elif path == "releases/latest":
-            value = self.releases[0]
+            value = self.latest
         else:
             raise AssertionError(f"Unmodeled API read: {path}")
 
@@ -213,6 +245,9 @@ class PublicationTests(unittest.TestCase):
 
     def setUp(self):
         """Create actual hashed files plus structurally complete fake signed statements."""
+        self.version = getattr(self, "release_fixture_version", "1.2.3-rc.1")
+        prefix = self.version.split("-", 1)[0]
+        major = int(prefix.split(".", 1)[0])
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.directory = Path(self.temporary.name)
@@ -224,15 +259,22 @@ class PublicationTests(unittest.TestCase):
         self.signer_policy.write_text("fixture-principal ssh-ed25519 fixture-public-key\n", encoding="ascii")
         source_props = self.directory / "src/Directory.Build.props"
         source_props.parent.mkdir()
-        source_props.write_text("<Project><PropertyGroup><VersionPrefix>1.2.3</VersionPrefix>"
+        source_props.write_text(f"<Project><PropertyGroup><VersionPrefix>{prefix}</VersionPrefix>"
                                 "</PropertyGroup></Project>\n", encoding="ascii")
-        (self.directory / "CHANGELOG.md").write_text("# Changelog\n\n## 1.2.3-rc.1 (2026-09-19)\n\n"
+        write_json(self.directory / "global.json", {"sdk": {"version": f"{major}.0.100", "rollForward": "disable",
+                                                            "allowPrerelease": False}})
+        (self.directory / "Directory.Build.props").write_text(
+            f"<Project><PropertyGroup><TargetFramework>net{major}.0</TargetFramework></PropertyGroup></Project>\n",
+            encoding="ascii")
+        (self.directory / "Directory.Packages.props").write_text(
+            f'<Project><ItemGroup><PackageVersion Include="Microsoft.EntityFrameworkCore" Version="{major}.0.1"/>'
+            '</ItemGroup></Project>\n', encoding="ascii")
+        (self.directory / "CHANGELOG.md").write_text(f"# Changelog\n\n## {self.version} (2026-09-19)\n\n"
                                                        "Reviewed release.\n", encoding="ascii")
         self.candidate = self.directory / "candidate"
         self.provenance = self.directory / "provenance"
         self.candidate.mkdir()
         self.provenance.mkdir()
-        self.version = "1.2.3-rc.1"
         self.output = self.directory / "result.json"
         self.packages = []
 
@@ -273,7 +315,8 @@ class PublicationTests(unittest.TestCase):
                             "GITHUB_REF": "refs/heads/main", "GITHUB_SHA": self.manifest["source"]["commit"],
                             "GITHUB_WORKFLOW_REF": f"{release.REPOSITORY}/{release.WORKFLOW}@refs/heads/main",
                             "GITHUB_EVENT_NAME": "workflow_dispatch", "GITHUB_RUN_ID": "1234",
-                            "GITHUB_RUN_ATTEMPT": "1"}
+                            "GITHUB_RUN_ATTEMPT": "1", "NESTEDSET_PUBLICATION_LOCK_GROUP": "nestedset-publication",
+                            "NESTEDSET_PUBLICATION_LOCK_HELD": "1"}
         self.hosted = HostedFixture(self.candidate, self.provenance, self.manifest)
         self.options = {"commands": self.hosted, "environment": self.environment,
                         "attempts": 3, "sleep": self.hosted.sleep}
@@ -293,8 +336,9 @@ class PublicationTests(unittest.TestCase):
                 "subject": [{"name": name, "digest": {"sha256": sha256(self.candidate / name)}} for name in names],
                 "predicate": {"buildDefinition": {"buildType": "https://actions.github.io/buildtypes/workflow/v1",
                     "externalParameters": {"workflow": {"repository": f"https://github.com/{release.REPOSITORY}",
-                                            "path": release.WORKFLOW, "ref": "refs/heads/main"}},
-                    "resolvedDependencies": [{"uri": f"git+https://github.com/{release.REPOSITORY}@refs/heads/main",
+                                            "path": release.WORKFLOW, "ref": release.candidate_source_ref(self.manifest)}},
+                    "resolvedDependencies": [{"uri": f"git+https://github.com/{release.REPOSITORY}"
+                                                     f"@{release.candidate_source_ref(self.manifest)}",
                                               "digest": {"gitCommit": self.manifest["source"]["commit"]}}]},
                     "runDetails": {"metadata": {"invocationId": f"https://github.com/{release.REPOSITORY}"
                                                "/actions/runs/1234/attempts/1"}}}}
@@ -319,14 +363,14 @@ class PublicationTests(unittest.TestCase):
         return release.publish_release(self.candidate, self.provenance, self.readback, self.output, **self.options)
 
     def test_stage_verifies_every_signature_before_first_remote_write(self):
-        """All five provenance subjects and both SBOM signatures guard draft creation."""
+        """Every provenance subject and per-package SBOM signature guards draft creation."""
         # Act
         result = self.stage()
 
         # Assert
         first_write = self.hosted.calls.index(self.hosted.writes[0])
         verification = [call for call in self.hosted.calls[:first_write] if call[:3] == ["gh", "attestation", "verify"]]
-        self.assertEqual(7, len(verification))
+        self.assertEqual(1 + 3 * len(release.PACKAGES), len(verification))
         self.assertTrue(all("--deny-self-hosted-runners" in call and "--source-digest" in call
                             for call in verification))
         self.assertEqual("staged", result["state"])
@@ -864,7 +908,7 @@ class PublicationTests(unittest.TestCase):
         self.assertTrue(result["nuget"]["success"])
         self.assertEqual([], self.hosted.writes)
 
-    def test_pre_tag_only_reads_git_and_does_not_fetch(self):
+    def test_pre_tag_only_reads_source_authority_and_does_not_fetch(self):
         """Operator inspection cannot create local refs, tags, commits, or remote state."""
         # Act
         result = release.pre_tag(self.version, self.candidate, commands=self.hosted,
@@ -872,7 +916,7 @@ class PublicationTests(unittest.TestCase):
 
         # Assert
         self.assertEqual("pre-tag-checked", result["state"])
-        self.assertTrue(all(call[0] == "git" for call in self.hosted.calls))
+        self.assertTrue(all(call[0] == "git" or call[:2] == ["gh", "api"] for call in self.hosted.calls))
         self.assertFalse(any(call[1] in ("fetch", "tag", "commit", "push", "add") for call in self.hosted.calls))
 
     def test_pre_tag_dirty_source_is_rejected(self):

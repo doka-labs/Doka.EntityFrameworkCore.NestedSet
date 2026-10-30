@@ -1,6 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Isolates process-wide heap measurements from other unit test collections.</summary>
+[Trait("Category", "Allocation")]
 [CollectionDefinition("BulkPlanAllocation", DisableParallelization = true)]
 public sealed class BulkPlanAllocationIsolation;
 
@@ -34,8 +35,7 @@ public sealed class BulkPlanAllocationTests
     {
         // Arrange
         var options = new DbContextOptionsBuilder<TreeContext>()
-            .UseSqlite("Data Source=:memory:")
-            .UseNestedSets()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .Options;
 
         await using var context = new TreeContext(options);

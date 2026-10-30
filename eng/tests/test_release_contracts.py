@@ -1,5 +1,6 @@
 """Offline candidate, documented verifier, and workflow authorization contracts."""
 
+import itertools
 import json
 import os
 import re
@@ -42,13 +43,20 @@ class CandidateManifestTests(QualificationFixture):
     def test_complete_candidate_is_accepted(self):
         """The positive fixture exercises the same full inventory as negative cases."""
         # Arrange
-        expected = set(self.candidate.iterdir())
+        packages = {"Doka.NestedSet", "Doka.EntityFrameworkCore.NestedSet",
+                    "Doka.EntityFrameworkCore.NestedSet.MySql", "Doka.EntityFrameworkCore.NestedSet.Postgres",
+                    "Doka.EntityFrameworkCore.NestedSet.Sqlite", "Doka.EntityFrameworkCore.NestedSet.SqlServer"}
+        expected = {"candidate.json", "package-manifest.json", "qualification-evidence.zip", "release-notes.md"}
+        expected.update(f"{name}.{VERSION}.{suffix}" for name in packages for suffix in ("nupkg", "snupkg"))
+        expected.update(f"{name}.spdx.json" for name in packages)
 
         # Act
         manifest = common.load_candidate(self.candidate)
+        actual = {path.name for path in self.candidate.iterdir()}
 
         # Assert
-        self.assertEqual(10, len(expected))
+        self.assertEqual(expected, actual)
+        self.assertEqual(expected - {"candidate.json"}, set(manifest["files"]))
         self.assertEqual(COMMIT, manifest["source"]["commit"])
         self.assertTrue(manifest["publishable"])
 
@@ -248,7 +256,7 @@ class DocumentedConsumerTests(QualificationFixture):
     """Execute the published inventory example offline; no cryptographic success is inferred from fixtures."""
 
     def setUp(self):
-        """Read the actual documentation snippet and prepare its thirteen local release assets."""
+        """Read the actual documentation snippet and prepare its complete local release asset set."""
         super().setUp()
         candidate = self.complete_fixture()
         self.downloads = self.root / "downloads"
@@ -263,9 +271,9 @@ class DocumentedConsumerTests(QualificationFixture):
         self.assertEqual(1, len(snippets), "Review the test when the documented consumer procedure changes")
         self.script = snippets[0]
 
-    def execute_example(self, expected=COMMIT):
+    def execute_example(self, expected=COMMIT, expected_ref="refs/heads/main"):
         """Run only the documentation's local Python inventory/hash verification."""
-        return subprocess.run([sys.executable, "-", str(self.downloads), str(self.target), VERSION, expected],
+        return subprocess.run([sys.executable, "-", str(self.downloads), str(self.target), VERSION, expected, expected_ref],
                               input=self.script, text=True, cwd=ROOT, capture_output=True, timeout=10, check=False)
 
     def test_documented_example_accepts_valid_inventory(self):
@@ -293,6 +301,19 @@ class DocumentedConsumerTests(QualificationFixture):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("candidate_changed", result.stderr)
 
+    def test_documented_example_rejects_original_ref_shift(self):
+        """An independently expected maintenance line cannot accept a main candidate with the same commit."""
+        # Arrange
+        reference = "refs/heads/maintenance/10.x"
+
+        # Act
+        result = self.execute_example(expected_ref=reference)
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Candidate original source-ref mismatch", result.stderr)
+        self.assertEqual([], list(self.target.iterdir()))
+
     def test_documented_example_rejects_unexpected_asset(self):
         """The consumer must reject an extra file before copying candidate content."""
         # Arrange
@@ -317,6 +338,19 @@ class DocumentedConsumerTests(QualificationFixture):
         # Assert
         self.assertNotEqual(0, result.returncode)
         self.assertIn("Candidate version/source mismatch", result.stderr)
+
+
+def partitions(filters):
+    """Whether conjunctive VSTest filters select every combination of their conditions exactly once."""
+    terms = [[re.fullmatch(r"(\w+)(!?)([=~])(.+)", atom).groups() for atom in value.split("&")]
+             for value in filters]
+    conditions = sorted({(name, operator, value) for term in terms for name, _, operator, value in term})
+
+    # WHY: Treating each condition as independent is stricter than the real test inventory requires.
+    return all(sum(all(truth[(name, operator, value)] != bool(negated) for name, negated, operator, value in term)
+                   for term in terms) == 1
+               for truth in (dict(zip(conditions, bits))
+                             for bits in itertools.product((False, True), repeat=len(conditions))))
 
 
 def workflow_jobs(path):
@@ -352,7 +386,7 @@ class DependencyLicenseExceptionTests(unittest.TestCase):
     def test_accepts_reviewed_versions_across_manifests(self):
         """The two approved packages retain narrow exceptions even when several manifests use them."""
         # Arrange
-        entries = [self.dependency("Microsoft.Data.SqlClient.SNI.runtime", "6.0.2"),
+        entries = [self.dependency("Microsoft.Data.SqlClient.SNI.runtime", "6.0.3"),
                    self.dependency("Microsoft.Identity.Client.NativeInterop", "0.20.6")]
 
         # Act
@@ -386,7 +420,7 @@ class DependencyLicenseExceptionTests(unittest.TestCase):
     def test_rejects_sni_version_change(self):
         """An exception cannot silently approve a newer SNI license file."""
         # Arrange
-        entries = [self.dependency("Microsoft.Data.SqlClient.SNI.runtime", "6.0.3")]
+        entries = [self.dependency("Microsoft.Data.SqlClient.SNI.runtime", "6.0.4")]
 
         # Act
         result = self.run_guard(entries)
@@ -421,8 +455,8 @@ class DependencyLicenseExceptionTests(unittest.TestCase):
     def test_rejects_inconsistent_package_url(self):
         """Matching display metadata cannot hide a different exempted PURL version."""
         # Arrange
-        entry = self.dependency("Microsoft.Data.SqlClient.SNI.runtime", "6.0.2")
-        entry["package_url"] = "pkg:nuget/Microsoft.Data.SqlClient.SNI.runtime@6.0.3"
+        entry = self.dependency("Microsoft.Data.SqlClient.SNI.runtime", "6.0.3")
+        entry["package_url"] = "pkg:nuget/Microsoft.Data.SqlClient.SNI.runtime@6.0.4"
 
         # Act
         result = self.run_guard([entry])
@@ -433,7 +467,7 @@ class DependencyLicenseExceptionTests(unittest.TestCase):
     def test_rejects_inconsistent_package_name(self):
         """The action-exempted PURL must agree with the reported package identity."""
         # Arrange
-        entry = self.dependency("Microsoft.Data.SqlClient.SNI.runtime", "6.0.2")
+        entry = self.dependency("Microsoft.Data.SqlClient.SNI.runtime", "6.0.3")
         entry["name"] = "Different.Package"
 
         # Act
@@ -521,7 +555,7 @@ class DependencyLicenseExceptionTests(unittest.TestCase):
         exceptions = workflow.split("allow-dependencies-licenses: >-", 1)[1].split("comment-summary-in-pr:", 1)[0]
 
         # Assert
-        self.assertEqual(["pkg:nuget/Microsoft.Data.SqlClient.SNI.runtime@6.0.2",
+        self.assertEqual(["pkg:nuget/Microsoft.Data.SqlClient.SNI.runtime@6.0.3",
                           "pkg:nuget/Microsoft.Identity.Client.NativeInterop@0.20.6"],
                          [line.strip().rstrip(",") for line in exceptions.splitlines() if line.strip()])
         self.assertIn("${{ steps.review.outputs.dependency-changes }}", workflow)
@@ -530,6 +564,20 @@ class DependencyLicenseExceptionTests(unittest.TestCase):
         self.assertNotIn("LicenseRef-scancode-unknown", workflow)
         self.assertNotIn("license-check: false", workflow)
         self.assertNotIn("warn-only: true", workflow)
+
+    def test_existing_postgresql_provider_license_is_allowed_without_unknown_fallbacks(self):
+        """Npgsql's declared permissive SPDX license is supported without admitting unidentified licenses."""
+        # Arrange
+        workflow = (ROOT / ".github/workflows/dependency-review.yml").read_text(encoding="ascii")
+        block = workflow.split("allow-licenses: >-", 1)[1].split("allow-dependencies-licenses:", 1)[0]
+
+        # Act
+        licenses = {line.strip().rstrip(",") for line in block.splitlines() if line.startswith("            ")}
+
+        # Assert
+        self.assertIn("PostgreSQL", licenses)
+        self.assertNotIn("LicenseRef-scancode-unknown", licenses)
+        self.assertNotIn("GPL-3.0-only", licenses)
 
 
 class WorkflowBoundaryTests(unittest.TestCase):
@@ -563,7 +611,7 @@ class WorkflowBoundaryTests(unittest.TestCase):
         self.assertNotIn("attest", self.ci)
         self.assertIn('$CANDIDATE_VERSION', release)
         self.assertIn("  pull_request:", triggers)
-        self.assertIn("    branches: [main]", triggers)
+        self.assertIn("    branches: [main, 'maintenance/**', 'preview/**']", triggers)
         self.assertNotIn("  push:", triggers)
         self.assertNotIn("  schedule:", triggers)
 
@@ -576,7 +624,7 @@ class WorkflowBoundaryTests(unittest.TestCase):
         dependencies = {name: re.findall(r"^    needs:.*$", self.ci[name], re.MULTILINE) for name in producers}
 
         # Assert
-        self.assertEqual({name: [] for name in producers}, dependencies)
+        self.assertEqual({name: ["    needs: schedule-identity"] for name in producers}, dependencies)
         self.assertNotIn("max-parallel:", self.ci["tests"])
         self.assertNotIn("max-parallel:", self.ci["samples"])
         self.assertIn("fail-fast: false", self.ci["tests"])
@@ -610,13 +658,20 @@ class WorkflowBoundaryTests(unittest.TestCase):
         projects = list((ROOT / "tests").rglob("*.csproj"))
         expected = {path.relative_to(ROOT).as_posix() for path in projects
                     if ET.parse(path).findtext(".//IsTestProject") != "false"}
+        rows = [dict(re.findall(r"^\s*([a-z]+): (.+)$", row, re.MULTILINE))
+                for row in self.ci["tests"].split("        include:\n", 1)[1].split("\n    steps:", 1)[0]
+                .split("          - ")[1:]]
 
         # Act
-        selected = re.findall(r"^            project: (\S+)$", self.ci["tests"], re.MULTILINE)
+        selected = [row["project"] for row in rows]
+        shards = {project: [row.get("filter") for row in rows if row["project"] == project]
+                  for project in selected if selected.count(project) > 1}
 
         # Assert
         self.assertEqual(expected, set(selected))
-        self.assertEqual(len(selected), len(set(selected)))
+        self.assertEqual({"tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/"
+                          "Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj"}, set(shards))
+        self.assertTrue(all(partitions(filters) for filters in shards.values()))
         self.assertIn('dotnet restore "${{ matrix.project }}" --locked-mode', self.ci["tests"])
         self.assertIn('dotnet build "${{ matrix.project }}"', self.ci["tests"])
         self.assertIn('dotnet test "${{ matrix.project }}"', self.ci["tests"])
@@ -636,8 +691,31 @@ class WorkflowBoundaryTests(unittest.TestCase):
         self.assertEqual(len(names), len(set(names)))
         self.assertIn("--provider sqlite --reset", self.ci["samples"])
 
+    def test_ci_runs_allocation_budgets_before_coverage_with_complementary_filters(self):
+        """Only Unit separates native allocation measurements; no test category is silently skipped."""
+        # Arrange
+        tests = self.ci["tests"]
+
+        # Act
+        allocation = tests.index("name: Measure Unit allocations without instrumentation")
+        coverage = tests.index("name: Run tests with coverage")
+        verify = tests.index("name: Verify complementary Unit result partitions")
+
+        # Assert
+        self.assertLess(allocation, coverage)
+        self.assertLess(coverage, verify)
+        self.assertIn("if: matrix.id == 'ef-unit'", tests[allocation:coverage])
+        self.assertIn('--filter "Category=Allocation"', tests[allocation:coverage])
+        self.assertIn("            filter: Category!=Allocation\n            docker: false", tests)
+        self.assertIn("TEST_FILTER: ${{ matrix.filter }}", tests[coverage:verify])
+        self.assertIn('filter=(--filter "$TEST_FILTER")', tests[coverage:verify])
+        self.assertIn("python3 -m eng.release.qualification", tests[verify:])
+        self.assertIn("--verify-results artifacts/ci-tests/ef-unit", tests[verify:])
+        self.assertIn("--project Doka.EntityFrameworkCore.NestedSet.Unit.Tests", tests[verify:])
+        self.assertNotIn("python3 -c", tests[verify:].split("      - name:", 1)[0])
+
     def test_ci_coverage_waits_for_complete_test_evidence(self):
-        """The existing two-module verifier reads isolated reports from the current run attempt."""
+        """The shipping-module verifier reads isolated reports from the current run attempt."""
         # Arrange
         tests = self.ci["tests"]
         coverage = self.ci["coverage"]
@@ -713,7 +791,7 @@ class WorkflowBoundaryTests(unittest.TestCase):
 
         # Assert
         self.assertEqual({name: ["build"] for name in names}, needs)
-        self.assertIn("sample: [FileSystem, Kpis, UserGroups]", self.release["samples"])
+        self.assertIn("sample: [FileSystem, SignalLab, UserGroups]", self.release["samples"])
         self.assertIn("fail-fast: false", self.release["samples"])
         for name in ("consumer", "sbom"):
             with self.subTest(job=name):
@@ -806,8 +884,10 @@ class WorkflowBoundaryTests(unittest.TestCase):
         # Assert
         self.assertIn("workflow_dispatch:", triggers)
         self.assertNotRegex(triggers, re.compile(r"^  (push|pull_request|workflow_run):", re.MULTILINE))
-        self.assertIn("group: nestedset-release-${{ inputs.version }}", text)
+        self.assertIn("group: nestedset-release-${{ github.ref }}-${{ inputs.version }}", text)
         self.assertIn("cancel-in-progress: false", text)
+        self.assertIn("group: nestedset-publication", self.release["publish"])
+        self.assertIn("queue: max", self.release["publish"])
 
     def test_only_publish_requests_credentials_and_environment(self):
         """Unprotected qualification jobs must not request NuGet publication authority."""
@@ -864,20 +944,204 @@ class WorkflowBoundaryTests(unittest.TestCase):
         self.assertEqual(["${{ needs.qualify.outputs.artifact-id }}", "${{ needs.attest.outputs.artifact-id }}"], download_ids)
         self.assertNotRegex(publish, r"\bdotnet (?:build|restore|pack)\b")
 
+    def publish_steps(self):
+        """Read the two actual manifest-driven publication steps, including their scoped environment."""
+        return re.findall(r"^      - name: Publish (?:primary|symbol) packages\n(.*?)(?=^      - name:|\Z)",
+                          self.release["publish"], re.MULTILINE | re.DOTALL)
+
+    def run_publish(self, *, manifest=None, failure=None, recheck_failure=0):
+        """Execute real Bash/jq with recording publication and authorization boundaries, without remote I/O."""
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            records = [{"id": package, "version": VERSION,
+                        "nupkg": f"{package}.{VERSION}.nupkg", "snupkg": f"{package}.{VERSION}.snupkg"}
+                       for package in common.PACKAGES]
+            text_file(root / "artifacts/candidate/package-manifest.json",
+                      json.dumps({"packages": records}) if manifest is None else manifest)
+            stub = root / "bin/dotnet"
+            text_file(stub, f"#!{sys.executable}\n"
+                      "import json, os, sys\n"
+                      "with open(os.environ['PUSH_LOG'], 'a', encoding='ascii') as stream:\n"
+                      "    stream.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+                      "with open(os.environ['BOUNDARY_LOG'], 'a', encoding='ascii') as stream:\n"
+                      "    stream.write('push\\n')\n"
+                      "sys.exit(31 if sys.argv[3].endswith(os.environ.get('FAIL_PACKAGE', '!')) else 0)\n")
+            stub.chmod(0o755)
+            authorization = root / "bin/python3"
+            text_file(authorization, f"#!{sys.executable}\n"
+                      "import os, pathlib, sys\n"
+                      "assert sys.argv[1:4] == ['-m', 'eng.release.publication', 'recheck']\n"
+                      "path = pathlib.Path(os.environ['BOUNDARY_LOG'])\n"
+                      "with path.open('a', encoding='ascii') as stream:\n"
+                      "    stream.write('recheck\\n')\n"
+                      "count = path.read_text().splitlines().count('recheck')\n"
+                      "sys.exit(47 if count == int(os.environ['FAIL_RECHECK']) else 0)\n")
+            authorization.chmod(0o755)
+            log = root / "pushes.jsonl"
+            boundaries = root / "boundaries.txt"
+            commands = [textwrap.dedent(step.split("        run: |\n", 1)[1]) for step in self.publish_steps()]
+            result = subprocess.run(["bash", "-eo", "pipefail", "-c", "\n\n".join(commands)], cwd=root,
+                                    env={**os.environ, "PATH": f"{stub.parent}{os.pathsep}{os.environ['PATH']}",
+                                         "PUSH_LOG": str(log), "NUGET_API_KEY": "offline-stub-key",
+                                         "BOUNDARY_LOG": str(boundaries), "FAIL_RECHECK": str(recheck_failure),
+                                         "FAIL_PACKAGE": failure or "!"},
+                                    capture_output=True, text=True, check=False)
+            calls = [json.loads(line) for line in log.read_text(encoding="ascii").splitlines()] if log.exists() else []
+            self.publication_boundaries = boundaries.read_text().splitlines() if boundaries.exists() else []
+
+            return result, calls
+
     def test_primary_packages_precede_all_symbols(self):
-        """A symbol upload failure cannot block the dependent EF primary package."""
+        """The actual YAML loops retain dependency order, every push argument, and per-package logs."""
         # Arrange
-        publish = self.release["publish"]
-        expected = [f"{package}.$CANDIDATE_VERSION.{extension}"
+        expected = [f"{package}.{VERSION}.{extension}"
                     for extension in ("nupkg", "snupkg") for package in common.PACKAGES]
+        arguments = [["nuget", "push", f"artifacts/candidate/{name}",
+                      "--source", "https://api.nuget.org/v3/index.json", "--api-key", "offline-stub-key",
+                      *(["--no-symbols"] if name.endswith(".nupkg") else []),
+                      "--skip-duplicate", "--timeout", "300"] for name in expected]
 
         # Act
-        uploads = re.findall(r'dotnet nuget push "artifacts/packages/([^\"]+)"', publish)
+        result, calls = self.run_publish()
 
         # Assert
-        self.assertEqual(expected, uploads)
-        self.assertEqual(4, publish.count("--skip-duplicate"))
-        self.assertEqual(2, publish.count("--no-symbols"))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(arguments, calls)
+        self.assertEqual(["recheck", "push"] * 12, self.publication_boundaries)
+        self.assertEqual(12, result.stdout.count("::group::"))
+        self.assertEqual(12, result.stdout.count("::endgroup::"))
+        self.assertTrue(all(name in result.stdout for name in expected))
+
+    def test_current_line_revocation_stops_before_first_push(self):
+        """A failed fresh authorization boundary cannot publish the first package."""
+        # Arrange
+        boundary = 1
+
+        # Act
+        result, calls = self.run_publish(recheck_failure=boundary)
+
+        # Assert
+        self.assertEqual(47, result.returncode, result.stderr)
+        self.assertEqual([], calls)
+        self.assertEqual(["recheck"], self.publication_boundaries)
+
+    def test_current_line_revocation_stops_later_pushes(self):
+        """Permission must remain current after an earlier primary package succeeds."""
+        # Arrange
+        boundary = 2
+
+        # Act
+        result, calls = self.run_publish(recheck_failure=boundary)
+
+        # Assert
+        self.assertEqual(47, result.returncode, result.stderr)
+        self.assertEqual(1, len(calls))
+        self.assertEqual(["recheck", "push", "recheck"], self.publication_boundaries)
+
+    def test_publish_credentials_are_limited_to_two_manifest_loops(self):
+        """Only the two publication steps receive the temporary credential."""
+        # Arrange
+        publish = self.release["publish"]
+
+        # Act
+        steps = self.publish_steps()
+
+        # Assert
+        self.assertEqual(2, len(steps))
+        self.assertEqual(2, publish.count("NUGET_API_KEY:"))
+        self.assertTrue(all("NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}" in step for step in steps))
+        self.assertTrue(all("artifacts/candidate/package-manifest.json" in step for step in steps))
+        self.assertTrue(all("shell: bash" in step for step in steps))
+
+    def test_first_primary_push_failure_stops_publication(self):
+        """A failing first primary prevents every later primary and symbol call."""
+        # Arrange
+        failure = f"{common.PACKAGES[0]}.{VERSION}.nupkg"
+
+        # Act
+        result, calls = self.run_publish(failure=failure)
+
+        # Assert
+        self.assertEqual(31, result.returncode)
+        self.assertEqual([f"artifacts/candidate/{failure}"], [call[2] for call in calls])
+
+    def test_late_primary_push_failure_prevents_symbol_publication(self):
+        """A late primary failure cannot advance to the symbol step."""
+        # Arrange
+        failure = f"{common.PACKAGES[-1]}.{VERSION}.nupkg"
+
+        # Act
+        result, calls = self.run_publish(failure=failure)
+
+        # Assert
+        self.assertEqual(31, result.returncode)
+        self.assertEqual(6, len(calls))
+        self.assertTrue(all(call[2].endswith(".nupkg") for call in calls))
+
+    def test_late_symbol_push_failure_stops_remaining_symbols(self):
+        """Successful primaries do not hide a later symbol upload failure."""
+        # Arrange
+        failure = f"{common.PACKAGES[-2]}.{VERSION}.snupkg"
+
+        # Act
+        result, calls = self.run_publish(failure=failure)
+
+        # Assert
+        self.assertEqual(31, result.returncode)
+        self.assertEqual(11, len(calls))
+        self.assertEqual(f"artifacts/candidate/{failure}", calls[-1][2])
+
+    def test_empty_package_manifest_fails_before_publication(self):
+        """An empty list cannot turn the publication step into a false success."""
+        # Arrange
+        manifest = '{"packages": []}'
+
+        # Act
+        result, calls = self.run_publish(manifest=manifest)
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+        self.assertEqual([], calls)
+
+    def test_malformed_package_manifest_fails_before_publication(self):
+        """jq errors propagate before the first package reaches dotnet."""
+        # Arrange
+        manifest = '{"packages": ['
+
+        # Act
+        result, calls = self.run_publish(manifest=manifest)
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+        self.assertEqual([], calls)
+
+    def test_missing_package_filename_fails_before_publication(self):
+        """A missing filename cannot be emitted as a literal null package path."""
+        # Arrange
+        manifest = '{"packages": [{"nupkg": null}, {"nupkg": "later.nupkg"}]}'
+
+        # Act
+        result, calls = self.run_publish(manifest=manifest)
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+        self.assertEqual([], calls)
+
+    def test_missing_symbol_filename_stops_before_symbol_publication(self):
+        """A malformed symbol list cannot partially publish the available symbol entries."""
+        # Arrange
+        records = [{"nupkg": f"{package}.{VERSION}.nupkg", "snupkg": f"{package}.{VERSION}.snupkg"}
+                   for package in common.PACKAGES]
+        records[0]["snupkg"] = None
+        manifest = json.dumps({"packages": records})
+
+        # Act
+        result, calls = self.run_publish(manifest=manifest)
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+        self.assertEqual(6, len(calls))
+        self.assertTrue(all(call[2].endswith(".nupkg") for call in calls))
 
     def test_publication_budget_covers_delayed_nuget_indexing(self):
         """A full public readback window must fit inside the protected job with publication headroom."""
@@ -893,7 +1157,7 @@ class WorkflowBoundaryTests(unittest.TestCase):
         self.assertEqual(180, job_minutes)
         self.assertGreater(job_minutes * 60 - readback_seconds, 2400)
 
-    def test_attestation_covers_manifest_symbols_and_both_sboms(self):
+    def test_attestation_covers_manifest_symbols_and_all_sboms(self):
         """Primary archives alone are not the complete provenance boundary."""
         # Arrange
         attest = self.release["attest"]
@@ -918,7 +1182,7 @@ class WorkflowBoundaryTests(unittest.TestCase):
 
         # Assert
         self.assertEqual(1, len(matches))
-        self.assertIn("needs: [source-quality, engineering-tests, build, tests, samples, coverage]", required)
+        self.assertIn("needs: [schedule-identity, source-quality, engineering-tests, build, tests, samples, coverage]", required)
         self.assertIn("if: always()", required)
         self.assertEqual(set(self.ci) - {"repository-qualification"}, results)
 

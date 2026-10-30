@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup Label="Provider package metadata">
+    <IsPackable>true</IsPackable>
+    <Description>Nested-set hierarchy integration for the SqlServer Entity Framework Core provider.</Description>
+    <PackageTags>efcore;nested-set;tree;hierarchy;sqlserver</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup Label="Common hierarchy and native provider">
+    <ProjectReference Include="../Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer"/>
+    <PackageReference Include="System.Security.Cryptography.Pkcs"/>
+  </ItemGroup>
+
+  <ItemGroup Label="IDE file nesting">
+    <Compile Update="Registry/SqlServerNestedSetProvider.Rowsets.cs">
+      <DependentUpon>SqlServerNestedSetProvider.Registry.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+</Project>

@@ -9,7 +9,7 @@ scope: "Local qualification, hosted candidate identity, approval, publication, a
 supersedes: []
 superseded-by: []
 amends: []
-amended-by: []
+amended-by: [D-021]
 madr-version: "4.0.0"
 doka-profile-version: "1.0"
 ---
@@ -19,7 +19,7 @@ doka-profile-version: "1.0"
 ## Context and Problem Statement
 
 A successful source build does not prove that the packages an application restores contain the tested code,
-symbols, dependencies, and documentation. Publishing two related packages also creates a partial-failure boundary.
+symbols, dependencies, and documentation. Publishing related packages also creates a partial-failure boundary.
 The accepted release path therefore binds qualification to concrete candidate bytes and separates reversible local
 checks from operator-controlled hosted publication.
 
@@ -50,12 +50,20 @@ published package is the consumer contract, and shared checks give local and hos
 of readiness. Pull-request CI uses direct .NET and offline engineering checks so release-only services cannot block a product change.
 Publication remains a separate authorized action. PR-only diagnostics do not enter the RC qualification run.
 
+[D-021](D-021-release-lines-and-monotonic-publication.md) amends the main-only
+release assumptions with exact branch-owned qualification, current
+protected-main publication authority and monotonic Latest. It preserves this
+decision's parallel six-package and original-byte recovery boundaries.
+
 CI runs independent source, engineering, build/package, test-project, and sample
 jobs. Each executable test project and SQLite sample owns a named matrix cell
-and runner. Coverage waits for complete test evidence; the stable Repository
+and runner. The shared MySQL/MariaDB project is the exception: its serial
+allocation collection alone outlasted every other project, so CI splits it into
+filtered cells whose VSTest filters must partition the project. RC keeps one
+cell per project. Coverage waits for complete test evidence; the stable Repository
 qualification check rejects any failed, skipped, or canceled gate. Project-local
 builds avoid transporting or sharing coverage-instrumented binary outputs.
-The build job inspects both primary and both symbol archives before uploading
+The build job inspects all primary and symbol archives before uploading
 them, using the inspector already built with the solution. This binds package
 metadata, XML documentation, source commit, and PE/PDB identity without another
 pack or a dependency on consumer restores and SBOM services.
@@ -93,7 +101,7 @@ receipt schema, artifact-index API, or role/file inventory repeats that transpor
 
 Existing source/version/run/attempt identity, dependency locks, compiled runtime
 inventories, and package hashes remain checked. Final qualification requires
-all nine TRX results, coverage for each test project, executed lines in both
+all nine TRX results, coverage for each test project, executed lines in all six
 shipping modules across the reports, all required query plans, all three samples,
 successful version-matching core and EF consumers whose recorded primary-package
 hashes equal the inspected packages being sealed, and independently verified
@@ -118,7 +126,7 @@ of an already sealed candidate retains its original artifact IDs and the
 existing attestation/publication checks.
 
 Approved SSH release-tag signers are recorded in `.github/allowed_signers`,
-following Doka and SafeMigrations. Signer changes require a reviewed protected-main
+following Doka and SafeMigrations. Signer changes require a reviewed protected-line
 pull request. Publication verifies the tag directly against this file and retains
 GitHub's independent signature verdict, without extra hosted signer configuration.
 
@@ -132,7 +140,7 @@ GitHub's independent signature verdict, without extra hosted signer configuratio
 - Run `python3 -m unittest discover -s eng/tests` and expect identity, archive, fresh-run, and publication-boundary regression tests to pass. These fixtures must reject changed candidate bytes, signer mismatch, stale evidence, and conflicting public packages. ADR validation and its fixtures are separate documentation checks.
 - Run the complete local qualification procedure in the linked release runbook and require fresh full provider tests, coverage, sample, package-consumer, SBOM, and deterministic mutation evidence. Syntax or stub checks must not substitute for runtime qualification.
 - Qualify the parallel flow on fresh hosted Linux x86-64 runners. Require all nine compiled test projects and three compiled samples, complete matching evidence, unchanged binaries/packages, and successful candidate handoff. Compare serial and parallel timing on the same source, SDK, images, and test scope before claiming a speedup. This hosted confirmation remains pending for the evolved flow.
-- Before publication, require the linked operator checklist to confirm exact run and attempt identity, approved signed tag, current-main reachability, protected environment approval, and verified public package/symbol readback. These external checks remain unexecuted until a real authorized release.
+- Before publication, require the linked operator checklist to confirm exact run and attempt identity, approved signed tag, qualified-line reachability and current independent publication authority, protected environment approval, and verified public package/symbol readback. These external checks remain unexecuted until a real authorized release.
 
 ## Pros and Cons of the Options
 
@@ -149,7 +157,7 @@ GitHub's independent signature verdict, without extra hosted signer configuratio
 ### Manual package upload after local tests
 
 - Good, because a maintainer can control every external action without hosted credential setup.
-- Bad, because reproducibility, artifact provenance, and two-package retry consistency depend on manually preserved evidence.
+- Bad, because reproducibility, artifact provenance, and multi-package retry consistency depend on manually preserved evidence.
 
 ## More Information
 
@@ -167,7 +175,7 @@ content from transport bytes; the original unsigned ZIP hash is not an equality 
 download. Signature verification and comparison with the qualified package content are separate checks in the
 linked publication and consumer-verification procedures.
 
-Publish both primary packages in dependency order before either symbol package. A symbol-service failure must not
+Publish all six primary packages in dependency order before any symbol package. A symbol-service failure must not
 prevent the EF primary package from reaching NuGet. On a same-run retry, the public payload preflight rejects
 conflicts before duplicate-tolerant pushes, and public package and PDB readback still determine completion.
 
@@ -200,6 +208,8 @@ conflicts before duplicate-tolerant pushes, and public package and PDB readback 
 - 2026-10-09: Removed the added job receipt schema, role/file inventories, and artifact-index API at the maintainer's direction. GitHub needs results, scalar producer artifact IDs, current-attempt matrix names, and the pinned download action now own job completion and artifact transport. Final product checks, original identity and byte guards, and publication controls remain required. The final job needs neither GitHub API credentials nor .NET setup. This removes duplicated orchestration without dropping test, coverage, sample, consumer, or SBOM evidence.
 - 2026-10-09: Removed unused default NuGet caching from compiled test/sample and isolated consumer/SBOM jobs. Final sealing compares existing consumer primary-package hashes with the inspected build-package manifest; no new receipt schema or validator was introduced. Scalar artifact IDs remain native transport metadata rather than additional portable evidence fields.
 - 2026-10-09: Corrected the blanket claim that partial reruns cannot retain evidence from an earlier attempt. Successful same-run, same-commit source/tooling logs may be reused by native job outputs; downloaded build identity, current-attempt test/sample selection, and package-byte checks remain enforced. Full reruns or new dispatches remain the operator recommendation; retaining preflight does not refresh its deadline. No code or additional enforcement layer was introduced.
+
+- 2026-10-28: D-021 records the owner-approved release-line extension, preserving parallel qualification, six packages and original-byte recovery while replacing main-only source and always-Latest assumptions. Extra lines remain inactive.
 
 ### Implementation References
 
