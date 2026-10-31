@@ -1212,21 +1212,29 @@ class WorkflowBoundaryTests(unittest.TestCase):
                 self.assertIn(f"{gate} concluded '{state}'.", result.stdout)
 
     def test_candidate_and_completion_artifacts_fail_if_missing(self):
-        """Missing retained evidence cannot appear as a successful artifact upload."""
+        """Required uploads retain evidence, and the maintenance audit excludes disposable caches."""
         # Arrange
+        audit = workflow_jobs(ROOT / ".github/workflows/release-line-maintenance.yml")["dependency-vulnerability-audit"]
         bodies = (self.gates["build"], self.gates["tests"], self.release["qualify"],
-                  self.release["attest"], self.release["publish"])
+                  self.release["attest"], self.release["publish"], audit)
 
         # Act
         uploads = [match.group(0) for body in bodies for match in
                    re.finditer(r"uses: actions/upload-artifact@.*?(?=\n      -|\Z)", body, re.DOTALL)]
         required_uploads = [upload for upload in uploads if "if-no-files-found: warn" not in upload]
+        audit_upload = next(upload for upload in uploads if "name: release-line-audit-" in upload)
+        audit_paths = re.findall(r"^            (\S+)$", audit_upload, re.MULTILINE)
 
         # Assert
         self.assertGreaterEqual(len(required_uploads), 4)
         self.assertTrue(all("if-no-files-found: error" in upload for upload in required_uploads))
         self.assertIn("if: always()", self.release["publish"])
         self.assertIn("retention-days: 30", self.release["publish"])
+        self.assertCountEqual(
+            ["artifacts/security-audit/restore.log", "artifacts/security-audit/audit.json",
+             "artifacts/security-audit/audit.log", "artifacts/security-audit/summary.json"],
+            audit_paths)
+        self.assertIn("if: always()", audit)
 
 
 if __name__ == "__main__":

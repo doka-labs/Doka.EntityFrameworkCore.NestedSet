@@ -109,6 +109,11 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-line-audit-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/security-audit
+          # WHY: The audit's NuGet HTTP cache has file names with ':', which artifact uploads reject.
+          path: |
+            artifacts/security-audit/restore.log
+            artifacts/security-audit/audit.json
+            artifacts/security-audit/audit.log
+            artifacts/security-audit/summary.json
           if-no-files-found: error
           retention-days: 14

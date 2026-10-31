@@ -242,27 +242,30 @@ def verify_jobs(commands, run_id, attempt, expected):
 
 def wait_for_child(commands, run_id, workflow, ref, commit, correlation, expected, *,
                    timeout=14400, sleep=time.sleep, clock=time.monotonic, record=lambda update: None):
-    """Keep queue and execution bounded while validating each actual child observation."""
+    """Keep queue and execution bounded, then validate the completed child and its actual producers."""
     deadline = clock() + timeout
     while True:
         run = publication.api(commands, f"actions/runs/{run_id}")
-        require(run.get("id") == run_id and run.get("event") == "workflow_dispatch"
-                and run.get("head_sha") == commit and run.get("head_branch") == ref.removeprefix("refs/heads/")
-                and run.get("path", "").split("@", 1)[0] == f".github/workflows/{workflow}"
-                and run.get("repository", {}).get("full_name") == REPOSITORY
-                and run.get("display_title") == f"maintenance {correlation}",
-                "maintenance-child", "Child does not match the exact dispatched workflow/source/correlation.")
         record({"status": run.get("status"), "conclusion": run.get("conclusion")})
+        # WHY: A slow API response or delayed wakeup must not accept completion after the original deadline.
+        require(clock() < deadline, "maintenance-timeout", "Scheduled child exceeded its queue/execution budget.")
         if run.get("status") == "completed":
+            # WHY: The dispatch response names this exact run, but a read right after dispatch can
+            # return metadata that differs from the settled run. Only a completed run proves identity.
+            require(run.get("id") == run_id and run.get("event") == "workflow_dispatch"
+                    and run.get("head_sha") == commit and run.get("head_branch") == ref.removeprefix("refs/heads/")
+                    and run.get("path", "").split("@", 1)[0] == f".github/workflows/{workflow}"
+                    and run.get("repository", {}).get("full_name") == REPOSITORY
+                    and run.get("display_title") == f"maintenance {correlation}",
+                    "maintenance-child", "Child does not match the exact dispatched workflow/source/correlation.")
             require(run.get("conclusion") == "success", "maintenance-child", "Scheduled child did not succeed.")
             verify_jobs(commands, run_id, positive_number(run.get("run_attempt")), expected)
 
             return {"sourceRef": ref, "sourceCommit": commit, "runId": run_id,
                     "workflow": workflow, "verificationStatus": "success"}
 
-        require(run.get("status") in ("queued", "in_progress", "waiting", "pending", "requested"),
+        require(run.get("status") in (None, "queued", "in_progress", "waiting", "pending", "requested"),
                 "maintenance-child", "Unrecognized child execution state.")
-        require(clock() < deadline, "maintenance-timeout", "Scheduled child exceeded its queue/execution budget.")
         sleep(min(15, max(0, deadline - clock())))
 
 
