@@ -344,6 +344,23 @@ class MaintenanceTests(unittest.TestCase):
         # Assert
         self.assertEqual(["maintenance-child"] * len(variants), errors)
 
+    def test_unsettled_early_child_metadata_is_not_an_identity_failure(self):
+        """A run read right after dispatch may differ until it settles; completion still proves identity."""
+        # Arrange
+        run = self.fixture.dispatch(self.commands, f"actions/workflows/{maintenance.WORKFLOW}/dispatches", "POST",
+                                    {"ref": "main", "inputs": {"schedule-correlation": CORRELATION}})["workflow_run_id"]
+        self.fixture.changed_run = {"status": None, "conclusion": None, "display_title": "Release line maintenance"}
+
+        def settle(_):
+            self.fixture.changed_run = {}
+
+        # Act
+        result = maintenance.wait_for_child(self.commands, run, maintenance.WORKFLOW, "refs/heads/main", COMMIT,
+                                            CORRELATION, ["schedule-identity"], sleep=settle)
+
+        # Assert
+        self.assertEqual("success", result["verificationStatus"])
+
     def test_timeout_retains_no_success_claim(self):
         """A queued child does not become successful merely because dispatch succeeded."""
         # Arrange
@@ -359,6 +376,23 @@ class MaintenanceTests(unittest.TestCase):
 
         # Assert
         self.assertEqual("maintenance-timeout", caught.exception.code)
+
+    def test_completed_child_after_deadline_is_rejected_before_producer_checks(self):
+        """A completed API response must not bypass the original execution deadline."""
+        # Arrange
+        run = self.fixture.dispatch(self.commands, f"actions/workflows/{maintenance.WORKFLOW}/dispatches", "POST",
+                                    {"ref": "main", "inputs": {"schedule-correlation": CORRELATION}})["workflow_run_id"]
+        times = iter((0, 2))
+
+        with patch.object(maintenance, "verify_jobs") as verify:
+            # Act
+            with self.assertRaises(ReleaseError) as caught:
+                maintenance.wait_for_child(self.commands, run, maintenance.WORKFLOW, "refs/heads/main", COMMIT,
+                                           CORRELATION, ["schedule-identity"], timeout=1, clock=lambda: next(times))
+
+        # Assert
+        self.assertEqual("maintenance-timeout", caught.exception.code)
+        verify.assert_not_called()
 
     def test_child_guard_preserves_ordinary_feature_ci(self):
         """An ordinary manual feature run needs no active publication line."""
