@@ -28,6 +28,33 @@ internal static class NestedSetTreeRegistryMetadata
         string entityName
     ) => "Doka.EntityFrameworkCore.NestedSet.TreeRegistry:" + entityName;
 
+    /// <summary>Rejects names that could not be one unqualified identifier on any supported provider.</summary>
+    /// <param name="tableName">The caller-supplied physical table name.</param>
+    /// <exception cref="ArgumentException">The name cannot denote a single unqualified table.</exception>
+    internal static void ValidateTableName(
+        string tableName
+    )
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tableName);
+
+        if (tableName != tableName.Trim())
+        {
+            throw new ArgumentException(
+                "A tree-registry table name cannot have surrounding whitespace.",
+                nameof(tableName));
+        }
+
+        // WHY: Providers quote this identifier, so ordinary spaces and punctuation are legal. A separator would
+        // read as schema.table, and a quote character has no meaning in a name yet differs per provider.
+        if (tableName.Any(character => char.IsControl(character) || ".\"`[]'".Contains(character)))
+        {
+            throw new ArgumentException(
+                $"Tree-registry table name '{tableName}' must be one unqualified identifier without separators, "
+                + "quotes or control characters.",
+                nameof(tableName));
+        }
+    }
+
     /// <summary>Builds a provider-portable table name without exposing application identifiers.</summary>
     /// <param name="schema">The optional physical schema containing the hierarchy table.</param>
     /// <param name="tableName">The physical hierarchy table name.</param>
@@ -53,7 +80,8 @@ internal static class NestedSetTreeRegistryMetadata
             scopeColumn is null ? "0" : "1" + scopeColumn,
             treeIdColumn);
 
-        var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(storeIdentity)))[..16];
+        var digest = Convert
+            .ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(storeIdentity)))[..16];
 
         return "DokaNestedSetTrees_" + digest;
     }

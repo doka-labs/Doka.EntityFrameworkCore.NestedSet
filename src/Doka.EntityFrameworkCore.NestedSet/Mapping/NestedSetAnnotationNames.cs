@@ -39,6 +39,9 @@ internal static class NestedSetAnnotationNames
     /// <summary>Stores the named shared entity type backing one hierarchy's typed tree registry.</summary>
     internal const string TreeRegistryEntity = Prefix + "TreeRegistryEntity";
 
+    /// <summary>Stores the explicit physical registry table name configured for one hierarchy.</summary>
+    internal const string TreeRegistryTable = Prefix + "TreeRegistryTable";
+
     /// <summary>Marks a named shared entity type as library-owned tree-registry infrastructure.</summary>
     internal const string TreeRegistryOwner = Prefix + "TreeRegistryOwner";
 }

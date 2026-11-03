@@ -9,6 +9,13 @@ This exception does not authorize other breaking minor releases.
 
 ## Unreleased
 
+### Added
+
+- Add `HasTreeRegistryTable(string)` to name one hierarchy's typed tree registry
+  instead of the generated `DokaNestedSetTrees_<hash>`. Providers validate length
+  and collisions during model finalization. Without the option nothing changes;
+  naming an existing registry migrates as a data-preserving table rename.
+
 ### Fixed
 
 - Complete saved insertion relationships with one traversal of the identity

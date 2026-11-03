@@ -147,6 +147,14 @@ var hierarchy = context.NestedSet<Folder>()
 An unbound scoped facade and `ForScope(...)` on an unscoped mapping fail before
 query execution. NestedSet does not infer Scope from a global query filter.
 
+## Optional registry table name
+
+`HasTreeRegistryTable("Reporting_HierarchyTrees")` names this hierarchy's typed
+tree registry instead of the generated `DokaNestedSetTrees_<hash>`. It changes
+only the physical table name, stays in the hierarchy's schema and is validated
+per provider. On an existing database it is a schema change that needs an ordinary
+migration. See [explicit registry table name](migrations.md#explicit-registry-table-name).
+
 ## Optional ancestor index
 
 Selected ancestor queries can opt into an additional generated property and

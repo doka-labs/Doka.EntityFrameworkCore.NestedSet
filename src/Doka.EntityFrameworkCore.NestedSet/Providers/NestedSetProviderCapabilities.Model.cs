@@ -2,6 +2,30 @@ namespace Doka.EntityFrameworkCore.NestedSet.Providers;
 
 internal abstract partial class NestedSetProviderCapabilities
 {
+    /// <summary>Gets the provider's identifier length limit, or null when it documents none.</summary>
+    internal virtual int? MaxIdentifierLength => null;
+
+    /// <summary>Gets whether the identifier limit counts UTF-8 bytes rather than characters.</summary>
+    internal virtual bool IdentifierLengthCountsBytes => false;
+
+    /// <summary>Gets the comparison under which two quoted table or schema names can denote the same object.</summary>
+    /// <remarks>
+    ///     Defaults to case-insensitive. MySQL and MariaDB decide this through lower_case_table_names and SQL Server
+    ///     through the database collation. A model cannot see the server's setting, so it must not rely on a
+    ///     case-only difference that would collide there.
+    /// </remarks>
+    internal virtual StringComparer IdentifierComparer => StringComparer.OrdinalIgnoreCase;
+
+    /// <summary>Gets whether a configured schema becomes part of the physical table identity.</summary>
+    internal virtual bool HonorsSchemas => true;
+
+    /// <summary>Recognizes a name the provider reserves for something other than an ordinary table.</summary>
+    /// <param name="name">The candidate physical table name.</param>
+    /// <returns>Whether an ordinary table cannot use this name.</returns>
+    internal virtual bool IsReservedTableName(
+        string name
+    ) => false;
+
     /// <summary>Converts a guarded Boolean predicate into the native generated-column expression.</summary>
     internal virtual string AncestorFlagSql(
         string predicate

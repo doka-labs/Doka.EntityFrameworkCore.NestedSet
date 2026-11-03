@@ -97,7 +97,8 @@ filtered run does not establish coverage for a provider introduced later.
 Registry keys are `TreeId` or `(Scope, TreeId)`. Revision changes with
 structure; Lifecycle preserves active and tombstoned identities. Cross-tree
 operations ask the database to order typed identities before acquisition.
-The registry's physical table name derives from the hierarchy schema, table,
+Unless `HasTreeRegistryTable` names it explicitly, the registry's physical table
+name derives from the hierarchy schema, table,
 and identity column names. CLR entity renames therefore leave the registry
 table intact. Databases created with the earlier CLR-name-based hash require
 the data-preserving table rename described in the migration guide.

@@ -49,6 +49,7 @@ builder supports these structural roles:
 | `HasDepth(...)` | Zero-based `int` depth |
 | `HasPosition(...)` | Dense zero-based `long` sibling position |
 | `HasAncestorIndex(string nonLeafPropertyName = "NestedSetIsNonLeaf")` | Opt into a generated Boolean nonleaf property and additive ancestor access index; requires a migration |
+| `HasTreeRegistryTable(string tableName)` | Optional explicit physical name for this hierarchy's typed tree registry instead of the generated `DokaNestedSetTrees_<hash>`. See [migrations](migrations.md#explicit-registry-table-name). |
 | `OrderBy(...)`, `ThenBy(...)` | Ascending sibling criteria |
 | `OrderByDescending(...)`, `ThenByDescending(...)` | Descending sibling criteria |
 | `HasOrderMode(...)` | Strict or manual-override placement |

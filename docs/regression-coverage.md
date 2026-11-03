@@ -1465,6 +1465,18 @@ missing-before-ambiguous error precedence, with separate buffer ceilings.
 for a single-use metadata source. These controls complement native insertion,
 prepared-owner and managed-callback tests; they do not replace them.
 
+`TreeRegistryTableNameTests` defines 41 model cases: the unchanged default, one
+explicit name per hierarchy, schema retention, builder rejection, failed callbacks,
+registry and application collisions, other schemas where the provider keeps them,
+the schema-blind SQLite collision, case-variant schemas per provider, SQLite's
+ASCII-only folding with native DDL, inheritance, finalized models at and beyond
+each provider's length limit and reserved names.
+Shared provider cases in `TreeRegistryTableTests` check the delimited DDL, every
+structural and administrative registry operation, and a diffed migration that
+renames a registry with active, revised and tombstoned rows, then executes the
+backward rename and checks the same rows, the retired-TreeId guard and further writes.
+`TreeRegistryCompiledModelTests` writes through an actually generated compiled model.
+
 Shared provider cases `ComplexCompositionRollbackRestoresNativeLanesAndAllowsRetry`,
 `ComplexCompositionPendingGraphRetriesWithoutStagingHoles` and
 `ComplexCompositionSuccessPersistsConsumerTopology` exercise coordinated,

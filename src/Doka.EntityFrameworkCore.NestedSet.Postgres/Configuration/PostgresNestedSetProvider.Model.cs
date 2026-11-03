@@ -3,6 +3,19 @@ namespace Doka.EntityFrameworkCore.NestedSet.Postgres;
 internal sealed partial class PostgresNestedSetProvider
 {
     /// <inheritdoc />
+    // WHY: PostgreSQL truncates identifiers above NAMEDATALEN - 1 bytes, which would silently merge long names.
+    // https://www.postgresql.org/docs/17/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
+    internal override int? MaxIdentifierLength => 63;
+
+    /// <inheritdoc />
+    internal override bool IdentifierLengthCountsBytes => true;
+
+    /// <inheritdoc />
+    // WHY: Npgsql quotes every identifier that folding would change, and quoted identifiers are case-sensitive.
+    // https://www.postgresql.org/docs/17/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
+    internal override StringComparer IdentifierComparer => StringComparer.Ordinal;
+
+    /// <inheritdoc />
     internal override bool UsesUnicodeScalarLength(
         RelationalTypeMapping mapping
     )

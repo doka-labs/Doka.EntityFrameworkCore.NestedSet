@@ -1,1 +1,2 @@
 #nullable enable
+Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity>.HasTreeRegistryTable(string! tableName) -> Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity!>!
