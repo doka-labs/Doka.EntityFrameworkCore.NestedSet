@@ -33,14 +33,20 @@ public sealed class CompositionArgumentTests
         var boundary = new CompositionIoBoundary();
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
         var hierarchy = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
-        var source = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping)
-            .Select(node => new CompositionGuardRow { Upper = node, Lower = node });
+        var source = context
+            .Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping)
+            .Select(node => new CompositionGuardRow
+            {
+                Upper = node,
+                Lower = node,
+            });
 
         // Act
         var error = Record.Exception(() => WithNullArgument(hierarchy, source, argument));
 
         // Assert
-        Assert.Equal(expectedParameter, Assert.IsType<ArgumentNullException>(error).ParamName);
+        Assert.Equal(expectedParameter,
+            Assert.IsType<ArgumentNullException>(error).ParamName);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
     }
@@ -62,16 +68,24 @@ public sealed class CompositionArgumentTests
         var boundary = new CompositionIoBoundary();
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
         var hierarchy = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping);
-        var source = context.Set<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
-            .Select(node => new CompositionGuardRow { Upper = node, Lower = node });
+        var source = context
+            .Set<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
+            .Select(node => new CompositionGuardRow
+            {
+                Upper = node,
+                Lower = node,
+            });
 
         // Act
         var error = Record.Exception(() => operation switch
         {
-            "ancestors" => (IQueryable)hierarchy.SelectAncestors(node => true, (node, ancestor, distance) => distance),
+            "ancestors" => (IQueryable)hierarchy.SelectAncestors(node => true,
+                (node, ancestor, distance) => distance),
             "ancestors-or-self" => hierarchy.SelectAncestorsOrSelf(
-                node => true, (node, ancestor, distance) => distance),
-            "subtrees" => hierarchy.SelectSubtrees(node => true, (node, descendant, distance) => distance),
+                node => true,
+                (node, ancestor, distance) => distance),
+            "subtrees" => hierarchy.SelectSubtrees(node => true,
+                (node, descendant, distance) => distance),
             _ => CompositionEndpointTests.Filter(hierarchy, source, operation),
         });
 
@@ -88,30 +102,57 @@ public sealed class CompositionArgumentTests
         string argument
     ) => argument switch
     {
-        "ancestors.nodes" => hierarchy.SelectAncestors<int>(null!, (node, ancestor, distance) => distance),
+        "ancestors.nodes" => hierarchy.SelectAncestors<int>(null!,
+            (node, ancestor, distance) => distance),
         "ancestors.projection" => hierarchy.SelectAncestors<int>(node => true, null!),
         "ancestors-or-self.nodes" => hierarchy.SelectAncestorsOrSelf<int>(
-            null!, (node, ancestor, distance) => distance),
+            null!,
+            (node, ancestor, distance) => distance),
         "ancestors-or-self.projection" => hierarchy.SelectAncestorsOrSelf<int>(node => true, null!),
-        "subtrees.anchors" => hierarchy.SelectSubtrees<int>(null!, (node, descendant, distance) => distance),
+        "subtrees.anchors" => hierarchy.SelectSubtrees<int>(null!,
+            (node, descendant, distance) => distance),
         "subtrees.projection" => hierarchy.SelectSubtrees<int>(node => true, null!),
         "path.source" => hierarchy.WherePathEdges<CompositionGuardRow>(
-            null!, row => row.Upper, row => row.Lower, (row, parent, child) => true),
-        "path.anchor" => hierarchy.WherePathEdges(source, null!, row => row.Lower, (row, parent, child) => true),
-        "path.node" => hierarchy.WherePathEdges(source, row => row.Upper, null!, (row, parent, child) => true),
+            null!,
+            row => row.Upper,
+            row => row.Lower,
+            (row, parent, child) => true),
+        "path.anchor" => hierarchy.WherePathEdges(source,
+            null!,
+            row => row.Lower,
+            (row, parent, child) => true),
+        "path.node" => hierarchy.WherePathEdges(source,
+            row => row.Upper,
+            null!,
+            (row, parent, child) => true),
         "path.edgeAllowed" => hierarchy.WherePathEdges(source, row => row.Upper, row => row.Lower, null!),
         "any.source" => hierarchy.WhereAnyAncestorOrSelf<CompositionGuardRow>(
-            null!, row => row.Lower, (row, owner) => true),
-        "any.node" => hierarchy.WhereAnyAncestorOrSelf(source, null!, (row, owner) => true),
+            null!,
+            row => row.Lower,
+            (row, owner) => true),
+        "any.node" => hierarchy.WhereAnyAncestorOrSelf(source,
+            null!,
+            (row, owner) => true),
         "any.predicate" => hierarchy.WhereAnyAncestorOrSelf(source, row => row.Lower, null!),
-        "nearest.source" => hierarchy.WhereNearestAncestorOrSelf<CompositionGuardRow>(null!, row => row.Lower,
-            (row, owner) => true, (row, owner) => true),
+        "nearest.source" => hierarchy.WhereNearestAncestorOrSelf<CompositionGuardRow>(null!,
+            row => row.Lower,
+            (row, owner) => true,
+            (row, owner) => true),
         "nearest.node" => hierarchy.WhereNearestAncestorOrSelf(
-            source, null!, (row, owner) => true, (row, owner) => true),
+            source,
+            null!,
+            (row, owner) => true,
+            (row, owner) => true),
         "nearest.candidate" => hierarchy.WhereNearestAncestorOrSelf(
-            source, row => row.Lower, null!, (row, owner) => true),
+            source,
+            row => row.Lower,
+            null!,
+            (row, owner) => true),
         "nearest.predicate" => hierarchy.WhereNearestAncestorOrSelf(
-            source, row => row.Lower, (row, owner) => true, null!),
+            source,
+            row => row.Lower,
+            (row, owner) => true,
+            null!),
         _ => throw new ArgumentOutOfRangeException(nameof(argument)),
     };
 }

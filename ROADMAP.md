@@ -11,14 +11,14 @@ It is not a delivery-date promise. Released packages, release notes, and the
 - Preserve the published `10.0.0-rc.1` and its immutable release evidence.
   Stable `10.0.0` incorporates the subsequent correctness,
   memory-ownership, index, and capacity regressions.
-- Keep the stable six-package `10.1.0` API in the shipped baselines and review
+- Keep the stable six-package `10.2.0` API in the shipped baselines and review
   every subsequent public API change for compatibility. Retain the historical
   `10.0.0` contract in its release tag and SDK compatibility baseline. Each
   release retains
   its own qualified source, artifacts, and public readback.
 - Keep the EF-independent core limited to contracts useful without persistence.
-- Keep stable `10.1.0` query composition generic with the explicitly approved
-  provider-package/registration break in [D-020](docs/decisions/D-020-provider-owned-runtime-packages.md).
+- Keep query composition generic and retain the explicitly approved historical
+  `10.1.0` provider-package/registration break in [D-020](docs/decisions/D-020-provider-owned-runtime-packages.md).
   One shared EF engine serves the MySql, Postgres, Sqlite and SqlServer adapters.
   SignalLab reporting, supervisor selection and finite chains remain consumer examples;
   their business rules do not become structural library APIs.

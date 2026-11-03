@@ -10,10 +10,15 @@ public sealed partial class SqlServerCompositionStrategyTests
         var options = ModelCompatibilityDatabase.Options<CoordinateBoundsContext>("SqlServer");
         await using var services = NestedSetTestAdapters.BuildServices(options);
         await using var context = new CoordinateBoundsContext(
-            new DbContextOptionsBuilder<CoordinateBoundsContext>(options).UseInternalServiceProvider(services).Options);
+            new DbContextOptionsBuilder<CoordinateBoundsContext>(options)
+                .UseInternalServiceProvider(services)
+                .Options);
 
-        var query = context.NestedSet<CoordinateBoundsNode>().ForScope(7)
-            .SelectAncestors(node => node.Depth >= 1, (source, owner, distance) => owner.Id);
+        var query = context
+            .NestedSet<CoordinateBoundsNode>()
+            .ForScope(7)
+            .SelectAncestors(node => node.Depth >= 1,
+                (source, owner, distance) => owner.Id);
 
         // Act
         var sql = query.ToQueryString();
@@ -30,7 +35,9 @@ public sealed partial class SqlServerCompositionStrategyTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task NativeOwnerKeyRetainsSqlWithoutTextConversion(bool binary)
+    public async Task NativeOwnerKeyRetainsSqlWithoutTextConversion(
+        bool binary
+    )
     {
         // Arrange
         Func<Task<string>> translate = binary ? NativeOwnerKeySqlAsync<byte[]> : NativeOwnerKeySqlAsync<string>;
@@ -44,45 +51,74 @@ public sealed partial class SqlServerCompositionStrategyTests
     }
 
     /// <summary>Translates the exact selected SQL Server strategy using native reference-valued keys.</summary>
-    private static async Task<string> NativeOwnerKeySqlAsync<TKey>() where TKey : class
+    private static async Task<string> NativeOwnerKeySqlAsync<TKey>()
+        where TKey : class
     {
         var options = ModelCompatibilityDatabase.Options<NativeOwnerKeyContext<TKey>>("SqlServer");
         await using var services = NestedSetTestAdapters.BuildServices(options);
         await using var context = new NativeOwnerKeyContext<TKey>(
             new DbContextOptionsBuilder<NativeOwnerKeyContext<TKey>>(options)
-                .UseInternalServiceProvider(services).Options);
+                .UseInternalServiceProvider(services)
+                .Options);
 
-        return context.NestedSet<NativeOwnerKeyNode<TKey>>().ForScope(7)
-            .SelectAncestors(node => node.Depth >= 1, (source, owner, distance) => owner.Id).ToQueryString();
+        return context
+            .NestedSet<NativeOwnerKeyNode<TKey>>()
+            .ForScope(7)
+            .SelectAncestors(node => node.Depth >= 1,
+                (source, owner, distance) => owner.Id)
+            .ToQueryString();
     }
 
     /// <summary>Maps only native identity roles needed to qualify owner-first key translation.</summary>
-    private sealed class NativeOwnerKeyContext<TKey>(DbContextOptions<NativeOwnerKeyContext<TKey>> options)
-        : DbContext(options) where TKey : class
+    private sealed class NativeOwnerKeyContext<TKey>(
+        DbContextOptions<NativeOwnerKeyContext<TKey>> options
+    )
+        : DbContext(options)
+        where TKey : class
     {
         /// <inheritdoc />
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        protected override void OnModelCreating(
+            ModelBuilder modelBuilder
+        )
         {
             var node = modelBuilder.Entity<NativeOwnerKeyNode<TKey>>();
-            node.HasKey(entity => new { entity.Scope, entity.Id });
-            node.Property(entity => entity.Id).ValueGeneratedNever().HasMaxLength(40);
-            node.Property(entity => entity.ParentId).HasMaxLength(40);
+            node.HasKey(entity => new
+            {
+                entity.Scope,
+                entity.Id,
+            });
+            node
+                .Property(entity => entity.Id)
+                .ValueGeneratedNever()
+                .HasMaxLength(40);
+            node
+                .Property(entity => entity.ParentId)
+                .HasMaxLength(40);
 
             if (typeof(TKey) == typeof(string))
             {
-                node.Property(entity => entity.Id).UseCollation("Latin1_General_100_BIN2");
-                node.Property(entity => entity.ParentId).UseCollation("Latin1_General_100_BIN2");
+                node
+                    .Property(entity => entity.Id)
+                    .UseCollation("Latin1_General_100_BIN2");
+                node
+                    .Property(entity => entity.ParentId)
+                    .UseCollation("Latin1_General_100_BIN2");
             }
 
-            node.HasNestedSet(hierarchy => hierarchy.HasNodeKey(entity => entity.Id)
-                .HasScope(entity => entity.Scope).HasTreeId(entity => entity.TreeId)
-                .HasParent(entity => entity.ParentId).HasBounds(entity => entity.Left, entity => entity.Right)
-                .HasDepth(entity => entity.Depth).HasPosition(entity => entity.Position));
+            node.HasNestedSet(hierarchy => hierarchy
+                .HasNodeKey(entity => entity.Id)
+                .HasScope(entity => entity.Scope)
+                .HasTreeId(entity => entity.TreeId)
+                .HasParent(entity => entity.ParentId)
+                .HasBounds(entity => entity.Left, entity => entity.Right)
+                .HasDepth(entity => entity.Depth)
+                .HasPosition(entity => entity.Position));
         }
     }
 
     /// <summary>Supplies strongly mapped reference-valued keys without implicit string conversion.</summary>
-    private sealed class NativeOwnerKeyNode<TKey> where TKey : class
+    private sealed class NativeOwnerKeyNode<TKey>
+        where TKey : class
     {
         /// <summary>Gets or sets the native node identity.</summary>
         public required TKey Id { get; set; }

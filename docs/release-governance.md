@@ -49,9 +49,9 @@ the reviewed stable contract and moves the public API additions from
 `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt` in the source commit before
 qualification.
 
-The current shipped API files record the stable `10.1.0` contract: Core is
-unchanged, the common EF API includes query composition, and each adapter owns
-its native callback. The removed options-level registration is absent from the
+The current shipped API files record the stable `10.2.0` contract: Core is
+unchanged, the common EF API includes query composition and optional registry
+naming, and each adapter owns its native callback. The removed options-level registration is absent from the
 current contract. All unshipped files are ready for subsequent changes. The
 two original package IDs retain SDK compatibility validation against the
 published `10.0.0` baseline with only the approved registration removal
@@ -59,8 +59,8 @@ suppressed. Historical declarations remain in the original release tag. The
 provider-package/registration break is approved in
 [D-020](decisions/D-020-provider-owned-runtime-packages.md) and documented in
 the [upgrade guide](upgrading-provider-packages.md). The source uses
-`VersionPrefix=10.1.0` without a prerelease suffix and the dated
-`10.1.0 (2026-10-29)` changelog entry. Publication evidence remains the exact
+`VersionPrefix=10.2.0` without a prerelease suffix and the dated
+`10.2.0 (2026-11-03)` changelog entry. Publication evidence remains the exact
 release's hosted qualification and successful public readback.
 
 ## Entry conditions

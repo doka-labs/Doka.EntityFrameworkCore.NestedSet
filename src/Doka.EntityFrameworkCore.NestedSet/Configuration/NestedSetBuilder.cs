@@ -475,6 +475,7 @@ public sealed partial class NestedSetBuilder<TEntity>
         }
 
         CompleteAncestorIndex();
+        CompleteTreeRegistry();
 
         // WHY: Add indexes before provider finalizers budget column lengths, even without opt-in conventions.
         NestedSetIndexes.Reconcile((IConventionEntityType)entity);

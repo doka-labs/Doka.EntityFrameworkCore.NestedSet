@@ -16,7 +16,9 @@ public sealed partial class OptionsExtensionTests
     [InlineData("PostgreSql")]
     [InlineData("Sqlite")]
     [InlineData("SqlServer")]
-    public void NativeCallbackSelectsItsExactAdapter(string engine)
+    public void NativeCallbackSelectsItsExactAdapter(
+        string engine
+    )
     {
         // Arrange
         var options = ModelCompatibilityDatabase.Options<DbContext>(engine, Connection(engine));
@@ -29,7 +31,10 @@ public sealed partial class OptionsExtensionTests
         Assert.NotNull(extension);
         Assert.Same(NestedSetTestAdapters.ForEngine(engine), extension.Provider);
         Assert.Same(extension.Provider.ProviderAssembly,
-            Assert.Single(options.Extensions, candidate => candidate.Info.IsDatabaseProvider).GetType().Assembly);
+            Assert
+                .Single(options.Extensions, candidate => candidate.Info.IsDatabaseProvider)
+                .GetType()
+                .Assembly);
         Assert.Single(options.Extensions.OfType<NestedSetOptionsExtension>());
     }
 
@@ -40,7 +45,9 @@ public sealed partial class OptionsExtensionTests
     [InlineData("PostgreSql")]
     [InlineData("Sqlite")]
     [InlineData("SqlServer")]
-    public void NativeCallbackReturnsTheSameBuilder(string engine)
+    public void NativeCallbackReturnsTheSameBuilder(
+        string engine
+    )
     {
         // Arrange
         var core = new DbContextOptionsBuilder();
@@ -76,7 +83,9 @@ public sealed partial class OptionsExtensionTests
     [InlineData("PostgreSql")]
     [InlineData("Sqlite")]
     [InlineData("SqlServer")]
-    public void NativeCallbackRejectsANullBuilder(string engine)
+    public void NativeCallbackRejectsANullBuilder(
+        string engine
+    )
     {
         // Arrange
         Action register = engine switch
@@ -130,10 +139,11 @@ public sealed partial class OptionsExtensionTests
         // Act
         var foreignSame = sqliteInfo.ShouldUseSameServiceProvider(mysqlInfo);
         var repeatedSame = sqliteInfo.ShouldUseSameServiceProvider(repeatedInfo);
+        var reverseSame = mysqlInfo.ShouldUseSameServiceProvider(sqliteInfo);
 
         // Assert
         Assert.False(foreignSame);
-        Assert.False(mysqlInfo.ShouldUseSameServiceProvider(sqliteInfo));
+        Assert.False(reverseSame);
         Assert.True(repeatedSame);
         Assert.Equal(sqliteInfo.GetServiceProviderHashCode(), repeatedInfo.GetServiceProviderHashCode());
     }
@@ -145,7 +155,9 @@ public sealed partial class OptionsExtensionTests
     [InlineData("PostgreSql")]
     [InlineData("Sqlite")]
     [InlineData("SqlServer")]
-    public void AdapterRejectsMissingNativeProvider(string engine)
+    public void AdapterRejectsMissingNativeProvider(
+        string engine
+    )
     {
         // Arrange
         var adapter = NestedSetTestAdapters.ForEngine(engine);
@@ -159,17 +171,23 @@ public sealed partial class OptionsExtensionTests
         Assert.Contains("native database provider", error.Message, StringComparison.Ordinal);
     }
 
-    /// <summary>An adapter cannot accept a different actual provider merely because its core options are installed.</summary>
+    /// <summary>
+    /// An adapter cannot accept a different actual provider merely because its core options are installed.
+    /// </summary>
     /// <param name="engine">The non-SQLite adapter incorrectly paired with real SQLite options.</param>
     [Theory]
     [InlineData("MySql")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public void AdapterRejectsAnotherNativeProvider(string engine)
+    public void AdapterRejectsAnotherNativeProvider(
+        string engine
+    )
     {
         // Arrange
         var adapter = NestedSetTestAdapters.ForEngine(engine);
-        var options = new DbContextOptionsBuilder().UseSqlite("Data Source=:memory:").Options;
+        var options = new DbContextOptionsBuilder()
+            .UseSqlite("Data Source=:memory:")
+            .Options;
 
         // Act
         var error = Record.Exception(() => adapter.ValidateOptions(options));
@@ -186,10 +204,14 @@ public sealed partial class OptionsExtensionTests
         // Arrange
         var options = new DbContextOptionsBuilder<EnabledContext>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:", sqlite => sqlite.UseNestedSets()).Options;
+            .UseSqlite("Data Source=:memory:", sqlite => sqlite.UseNestedSets())
+            .Options;
 
         using var provider = NestedSetTestAdapters.BuildServices(options);
-        var isolated = new DbContextOptionsBuilder<EnabledContext>(options).UseInternalServiceProvider(provider).Options;
+        var isolated = new DbContextOptionsBuilder<EnabledContext>(options)
+            .UseInternalServiceProvider(provider)
+            .Options;
+
         using var context = new EnabledContext(isolated);
 
         // Act
@@ -199,7 +221,8 @@ public sealed partial class OptionsExtensionTests
         // Assert
         Assert.Same(NestedSetTestAdapters.ForEngine("Sqlite"), actual);
         Assert.IsType<NestedSetRelationalDatabase>(persistence);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>Applying an adapter cannot preserve a conflicting or opaque preexisting service descriptor.</summary>
@@ -207,7 +230,9 @@ public sealed partial class OptionsExtensionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void AdapterServicesRejectConflictingOrOpaqueRegistration(bool factory)
+    public void AdapterServicesRejectConflictingOrOpaqueRegistration(
+        bool factory
+    )
     {
         // Arrange
         var services = new ServiceCollection();
@@ -247,7 +272,10 @@ public sealed partial class OptionsExtensionTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public void ExternalAdapterMismatchIsRejectedBeforeModelOrIo(bool missing, bool suppliedModel)
+    public void ExternalAdapterMismatchIsRejectedBeforeModelOrIo(
+        bool missing,
+        bool suppliedModel
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -255,17 +283,19 @@ public sealed partial class OptionsExtensionTests
         using var modelServices = OwnedModelTestServices<InitializationProbeContext>.Create(options);
         using var modelContext = new InitializationProbeContext(modelServices.Options);
         var model = suppliedModel ? modelContext.Model : null;
-        using var provider = NestedSetTestAdapters.BuildServices(options, services =>
-        {
-            services.RemoveAll<NestedSetProviderCapabilities>();
-
-            if (!missing)
+        using var provider = NestedSetTestAdapters.BuildServices(options,
+            services =>
             {
-                services.AddSingleton(NestedSetTestAdapters.ForEngine("MySql"));
-            }
-        });
+                services.RemoveAll<NestedSetProviderCapabilities>();
 
-        var builder = new DbContextOptionsBuilder<InitializationProbeContext>(options).UseInternalServiceProvider(provider);
+                if (!missing)
+                {
+                    services.AddSingleton(NestedSetTestAdapters.ForEngine("MySql"));
+                }
+            });
+
+        var builder =
+            new DbContextOptionsBuilder<InitializationProbeContext>(options).UseInternalServiceProvider(provider);
 
         if (model is not null)
         {
@@ -289,14 +319,18 @@ public sealed partial class OptionsExtensionTests
         Assert.Equal(0, boundary.Commands.Created);
     }
 
-    /// <summary>Native-only translator plugins are registered by MySql and absent from all other adapter graphs.</summary>
+    /// <summary>
+    /// Native-only translator plugins are registered by MySql and absent from all other adapter graphs.
+    /// </summary>
     /// <param name="engine">The selected actual adapter.</param>
     [Theory]
     [InlineData("MySql")]
     [InlineData("PostgreSql")]
     [InlineData("Sqlite")]
     [InlineData("SqlServer")]
-    public void OnlyMySqlRegistersTheNativeHierarchyTranslator(string engine)
+    public void OnlyMySqlRegistersTheNativeHierarchyTranslator(
+        string engine
+    )
     {
         // Arrange
         var services = new ServiceCollection();
@@ -304,7 +338,8 @@ public sealed partial class OptionsExtensionTests
 
         // Act
         extension.ApplyServices(services);
-        var translators = services.Where(descriptor => descriptor.ServiceType == typeof(IMethodCallTranslatorPlugin))
+        var translators = services
+            .Where(descriptor => descriptor.ServiceType == typeof(IMethodCallTranslatorPlugin))
             .ToArray();
 
         // Assert
@@ -312,7 +347,8 @@ public sealed partial class OptionsExtensionTests
         {
             var translator = Assert.Single(translators);
 
-            Assert.Equal(typeof(MySqlNestedSetOptionsBuilderExtensions).Assembly, translator.ImplementationType!.Assembly);
+            Assert.Equal(typeof(MySqlNestedSetOptionsBuilderExtensions).Assembly,
+                translator.ImplementationType!.Assembly);
         }
         else
         {
@@ -321,7 +357,9 @@ public sealed partial class OptionsExtensionTests
     }
 
     /// <summary>Creates actual callback options with a fail-fast I/O observer.</summary>
-    private static DbContextOptions<InitializationProbeContext> ProbeOptions(CompositionIoBoundary boundary)
+    private static DbContextOptions<InitializationProbeContext> ProbeOptions(
+        CompositionIoBoundary boundary
+    )
         => new DbContextOptionsBuilder<InitializationProbeContext>()
             .ConfigureTestWarnings()
             .UseSqlite("Data Source=:memory:", sqlite => sqlite.UseNestedSets())
@@ -329,11 +367,15 @@ public sealed partial class OptionsExtensionTests
             .Options;
 
     /// <summary>Supplies valid inert connection text for provider initialization without I/O.</summary>
-    private static string Connection(string engine) => engine switch
+    private static string Connection(
+        string engine
+    ) => engine switch
     {
         "MySql" or "MariaDb" => "Server=127.0.0.1;Database=adapter_contract;User ID=unused;Pooling=false",
         "PostgreSql" => "Host=127.0.0.1;Database=adapter_contract;Username=unused;Pooling=false",
-        "SqlServer" => "Server=127.0.0.1;Database=adapter_contract;User ID=unused;Password=unused;TrustServerCertificate=true;Pooling=false",
+        "SqlServer" =>
+            "Server=127.0.0.1;Database=adapter_contract;User ID=unused;Password=unused;"
+            + "TrustServerCertificate=true;Pooling=false",
         "Sqlite" => "Data Source=:memory:",
         _ => throw new ArgumentOutOfRangeException(nameof(engine)),
     };
@@ -342,7 +384,9 @@ public sealed partial class OptionsExtensionTests
     private sealed class InitializationProbeContext : DbContext
     {
         /// <summary>Creates a context whose service identity is validated before its model is requested.</summary>
-        internal InitializationProbeContext(DbContextOptions<InitializationProbeContext> options) : base(options) { }
+        internal InitializationProbeContext(
+            DbContextOptions<InitializationProbeContext> options
+        ) : base(options) { }
 
         private static readonly AsyncLocal<ModelBuildObservation?> s_observation = new();
 
@@ -350,9 +394,13 @@ public sealed partial class OptionsExtensionTests
         internal static ModelBuildObservation ObserveModelCreation() => new();
 
         /// <inheritdoc />
-        protected override void OnModelCreating(ModelBuilder modelBuilder) => s_observation.Value?.Record();
+        protected override void OnModelCreating(
+            ModelBuilder modelBuilder
+        ) => s_observation.Value?.Record();
 
-        /// <summary>Counts callbacks only in the current test flow and restores an enclosing observation scope.</summary>
+        /// <summary>
+        /// Counts callbacks only in the current test flow and restores an enclosing observation scope.
+        /// </summary>
         internal sealed class ModelBuildObservation : IDisposable
         {
             private readonly ModelBuildObservation? _previous;

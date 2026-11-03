@@ -18,7 +18,10 @@ public sealed class SupervisorPersonSelectionTests
     )
     {
         // Arrange
-        var candidates = Enumerable.Range(1, count).Select(person => Candidate(person, 1, 10)).ToArray();
+        var candidates = Enumerable
+            .Range(1, count)
+            .Select(person => Candidate(person, 1, 10))
+            .ToArray();
 
         // Act
         var result = SupervisorSelectionRules.Select(7, candidates, SupervisorSelection.RequireUnique);
@@ -91,7 +94,8 @@ public sealed class SupervisorPersonSelectionTests
 
         // Assert
         Assert.Equal(SupervisorResolutionStatus.Found, result.Status);
-        Assert.Equal(20, Assert.Single(result.Evidence).CandidateUserId);
+        Assert.Equal(20,
+            Assert.Single(result.Evidence).CandidateUserId);
         Assert.Equal(4, result.Continuation!.Distance);
     }
 

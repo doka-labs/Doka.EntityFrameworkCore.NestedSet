@@ -70,7 +70,9 @@ public sealed partial class QueryPlanReplayTests
         }
     }
 
-    /// <summary>Records the raw deadline and returns controlled framework reader results for the actual helper.</summary>
+    /// <summary>
+    /// Records the raw deadline and returns controlled framework reader results for the actual helper.
+    /// </summary>
     private sealed class PlanReplayCommand(
         Func<DbDataReader> reader,
         Func<int>? nonQuery
@@ -124,7 +126,10 @@ public sealed partial class QueryPlanReplayTests
         )
         {
             NonQueryExecutions++;
-            ParameterValues = Parameters.Cast<DbParameter>().Select(parameter => parameter.Value).ToArray();
+            ParameterValues = Parameters
+                .Cast<DbParameter>()
+                .Select(parameter => parameter.Value)
+                .ToArray();
 
             return Task.FromResult(nonQuery is null ? throw new NotSupportedException() : nonQuery());
         }
@@ -150,7 +155,10 @@ public sealed partial class QueryPlanReplayTests
         )
         {
             ReaderExecutions++;
-            ParameterValues = Parameters.Cast<DbParameter>().Select(parameter => parameter.Value).ToArray();
+            ParameterValues = Parameters
+                .Cast<DbParameter>()
+                .Select(parameter => parameter.Value)
+                .ToArray();
 
             return Task.FromResult(reader());
         }

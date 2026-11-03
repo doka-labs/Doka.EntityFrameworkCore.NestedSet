@@ -8,7 +8,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public sealed class CompositionMappedMemberTests
 {
     /// <summary>Every storage shape remains deferred and selects the exact mapped scalar without CLR getters.</summary>
-    /// <param name="storage">The independently mapped property, field, shadow, indexer, or complex storage shape.</param>
+    /// <param name="storage">
+    /// The independently mapped property, field, shadow, indexer, or complex storage shape.
+    /// </param>
     /// <param name="matches">Whether the server-side predicate should retain the stored boundary.</param>
     /// <returns>A task completing after a single asynchronous scalar query is checked.</returns>
     [Theory]
@@ -50,13 +52,16 @@ public sealed class CompositionMappedMemberTests
             INSERT INTO ShadowNodes (Id, StoredLeft) VALUES (1, 7), (2, 13);
             INSERT INTO BagNodes (Id, Left) VALUES (1, 7), (2, 13);
             INSERT INTO ComplexNodes (Id, Left) VALUES (1, 7), (2, 13);
-            """, CancellationToken.None);
+            """,
+            CancellationToken.None);
 
         boundary.Observe = true;
         var expected = matches ? 7L : 99L;
 
         // Act
-        var query = SelectBoundary(context, storage).Where(value => value == expected);
+        var query = SelectBoundary(context, storage)
+            .Where(value => value == expected);
+
         var sql = query.ToQueryString();
         var commandsBeforeMaterialization = boundary.CreatedCommands;
         var values = await query.ToArrayAsync(CancellationToken.None);
@@ -97,11 +102,13 @@ public sealed class CompositionMappedMemberTests
     private static IQueryable<long> Select<TEntity>(
         IQueryable<TEntity> source,
         IProperty property
-    ) where TEntity : class
+    )
+        where TEntity : class
     {
         var entity = Expression.Parameter(typeof(TEntity), "entity");
         var selector = Expression.Lambda<Func<TEntity, long>>(
-            NestedSetExpressions.QueryProperty(entity, property), entity);
+            NestedSetExpressions.QueryProperty(entity, property),
+            entity);
 
         return source.Select(selector);
     }
@@ -119,7 +126,8 @@ public sealed class CompositionMappedMemberTests
             var property = modelBuilder.Entity<PropertyNode>();
             property.ToTable("PropertyNodes");
             property.Ignore(node => node.Left);
-            property.Property(node => node.MappedLeft)
+            property
+                .Property(node => node.MappedLeft)
                 .HasField("_mappedLeft")
                 .HasColumnName("Left")
                 .UsePropertyAccessMode(PropertyAccessMode.Field);
@@ -127,7 +135,8 @@ public sealed class CompositionMappedMemberTests
             var field = modelBuilder.Entity<FieldNode>();
             field.ToTable("FieldNodes");
             field.Ignore(node => node.Left);
-            field.Property<long>(nameof(FieldNode.StoredLeft))
+            field
+                .Property<long>(nameof(FieldNode.StoredLeft))
                 .HasField(nameof(FieldNode.StoredLeft))
                 .HasColumnName("Left");
 
@@ -136,7 +145,8 @@ public sealed class CompositionMappedMemberTests
             backed.Ignore(node => node.Left);
             // WHY: This valid property-backed mapping has a differently named backing field. Query
             // binding must retain the mapped PropertyInfo rather than substitute that field's CLR name.
-            backed.Property(node => node.MappedValue)
+            backed
+                .Property(node => node.MappedValue)
                 .HasField("_value")
                 .HasColumnName("Left")
                 .UsePropertyAccessMode(PropertyAccessMode.Field);
@@ -146,18 +156,20 @@ public sealed class CompositionMappedMemberTests
             shadow.Ignore(node => node.Left);
             shadow.Property<long>("StoredLeft");
 
-            modelBuilder.SharedTypeEntity<Dictionary<string, object>>("BagNodes", bag =>
-            {
-                bag.ToTable("BagNodes");
-                bag.IndexerProperty<int>("Id");
-                bag.HasKey("Id");
-                bag.IndexerProperty<long>("Left");
-            });
+            modelBuilder.SharedTypeEntity<Dictionary<string, object>>("BagNodes",
+                bag =>
+                {
+                    bag.ToTable("BagNodes");
+                    bag.IndexerProperty<int>("Id");
+                    bag.HasKey("Id");
+                    bag.IndexerProperty<long>("Left");
+                });
 
             var complex = modelBuilder.Entity<ComplexNode>();
             complex.ToTable("ComplexNodes");
             complex.Ignore(node => node.Left);
-            complex.ComplexProperty(node => node.Coordinates)
+            complex
+                .ComplexProperty(node => node.Coordinates)
                 .Property(coordinates => coordinates.Left)
                 .HasField("_left")
                 .HasColumnName("Left")

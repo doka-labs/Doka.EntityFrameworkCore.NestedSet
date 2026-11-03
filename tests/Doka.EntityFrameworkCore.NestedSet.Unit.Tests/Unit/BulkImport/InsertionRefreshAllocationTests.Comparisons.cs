@@ -36,6 +36,9 @@ public sealed partial class InsertionRefreshAllocationTests
         var properties = entry.Metadata.FindPrimaryKey()!.Properties;
         const int repetitions = 10_000;
 
+        // WHY: Warm the selected comparison or detach path before measuring its repeated allocation.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < repetitions; index++)
         {
             _ = CompareIdentity(identity, properties, prepare);
@@ -45,6 +48,9 @@ public sealed partial class InsertionRefreshAllocationTests
         var before = GC.GetAllocatedBytesForCurrentThread();
 
         // Act
+        // WHY: Every repetition must execute, even after a mismatch, to retain the exact allocation workload.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < repetitions; index++)
         {
             matched &= CompareIdentity(identity, properties, prepare);
@@ -70,11 +76,17 @@ public sealed partial class InsertionRefreshAllocationTests
         var entries = new EntityEntry[count];
         var identities = new NestedSetInsertionTracking.Identity[count];
 
+        // WHY: Independent entries prevent an existing identity snapshot from satisfying later captures.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < count; index++)
         {
             entries[index] = context.Add(new IntNode { Id = index + 1 });
         }
 
+        // WHY: Reuse one entry only for warmup so JIT work stays outside independent-capture allocation.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < 1000; index++)
         {
             _ = NestedSetInsertionTracking.Capture(entries[0]);
@@ -83,6 +95,9 @@ public sealed partial class InsertionRefreshAllocationTests
         var before = GC.GetAllocatedBytesForCurrentThread();
 
         // Act
+        // WHY: Aligned entry and result slots retain every fresh snapshot through the allocation check.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < count; index++)
         {
             identities[index] = NestedSetInsertionTracking.Capture(entries[index]);
@@ -95,9 +110,7 @@ public sealed partial class InsertionRefreshAllocationTests
 
         // WHY: The measured scalar snapshot costs 272 bytes; 280 leaves no room for an empty list per root.
         Assert.InRange(allocated, 0, count * 280L + 2048);
-        var property = entries[0]
-            .Metadata
-            .FindPrimaryKey()!.Properties[0];
+        var property = entries[0].Metadata.FindPrimaryKey()!.Properties[0];
 
         Assert.All(identities, identity => Assert.True(identity.Matches(property)));
         GC.KeepAlive(identities);
@@ -119,6 +132,9 @@ public sealed partial class InsertionRefreshAllocationTests
 
         var matches = true;
 
+        // WHY: Visit every key component without short-circuiting or introducing an iterator in the measured path.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < properties.Count; index++)
         {
             matches &= identity.Matches(properties[index]);

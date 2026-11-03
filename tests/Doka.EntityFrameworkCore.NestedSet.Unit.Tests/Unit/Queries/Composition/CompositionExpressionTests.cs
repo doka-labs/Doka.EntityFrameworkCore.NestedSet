@@ -5,7 +5,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Checks parameter-identity substitution independently of SQL translation.</summary>
 /// <param name="output">Records the paired construction allocation observation.</param>
-public sealed class CompositionExpressionTests(ITestOutputHelper output)
+public sealed class CompositionExpressionTests(
+    ITestOutputHelper output
+)
 {
     /// <summary>Direct substitution reduces an anonymous projection to its selected existing argument.</summary>
     [Fact]
@@ -42,17 +44,23 @@ public sealed class CompositionExpressionTests(ITestOutputHelper output)
     [Theory]
     [InlineData(1, true)]
     [InlineData(2, false)]
-    public void SingleReplacementUsesParameterIdentityInsideNestedLambdas(int input, bool expected)
+    public void SingleReplacementUsesParameterIdentityInsideNestedLambdas(
+        int input,
+        bool expected
+    )
     {
         // Arrange
         var outer = Expression.Parameter(typeof(int), "value");
         var inner = Expression.Parameter(typeof(int), "value");
-        var original = Any(2, inner,
+        var original = Any(2,
+            inner,
             Expression.Equal(Expression.Add(outer, inner), Expression.Constant(3)));
 
         // Act
         var replaced = NestedSetQueryExpressions.Replace(original, outer, Expression.Constant(input));
-        var actual = Expression.Lambda<Func<bool>>(replaced).Compile()();
+        var actual = Expression
+            .Lambda<Func<bool>>(replaced)
+            .Compile()();
 
         // Assert
         Assert.Equal(expected, actual);
@@ -67,11 +75,17 @@ public sealed class CompositionExpressionTests(ITestOutputHelper output)
         Expression<Func<int, ProjectionRow>> projection = value => new ProjectionRow { Value = value };
         Expression<Func<ProjectionRow, int>> selector = row => row.Value;
         Func<object> legacy = () => NestedSetQueryExpressions.Inline(
-            Expression.Lambda(selector.Body, selector.Parameters[0]), projection.Body);
+            Expression.Lambda(selector.Body, selector.Parameters[0]),
+            projection.Body);
 
         Func<object> replacement = () => NestedSetQueryExpressions.Replace(
-            selector.Body, selector.Parameters[0], projection.Body);
+            selector.Body,
+            selector.Parameters[0],
+            projection.Body);
 
+        // WHY: Warm both expression-substitution paths equally before the paired allocation measurement.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < 100; index++)
         {
             GC.KeepAlive(legacy());
@@ -108,16 +122,22 @@ public sealed class CompositionExpressionTests(ITestOutputHelper output)
         var nestedNode = Expression.Parameter(typeof(int), "node");
         var external = Expression.Parameter(typeof(int), "row");
         var outerSum = Expression.Add(Expression.Add(Expression.Multiply(row, Expression.Constant(100)),
-            Expression.Multiply(parent, Expression.Constant(10))), node);
+                Expression.Multiply(parent, Expression.Constant(10))),
+            node);
 
         var innerSum = Expression.Add(Expression.Add(nestedRow, nestedParent), nestedNode);
         var predicate = Expression.Equal(Expression.Add(outerSum, innerSum), Expression.Constant(157));
         var nested = Any(2, nestedRow, Any(3, nestedParent, Any(5, nestedNode, predicate)));
         var original = Expression.Lambda<Func<int, int, int, bool>>(nested, row, parent, node);
         var replaced = NestedSetQueryExpressions.Inline(
-            original, external, Expression.Constant(4), Expression.Constant(7));
+            original,
+            external,
+            Expression.Constant(4),
+            Expression.Constant(7));
 
-        var compiled = Expression.Lambda<Func<int, bool>>(replaced, external).Compile();
+        var compiled = Expression
+            .Lambda<Func<int, bool>>(replaced, external)
+            .Compile();
 
         // Act
         var actual = compiled(input);
@@ -134,8 +154,11 @@ public sealed class CompositionExpressionTests(ITestOutputHelper output)
         int value,
         ParameterExpression parameter,
         Expression predicate
-    ) => Expression.Call(typeof(Enumerable), nameof(Enumerable.Any), [typeof(int)],
-        Expression.Constant(new[] { value }), Expression.Lambda<Func<int, bool>>(predicate, parameter));
+    ) => Expression.Call(typeof(Enumerable),
+        nameof(Enumerable.Any),
+        [typeof(int)],
+        Expression.Constant(new[] { value }),
+        Expression.Lambda<Func<int, bool>>(predicate, parameter));
 
     /// <summary>Retains the inferred anonymous type while exposing both prepared expression trees.</summary>
     private static (LambdaExpression Projection, LambdaExpression Selector) Projectors<TProjection>(

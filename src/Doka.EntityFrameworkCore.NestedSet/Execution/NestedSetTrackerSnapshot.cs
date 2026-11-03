@@ -1,28 +1,37 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Execution;
 
-/// <summary>Preserves pending tracked values until a coordinated or managed save has completed its transaction.</summary>
+/// <summary>
+///     Preserves pending tracked values until a coordinated or managed save has completed its transaction.
+/// </summary>
 internal sealed class NestedSetTrackerSnapshot
 {
     private static readonly ConditionalWeakTable<IEntityType, IProperty[]> s_properties = new();
     private readonly DbContext _context;
     private readonly EntrySnapshot[] _entries;
+    private readonly NestedSetRelationshipSnapshot? _relationships;
+    private List<(IUpdateEntry Owner, INavigation Navigation, object Member)>? _persistedAdditions;
 
     /// <summary>Retains the original entry objects so rollback does not replace the caller's tracked graph.</summary>
     /// <param name="context">The context that owns the captured entries.</param>
     /// <param name="entries">The pending tracked state captured before its save sends any command.</param>
+    /// <param name="relationships">The affected native relationships and caller graph, when pending FKs exist.</param>
     private NestedSetTrackerSnapshot(
         DbContext context,
-        EntrySnapshot[] entries
+        EntrySnapshot[] entries,
+        NestedSetRelationshipSnapshot? relationships
     )
     {
         _context = context;
         _entries = entries;
+        _relationships = relationships;
     }
 
     /// <summary>Captures all tracked entities after change detection and before saving without acceptance.</summary>
     /// <param name="context">The context whose hierarchy and unrelated pending changes share the save.</param>
     /// <returns>A snapshot that can restore captured values after the database transaction is rolled back.</returns>
-    /// <remarks>Save callbacks must not accept changes, detach entities, or replace the tracked graph.</remarks>
+    /// <remarks>
+    ///     Complex value callbacks are journaled separately from entity membership and structural guards.
+    /// </remarks>
     internal static NestedSetTrackerSnapshot Capture(
         DbContext context
     )
@@ -51,15 +60,62 @@ internal sealed class NestedSetTrackerSnapshot
 
         try
         {
+            NestedSetRelationshipSnapshot? relationships = null;
             var snapshots = entries
-                .Select(entry => new EntrySnapshot(entry))
+                .Select(entry =>
+                {
+                    NestedSetRelationshipSnapshot.Capture(context, entry, ref relationships);
+
+                    return new EntrySnapshot(entry);
+                })
                 .ToArray();
 
-            return new NestedSetTrackerSnapshot(context, snapshots);
+            relationships?.CaptureParentNavigations();
+
+            return new NestedSetTrackerSnapshot(context, snapshots, relationships);
         }
         finally
         {
             tracker.AutoDetectChangesEnabled = autoDetectChanges;
+        }
+    }
+
+    /// <summary>Captures proven writes owned by the complete coordinated transaction.</summary>
+    /// <param name="entries">The exact provider write set after application callbacks.</param>
+    /// <returns>Work to install only successfully persisted collection relationships.</returns>
+    internal Action? CapturePersistedRelationships(
+        IList<IUpdateEntry> entries
+    ) => NestedSetCollectionBaseline.CapturePersisted(entries, this);
+
+    /// <summary>Owns only a native membership that the library is about to install after provider success.</summary>
+    /// <param name="owner">The exact tracked owner resolved from a proven persisted FK.</param>
+    /// <param name="navigation">The inverse collection whose native set did not contain the member.</param>
+    /// <param name="member">The saved reference present in the prepared CLR collection.</param>
+    internal void RecordPersistedAddition(
+        IUpdateEntry owner,
+        INavigation navigation,
+        object member
+    ) => (_persistedAdditions ??= []).Add((owner, navigation, member));
+
+    /// <summary>
+    ///     Reverses owned native additions without replaying a callback's unrelated CLR or snapshot state.
+    /// </summary>
+    private void UndoPersistedAdditions()
+    {
+        if (_persistedAdditions is null)
+        {
+            return;
+        }
+
+        foreach (var (owner, navigation, member) in _persistedAdditions)
+        {
+            // WHY: EF fixup may already have removed the member or its slot. Do not recreate an empty sidecar
+            // or change any CLR collection while undoing only this library's successful native addition.
+            if (owner.GetRelationshipSnapshotValue(navigation) is ISet<object> members
+                && members.Contains(member))
+            {
+                NestedSetInsertionContract.Instance.RemoveCollectionSnapshot(owner, navigation, member);
+            }
         }
     }
 
@@ -77,9 +133,16 @@ internal sealed class NestedSetTrackerSnapshot
 
         try
         {
+            _relationships?.PrepareRestore();
+
             foreach (var entry in _entries)
             {
                 entry.RestoreAcceptedState();
+            }
+
+            foreach (var entry in _entries)
+            {
+                entry.RestoreComplexTopology();
             }
 
             // WHY: Restoring principal keys can update dependents; values must settle before flags are restored.
@@ -98,6 +161,15 @@ internal sealed class NestedSetTrackerSnapshot
                 entry.RestoreProperties();
             }
 
+            _relationships?.RestoreForeignKeys();
+            _relationships?.RestoreNavigations();
+
+            foreach (var entry in _entries)
+            {
+                entry.RestoreModificationFlags();
+                entry.RestoreComplexFlags();
+            }
+
             // WHY: Temporary keys may live only in EF sidecars while the caller's CLR property still contains zero.
             foreach (var entry in _entries)
             {
@@ -110,15 +182,27 @@ internal sealed class NestedSetTrackerSnapshot
                 entry.RestoreConceptualNulls();
             }
 
+            _relationships?.RestorePendingBuckets();
+
             foreach (var entry in _entries)
             {
                 entry.RestoreIndexerMembership();
             }
 
+            // WHY: Authoritative pre-save snapshots win over inverse deltas, including originally present members
+            // that a callback removed before the library re-added them. Late callback graph copies are never used.
+            UndoPersistedAdditions();
+            _relationships?.RestoreSnapshots();
+            _relationships?.Verify();
+
             foreach (var entry in _entries)
             {
                 entry.Verify();
             }
+
+            // WHY: A successful recovery can restore an originally present member after undoing its receipt.
+            // Retire only verified receipts so a repeated Restore cannot remove that original membership again.
+            _persistedAdditions = null;
         }
         finally
         {
@@ -133,8 +217,9 @@ internal sealed class NestedSetTrackerSnapshot
     {
         private readonly EntityEntry _entry;
         private readonly EntityState _state;
+        private readonly IUpdateEntry _updateEntry;
         private readonly PropertySnapshot[] _properties;
-        private readonly List<ComplexStateSnapshot> _complexStates = [];
+        private readonly NestedSetComplexSnapshot? _complex;
 
         /// <summary>Copies comparer snapshots while retaining the original entry and complex instances.</summary>
         /// <param name="entry">The existing tracked entry whose pending state must survive rollback.</param>
@@ -142,6 +227,7 @@ internal sealed class NestedSetTrackerSnapshot
             IUpdateEntry entry
         )
         {
+            _updateEntry = entry;
             _entry = entry.ToEntityEntry();
             _state = entry.EntityState;
             var metadata = s_properties.GetValue(
@@ -172,22 +258,55 @@ internal sealed class NestedSetTrackerSnapshot
                     _entry.Metadata.GetComplexProperties(),
                     _entry.ComplexProperty,
                     _entry.ComplexCollection,
-                    properties);
+                    properties,
+                    [],
+                    _entry.Entity,
+                    hasCurrentPath: true);
+
                 _properties = properties.ToArray();
+
+                // WHY: Public scalar/element wrappers can initialize empty ordinal slots. Capture the lanes
+                // after those reads so a raw Added CLR item retains its actual unregistered native preimage.
+                _complex = new NestedSetComplexSnapshot(_entry, entry);
             }
         }
 
-        /// <summary>Reinstates an insertion or deletion that a successful save accepted before a later rollback.</summary>
+        /// <summary>
+        ///     Reinstates an insertion or deletion that a successful save accepted before a later rollback.
+        /// </summary>
         internal void RestoreAcceptedState()
         {
+            // WHY: ChangeTracker.Clear drops identity maps but leaves entries reporting their old state, and a later
+            // same-state restore would never track them again. A fresh lookup exposes that loss through public API.
+            if (_entry.State != EntityState.Detached
+                && _entry.Context.Entry(_entry.Entity).State == EntityState.Detached)
+            {
+                // WHY: Clear already zeroed EF's pending count. This transition would subtract this entry again,
+                // and SaveChanges returns without writing while that count is zero.
+                var contract = NestedSetInsertionContract.Instance;
+                var manager = contract.Manager(_updateEntry);
+                var changedCount = contract.GetChangedCount(manager);
+                _entry.State = EntityState.Detached;
+                contract.SetChangedCount(manager, changedCount);
+            }
+
             // WHY: Acceptance turns additions into Unchanged and removes deletions. EF permits a store-generated key
             // to return to its temporary value only on an Added entry, so this state must precede value restoration.
             if ((_state == EntityState.Added && _entry.State == EntityState.Unchanged)
                 || (_state == EntityState.Deleted && _entry.State == EntityState.Detached))
             {
+                // WHY: Reattaching an accepted deletion can otherwise create fresh Deleted complex entries
+                // with empty original buffers. Install the retained graph before EF cascades that transition.
+                _complex?.Restore();
                 _entry.State = _state;
             }
         }
+
+        /// <summary>Restores complex containers and native positions before scalar wrappers are accessed.</summary>
+        internal void RestoreComplexTopology() => _complex?.Restore();
+
+        /// <summary>Restores independent complex collection flags after scalar state transitions.</summary>
+        internal void RestoreComplexFlags() => _complex?.RestoreFlags();
 
         /// <summary>Restores values before state transitions can reattach additions or regenerate keys.</summary>
         internal void RestoreValues()
@@ -209,12 +328,26 @@ internal sealed class NestedSetTrackerSnapshot
             }
             else if (_entry.State != _state)
             {
-                _entry.State = _state;
+                if (_complex is { } complex)
+                {
+                    complex.Transition(() => _entry.State = _state);
+                }
+                else
+                {
+                    _entry.State = _state;
+                }
             }
 
-            foreach (var complexState in _complexStates)
+            _complex?.RestoreFlags();
+
+            if (_state == EntityState.Unchanged
+                && _entry.State == EntityState.Modified)
             {
-                complexState.Restore();
+                // WHY: The whole-entity state setter rejects complex originals and replaces raw pending
+                // collections. An explicit false scalar flag can finish EF's flagless sharing-peer transition
+                // without rejecting that graph. False is legal on a key too; no non-key scalar is required.
+                ClearUnmodifiedComplexCollections(_entry.ComplexProperties, _entry.ComplexCollections);
+                _entry.Property(_entry.Metadata.FindPrimaryKey()!.Properties[0].Name).IsModified = false;
             }
         }
 
@@ -234,13 +367,18 @@ internal sealed class NestedSetTrackerSnapshot
             RestoreModificationFlags();
         }
 
-        /// <summary>Restores scalar modification flags without depending on metadata enumeration order.</summary>
-        private void RestoreModificationFlags()
+        /// <summary>
+        ///     Restores original values and modification flags after state transitions and relationship fixup.
+        /// </summary>
+        internal void RestoreModificationFlags()
         {
+            // WHY: EF's unmodified FK setter repairs dependent maps but can replace the original value.
+            // Reinstate the captured comparison baseline before restoring the caller's modification intent.
             // WHY: Clearing the last unwanted flag can change the entity to Unchanged. Desired flags therefore
             // follow in a separate pass so notification tracking reaches Modified without reading absent originals.
             foreach (var property in _properties)
             {
+                property.RestoreOriginalValue();
                 property.RestoreUnmodifiedFlag();
             }
 
@@ -253,6 +391,11 @@ internal sealed class NestedSetTrackerSnapshot
         /// <summary>Restores the distinct mapped CLR values after temporary flags have been reinstated.</summary>
         internal void RestoreClrValues()
         {
+            // WHY: A struct container holds shallow scalar references. Replaying it after comparer-owned
+            // primitive collections would replace their recovered values with the callback-mutated references.
+            _complex?.RestoreMembers();
+            _complex?.RestoreHiddenValues();
+
             foreach (var property in _properties)
             {
                 property.RestoreClrValue();
@@ -287,10 +430,7 @@ internal sealed class NestedSetTrackerSnapshot
                     + $"'{_entry.State}' to '{_state}'.");
             }
 
-            foreach (var complexState in _complexStates)
-            {
-                complexState.Verify();
-            }
+            _complex?.Verify();
 
             foreach (var property in _properties)
             {
@@ -319,11 +459,17 @@ internal sealed class NestedSetTrackerSnapshot
         /// <param name="getReference">The public EF accessor for a complex reference.</param>
         /// <param name="getCollection">The public EF accessor for a complex collection.</param>
         /// <param name="target">The compact scalar buffer belonging to this entity snapshot.</param>
+        /// <param name="ordinals">The reusable collection path, copied only for a value-type container.</param>
+        /// <param name="container">The retained CLR owner or its shared value-type storage location.</param>
+        /// <param name="hasCurrentPath">Whether the captured owner is reachable through current CLR storage.</param>
         private void CaptureComplexValues(
             IEnumerable<IComplexProperty> properties,
             Func<IComplexProperty, ComplexPropertyEntry> getReference,
             Func<IComplexProperty, ComplexCollectionEntry> getCollection,
-            List<PropertySnapshot> target
+            List<PropertySnapshot> target,
+            List<int> ordinals,
+            object? container,
+            bool hasCurrentPath
         )
         {
             foreach (var property in properties)
@@ -331,10 +477,24 @@ internal sealed class NestedSetTrackerSnapshot
                 if (property.IsCollection)
                 {
                     var collection = getCollection(property);
-                    if (collection.CurrentValue is not IList values)
+                    var deleted = NestedSetComplexEntryAccess.State(NestedSetComplexEntryAccess.Owner(collection))
+                        == EntityState.Deleted;
+
+                    var value = deleted
+                        ? NestedSetComplexEntryAccess.Original(NestedSetComplexEntryAccess.Owner(collection), property)
+                        : collection.CurrentValue;
+
+                    if (value is not IList values)
                     {
                         continue;
                     }
+
+                    var elementComplexProperties = property.ComplexType.GetComplexProperties();
+
+                    // WHY: EF metadata is repeatable. Probe once to avoid empty recursion, then reuse it per element
+                    // without allocating a metadata array.
+                    // ReSharper disable once PossibleMultipleEnumeration
+                    var hasNestedProperties = elementComplexProperties.Any();
 
                     // WHY: Pair each complex collection value with the EF element entry at the same position.
                     // ReSharper disable once ForCanBeConvertedToForeach
@@ -346,62 +506,241 @@ internal sealed class NestedSetTrackerSnapshot
                             continue;
                         }
 
-                        var element = collection[index];
-                        _complexStates.Add(new ComplexStateSnapshot(element));
-                        CaptureProperties(element.Properties, values[index], target);
-                        CaptureComplexValues(
-                            property.ComplexType.GetComplexProperties(),
-                            element.ComplexProperty,
-                            element.ComplexCollection,
-                            target);
+                        var element = deleted ? collection.GetOriginalEntry(index) : collection[index];
+                        var instance = values[index];
+                        var currentPath = hasCurrentPath && !deleted;
+
+                        CaptureProperties(element.Properties, instance, target);
+
+                        if (hasNestedProperties)
+                        {
+                            // WHY: Leaf scalars are already captured. Creating two bound member delegates
+                            // for an empty recursive visit adds allocation without retaining any more state.
+                            ordinals.Add(index);
+                            CaptureComplexValues(
+                                // ReSharper disable once PossibleMultipleEnumeration
+                                elementComplexProperties,
+                                element.ComplexProperty,
+                                element.ComplexCollection,
+                                target,
+                                ordinals,
+                                instance,
+                                currentPath);
+
+                            ordinals.RemoveAt(ordinals.Count - 1);
+                        }
                     }
 
                     continue;
                 }
 
                 var reference = getReference(property);
-                CaptureProperties(reference.Properties, reference.CurrentValue, target);
-                CaptureComplexValues(
-                    property.ComplexType.GetComplexProperties(),
-                    reference.ComplexProperty,
-                    reference.ComplexCollection,
-                    target);
+
+                // WHY: A public CurrentValue beneath a Deleted owner reads an original the reference does not
+                // track. The retained container is that owner's actual CLR storage in every lifecycle state.
+                var owner = container is ComplexClrLocation location ? location.Captured : container;
+                var referenceValue = owner is null
+                    ? null
+                    : property.GetGetter().GetClrValue(owner);
+
+                var referenceLocation = referenceValue is not null && property.ComplexType.ClrType.IsValueType
+                    ? new ComplexClrLocation(
+                        referenceValue,
+                        _entry.Entity,
+                        ordinals.ToArray(),
+                        hasCurrentPath,
+                        container,
+                        property)
+                    : referenceValue;
+
+                CaptureProperties(reference.Properties, referenceLocation, target);
+                var referenceComplexProperties = property.ComplexType.GetComplexProperties();
+
+                // WHY: EF metadata is repeatable. The probe avoids empty recursion and bound delegates without
+                // allocating an array solely to enumerate the same metadata again.
+                // ReSharper disable once PossibleMultipleEnumeration
+                if (referenceComplexProperties.Any())
+                {
+                    // WHY: A scalar-only reference needs no recursive accessor delegates or ordinal work.
+                    CaptureComplexValues(
+                        // ReSharper disable once PossibleMultipleEnumeration
+                        referenceComplexProperties,
+                        reference.ComplexProperty,
+                        reference.ComplexCollection,
+                        target,
+                        ordinals,
+                        referenceLocation,
+                        hasCurrentPath);
+                }
             }
         }
     }
 
-    /// <summary>Retains collection element state that can change when its containing entity is cascaded.</summary>
-    private sealed class ComplexStateSnapshot
+    /// <summary>Clears provider-induced aggregate flags only inside an originally Unchanged complex graph.</summary>
+    /// <param name="references">The direct complex references whose nested collections may retain flags.</param>
+    /// <param name="collections">The direct complex collections belonging to the current containing entry.</param>
+    private static void ClearUnmodifiedComplexCollections(
+        IEnumerable<ComplexPropertyEntry> references,
+        IEnumerable<ComplexCollectionEntry> collections
+    )
     {
-        private readonly ComplexElementEntry _entry;
-        private readonly EntityState _state;
+        foreach (var reference in references)
+        {
+            if (reference.CurrentValue is not null)
+            {
+                ClearUnmodifiedComplexCollections(reference.ComplexProperties, reference.ComplexCollections);
+            }
+        }
 
-        /// <summary>Captures a complex collection element without accepting its pending scalar changes.</summary>
-        /// <param name="entry">The existing complex collection entry.</param>
-        internal ComplexStateSnapshot(
-            ComplexElementEntry entry
+        foreach (var collection in collections)
+        {
+            if (collection.CurrentValue is IList values)
+            {
+                // WHY: Settle nested aggregates before their containing collection. The public aggregate
+                // setter visits flattened elements; originally Modified graphs never enter this clearing path.
+                // ReSharper disable once ForCanBeConvertedToForeach
+                // ReSharper disable once LoopCanBeConvertedToQuery
+                for (var index = 0; index < values.Count; index++)
+                {
+                    if (values[index] is not null)
+                    {
+                        var element = collection[index];
+                        // WHY: EF's ComplexElementEntry.ComplexProperties also enumerates collections.
+                        // Filter metadata before constructing reference entries, since wrapping a collection throws.
+                        ClearUnmodifiedComplexCollections(
+                            element
+                                .Metadata
+                                .ComplexType
+                                .GetComplexProperties()
+                                .Where(property => !property.IsCollection)
+                                .Select(element.ComplexProperty),
+                            element.ComplexCollections);
+                    }
+                }
+            }
+
+            if (collection.IsModified)
+            {
+                collection.IsModified = false;
+            }
+        }
+    }
+
+    /// <summary>Shares one retained storage location between the scalar leaves of a complex struct.</summary>
+    private sealed class ComplexClrLocation
+    {
+        private readonly object _root;
+        private readonly int[] _ordinals;
+        private readonly bool _hasCurrentPath;
+        private readonly object? _container;
+        private readonly IComplexProperty _property;
+
+        /// <summary>Retains mapped current or original-only storage without creating an alternate CLR graph.</summary>
+        internal ComplexClrLocation(
+            object captured,
+            object root,
+            int[] ordinals,
+            bool hasCurrentPath,
+            object? container,
+            IComplexProperty property
         )
         {
-            _entry = entry;
-            _state = entry.State;
+            Captured = captured;
+            _root = root;
+            _ordinals = ordinals;
+            _hasCurrentPath = hasCurrentPath;
+            _container = container;
+            _property = property;
         }
 
-        /// <summary>Restores the element state only if saving or cascading changed it.</summary>
-        internal void Restore()
+        /// <summary>Gets the boxed preimage used while independently comparer-snapshotting scalar leaves.</summary>
+        internal object Captured { get; }
+
+        /// <summary>Reads actual restored storage rather than the stale box retained at capture time.</summary>
+        internal object? Read(
+            IProperty property
+        ) => _hasCurrentPath
+            ? property
+                .GetGetter()
+                .GetClrValueUsingContainingEntity(_root, _ordinals)
+            : property
+                .GetGetter()
+                .GetClrValue(ReadContainer());
+
+        /// <summary>Restores one scalar through mapped storage, including containing-struct copyback.</summary>
+        internal void Restore(
+            IProperty property,
+            object? value
+        )
         {
-            if (_entry.State != _state)
+            // WHY: EF's containing-entity setter cannot be built through Nullable<T>; its compiled member
+            // access targets the wrapper type. Those paths copy back through their retained containers instead.
+            if (_hasCurrentPath && !HasNullableContainer)
             {
-                _entry.State = _state;
+                NestedSetComplexEntryAccess
+                    .Setter(property)
+                    .SetClrValueUsingContainingEntity(_root, _ordinals, value);
+
+                return;
             }
+
+            // WHY: Deleted original-only elements can have no current ordinal. Their captured original
+            // storage is independent of the current graph; copy a struct back through that storage only.
+            var instance = ReadContainer();
+            SetMappedClrValue(instance, property, value);
+            CopyBack(instance);
         }
 
-        /// <summary>Ensures restoring scalar flags did not change the captured collection element state.</summary>
-        internal void Verify()
+        /// <summary>Whether this struct or a containing struct is mapped as a nullable value type.</summary>
+        internal bool HasNullableContainer =>
+            Nullable.GetUnderlyingType(_property.ClrType) is not null
+            || (_container is ComplexClrLocation { HasNullableContainer: true });
+
+        /// <summary>Reads the struct reference through its retained containing mapped member.</summary>
+        private object ReadContainer() => _property
+            .GetGetter()
+            .GetClrValue(_container is ComplexClrLocation parent ? parent.ReadContainer() : _container!)!;
+
+        /// <summary>Copies a changed original-only box through each containing value-type boundary.</summary>
+        private void CopyBack(
+            object value
+        )
         {
-            if (_entry.State != _state)
+            var container = _container is ComplexClrLocation parent ? parent.ReadContainer() : _container!;
+            SetMappedClrValue(container, _property, value);
+
+            if (_container is ComplexClrLocation location)
             {
-                throw new InvalidOperationException("The coordinated save could not restore a complex element state.");
+                location.CopyBack(container);
             }
+        }
+    }
+
+    /// <summary>Writes a mapped CLR field, property or indexer without changing tracker state or flags.</summary>
+    internal static void SetMappedClrValue(
+        object instance,
+        IPropertyBase metadata,
+        object? value
+    )
+    {
+        var member = metadata.GetMemberInfo(forMaterialization: false, forSet: true);
+
+        switch (member)
+        {
+            case FieldInfo field:
+                field.SetValue(instance, value);
+
+                break;
+            case PropertyInfo property when metadata.IsIndexerProperty():
+                property.SetValue(instance, value, [metadata.Name]);
+
+                break;
+            case PropertyInfo property:
+                property.SetValue(instance, value);
+
+                break;
+            default:
+                throw new InvalidOperationException("The mapped CLR member cannot be restored after rollback.");
         }
     }
 
@@ -449,8 +788,7 @@ internal sealed class NestedSetTrackerSnapshot
             var current = entry is not null
                 ? entry.CurrentValue
                 : _isConceptualNull
-                    ? owner!.Property(metadata.Name)
-                        .CurrentValue
+                    ? owner!.Property(metadata.Name).CurrentValue
                     : updateEntry!.GetCurrentValue(metadata);
 
             _currentValue = _comparer.Snapshot(current);
@@ -477,7 +815,13 @@ internal sealed class NestedSetTrackerSnapshot
 
             if (_instance is not null)
             {
-                var clr = ReadClrValue();
+                // WHY: A complex struct is boxed for capture, but rollback must address its real storage.
+                // Snapshot this box now; the shared location later reads and writes the restored CLR graph.
+                var clr = _instance is ComplexClrLocation location
+                    ? metadata
+                        .GetGetter()
+                        .GetClrValue(location.Captured)
+                    : ReadClrValue();
 
                 _clrValue = ReferenceEquals(clr, current) ? _currentValue : _comparer.Snapshot(clr);
             }
@@ -511,6 +855,15 @@ internal sealed class NestedSetTrackerSnapshot
             if (!_comparer.Equals(Entry.CurrentValue, _currentValue)
                 || (!_isConceptualNull && ReadConceptualNull()))
             {
+                if (_instance is ComplexClrLocation { HasNullableContainer: true } location)
+                {
+                    // WHY: PropertyEntry would build EF's unsupported setter through Nullable<T>. A complex
+                    // scalar's current value lives only in CLR storage; its flags are restored separately.
+                    location.Restore(_metadata, _comparer.Snapshot(_currentValue));
+
+                    return;
+                }
+
                 Entry.CurrentValue = _comparer.Snapshot(_currentValue);
             }
         }
@@ -530,7 +883,30 @@ internal sealed class NestedSetTrackerSnapshot
             if (!_isModified
                 && Entry.IsModified)
             {
-                Entry.IsModified = false;
+                if (_complexEntry is not null
+                    && _instance is null
+                    && _hasOriginalValue
+                    && !_comparer.Equals(Entry.CurrentValue, Entry.OriginalValue))
+                {
+                    // WHY: Clearing a leaf flag normally copies its original into CLR storage. A raw-null
+                    // complex container has no such storage. Align only this original for that public reset,
+                    // then restore its independent buffer without invoking another detection pass.
+                    var original = _comparer.Snapshot(Entry.OriginalValue);
+                    Entry.OriginalValue = _comparer.Snapshot(Entry.CurrentValue);
+
+                    try
+                    {
+                        Entry.IsModified = false;
+                    }
+                    finally
+                    {
+                        NestedSetComplexOriginalValue.Restore(Entry, original);
+                    }
+                }
+                else
+                {
+                    Entry.IsModified = false;
+                }
             }
         }
 
@@ -552,7 +928,7 @@ internal sealed class NestedSetTrackerSnapshot
             }
         }
 
-        /// <summary>Reinstates a removed required relationship without changing its nonnullable CLR key.</summary>
+        /// <summary>Reinstates a removed required relationship without changing its non-nullable CLR key.</summary>
         internal void RestoreConceptualNull()
         {
             if (_isConceptualNull && !ReadConceptualNull())
@@ -589,24 +965,15 @@ internal sealed class NestedSetTrackerSnapshot
 
             // WHY: PropertyEntry.IsTemporary writes its current value to the CLR member before setting the flag.
             // The mapped member preserves field access and restores the sentinel without replacing the sidecar.
-            var member = _metadata.GetMemberInfo(forMaterialization: false, forSet: true);
             var value = _comparer.Snapshot(_clrValue);
-            switch (member)
+
+            if (_instance is ComplexClrLocation location)
             {
-                case FieldInfo field:
-                    field.SetValue(_instance, value);
-
-                    break;
-                case PropertyInfo property when _metadata.IsIndexerProperty():
-                    property.SetValue(_instance, value, [_metadata.Name]);
-
-                    break;
-                case PropertyInfo property:
-                    property.SetValue(_instance, value);
-
-                    break;
-                default:
-                    throw new InvalidOperationException("The mapped CLR member cannot be restored after rollback.");
+                location.Restore(_metadata, value);
+            }
+            else
+            {
+                SetMappedClrValue(_instance, _metadata, value);
             }
         }
 
@@ -648,6 +1015,11 @@ internal sealed class NestedSetTrackerSnapshot
             if (_instance is null)
             {
                 return null;
+            }
+
+            if (_instance is ComplexClrLocation location)
+            {
+                return location.Read(_metadata);
             }
 
             if (_metadata.IsIndexerProperty()

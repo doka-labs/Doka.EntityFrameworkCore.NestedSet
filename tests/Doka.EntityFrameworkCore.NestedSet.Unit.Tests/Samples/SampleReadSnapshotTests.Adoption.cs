@@ -1,5 +1,4 @@
 extern alias UserGroupsSample;
-
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using AmbientTransaction = System.Transactions.Transaction;
@@ -19,13 +18,18 @@ public sealed partial class SampleReadSnapshotTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task FailedAdoptionReleasesItsConnectionReference(bool cancel, bool alreadyOpen)
+    public async Task FailedAdoptionReleasesItsConnectionReference(
+        bool cancel,
+        bool alreadyOpen
+    )
     {
         // Arrange
         using var stop = new CancellationTokenSource();
         var observer = new FailingSnapshotAdoption(stop, cancel);
         await using var context = new SampleLifecycleContext(new DbContextOptionsBuilder<SampleLifecycleContext>()
-            .UseSqlite("Data Source=:memory:").AddInterceptors(observer).Options);
+            .UseSqlite("Data Source=:memory:")
+            .AddInterceptors(observer)
+            .Options);
 
         if (alreadyOpen)
         {
@@ -35,14 +39,17 @@ public sealed partial class SampleReadSnapshotTests
         var readInvoked = false;
 
         // Act
-        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context, _ =>
-        {
-            readInvoked = true;
+        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context,
+            _ =>
+            {
+                readInvoked = true;
 
-            return Task.FromResult(1);
-        }, stop.Token));
+                return Task.FromResult(1);
+            },
+            stop.Token));
 
         var state = context.Database.GetDbConnection().State;
+
         var remainingNativeConnection = observer.Native?.Connection;
 
         if (alreadyOpen)
@@ -53,7 +60,8 @@ public sealed partial class SampleReadSnapshotTests
         // Assert
         if (cancel)
         {
-            Assert.Equal(stop.Token, Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
+            Assert.Equal(stop.Token,
+                Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
         }
         else
         {
@@ -65,7 +73,8 @@ public sealed partial class SampleReadSnapshotTests
         Assert.Null(remainingNativeConnection);
         Assert.Null(context.Database.CurrentTransaction);
         Assert.Equal(alreadyOpen ? ConnectionState.Open : ConnectionState.Closed, state);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>A failure before native begin never acquires an EF adoption reference.</summary>
@@ -74,12 +83,15 @@ public sealed partial class SampleReadSnapshotTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task FailedNativeBeginPreservesCallerConnectionOwnership(bool alreadyOpen)
+    public async Task FailedNativeBeginPreservesCallerConnectionOwnership(
+        bool alreadyOpen
+    )
     {
         // Arrange
         await using var connection = new FailingSnapshotBeginConnection();
         await using var context = new SampleLifecycleContext(new DbContextOptionsBuilder<SampleLifecycleContext>()
-            .UseSqlite(connection).Options);
+            .UseSqlite(connection)
+            .Options);
 
         if (alreadyOpen)
         {
@@ -89,12 +101,14 @@ public sealed partial class SampleReadSnapshotTests
         var readInvoked = false;
 
         // Act
-        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context, _ =>
-        {
-            readInvoked = true;
+        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context,
+            _ =>
+            {
+                readInvoked = true;
 
-            return Task.FromResult(1);
-        }, CancellationToken.None));
+                return Task.FromResult(1);
+            },
+            CancellationToken.None));
 
         var state = connection.State;
 
@@ -117,14 +131,17 @@ public sealed partial class SampleReadSnapshotTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task BeforeAdoptionFailureDoesNotCloseAnUnacquiredReference(bool alreadyOpen)
+    public async Task BeforeAdoptionFailureDoesNotCloseAnUnacquiredReference(
+        bool alreadyOpen
+    )
     {
         // Arrange
         using var ambient = new CommittableTransaction();
         var previousAmbient = AmbientTransaction.Current;
         await using var connection = new AmbientSnapshotBeginConnection(ambient);
         await using var context = new SampleLifecycleContext(new DbContextOptionsBuilder<SampleLifecycleContext>()
-            .UseSqlite(connection).Options);
+            .UseSqlite(connection)
+            .Options);
 
         if (alreadyOpen)
         {
@@ -139,12 +156,14 @@ public sealed partial class SampleReadSnapshotTests
         // Act
         try
         {
-            error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context, _ =>
-            {
-                readInvoked = true;
+            error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context,
+                _ =>
+                {
+                    readInvoked = true;
 
-                return Task.FromResult(1);
-            }, CancellationToken.None));
+                    return Task.FromResult(1);
+                },
+                CancellationToken.None));
 
             state = connection.State;
             remainingNativeConnection = connection.Begun?.Connection;
@@ -170,7 +189,10 @@ public sealed partial class SampleReadSnapshotTests
     }
 
     /// <summary>Injects failure only after EF has opened its adoption reference.</summary>
-    private sealed class FailingSnapshotAdoption(CancellationTokenSource stop, bool cancel) : DbTransactionInterceptor
+    private sealed class FailingSnapshotAdoption(
+        CancellationTokenSource stop,
+        bool cancel
+    ) : DbTransactionInterceptor
     {
         /// <summary>Gets the native transaction received by the failed adoption notification.</summary>
         internal DbTransaction? Native { get; private set; }
@@ -208,19 +230,27 @@ public sealed partial class SampleReadSnapshotTests
         internal SnapshotReadException Failure { get; } = new();
 
         /// <inheritdoc />
-        public override SqliteTransaction BeginTransaction(IsolationLevel isolationLevel, bool deferred)
+        public override SqliteTransaction BeginTransaction(
+            IsolationLevel isolationLevel,
+            bool deferred
+        )
             => throw Failure;
     }
 
     /// <summary>Introduces an ambient boundary after the helper's initial guard but before EF adoption.</summary>
-    private sealed class AmbientSnapshotBeginConnection(CommittableTransaction ambient)
+    private sealed class AmbientSnapshotBeginConnection(
+        CommittableTransaction ambient
+    )
         : SqliteConnection("Data Source=:memory:")
     {
         /// <summary>Gets the native transaction that must be disposed when adoption is rejected.</summary>
         internal SqliteTransaction? Begun { get; private set; }
 
         /// <inheritdoc />
-        public override SqliteTransaction BeginTransaction(IsolationLevel isolationLevel, bool deferred)
+        public override SqliteTransaction BeginTransaction(
+            IsolationLevel isolationLevel,
+            bool deferred
+        )
         {
             Begun = base.BeginTransaction(isolationLevel, deferred);
             AmbientTransaction.Current = ambient;

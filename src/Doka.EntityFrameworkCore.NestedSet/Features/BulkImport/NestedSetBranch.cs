@@ -3,7 +3,7 @@ namespace Doka.EntityFrameworkCore.NestedSet;
 /// <summary>Describes one new subtree without requiring assigned keys or mapped navigation properties.</summary>
 /// <typeparam name="TEntity">The detached hierarchy entity type.</typeparam>
 /// <remarks>
-///     Child order is preserved when the model has no ordering rule. Otherwise the database orders siblings using
+///     Child order is preserved when the model has no ordering rule. Otherwise, the database orders siblings using
 ///     the configured rule after generated keys and sort values exist. The copied topology is immutable; entity
 ///     payload remains caller-owned and must not be changed while an import is running.
 /// </remarks>

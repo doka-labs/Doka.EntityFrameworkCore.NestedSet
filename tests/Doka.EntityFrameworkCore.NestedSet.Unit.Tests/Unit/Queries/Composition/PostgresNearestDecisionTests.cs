@@ -11,7 +11,9 @@ public sealed class PostgresNearestDecisionTests
     [InlineData("independent")]
     [InlineData("row-aware")]
     [InlineData("query-bearing")]
-    public async Task NearestDecisionSelectsDepthOnceWithoutIo(string shape)
+    public async Task NearestDecisionSelectsDepthOnceWithoutIo(
+        string shape
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -20,25 +22,41 @@ public sealed class PostgresNearestDecisionTests
             .AddInterceptors(boundary);
 
         await using var services = NestedSetTestAdapters.BuildServices(options.Options);
-        await using var context = new CompositionContext(options.UseInternalServiceProvider(services).Options);
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(Guid.Empty).InTree(Guid.Empty);
+        await using var context = new CompositionContext(options
+            .UseInternalServiceProvider(services)
+            .Options);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty)
+            .InTree(Guid.Empty);
+
         var rows = hierarchy.Nodes.Select(node => new { Node = node });
         var nearest = shape switch
         {
-            "independent" => hierarchy.WhereNearestAncestorOrSelf(rows, row => row.Node,
-                (row, owner) => owner.Candidate, (row, owner) => owner.Matches),
-            "row-aware" => hierarchy.WhereNearestAncestorOrSelf(rows, row => row.Node,
+            "independent" => hierarchy.WhereNearestAncestorOrSelf(rows,
+                row => row.Node,
+                (row, owner) => owner.Candidate,
+                (row, owner) => owner.Matches),
+            "row-aware" => hierarchy.WhereNearestAncestorOrSelf(rows,
+                row => row.Node,
                 (row, owner) => owner.Candidate && owner.Id < row.Node.Id + 100,
                 (row, owner) => owner.Matches),
-            "query-bearing" => hierarchy.WhereNearestAncestorOrSelf(rows, row => row.Node,
+            "query-bearing" => hierarchy.WhereNearestAncestorOrSelf(rows,
+                row => row.Node,
                 (row, owner) => owner.Candidate
-                    && context.Set<CompositionNode>().Any(other => other.ParentId == owner.Id),
+                    && context
+                        .Set<CompositionNode>()
+                        .Any(other => other.ParentId == owner.Id),
                 (row, owner) => owner.Matches),
             _ => throw new ArgumentOutOfRangeException(nameof(shape)),
         };
 
         // Act
-        var sql = nearest.Select(row => row.Node.Id).ToQueryString();
+        var sql = nearest
+            .Select(row => row.Node.Id)
+            .ToQueryString();
+
         var selections = Regex.Matches(sql, "ORDER BY [^\\r\\n]*\"Depth\" DESC");
 
         // Assert
@@ -49,7 +67,9 @@ public sealed class PostgresNearestDecisionTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>A one-anchor broad result cannot hide repeated materialization of the full payload population.</summary>
+    /// <summary>
+    /// A one-anchor broad result cannot hide repeated materialization of the full payload population.
+    /// </summary>
     [Fact]
     public void RepeatedBroadPayloadExceedsTheUnchangedPairWorkBudget()
     {

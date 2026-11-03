@@ -1,5 +1,4 @@
 extern alias UserGroupsSample;
-
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using SampleReadSnapshot = UserGroupsSample::Doka.EntityFrameworkCore.NestedSet.Samples.SampleReadSnapshot;
@@ -17,13 +16,18 @@ public sealed partial class SampleReadSnapshotTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task FailedAfterOpenNotificationRestoresOnlyOwnedPhysicalConnection(bool cancel, bool alreadyOpen)
+    public async Task FailedAfterOpenNotificationRestoresOnlyOwnedPhysicalConnection(
+        bool cancel,
+        bool alreadyOpen
+    )
     {
         // Arrange
         using var stop = new CancellationTokenSource();
         var observer = new FailingSnapshotOpenNotification(stop, cancel);
         await using var context = new SampleLifecycleContext(new DbContextOptionsBuilder<SampleLifecycleContext>()
-            .UseSqlite("Data Source=:memory:").AddInterceptors(observer).Options);
+            .UseSqlite("Data Source=:memory:")
+            .AddInterceptors(observer)
+            .Options);
 
         if (alreadyOpen)
         {
@@ -34,12 +38,14 @@ public sealed partial class SampleReadSnapshotTests
         var readInvoked = false;
 
         // Act
-        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context, _ =>
-        {
-            readInvoked = true;
+        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context,
+            _ =>
+            {
+                readInvoked = true;
 
-            return Task.FromResult(1);
-        }, stop.Token));
+                return Task.FromResult(1);
+            },
+            stop.Token));
 
         var state = context.Database.GetDbConnection().State;
 
@@ -55,7 +61,8 @@ public sealed partial class SampleReadSnapshotTests
         }
         else if (cancel)
         {
-            Assert.Equal(stop.Token, Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
+            Assert.Equal(stop.Token,
+                Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
         }
         else
         {
@@ -66,11 +73,15 @@ public sealed partial class SampleReadSnapshotTests
         Assert.Equal(alreadyOpen ? 0 : 1, observer.FailedOpens);
         Assert.Null(context.Database.CurrentTransaction);
         Assert.Equal(alreadyOpen ? ConnectionState.Open : ConnectionState.Closed, state);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>Fails only after the real physical open, before EF finishes recording that open.</summary>
-    private sealed class FailingSnapshotOpenNotification(CancellationTokenSource stop, bool cancel)
+    private sealed class FailingSnapshotOpenNotification(
+        CancellationTokenSource stop,
+        bool cancel
+    )
         : DbConnectionInterceptor
     {
         /// <summary>Gets or sets whether setup has completed and the next physical open must fail.</summary>

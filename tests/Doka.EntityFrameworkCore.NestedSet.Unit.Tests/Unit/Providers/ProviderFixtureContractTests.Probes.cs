@@ -5,38 +5,58 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public sealed partial class ProviderFixtureContractTests
 {
     /// <summary>Represents a harmless exact fixture type.</summary>
-    public class Resource { }
+    public class Resource
+    {
+    }
 
     /// <summary>Represents an assignable fixture that is not registered under its base type.</summary>
-    public sealed class DerivedResource : Resource { }
+    public sealed class DerivedResource : Resource
+    {
+    }
 
     /// <summary>Represents a generic fixture specialization.</summary>
-    public sealed class GenericResource<T> { }
+    public sealed class GenericResource<T>
+    {
+    }
 
     /// <summary>Registers a class fixture on a collection definition.</summary>
-    public sealed class ClassFixtureDefinition : IClassFixture<Resource> { }
+    public sealed class ClassFixtureDefinition : IClassFixture<Resource>
+    {
+    }
 
     /// <summary>Registers a collection fixture on a definition.</summary>
-    public sealed class CollectionFixtureDefinition : ICollectionFixture<Resource> { }
+    public sealed class CollectionFixtureDefinition : ICollectionFixture<Resource>
+    {
+    }
 
     /// <summary>Registers a partially open fixture that xUnit normalizes to its generic definition.</summary>
-    public sealed class GenericCollectionDefinition<T> : ICollectionFixture<GenericResource<T>> { }
+    public sealed class GenericCollectionDefinition<T> : ICollectionFixture<GenericResource<T>>
+    {
+    }
 
     /// <summary>Registers a named collection in the Unit executable assembly.</summary>
     [CollectionDefinition("Constructor contract named definition")]
-    public sealed class NamedDefinition : ICollectionFixture<Resource> { }
+    public sealed class NamedDefinition : ICollectionFixture<Resource>
+    {
+    }
 
     /// <summary>Registers a collection fixture which requires an assembly-level dependency.</summary>
-    public sealed class DependentCollectionDefinition : ICollectionFixture<DependentResource> { }
+    public sealed class DependentCollectionDefinition : ICollectionFixture<DependentResource>
+    {
+    }
 
     /// <summary>
     /// Registers peer collection fixtures which cannot provide each other's constructor dependencies.
     /// </summary>
     public sealed class SameLevelCollectionDefinition : ICollectionFixture<Resource>,
-        ICollectionFixture<DependentResource> { }
+        ICollectionFixture<DependentResource>
+    {
+    }
 
     /// <summary>Provides an inherited class fixture without supplying a runnable test body.</summary>
-    public abstract class FixtureBase : IClassFixture<Resource> { }
+    public abstract class FixtureBase : IClassFixture<Resource>
+    {
+    }
 
     /// <summary>Consumes the inherited exact fixture registration.</summary>
     public sealed class InheritedFixtureSubject : FixtureBase
@@ -139,7 +159,9 @@ public sealed partial class ProviderFixtureContractTests
     }
 
     /// <summary>Is assignable to the builtin output interface but has different exact identity.</summary>
-    public interface IExtendedOutput : ITestOutputHelper { }
+    public interface IExtendedOutput : ITestOutputHelper
+    {
+    }
 
     /// <summary>Requires a subtype of a builtin interface.</summary>
     public sealed class DerivedOutputSubject
@@ -179,11 +201,15 @@ public sealed partial class ProviderFixtureContractTests
     }
 
     /// <summary>Incorrectly registers a collection fixture on a test class.</summary>
-    public sealed class MisplacedCollectionFixtureSubject : ICollectionFixture<Resource> { }
+    public sealed class MisplacedCollectionFixtureSubject : ICollectionFixture<Resource>
+    {
+    }
 
     /// <summary>Provides an inherited named collection attribute.</summary>
     [Collection("Constructor contract named definition")]
-    public abstract class NamedCollectionBase { }
+    public abstract class NamedCollectionBase
+    {
+    }
 
     /// <summary>Consumes the named collection inherited from its base.</summary>
     public sealed class InheritedCollectionSubject : NamedCollectionBase
@@ -220,7 +246,9 @@ public sealed partial class ProviderFixtureContractTests
 
     /// <summary>Provides a type-based collection definition through inheritance.</summary>
     [Collection(typeof(CollectionFixtureDefinition))]
-    public abstract class ExternalCollectionBase { }
+    public abstract class ExternalCollectionBase
+    {
+    }
 
     /// <summary>Consumes the type-based collection fixture inherited from its base.</summary>
     public sealed class ExternalCollectionSubject : ExternalCollectionBase
@@ -242,7 +270,9 @@ public sealed partial class ProviderFixtureContractTests
     }
 
     /// <summary>Registers a fixture with supported builtin dependencies.</summary>
-    public sealed class FixtureBuiltinSubject : IClassFixture<BuiltinResource> { }
+    public sealed class FixtureBuiltinSubject : IClassFixture<BuiltinResource>
+    {
+    }
 
     /// <summary>Requires a parent-level resource fixture.</summary>
     public sealed class DependentResource
@@ -254,7 +284,9 @@ public sealed partial class ProviderFixtureContractTests
     }
 
     /// <summary>Registers a class fixture that needs a parent resource.</summary>
-    public sealed class ParentDependentSubject : IClassFixture<DependentResource> { }
+    public sealed class ParentDependentSubject : IClassFixture<DependentResource>
+    {
+    }
 
     /// <summary>Requires a dependent fixture supplied by collection or assembly metadata.</summary>
     public sealed class DependencySubject
@@ -266,7 +298,9 @@ public sealed partial class ProviderFixtureContractTests
     }
 
     /// <summary>Incorrectly treats a peer class fixture as a constructor dependency.</summary>
-    public sealed class SameLevelDependencySubject : IClassFixture<Resource>, IClassFixture<DependentResource> { }
+    public sealed class SameLevelDependencySubject : IClassFixture<Resource>, IClassFixture<DependentResource>
+    {
+    }
 
     /// <summary>Incorrectly requires a test output helper in a fixture constructor.</summary>
     public sealed class OutputResource
@@ -278,7 +312,9 @@ public sealed partial class ProviderFixtureContractTests
     }
 
     /// <summary>Registers a fixture with an unsupported output dependency.</summary>
-    public sealed class OutputFixtureSubject : IClassFixture<OutputResource> { }
+    public sealed class OutputFixtureSubject : IClassFixture<OutputResource>
+    {
+    }
 
     /// <summary>Has a default fallback which the reflection fixture activator does not apply.</summary>
     public sealed class DefaultResource
@@ -290,7 +326,9 @@ public sealed partial class ProviderFixtureContractTests
     }
 
     /// <summary>Registers a fixture with an unsupported default dependency.</summary>
-    public sealed class DefaultFixtureSubject : IClassFixture<DefaultResource> { }
+    public sealed class DefaultFixtureSubject : IClassFixture<DefaultResource>
+    {
+    }
 
     /// <summary>Has an optional argument which fixture construction does not fill.</summary>
     public sealed class OptionalResource
@@ -302,7 +340,9 @@ public sealed partial class ProviderFixtureContractTests
     }
 
     /// <summary>Registers a fixture with an unsupported optional dependency.</summary>
-    public sealed class OptionalFixtureSubject : IClassFixture<OptionalResource> { }
+    public sealed class OptionalFixtureSubject : IClassFixture<OptionalResource>
+    {
+    }
 
     /// <summary>Has a params array which fixture construction does not fill.</summary>
     public sealed class ParamsResource
@@ -314,7 +354,9 @@ public sealed partial class ProviderFixtureContractTests
     }
 
     /// <summary>Registers a fixture with an unsupported params dependency.</summary>
-    public sealed class ParamsFixtureSubject : IClassFixture<ParamsResource> { }
+    public sealed class ParamsFixtureSubject : IClassFixture<ParamsResource>
+    {
+    }
 
     /// <summary>Defines an ambiguous fixture constructor shape.</summary>
     public sealed class MultipleConstructorResource
@@ -329,10 +371,14 @@ public sealed partial class ProviderFixtureContractTests
     }
 
     /// <summary>Has no required constructor arguments.</summary>
-    public sealed class NoArgumentSubject { }
+    public sealed class NoArgumentSubject
+    {
+    }
 
     /// <summary>Represents a static suite which never requires instance construction.</summary>
-    public static class StaticSubject { }
+    public static class StaticSubject
+    {
+    }
 
     /// <summary>Would fail if a metadata audit constructed fixture resources.</summary>
     public sealed class ThrowingResource
@@ -345,5 +391,7 @@ public sealed partial class ProviderFixtureContractTests
     }
 
     /// <summary>Registers the throwing sentinel without requesting initialization.</summary>
-    public sealed class ThrowingResourceSubject : IClassFixture<ThrowingResource> { }
+    public sealed class ThrowingResourceSubject : IClassFixture<ThrowingResource>
+    {
+    }
 }

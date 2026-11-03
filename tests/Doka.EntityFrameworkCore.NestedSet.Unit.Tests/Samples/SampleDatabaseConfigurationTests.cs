@@ -30,7 +30,9 @@ public sealed class SampleDatabaseConfigurationTests
         var options = configuration.CreateOptions<SampleLifecycleContext>();
         await using var services = SampleTestServices.Create(options);
         await using var context = new SampleLifecycleContext(
-            new DbContextOptionsBuilder<SampleLifecycleContext>(options).UseInternalServiceProvider(services).Options);
+            new DbContextOptionsBuilder<SampleLifecycleContext>(options)
+                .UseInternalServiceProvider(services)
+                .Options);
 
         var connection = new MySqlConnectionStringBuilder(
             context.Database.GetDbConnection().ConnectionString);
@@ -114,7 +116,9 @@ public sealed class SampleDatabaseConfigurationTests
         var options = configuration.CreateOptions<SampleLifecycleContext>();
         await using var services = SampleTestServices.Create(options);
         await using var context = new SampleLifecycleContext(
-            new DbContextOptionsBuilder<SampleLifecycleContext>(options).UseInternalServiceProvider(services).Options);
+            new DbContextOptionsBuilder<SampleLifecycleContext>(options)
+                .UseInternalServiceProvider(services)
+                .Options);
 
         var connection = new SqliteConnectionStringBuilder(
             context.Database.GetDbConnection().ConnectionString);
@@ -144,7 +148,9 @@ public sealed class SampleDatabaseConfigurationTests
 
         await using var services = SampleTestServices.Create(options);
         await using var context = new SampleLifecycleContext(
-            new DbContextOptionsBuilder<SampleLifecycleContext>(options).UseInternalServiceProvider(services).Options);
+            new DbContextOptionsBuilder<SampleLifecycleContext>(options)
+                .UseInternalServiceProvider(services)
+                .Options);
 
         var connection = new SqliteConnectionStringBuilder(
             context.Database.GetDbConnection().ConnectionString);

@@ -2,7 +2,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public sealed partial class DokaSourceBindingTests
 {
-    /// <summary>Static typed source metadata does not retain an invocation's query, provider or captured values.</summary>
+    /// <summary>
+    /// Static typed source metadata does not retain an invocation's query, provider or captured values.
+    /// </summary>
     [Fact]
     public void TypedSourceDoesNotRetainInvocationInputs()
     {
@@ -21,7 +23,9 @@ public sealed partial class DokaSourceBindingTests
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
-    public void TypedSourceReleasesCollectibleRowArguments(int position)
+    public void TypedSourceReleasesCollectibleRowArguments(
+        int position
+    )
     {
         // Arrange
         var released = ProviderQueryLifetime.ReleaseCollectibleRows(orderedJoin: false, position);

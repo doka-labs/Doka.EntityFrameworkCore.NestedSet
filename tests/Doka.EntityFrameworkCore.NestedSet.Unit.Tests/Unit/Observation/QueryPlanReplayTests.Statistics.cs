@@ -24,7 +24,8 @@ public sealed partial class QueryPlanReplayTests
     {
         // Arrange
         await using var connection = new PlanReplayConnection(
-            () => Results(Statistics("z-primary", "a-stat]edge", "middle statistic")), () => 0);
+            () => Results(Statistics("z-primary", "a-stat]edge", "middle statistic")),
+            () => 0);
 
         await using var context = CreateStatisticsContext(connection);
         context.Database.SetCommandTimeout(configured);
@@ -42,26 +43,35 @@ public sealed partial class QueryPlanReplayTests
         Assert.EndsWith("ORDER BY [stats_id]", catalog.CommandText.TrimEnd(), StringComparison.Ordinal);
         Assert.Equal("[fixture]]scope].[Owned]]Statistics]", Assert.Single(catalog.ParameterValues));
         Assert.DoesNotContain("Owned", catalog.CommandText, StringComparison.Ordinal);
-        Assert.Equal(s_statisticsRefreshCommands, connection.Commands.Skip(1).Select(command => command.CommandText));
+        Assert.Equal(s_statisticsRefreshCommands,
+            connection
+                .Commands
+                .Skip(1)
+                .Select(command => command.CommandText));
 
         Assert.All(connection.Commands.Skip(1), command => Assert.Equal(1, command.NonQueryExecutions));
         Assert.All(connection.Commands, command => Assert.Equal(expected, command.CommandTimeout));
         Assert.Equal(configured, context.Database.GetCommandTimeout());
     }
 
-    /// <summary>The object identity is a bound value, so a foreign table's catalog cannot supply refresh names.</summary>
+    /// <summary>
+    /// The object identity is a bound value, so a foreign table's catalog cannot supply refresh names.
+    /// </summary>
     [Fact]
     public async Task StatisticsCatalogBindsOnlyTheOwnedTableIdentity()
     {
         // Arrange
         PlanReplayConnection connection = null!;
+        object?[] parameters = [];
         connection = new PlanReplayConnection(() =>
-        {
-            var identity = Assert.Single(connection.Command!.ParameterValues);
+            {
+                parameters = connection.Command!.ParameterValues;
 
-            return Results(Statistics(identity is "[fixture]]scope].[Owned]]Statistics]"
-                ? "owned statistic" : "foreign statistic"));
-        }, () => 0);
+                return Results(Statistics(parameters is ["[fixture]]scope].[Owned]]Statistics]"]
+                    ? "owned statistic"
+                    : "foreign statistic"));
+            },
+            () => 0);
 
         await using var owned = connection;
         await using var context = CreateStatisticsContext(connection);
@@ -70,15 +80,19 @@ public sealed partial class QueryPlanReplayTests
         await QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer");
 
         // Assert
+        Assert.Single(parameters);
         Assert.Equal(2, connection.Commands.Count);
-        Assert.Contains("WHERE [object_id] = OBJECT_ID(@p0)", connection.Commands[0].CommandText,
+        Assert.Contains("WHERE [object_id] = OBJECT_ID(@p0)",
+            connection.Commands[0].CommandText,
             StringComparison.Ordinal);
 
         Assert.Equal("UPDATE STATISTICS [fixture]]scope].[Owned]]Statistics] [owned statistic] WITH FULLSCAN",
             connection.Commands[1].CommandText);
     }
 
-    /// <summary>Other engines keep their single existing ANALYZE statement without a catalog or sampling fallback.</summary>
+    /// <summary>
+    /// Other engines keep their single existing ANALYZE statement without a catalog or sampling fallback.
+    /// </summary>
     /// <param name="engine">The existing non-SQL-Server branch.</param>
     /// <param name="prefix">The unchanged provider-specific ANALYZE spelling.</param>
     [Theory]
@@ -93,7 +107,8 @@ public sealed partial class QueryPlanReplayTests
     {
         // Arrange
         await using var connection = new PlanReplayConnection(
-            () => throw new InvalidOperationException("No catalog query is expected."), () => 0);
+            () => throw new InvalidOperationException("No catalog query is expected."),
+            () => 0);
 
         await using var context = CreateStatisticsContext(connection);
 
@@ -117,6 +132,7 @@ public sealed partial class QueryPlanReplayTests
         var table = new DataTable();
         table.Columns.Add("Value", typeof(string));
 
+        // WHY: Preserve catalog row order because refresh commands must follow the native statistics inventory.
         foreach (var name in names)
         {
             table.Rows.Add(name);
@@ -134,14 +150,18 @@ public sealed partial class QueryPlanReplayTests
         .Options);
 
     /// <summary>Maps an explicitly owned table with identifiers that require provider escaping.</summary>
-    private sealed class StatisticsContext(DbContextOptions<StatisticsContext> options) : DbContext(options)
+    private sealed class StatisticsContext(
+        DbContextOptions<StatisticsContext> options
+    ) : DbContext(options)
     {
         /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder modelBuilder
         )
         {
-            modelBuilder.Entity<StatisticsNode>().ToTable("Owned]Statistics", "fixture]scope");
+            modelBuilder
+                .Entity<StatisticsNode>()
+                .ToTable("Owned]Statistics", "fixture]scope");
         }
     }
 

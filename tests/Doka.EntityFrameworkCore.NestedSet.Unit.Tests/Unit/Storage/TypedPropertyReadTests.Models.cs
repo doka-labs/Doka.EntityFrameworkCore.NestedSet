@@ -6,7 +6,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public sealed partial class TypedPropertyReadTests
 {
     /// <summary>Retains only the mapped metadata reused by the allocation measurement.</summary>
-    private sealed class ReadProperties(IEntityType entityType)
+    private sealed class ReadProperties(
+        IEntityType entityType
+    )
     {
         /// <summary>Gets the optional integer parent metadata.</summary>
         internal IProperty IntegerParent { get; } = entityType.FindProperty(nameof(ReadNode.IntegerParent))!;
@@ -30,7 +32,10 @@ public sealed partial class TypedPropertyReadTests
     /// <summary>Keeps the optional runtime nullable-key result observable by the test.</summary>
     /// <param name="HasValue">Whether the current parent is present.</param>
     /// <param name="Value">The observable parent identity or null.</param>
-    private readonly record struct ParentProbe(bool HasValue, object? Value);
+    private readonly record struct ParentProbe(
+        bool HasValue,
+        object? Value
+    );
 
     /// <summary>Provides scalar properties, named indexers and generated keys without hierarchy scaffolding.</summary>
     private sealed class ReadContext : DbContext
@@ -49,85 +54,124 @@ public sealed partial class TypedPropertyReadTests
 
         /// <summary>Creates a model-only context with automatic detection disabled for explicit live reads.</summary>
         internal ReadContext()
-            : base(new DbContextOptionsBuilder<ReadContext>().ConfigureTestWarnings()
-                .UseSqlite("Data Source=:memory:").Options)
+            : base(new DbContextOptionsBuilder<ReadContext>()
+                .ConfigureTestWarnings()
+                .UseSqlite("Data Source=:memory:")
+                .Options)
         {
             ChangeTracker.AutoDetectChangesEnabled = false;
         }
 
         /// <inheritdoc />
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        protected override void OnModelCreating(
+            ModelBuilder modelBuilder
+        )
         {
             var node = modelBuilder.Entity<ReadNode>();
-            node.Property(value => value.Id).ValueGeneratedNever();
+            node
+                .Property(value => value.Id)
+                .ValueGeneratedNever();
             node.Property<int?>(ShadowParent);
 
             var valueConverter =
                 new ValueConverter<ValueKey, long>(
-                    value => value.Value, value => new ValueKey(value));
+                    value => value.Value,
+                    value => new ValueKey(value));
 
             var referenceConverter =
                 new ValueConverter<ReferenceKey?, string?>(
-                    value => ToProvider(value), value => FromProvider(value));
+                    value => ToProvider(value),
+                    value => FromProvider(value));
 
-            node.Property(value => value.StructParent).HasConversion(valueConverter);
-            node.Property(value => value.ConvertedReferenceParent).HasConversion(referenceConverter);
+            node
+                .Property(value => value.StructParent)
+                .HasConversion(valueConverter);
+            node
+                .Property(value => value.ConvertedReferenceParent)
+                .HasConversion(referenceConverter);
 
             var nullable = modelBuilder.Entity<NullableKeyNode>();
             nullable.HasKey(value => value.Id);
-            nullable.Property(value => value.Id).IsRequired().ValueGeneratedNever();
+            nullable
+                .Property(value => value.Id)
+                .IsRequired()
+                .ValueGeneratedNever();
 
             modelBuilder.Entity<TemporaryKeyNode>();
 
             var shared = modelBuilder.SharedTypeEntity<Dictionary<string, object?>>(SharedEntity);
-            shared.IndexerProperty<int>(SharedKey).ValueGeneratedNever();
+            shared
+                .IndexerProperty<int>(SharedKey)
+                .ValueGeneratedNever();
             shared.IndexerProperty<int?>(SharedParent);
             shared.HasKey(SharedKey);
         }
 
         /// <summary>Converts optional reference storage without invoking its misleading domain operators.</summary>
-        private static string? ToProvider(ReferenceKey? value) => value?.Value;
+        private static string? ToProvider(
+            ReferenceKey? value
+        ) => value?.Value;
 
         /// <summary>Restores optional provider storage without replacing a missing parent with a default key.</summary>
-        private static ReferenceKey? FromProvider(string? value) => value is null ? null : new ReferenceKey(value);
+        private static ReferenceKey? FromProvider(
+            string? value
+        ) => value is null ? null : new ReferenceKey(value);
     }
 
     /// <summary>Provides an operator-free converted value key.</summary>
-    private readonly struct ValueKey(long value) : IEquatable<ValueKey>
+    private readonly struct ValueKey(
+        long value
+    ) : IEquatable<ValueKey>
     {
         /// <summary>Gets the stored scalar identity.</summary>
         public long Value { get; } = value;
 
         /// <inheritdoc />
-        public bool Equals(ValueKey other) => Value == other.Value;
+        public bool Equals(
+            ValueKey other
+        ) => Value == other.Value;
 
         /// <inheritdoc />
-        public override bool Equals(object? obj) => obj is ValueKey other && Equals(other);
+        public override bool Equals(
+            object? obj
+        ) => obj is ValueKey other && Equals(other);
 
         /// <inheritdoc />
         public override int GetHashCode() => Value.GetHashCode();
     }
 
     /// <summary>Exposes misleading domain operators to exercise reference identity checks for null.</summary>
-    private sealed class ReferenceKey(string value) : IEquatable<ReferenceKey>
+    private sealed class ReferenceKey(
+        string value
+    ) : IEquatable<ReferenceKey>
     {
         /// <summary>Gets the stored reference identity.</summary>
         public string Value { get; } = value;
 
         /// <inheritdoc />
-        public bool Equals(ReferenceKey? other) => other is not null && Value == other.Value;
+        public bool Equals(
+            ReferenceKey? other
+        ) => other is not null && Value == other.Value;
 
         /// <inheritdoc />
-        public override bool Equals(object? obj) => obj is ReferenceKey other && Equals(other);
+        public override bool Equals(
+            object? obj
+        ) => obj is ReferenceKey other && Equals(other);
 
         /// <inheritdoc />
         public override int GetHashCode() => StringComparer.Ordinal.GetHashCode(Value);
 
         /// <summary>Deliberately reports every pair equal; presence must not invoke this domain operator.</summary>
-        public static bool operator ==(ReferenceKey? first, ReferenceKey? second) => true;
+        public static bool operator ==(
+            ReferenceKey? first,
+            ReferenceKey? second
+        ) => true;
 
         /// <summary>Deliberately hides all inequality; parent presence must ignore this domain operator.</summary>
-        public static bool operator !=(ReferenceKey? first, ReferenceKey? second) => false;
+        public static bool operator !=(
+            ReferenceKey? first,
+            ReferenceKey? second
+        ) => false;
     }
 
     /// <summary>Exposes ordinary structural values and all supported optional parent shapes.</summary>

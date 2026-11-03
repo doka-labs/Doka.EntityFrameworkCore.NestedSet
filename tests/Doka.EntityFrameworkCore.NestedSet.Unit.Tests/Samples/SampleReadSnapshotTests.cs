@@ -1,5 +1,4 @@
 extern alias UserGroupsSample;
-
 using SampleReadSnapshot = UserGroupsSample::Doka.EntityFrameworkCore.NestedSet.Samples.SampleReadSnapshot;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples;

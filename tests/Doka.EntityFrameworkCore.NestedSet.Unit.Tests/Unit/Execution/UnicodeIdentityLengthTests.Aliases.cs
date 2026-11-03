@@ -35,7 +35,8 @@ public sealed partial class UnicodeIdentityLengthTests
         // Assert
         if (overflow)
         {
-            Assert.Equal(scopeRole ? "Scope" : "TreeId", Assert.IsType<ArgumentException>(error).ParamName);
+            Assert.Equal(scopeRole ? "Scope" : "TreeId",
+                Assert.IsType<ArgumentException>(error).ParamName);
             Assert.Null(request);
         }
         else
@@ -64,7 +65,9 @@ public sealed partial class UnicodeIdentityLengthTests
         var clone = mapping.WithStoreTypeAndSize(mapping.StoreType, mapping.Size);
 
         // Act
-        var scalarLength = NestedSetProviderCapabilities.Resolve(context).UsesUnicodeScalarLength(clone);
+        var scalarLength = NestedSetProviderCapabilities
+            .Resolve(context)
+            .UsesUnicodeScalarLength(clone);
 
         // Assert
         Assert.True(scalarLength);

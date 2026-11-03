@@ -12,7 +12,9 @@ public sealed class CompositionAncestorConstructionTests
     [Theory]
     [InlineData("MySql")]
     [InlineData("MariaDb")]
-    public async Task StrictAncestorCoordinatesKeepDirectQueryRootsAndEndpointProof(string engine)
+    public async Task StrictAncestorCoordinatesKeepDirectQueryRootsAndEndpointProof(
+        string engine
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -29,29 +31,50 @@ public sealed class CompositionAncestorConstructionTests
         }
 
         await using var provider = services.BuildServiceProvider();
-        await using var context = new CompositionContext(options.UseInternalServiceProvider(provider).Options);
-        var tree = context.NestedSet<CompositionNode>()
-            .ForScope(Guid.Parse("820bc0eb-7a3c-4dd9-9cbb-87d758889237")).InTree(Guid.Empty);
+        await using var context = new CompositionContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
+        var tree = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Parse("820bc0eb-7a3c-4dd9-9cbb-87d758889237"))
+            .InTree(Guid.Empty);
 
         var nodes = tree.Nodes;
         var entityType = context.Model.FindEntityType(typeof(CompositionNode))!;
         var bound = ((MethodCallExpression)nodes.Expression).Arguments[0];
         var sourceBindingMethod = NestedSetProviderCapabilities.Resolve(context).CompletedSourceMethod;
+
         var straightJoinMethod = NestedSetProviderCapabilities.Resolve(context).OrderedJoinMethod;
 
         // Act
         var query = tree.SelectAncestors(node => node.Id == 3,
-            (source, ancestor, distance) => new { Source = source, Ancestor = ancestor, Distance = distance });
+            (source, ancestor, distance) => new
+            {
+                Source = source,
+                Ancestor = ancestor,
+                Distance = distance,
+            });
 
         var captures = new QueryCaptureCounter();
         captures.Visit(query.Expression);
         // WHY: Public composition supplies the validated method from the actual provider options.
         // An unknown binding must still fail provenance; the guard never trusts an operator by its name.
-        var sourceProof = NestedSetQueryEndpoint.Require(query, row => row.Source, entityType, bound, "source",
-            sourceBindingMethod: sourceBindingMethod, orderedJoinMethod: straightJoinMethod);
+        var sourceProof = NestedSetQueryEndpoint.Require(query,
+            row => row.Source,
+            entityType,
+            bound,
+            "source",
+            sourceBindingMethod: sourceBindingMethod,
+            orderedJoinMethod: straightJoinMethod);
 
-        var ancestorProof = NestedSetQueryEndpoint.Require(query, row => row.Ancestor, entityType, bound, "ancestor",
-            sourceBindingMethod: sourceBindingMethod, orderedJoinMethod: straightJoinMethod);
+        var ancestorProof = NestedSetQueryEndpoint.Require(query,
+            row => row.Ancestor,
+            entityType,
+            bound,
+            "ancestor",
+            sourceBindingMethod: sourceBindingMethod,
+            orderedJoinMethod: straightJoinMethod);
 
         // Assert
         Assert.Equal(0, captures.Occurrences);
@@ -70,7 +93,10 @@ public sealed class CompositionAncestorConstructionTests
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
     [InlineData("MariaDb", true)]
-    public async Task OrdinaryAncestorTranslationDoesNotPerformIo(string engine, bool includeSelf)
+    public async Task OrdinaryAncestorTranslationDoesNotPerformIo(
+        string engine,
+        bool includeSelf
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -87,20 +113,28 @@ public sealed class CompositionAncestorConstructionTests
         }
 
         await using var provider = services.BuildServiceProvider();
-        await using var context = new CompositionContext(options.UseInternalServiceProvider(provider).Options);
-        var hierarchy = context.NestedSet<CompositionNode>()
+        await using var context = new CompositionContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
             .ForScope(Guid.Parse("820bc0eb-7a3c-4dd9-9cbb-87d758889237"));
 
         var query = includeSelf
             ? hierarchy.SelectAncestorsOrSelf(node => node.Id == 3,
                 (source, ancestor, distance) => new
                 {
-                    Source = source.Id, Ancestor = ancestor.Id, Distance = distance,
+                    Source = source.Id,
+                    Ancestor = ancestor.Id,
+                    Distance = distance,
                 })
             : hierarchy.SelectAncestors(node => node.Id == 3,
                 (source, ancestor, distance) => new
                 {
-                    Source = source.Id, Ancestor = ancestor.Id, Distance = distance,
+                    Source = source.Id,
+                    Ancestor = ancestor.Id,
+                    Distance = distance,
                 });
 
         // Act
@@ -149,20 +183,36 @@ public sealed class CompositionAncestorConstructionTests
         // WHY: These dialect-specific shape checks own their EF service graphs instead of expanding
         // EF's process-wide provider cache merely to inspect a deferred expression.
         await using var provider = services.BuildServiceProvider();
-        await using var context = new CompositionContext(options.UseInternalServiceProvider(provider).Options);
-        var hierarchy = context.NestedSet<CompositionNode>()
+        await using var context = new CompositionContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
             .ForScope(Guid.Parse("820bc0eb-7a3c-4dd9-9cbb-87d758889237"));
 
         Expression<Func<CompositionNode, bool>> selected = queryBearing
-            ? node => context.Set<CompositionNode>().Any(other => other.Id == node.Id && SelectedNode(other.Id))
+            ? node => context
+                .Set<CompositionNode>()
+                .Any(other => other.Id == node.Id && SelectedNode(other.Id))
             : node => SelectedNode(node.Id);
 
         // Act
         var query = includeSelf
             ? hierarchy.SelectAncestorsOrSelf(selected,
-                (source, ancestor, distance) => new { Source = source, Ancestor = ancestor, Distance = distance })
+                (source, ancestor, distance) => new
+                {
+                    Source = source,
+                    Ancestor = ancestor,
+                    Distance = distance,
+                })
             : hierarchy.SelectAncestors(selected,
-                (source, ancestor, distance) => new { Source = source, Ancestor = ancestor, Distance = distance });
+                (source, ancestor, distance) => new
+                {
+                    Source = source,
+                    Ancestor = ancestor,
+                    Distance = distance,
+                });
 
         var counter = new SelectionCounter();
         counter.Visit(query.Expression);
@@ -175,7 +225,9 @@ public sealed class CompositionAncestorConstructionTests
     }
 
     /// <summary>Marks the caller selection and fails if deferred construction evaluates application code.</summary>
-    private static bool SelectedNode(int key)
+    private static bool SelectedNode(
+        int key
+    )
         => throw new InvalidOperationException($"Selection for node {key} must remain deferred.");
 
     /// <summary>Detects query-valued closure members without reading or trusting their runtime values.</summary>
@@ -185,7 +237,9 @@ public sealed class CompositionAncestorConstructionTests
         internal int Occurrences { get; private set; }
 
         /// <inheritdoc />
-        protected override Expression VisitMember(MemberExpression node)
+        protected override Expression VisitMember(
+            MemberExpression node
+        )
         {
             if (typeof(IQueryable).IsAssignableFrom(node.Type))
             {
@@ -203,7 +257,9 @@ public sealed class CompositionAncestorConstructionTests
         internal int Occurrences { get; private set; }
 
         /// <inheritdoc />
-        protected override Expression VisitMethodCall(MethodCallExpression node)
+        protected override Expression VisitMethodCall(
+            MethodCallExpression node
+        )
         {
             if (node.Method.DeclaringType == typeof(CompositionAncestorConstructionTests)
                 && node.Method.Name == nameof(SelectedNode))

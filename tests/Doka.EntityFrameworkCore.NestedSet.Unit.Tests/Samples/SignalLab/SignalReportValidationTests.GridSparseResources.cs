@@ -12,8 +12,14 @@ public sealed partial class SignalReportValidationTests
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request()) with
         {
-            AnchorIds = Enumerable.Range(1, 512).Select(SignalReportDataset.Id).ToArray(),
-            ChannelIds = Enumerable.Range(101, 512).Select(SignalReportDataset.Id).ToArray(),
+            AnchorIds = Enumerable
+                .Range(1, 512)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
+            ChannelIds = Enumerable
+                .Range(101, 512)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
             Sources = [CapturePort.Pulse, CapturePort.Sweep, CapturePort.Burst],
         };
 
@@ -32,7 +38,8 @@ public sealed partial class SignalReportValidationTests
         // from parallel tests without blocking async execution; the thread assertion guards that premise.
         var before = GC.GetAllocatedBytesForCurrentThread();
         var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(snapshot,
-            rows, CancellationToken.None));
+            rows,
+            CancellationToken.None));
 
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
@@ -70,7 +77,9 @@ public sealed partial class SignalReportValidationTests
         }
 
         /// <summary>Exposes the sole prepared enumerator after checking the supplied cancellation token.</summary>
-        public IAsyncEnumerator<SignalReportTotal> GetAsyncEnumerator(CancellationToken cancellationToken)
+        public IAsyncEnumerator<SignalReportTotal> GetAsyncEnumerator(
+            CancellationToken cancellationToken
+        )
         {
             cancellationToken.ThrowIfCancellationRequested();
 

@@ -1,6 +1,8 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-/// <summary>Rejects false base-table attribution and incomplete native observations in the fixed ancestor fixture.</summary>
+/// <summary>
+/// Rejects false base-table attribution and incomplete native observations in the fixed ancestor fixture.
+/// </summary>
 public sealed class AncestorIndexBaseTableWorkTests
 {
     /// <summary>Retains actual index/table leaves while excluding parent filters and temporary C lookups.</summary>
@@ -8,7 +10,9 @@ public sealed class AncestorIndexBaseTableWorkTests
     public void MySqlSeparatesBaseAccessFromTemporaryAndParentTuples()
     {
         // Arrange
-        const string sql = "SELECT * FROM `AncestorIndexQueryNodes` AS `a` JOIN `AncestorIndexQueryNodes` AS `a4` ON 1=1";
+        const string sql =
+            "SELECT * FROM `AncestorIndexQueryNodes` AS `a` JOIN `AncestorIndexQueryNodes` AS `a4` ON 1=1";
+
         const string plan = "-> Filter: (a4.Id > 0) (actual time=0..1 rows=100000000 loops=1)\n"
             + " -> Table scan on u (actual time=0..1 rows=100000000 loops=1)\n"
             + " -> Covering index range scan on a (actual time=0..1 rows=1000 loops=1)\n"
@@ -74,7 +78,9 @@ public sealed class AncestorIndexBaseTableWorkTests
     public void MissingBaseAccessFailsClosed()
     {
         // Arrange
-        const string sql = "SELECT * FROM `AncestorIndexQueryNodes` AS `a` JOIN `AncestorIndexQueryNodes` AS `a4` ON 1=1";
+        const string sql =
+            "SELECT * FROM `AncestorIndexQueryNodes` AS `a` JOIN `AncestorIndexQueryNodes` AS `a4` ON 1=1";
+
         const string plan = "-> Table scan on a (actual time=0..1 rows=1 loops=1)\n"
             + " -> Unsupported scan on a4 (actual time=0..1 rows=100000000 loops=1)";
 
@@ -85,7 +91,9 @@ public sealed class AncestorIndexBaseTableWorkTests
         Assert.IsType<FormatException>(exception);
     }
 
-    /// <summary>Uses MariaDB pre-index observations and folds repeated shared-CTE metadata by its unique SQL owner.</summary>
+    /// <summary>
+    /// Uses MariaDB pre-index observations and folds repeated shared-CTE metadata by its unique SQL owner.
+    /// </summary>
     [Fact]
     public void MariaDbRetainsPreIndexBaseWorkWithoutCountingTemporaryRows()
     {
@@ -110,14 +118,19 @@ public sealed class AncestorIndexBaseTableWorkTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void MariaDbRepeatedAccessRequiresTheSameKnownQueryBlock(bool differentBlocks)
+    public void MariaDbRepeatedAccessRequiresTheSameKnownQueryBlock(
+        bool differentBlocks
+    )
     {
         // Arrange
         const string sql = "SELECT * FROM `AncestorIndexQueryNodes` AS `a`";
         const string access = "{\"table_name\":\"a\",\"r_loops\":2,\"r_rows\":3,\"r_index_rows\":11}";
         var plan = differentBlocks
-            ? "{\"blocks\":[{\"query_block\":{\"select_id\":1,\"table\":" + access
-                + "}},{\"query_block\":{\"select_id\":2,\"table\":" + access + "}}]}"
+            ? "{\"blocks\":[{\"query_block\":{\"select_id\":1,\"table\":"
+            + access
+            + "}},{\"query_block\":{\"select_id\":2,\"table\":"
+            + access
+            + "}}]}"
             : "{\"query_block\":{\"nested_loop\":[{\"table\":" + access + "},{\"table\":" + access + "}]}}";
 
         // Act
@@ -135,11 +148,14 @@ public sealed class AncestorIndexBaseTableWorkTests
     [InlineData("1.5")]
     [InlineData("\"block\"")]
     [InlineData("9223372036854775808")]
-    public void MariaDbInvalidQueryBlockFailsClosed(string identity)
+    public void MariaDbInvalidQueryBlockFailsClosed(
+        string identity
+    )
     {
         // Arrange
         const string sql = "SELECT * FROM `AncestorIndexQueryNodes` AS `a`";
-        var plan = "{\"query_block\":{\"select_id\":" + identity
+        var plan = "{\"query_block\":{\"select_id\":"
+            + identity
             + ",\"table\":{\"table_name\":\"a\",\"r_loops\":1,\"r_rows\":3}}}";
 
         // Act
@@ -197,12 +213,16 @@ public sealed class AncestorIndexBaseTableWorkTests
         Assert.IsType<FormatException>(exception);
     }
 
-    /// <summary>Accepts an explicitly unused branch without mistaking null row observations for executed work.</summary>
+    /// <summary>
+    /// Accepts an explicitly unused branch without mistaking null row observations for executed work.
+    /// </summary>
     [Fact]
     public void MariaDbExplicitUnusedAliasCompletesInventory()
     {
         // Arrange
-        const string sql = "SELECT * FROM `AncestorIndexQueryNodes` AS `a` JOIN `AncestorIndexQueryNodes` AS `a4` ON 1=1";
+        const string sql =
+            "SELECT * FROM `AncestorIndexQueryNodes` AS `a` JOIN `AncestorIndexQueryNodes` AS `a4` ON 1=1";
+
         const string plan = "{\"query_block\":{\"nested_loop\":["
             + "{\"table\":{\"table_name\":\"a\",\"r_loops\":1,\"r_rows\":3}},"
             + "{\"table\":{\"table_name\":\"a4\",\"r_loops\":0,\"r_rows\":null,\"r_index_rows\":null}}]}}";

@@ -217,8 +217,10 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
 
     /// <summary>Installs identities only after the complete detached aggregate has been retained.</summary>
     /// <param name="introduced">The exact entries collected before any structural or tracking assignment.</param>
+    /// <param name="callbackWrites">The operation log retaining external collection baselines before tracking.</param>
     private static void TrackInsertionGraph(
-        List<(EntityEntry Entry, NestedSetInsertionTracking.Identity? Identity)> introduced
+        List<(EntityEntry Entry, NestedSetInsertionTracking.Identity? Identity)> introduced,
+        NestedSetCallbackWrites callbackWrites
     )
     {
         // WHY: A root's first transition can create native Detached references to owned payload before its
@@ -229,6 +231,7 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
         for (var index = 0; index < introduced.Count; index++)
         {
             var candidate = introduced[index].Entry;
+            callbackWrites.CaptureRelationships(candidate);
             candidate.State = EntityState.Added;
             introduced[index] = (candidate, NestedSetInsertionTracking.Capture(candidate));
         }

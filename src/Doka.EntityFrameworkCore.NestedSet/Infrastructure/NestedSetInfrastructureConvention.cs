@@ -37,6 +37,8 @@ internal sealed class NestedSetInfrastructureConvention : IModelFinalizingConven
         {
             AddRegistry(modelBuilder, hierarchy, _provider, _typeMappings);
         }
+
+        NestedSetTreeRegistryTables.Validate(modelBuilder.Metadata, hierarchies, _provider);
     }
 
     /// <summary>Maps one shared infrastructure entity whose key matches the hierarchy's database identity.</summary>
@@ -80,13 +82,16 @@ internal sealed class NestedSetInfrastructureConvention : IModelFinalizingConven
                 .GetColumnName(hierarchyStore)
             ?? throw new InvalidOperationException("The nested-set TreeId has no hierarchy-table column.");
 
+        // WHY: The registry's entity name stays independent of this choice, so changing the table name diffs as
+        // a rename of the same table rather than as a new registry that loses identities and tombstones.
         registry.Metadata.SetTableName(
-            NestedSetTreeRegistryMetadata.TableName(
-                hierarchyStore.Schema,
-                hierarchyStore.Name,
-                nodeKeyColumn,
-                scopeColumn,
-                treeIdColumn),
+            hierarchy.FindAnnotation(NestedSetAnnotationNames.TreeRegistryTable)?.Value as string
+                ?? NestedSetTreeRegistryMetadata.TableName(
+                    hierarchyStore.Schema,
+                    hierarchyStore.Name,
+                    nodeKeyColumn,
+                    scopeColumn,
+                    treeIdColumn),
             true);
 
         registry.Metadata.SetSchema(hierarchyStore.Schema, true);

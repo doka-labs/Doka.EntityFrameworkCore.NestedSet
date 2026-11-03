@@ -575,8 +575,8 @@ contract may require boxing. Refresh projections include application-defined
 concurrency properties alongside structural roles; their bounded mixed result
 rows do not become an alternate retained identity model.
 Managed-save groups create typed entity wrappers once from the heterogeneous
-pending entries. Multi-role reads use the public typed property-values getter;
-one live `CurrentValues` wrapper serves multiple reads for an entry and is
+pending entries. Explicit-mutation identity guards use the public typed
+property-values getter; one live `CurrentValues` wrapper serves multiple reads for an entry and is
 retained by each guard candidate for late verification. It reflects current
 changes rather than replacing the independently owned identity snapshots.
 A cached per-key Parent adapter reads the mapped nullable representation
@@ -689,6 +689,159 @@ The unchanged 500-byte regression ceiling detects substantial tracker-wide
 allocation growth. The earlier 2026-09-24 observation was 419 bytes per row;
 these dated observations do not establish a throughput comparison or an
 allocation reduction for the complete insertion.
+
+### Manual-detection guard budgets, 2026-11-01
+
+The coordinated-save authorization plan is separate from explicit-mutation
+identity capture. It retains exact native entries and role/order snapshots
+only for the original affected candidates. Suppressing a Parent-only write
+does not remove that candidate. Typed reads validate current, available
+original, flag, and independently captured CLR state without acquiring entry
+wrappers on each boundary. Ordinary probes inspect raw CLR storage only for
+actual temporary/store-generated sidecars. Model caches contain metadata and
+delegates, never context instances or entries.
+
+Release observations on .NET 10.0.14, ARM64, without coverage instrumentation:
+
+| Measured work | Fixture | Allocated bytes |
+| --- | --- | ---: |
+| Ten ordinary hierarchy probes | 1 or 128 tracked nodes, empty collections | 720 |
+| Ten ordinary hierarchy probes | One parent with one child, two tracked nodes | 1,120 |
+| Ten ordinary hierarchy probes | 64 parents with one child each, 128 tracked nodes | 26,320 |
+| Ten plan captures, no candidates | 0 or 1,024 tracked nodes | 800 |
+| Ten plan captures, one candidate | 1 or 1,024 tracked nodes | 10,880 |
+| Ten plan captures, 64 candidates | 128 tracked nodes | 579,280 |
+| Ten complete plan validations | 1,024 tracked nodes, one candidate | 1,520 |
+| 10,000 unchanged typed scalar comparisons | Int64 | 0 |
+
+For the populated `List<TEntity>` fixture, the native reference-set comparison
+boxes one 40-byte enumerator per nonempty collection and pass. The 720-byte
+observation therefore applies to the empty-collection fixture, not to every
+unchanged graph. Set comparison retains duplicate/reference semantics; no
+stateful enumerator cache or quadratic scan is introduced to hide this cost.
+The populated fixture has a separate budget of 4,096 B plus 48 B per populated
+collection per pass. The existing empty/scalar/validation budgets are unchanged.
+
+These fixed fixtures demonstrate capture allocation proportional to affected
+candidates rather than unrelated tracked nodes. They measure allocated bytes,
+not retained heap, CPU time, or database latency. Existing limits remain
+unchanged: scalar/ordinary/validation loops allow at most 4,096 B; capture
+allows 4,096 B plus 1,600 B per candidate per repetition. Tests also check the
+observable result, unchanged tracking flags, and a closed database connection.
+
+The [manual-detection benchmark families](../benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks/README.md#feature-families)
+compare identical explicitly marked work on MariaDB/MySQL. Raw foreign payload
+is left unchanged in both measured workloads; its unsaved behavior and callback
+write/rollback contracts are tested separately. Full native comparisons must
+run sequentially after other host workloads have finished. Their results do
+not introduce a CI/RC timing gate.
+
+### Prepared imports and recovery costs
+
+Prepared-owner imports retain complete validated input membership while only the
+active 64-node wave may enter EF persistence. Guard work is distinct from input
+planning, tracking, EF fixup, database commands and full rollback snapshots.
+Streaming owner checks avoid rebuilding a full reference set per wave; saved
+member searches are grouped by owner/navigation. Immutable getter metadata can
+be cached, but live FK values and configured comparers are evaluated again.
+Arbitrary mutable callbacks can still require O(N * W) live inspection for N
+members and W waves. Bounded tracking alone does not establish linear total
+import time or a 100,000-node extrapolation.
+
+A historical 2026-11-02 .NET 10.0.14 isolated guard comparison observed the
+following allocations across fixed 64-node waves, with at most 65 tracked
+entries. Plan construction, tracking, persistence and retained heap are outside
+this interval. These values describe that fixed source/fixture, not the current
+cost of every complete import or a new allocation ceiling.
+
+| Prepared members | Before, bytes | After, bytes |
+| --- | ---: | ---: |
+| 1,000 | 3,712,984 | 82,392 |
+| 2,000 | 15,266,008 | 164,824 |
+| 4,000 | 51,382,048 | 329,536 |
+| 8,000 | 207,706,696 | 658,960 |
+
+The corresponding native MariaDB/MySQL comparison covered 28 adjacent pairs,
+including prepared subtree/forest imports and ordinary-save controls. Timings
+were mixed: 25 pairs had overlapping 99.9% intervals and adverse observations
+included slower untracked and small controls. Allocation samples were separate
+MemoryDiagnoser operations. The table therefore supports an isolated allocation
+finding, not a general latency improvement. Use the existing
+[benchmark workloads](../benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks/README.md#feature-families)
+for new source-matched comparisons; record exact inputs, setup boundaries,
+source/binary identity, host load, adverse results and uncertainty.
+
+Recovery retains the preimages required by the
+[manual-detection contract](configuration.md#manual-change-detection) and
+[bulk restoration boundary](bulk-import.md#failure-and-restoration). An initially
+unchanged FK may still need endpoint evidence. A selected entry can retain a
+wide owner's memberships, and complete coordinated snapshots remain linear in
+the tracked graph. A small inverse-addition receipt is bookkeeping, not the
+complete capture/recovery cost. An earlier implementation that loses required
+state is a correctness-cost control, not an equivalent-result speed baseline.
+
+Ordinary FK, shared-table peer and complex graph resource controls retain
+separate intervals and budgets. Complex journals are allocated only for complex
+state. Complete capture, same-lane restoration and detected native rebinding
+are measured independently at their declared widths, including 20,000-row
+capture/restore controls and 128/2,048-row detected-rebind controls. The large
+same-lane case does not qualify every detected path. Failure-only access graphs,
+receipt replay and orphan cleanup belong to exceptional recovery rather than
+successful-save allocation.
+
+Shared model/process metadata is warmed in a separate disposed one-node context
+before cold-map controls create their measured context. The measured native map
+remains cold. Do not hide map initialization inside warmup or charge unrelated
+process startup to a fresh-map budget. Existing complete-capture and restoration
+ceilings remain authoritative; lower sampled stack weights are not exact byte
+savings. Historical complex-capture comparisons without a verifiable raw-input
+manifest do not establish a current performance claim.
+
+The [regression inventory](regression-coverage.md#manual-detection-and-hierarchy-guards)
+names the native-membership, complex topology, sharing-peer, retry and allocation
+controls. Reproduce resource contracts through those existing tests with the
+[uninstrumented allocation partition](#coverage-collector-18110-and-unloadability).
+No hardware-dependent timing becomes a CI or release gate.
+
+### Saved relationship completion
+
+Relationship completion consumes an insertion wave once and retains only inputs
+with potential external collection relationships. Its early return creates no
+batch array, candidate list or collector. Arrays and lists use their existing
+storage through a read-only span; other producers retain their ordinary
+enumeration cost. Complete native-entry and CLR-reference sets come from the
+successful save guard instead of being rebuilt here. The retained references
+add a bounded per-scope cost rather than a per-node buffer, and do not extend
+the managed-save bypass lifetime. The ordering and persistence authority are
+specified in the [implementation guide](implementation-design.md#ordering-and-coordinated-saves).
+
+Historical local .NET 10.0.14 ARM64 workstation-GC observations on 2026-11-03
+used five alternating before/after process pairs with fixed tiering, five
+measured windows after two warm windows. Reflection, fixture construction and
+existing guard sets were excluded on both sides. Native identities and restored
+owner memberships were checked independently.
+
+| One array-input wave | Identities | Bytes before | Bytes after |
+| --- | ---: | ---: | ---: |
+| No external relationships | 2,048 | 0 | 0 |
+| Dense external relationships | 64 | 14,040 | 5,696 |
+| Dense external relationships | 2,048 | 545,800 | 188,360 |
+| One relevant identity | 2,048 | 391,792 | 1,432 |
+| Input-navigation completion only | 2,048 | 65,568 | 65,536 |
+
+Producer costs remain distinct: dictionary values and a flattened input can
+allocate their own enumerators even when no new batch buffer is created. The
+navigation-only timing observation was slower despite nearly identical bytes;
+other timing ranges overlapped under recorded background load. These are scoped
+allocation observations, not an elapsed-time or throughput guarantee.
+`CollectionBaselineCompletionAllocationTests` reproduces the bounded-buffer
+contract across materialized and lazy producers; the fixed paired observations
+do not substitute for fresh measurements of a later source.
+
+Table resolution retains its required-property snapshot while avoiding an outer
+copy. Source/target identity selection scans the existing result list and keeps
+missing-before-ambiguous error precedence. The relevant source and controls are
+listed in the [regression inventory](regression-coverage.md#manual-detection-and-hierarchy-guards).
 
 ## Qualification targets
 

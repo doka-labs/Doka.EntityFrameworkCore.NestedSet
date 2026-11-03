@@ -6,7 +6,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public sealed partial class CompositionVisibilityTraversalTests
 {
     /// <summary>Models custom reflection metadata that can change its reported query modifier between visits.</summary>
-    private sealed class QueryMethodProbe(bool rejectSecondVisit) : MethodInfo
+    private sealed class QueryMethodProbe(
+        bool rejectSecondVisit
+    ) : MethodInfo
     {
         private bool _observing;
 
@@ -21,11 +23,15 @@ public sealed partial class CompositionVisibilityTraversalTests
         }
 
         /// <summary>Retains an actual Where call whose predicate can contain a controlled test extension.</summary>
-        internal MethodCallExpression Where(Expression source, Expression predicate)
+        internal MethodCallExpression Where(
+            Expression source,
+            Expression predicate
+        )
         {
             var node = Expression.Parameter(typeof(CompositionGuardNode), "node");
 
-            return Expression.Call(this, source,
+            return Expression.Call(this,
+                source,
                 Expression.Quote(Expression.Lambda<Func<CompositionGuardNode, bool>>(predicate, node)));
         }
 
@@ -90,27 +96,44 @@ public sealed partial class CompositionVisibilityTraversalTests
         public override MethodInfo GetGenericMethodDefinition() => s_where.GetGenericMethodDefinition();
 
         /// <inheritdoc />
-        public override MethodInfo MakeGenericMethod(params Type[] typeArguments)
+        public override MethodInfo MakeGenericMethod(
+            params Type[] typeArguments
+        )
             => s_where.MakeGenericMethod(typeArguments);
 
         /// <inheritdoc />
-        public override object[] GetCustomAttributes(bool inherit) => s_where.GetCustomAttributes(inherit);
+        public override object[] GetCustomAttributes(
+            bool inherit
+        ) => s_where.GetCustomAttributes(inherit);
 
         /// <inheritdoc />
-        public override object[] GetCustomAttributes(Type attributeType, bool inherit)
+        public override object[] GetCustomAttributes(
+            Type attributeType,
+            bool inherit
+        )
             => s_where.GetCustomAttributes(attributeType, inherit);
 
         /// <inheritdoc />
-        public override bool IsDefined(Type attributeType, bool inherit) => s_where.IsDefined(attributeType, inherit);
+        public override bool IsDefined(
+            Type attributeType,
+            bool inherit
+        ) => s_where.IsDefined(attributeType, inherit);
 
         /// <inheritdoc />
-        public override object? Invoke(object? obj, BindingFlags invokeAttr, Binder? binder,
-            object?[]? parameters, CultureInfo? culture)
+        public override object? Invoke(
+            object? obj,
+            BindingFlags invokeAttr,
+            Binder? binder,
+            object?[]? parameters,
+            CultureInfo? culture
+        )
             => throw new InvalidOperationException("A deferred visibility proof must never execute this operator.");
     }
 
     /// <summary>Models custom reflection metadata that changes a member's reported type between visits.</summary>
-    private sealed class QueryMemberProbe(bool rejectSecondVisit) : PropertyInfo
+    private sealed class QueryMemberProbe(
+        bool rejectSecondVisit
+    ) : PropertyInfo
     {
         private readonly PropertyInfo _property = typeof(MetadataHolder).GetProperty(nameof(MetadataHolder.Allowed))!;
         private bool _observing;
@@ -158,35 +181,60 @@ public sealed partial class CompositionVisibilityTraversalTests
         public override Type? ReflectedType => _property.ReflectedType;
 
         /// <inheritdoc />
-        public override MethodInfo[] GetAccessors(bool nonPublic) => _property.GetAccessors(nonPublic);
+        public override MethodInfo[] GetAccessors(
+            bool nonPublic
+        ) => _property.GetAccessors(nonPublic);
 
         /// <inheritdoc />
-        public override MethodInfo? GetGetMethod(bool nonPublic) => _property.GetGetMethod(nonPublic);
+        public override MethodInfo? GetGetMethod(
+            bool nonPublic
+        ) => _property.GetGetMethod(nonPublic);
 
         /// <inheritdoc />
-        public override MethodInfo? GetSetMethod(bool nonPublic) => _property.GetSetMethod(nonPublic);
+        public override MethodInfo? GetSetMethod(
+            bool nonPublic
+        ) => _property.GetSetMethod(nonPublic);
 
         /// <inheritdoc />
         public override ParameterInfo[] GetIndexParameters() => _property.GetIndexParameters();
 
         /// <inheritdoc />
-        public override object[] GetCustomAttributes(bool inherit) => _property.GetCustomAttributes(inherit);
+        public override object[] GetCustomAttributes(
+            bool inherit
+        ) => _property.GetCustomAttributes(inherit);
 
         /// <inheritdoc />
-        public override object[] GetCustomAttributes(Type attributeType, bool inherit)
+        public override object[] GetCustomAttributes(
+            Type attributeType,
+            bool inherit
+        )
             => _property.GetCustomAttributes(attributeType, inherit);
 
         /// <inheritdoc />
-        public override bool IsDefined(Type attributeType, bool inherit) => _property.IsDefined(attributeType, inherit);
+        public override bool IsDefined(
+            Type attributeType,
+            bool inherit
+        ) => _property.IsDefined(attributeType, inherit);
 
         /// <inheritdoc />
-        public override object? GetValue(object? obj, BindingFlags invokeAttr, Binder? binder,
-            object?[]? index, CultureInfo? culture)
+        public override object? GetValue(
+            object? obj,
+            BindingFlags invokeAttr,
+            Binder? binder,
+            object?[]? index,
+            CultureInfo? culture
+        )
             => throw new InvalidOperationException("A visibility proof must not read application property values.");
 
         /// <inheritdoc />
-        public override void SetValue(object? obj, object? value, BindingFlags invokeAttr, Binder? binder,
-            object?[]? index, CultureInfo? culture)
+        public override void SetValue(
+            object? obj,
+            object? value,
+            BindingFlags invokeAttr,
+            Binder? binder,
+            object?[]? index,
+            CultureInfo? culture
+        )
             => throw new InvalidOperationException("A visibility proof must not write application property values.");
     }
 
@@ -209,7 +257,9 @@ public sealed partial class CompositionVisibilityTraversalTests
     }
 
     /// <summary>Models custom dispatch that bypasses VisitExtension while exposing a different second child.</summary>
-    private sealed class ChangingDispatch(Expression secondVisit) : Expression
+    private sealed class ChangingDispatch(
+        Expression secondVisit
+    ) : Expression
     {
         /// <summary>Gets the number of actual Accept dispatches, including repeated references.</summary>
         internal int Visits { get; private set; }
@@ -221,7 +271,9 @@ public sealed partial class CompositionVisibilityTraversalTests
         public override Type Type => typeof(bool);
 
         /// <inheritdoc />
-        protected override Expression Accept(ExpressionVisitor visitor)
+        protected override Expression Accept(
+            ExpressionVisitor visitor
+        )
         {
             Visits++;
 
@@ -230,7 +282,9 @@ public sealed partial class CompositionVisibilityTraversalTests
     }
 
     /// <summary>Models an opaque extension whose second traversal may expose a query-wide unsafe modifier.</summary>
-    private sealed class ChangingPredicate(Expression secondVisit) : Expression
+    private sealed class ChangingPredicate(
+        Expression secondVisit
+    ) : Expression
     {
         /// <summary>Gets the number of actual extension traversals, including repeated references.</summary>
         internal int Visits { get; private set; }
@@ -242,7 +296,9 @@ public sealed partial class CompositionVisibilityTraversalTests
         public override Type Type => typeof(bool);
 
         /// <inheritdoc />
-        protected override Expression VisitChildren(ExpressionVisitor visitor)
+        protected override Expression VisitChildren(
+            ExpressionVisitor visitor
+        )
         {
             Visits++;
             visitor.Visit(Visits > 1 ? secondVisit : Constant(true));

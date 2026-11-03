@@ -10,17 +10,22 @@ public sealed partial class SignalReportValidationTests
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request());
-        var rows = Catalog(snapshot).Reverse().Concat(Catalog(snapshot)).Append(new SignalCatalogRow
-        {
-            Kind = 99,
-            UnitCode = "ignored",
-        }).ToArray();
+        var rows = Catalog(snapshot)
+            .Reverse()
+            .Concat(Catalog(snapshot))
+            .Append(new SignalCatalogRow
+            {
+                Kind = 99,
+                UnitCode = "ignored",
+            })
+            .ToArray();
 
         var probe = new ReaderProbe();
 
         // Act
         var error = await Record.ExceptionAsync(() => SignalReportValidation.RequireCatalogAsync(snapshot,
-            ReadRows(rows, probe, CancellationToken.None), CancellationToken.None));
+            ReadRows(rows, probe, CancellationToken.None),
+            CancellationToken.None));
 
         // Assert
         Assert.Null(error);
@@ -41,20 +46,23 @@ public sealed partial class SignalReportValidationTests
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request());
-        var rows = Catalog(snapshot).Where(row => failure != "authorization" || row.Kind != 0)
+        var rows = Catalog(snapshot)
+            .Where(row => failure != "authorization" || row.Kind != 0)
             .Where(row => failure != "metadata" || row.Kind != 3)
             .Append(new SignalCatalogRow
             {
                 Kind = 1,
                 Id = snapshot.ChannelIds[0],
                 UnitCode = failure == "metadata" ? "count" : "COUNT",
-            }).ToArray();
+            })
+            .ToArray();
 
         var probe = new ReaderProbe();
 
         // Act
         var error = await Record.ExceptionAsync(() => SignalReportValidation.RequireCatalogAsync(snapshot,
-            ReadRows(rows, probe, CancellationToken.None), CancellationToken.None));
+            ReadRows(rows, probe, CancellationToken.None),
+            CancellationToken.None));
 
         // Assert
         var argument = Assert.IsType<ArgumentException>(error);
@@ -89,7 +97,8 @@ public sealed partial class SignalReportValidationTests
 
         // Act
         var error = await Record.ExceptionAsync(() => SignalReportValidation.RequireCatalogAsync(snapshot,
-            ReadRows(rows, probe, cancellation.Token), cancellation.Token));
+            ReadRows(rows, probe, cancellation.Token),
+            cancellation.Token));
 
         // Assert
         Assert.True(probe.Disposed);
@@ -130,7 +139,8 @@ public sealed partial class SignalReportValidationTests
 
         // Act
         var actual = await SignalReportValidation.CreateGridAsync(snapshot,
-            ReadRows(rows, probe, CancellationToken.None), CancellationToken.None);
+            ReadRows(rows, probe, CancellationToken.None),
+            CancellationToken.None);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -165,7 +175,9 @@ public sealed partial class SignalReportValidationTests
 
         // Act
         var error = await Record.ExceptionAsync(async () => cells = await SignalReportValidation.CreateGridAsync(
-            snapshot, ReadRows(rows, probe, CancellationToken.None), CancellationToken.None));
+            snapshot,
+            ReadRows(rows, probe, CancellationToken.None),
+            CancellationToken.None));
 
         // Assert
         Assert.IsType<ArgumentException>(error);
@@ -205,7 +217,9 @@ public sealed partial class SignalReportValidationTests
 
         // Act
         var error = await Record.ExceptionAsync(async () => cells = await SignalReportValidation.CreateGridAsync(
-            snapshot, ReadRows(rows, probe, cancellation.Token), cancellation.Token));
+            snapshot,
+            ReadRows(rows, probe, cancellation.Token),
+            cancellation.Token));
 
         // Assert
         Assert.Null(cells);
@@ -229,8 +243,14 @@ public sealed partial class SignalReportValidationTests
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request()) with
         {
-            AnchorIds = Enumerable.Range(1, 46_341).Select(SignalReportDataset.Id).ToArray(),
-            ChannelIds = Enumerable.Range(1, 46_341).Select(SignalReportDataset.Id).ToArray(),
+            AnchorIds = Enumerable
+                .Range(1, 46_341)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
+            ChannelIds = Enumerable
+                .Range(1, 46_341)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
         };
 
         SignalReportTotal[] rows =
@@ -243,7 +263,8 @@ public sealed partial class SignalReportValidationTests
 
         // Act
         var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(snapshot,
-            ReadRows(rows, probe, CancellationToken.None), CancellationToken.None));
+            ReadRows(rows, probe, CancellationToken.None),
+            CancellationToken.None));
 
         // Assert
         Assert.IsType<ArgumentException>(error);
@@ -257,5 +278,11 @@ public sealed partial class SignalReportValidationTests
         Guid signal,
         CapturePort source,
         double value
-    ) => new() { AnchorId = anchor, ChannelId = signal, Source = source, Value = value };
+    ) => new()
+    {
+        AnchorId = anchor,
+        ChannelId = signal,
+        Source = source,
+        Value = value,
+    };
 }

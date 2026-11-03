@@ -21,6 +21,9 @@ public sealed partial class ExpressionInliningTests
         Expression<Func<ProjectionMembers, int>> selector = row => row.Last;
         const int repetitions = 1000;
 
+        // WHY: Warm the exact member lookup before counting repeated calls over the same projection.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < repetitions; index++)
         {
             GC.KeepAlive(NestedSetQueryExpressions.Inline(selector, projection.Body));
@@ -29,6 +32,9 @@ public sealed partial class ExpressionInliningTests
         var before = GC.GetAllocatedBytesForCurrentThread();
 
         // Act
+        // WHY: Keep repeated member lookups in one allocation window with no new input setup.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < repetitions; index++)
         {
             GC.KeepAlive(NestedSetQueryExpressions.Inline(selector, projection.Body));
@@ -74,6 +80,9 @@ public sealed partial class ExpressionInliningTests
             _ => () => NestedSetQueryExpressions.Inline(expression, first, second, third),
         };
 
+        // WHY: Warm both prepared paths equally before the paired allocation measurement.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < 100; index++)
         {
             GC.KeepAlive(baseline());

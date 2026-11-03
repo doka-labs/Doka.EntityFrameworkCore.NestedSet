@@ -94,22 +94,80 @@ public sealed class CompositionComparerTests
 
         return (join, useComparer) switch
         {
-            ("join", true) => nodes.Join(payloads, node => node.Id, payload => payload.Id,
-                (node, payload) => new CompositionGuardRow { Upper = node, Lower = node, Payload = payload }, comparer),
-            ("join", false) => nodes.Join(payloads, node => node.Id, payload => payload.Id,
-                (node, payload) => new CompositionGuardRow { Upper = node, Lower = node, Payload = payload }),
-            ("group-join", true) => nodes.GroupJoin(payloads, node => node.Id, payload => payload.Id,
-                (node, payload) => new CompositionGuardRow { Upper = node, Lower = node }, comparer),
-            ("group-join", false) => nodes.GroupJoin(payloads, node => node.Id, payload => payload.Id,
-                (node, payload) => new CompositionGuardRow { Upper = node, Lower = node }),
-            ("left-join", true) => nodes.LeftJoin(payloads, node => node.Id, payload => payload.Id,
-                (node, payload) => new CompositionGuardRow { Upper = node, Lower = node, Payload = payload }, comparer),
-            ("left-join", false) => nodes.LeftJoin(payloads, node => node.Id, payload => payload.Id,
-                (node, payload) => new CompositionGuardRow { Upper = node, Lower = node, Payload = payload }),
-            ("right-join", true) => payloads.RightJoin(nodes, payload => payload.Id, node => node.Id,
-                (payload, node) => new CompositionGuardRow { Upper = node, Lower = node, Payload = payload }, comparer),
-            ("right-join", false) => payloads.RightJoin(nodes, payload => payload.Id, node => node.Id,
-                (payload, node) => new CompositionGuardRow { Upper = node, Lower = node, Payload = payload }),
+            ("join", true) => nodes.Join(payloads,
+                node => node.Id,
+                payload => payload.Id,
+                (node, payload) => new CompositionGuardRow
+                {
+                    Upper = node,
+                    Lower = node,
+                    Payload = payload,
+                },
+                comparer),
+            ("join", false) => nodes.Join(payloads,
+                node => node.Id,
+                payload => payload.Id,
+                (node, payload) => new CompositionGuardRow
+                {
+                    Upper = node,
+                    Lower = node,
+                    Payload = payload,
+                }),
+            ("group-join", true) => nodes.GroupJoin(payloads,
+                node => node.Id,
+                payload => payload.Id,
+                (node, payload) => new CompositionGuardRow
+                {
+                    Upper = node,
+                    Lower = node,
+                },
+                comparer),
+            ("group-join", false) => nodes.GroupJoin(payloads,
+                node => node.Id,
+                payload => payload.Id,
+                (node, payload) => new CompositionGuardRow
+                {
+                    Upper = node,
+                    Lower = node,
+                }),
+            ("left-join", true) => nodes.LeftJoin(payloads,
+                node => node.Id,
+                payload => payload.Id,
+                (node, payload) => new CompositionGuardRow
+                {
+                    Upper = node,
+                    Lower = node,
+                    Payload = payload,
+                },
+                comparer),
+            ("left-join", false) => nodes.LeftJoin(payloads,
+                node => node.Id,
+                payload => payload.Id,
+                (node, payload) => new CompositionGuardRow
+                {
+                    Upper = node,
+                    Lower = node,
+                    Payload = payload,
+                }),
+            ("right-join", true) => payloads.RightJoin(nodes,
+                payload => payload.Id,
+                node => node.Id,
+                (payload, node) => new CompositionGuardRow
+                {
+                    Upper = node,
+                    Lower = node,
+                    Payload = payload,
+                },
+                comparer),
+            ("right-join", false) => payloads.RightJoin(nodes,
+                payload => payload.Id,
+                node => node.Id,
+                (payload, node) => new CompositionGuardRow
+                {
+                    Upper = node,
+                    Lower = node,
+                    Payload = payload,
+                }),
             _ => throw new ArgumentOutOfRangeException(nameof(join)),
         };
     }

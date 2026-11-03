@@ -84,7 +84,9 @@ public sealed class SupervisorChainRuleTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void MaximumRepresentableOverflowProbeIsAccepted(bool originalPath)
+    public void MaximumRepresentableOverflowProbeIsAccepted(
+        bool originalPath
+    )
     {
         // Arrange
         var request = Request() with { MaxResultRows = int.MaxValue - 1 };
@@ -101,7 +103,9 @@ public sealed class SupervisorChainRuleTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void UnrepresentableOverflowProbeIsRejected(bool originalPath)
+    public void UnrepresentableOverflowProbeIsRejected(
+        bool originalPath
+    )
     {
         // Arrange
         var request = Request() with { MaxResultRows = int.MaxValue };
@@ -121,7 +125,9 @@ public sealed class SupervisorChainRuleTests
     [InlineData("unknown-routing")]
     [InlineData("invalid-person-rank")]
     [InlineData("invalid-group-rank")]
-    public void InvalidChainRuleIsRejected(string invalid)
+    public void InvalidChainRuleIsRejected(
+        string invalid
+    )
     {
         // Arrange
         var request = invalid switch
@@ -184,7 +190,9 @@ public sealed class SupervisorChainRuleTests
     [Theory]
     [InlineData(42)]
     [InlineData(21)]
-    public void RepeatedPersonStopsThePathWithoutAppendingCycleHop(int person)
+    public void RepeatedPersonStopsThePathWithoutAppendingCycleHop(
+        int person
+    )
     {
         // Arrange
         var previous = Prefix();
@@ -196,8 +204,17 @@ public sealed class SupervisorChainRuleTests
 
         // Act
         var admitted = SupervisorQueries.AdvanceBranch(
-            resolution, previous, 42, 22, 7, previous.InitialTreeId, 3,
-            SupervisorSelection.RequireUnique, budget, next, completed);
+            resolution,
+            previous,
+            42,
+            22,
+            7,
+            previous.InitialTreeId,
+            3,
+            SupervisorSelection.RequireUnique,
+            budget,
+            next,
+            completed);
 
         // Assert
         Assert.True(admitted);
@@ -224,8 +241,17 @@ public sealed class SupervisorChainRuleTests
 
         // Act
         var admitted = SupervisorQueries.AdvanceBranch(
-            Found(candidate), previous, 42, 22, 7, previous.InitialTreeId, 3,
-            SupervisorSelection.RequireUnique, budget, next, completed);
+            Found(candidate),
+            previous,
+            42,
+            22,
+            7,
+            previous.InitialTreeId,
+            3,
+            SupervisorSelection.RequireUnique,
+            budget,
+            next,
+            completed);
 
         // Assert
         Assert.True(admitted);
@@ -258,7 +284,10 @@ public sealed class SupervisorChainRuleTests
         // Arrange
         var previous = Prefix();
         var resolution = new SupervisorResolution(
-            Enum.Parse<SupervisorResolutionStatus>(resolutionStatus), 5, [], null);
+            Enum.Parse<SupervisorResolutionStatus>(resolutionStatus),
+            5,
+            [],
+            null);
 
         var next = new List<SupervisorQueries.ChainPath>();
         var completed = new List<SupervisorChainBranch>();
@@ -266,8 +295,17 @@ public sealed class SupervisorChainRuleTests
 
         // Act
         var admitted = SupervisorQueries.AdvanceBranch(
-            resolution, previous, 42, 22, 7, previous.InitialTreeId, 3,
-            SupervisorSelection.RequireUnique, budget, next, completed);
+            resolution,
+            previous,
+            42,
+            22,
+            7,
+            previous.InitialTreeId,
+            3,
+            SupervisorSelection.RequireUnique,
+            budget,
+            next,
+            completed);
 
         // Assert
         Assert.True(admitted);
@@ -285,7 +323,9 @@ public sealed class SupervisorChainRuleTests
     [InlineData("frontier")]
     [InlineData("visited")]
     [InlineData("rows")]
-    public void FanOutStopsBeforeAppendingBeyondBudget(string dimension)
+    public void FanOutStopsBeforeAppendingBeyondBudget(
+        string dimension
+    )
     {
         // Arrange
         var request = dimension switch
@@ -304,8 +344,17 @@ public sealed class SupervisorChainRuleTests
 
         // Act
         var admitted = SupervisorQueries.AdvanceBranch(
-            resolution, null, 42, 42, 7, Guid.Empty, 1,
-            SupervisorSelection.All, budget, next, completed);
+            resolution,
+            null,
+            42,
+            42,
+            7,
+            Guid.Empty,
+            1,
+            SupervisorSelection.All,
+            budget,
+            next,
+            completed);
 
         // Assert
         Assert.False(admitted);
@@ -343,15 +392,26 @@ public sealed class SupervisorChainRuleTests
 
         // Act
         var admitted = SupervisorQueries.AdvanceBranch(
-            resolution, previous, 42, 22, 7, previous.InitialTreeId, 3,
-            SupervisorSelection.RequireUnique, budget, next, completed);
+            resolution,
+            previous,
+            42,
+            22,
+            7,
+            previous.InitialTreeId,
+            3,
+            SupervisorSelection.RequireUnique,
+            budget,
+            next,
+            completed);
 
         // Assert
         Assert.Equal(expected, admitted);
         Assert.Empty(next);
         Assert.Equal(expected ? 1 : 0, completed.Count);
-        Assert.Equal(expectedPeople, completed.SelectMany(branch => branch.Hops)
-            .Select(hop => hop.Evidence.CandidateUserId));
+        Assert.Equal(expectedPeople,
+            completed
+                .SelectMany(branch => branch.Hops)
+                .Select(hop => hop.Evidence.CandidateUserId));
     }
 
     /// <summary>A large requested copy cannot overflow a counter or bypass a small remaining budget.</summary>
@@ -407,10 +467,16 @@ public sealed class SupervisorChainRuleTests
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
-    public void ReaderBudgetAcceptsExactCapacity(int capacity)
+    public void ReaderBudgetAcceptsExactCapacity(
+        int capacity
+    )
     {
         // Arrange
         var budget = new SupervisorQueries.ChainBudget(Request() with { MaxResultRows = capacity });
+
+        // WHY: Consume only the preceding rows so the act checks admission at the exact capacity boundary.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 1; index < capacity; index++)
         {
             budget.Read();
@@ -454,7 +520,9 @@ public sealed class SupervisorChainRuleTests
 
     /// <summary>Creates one complete explicit hop rule without database or role catalog access.</summary>
     /// <param name="start">The explicit inclusion boundary for this hop's first searched group.</param>
-    private static SupervisorStep Step(SearchStart start)
+    private static SupervisorStep Step(
+        SearchStart start
+    )
         => new(start, new NoRoleFilter(), new AllEligibleGroups(), [], null, SupervisorSelection.RequireUnique);
 
     /// <summary>
@@ -464,7 +532,10 @@ public sealed class SupervisorChainRuleTests
     {
         var first = Candidate(21, 7, 6);
         var firstPath = new SupervisorQueries.ChainPath(
-            new SupervisorHop(1, 42, 7, first.StartTreeId, first), null, 7, first.StartTreeId);
+            new SupervisorHop(1, 42, 7, first.StartTreeId, first),
+            null,
+            7,
+            first.StartTreeId);
 
         var second = Candidate(22, 6, 5);
 
@@ -473,7 +544,9 @@ public sealed class SupervisorChainRuleTests
 
     /// <summary>Creates an already unique resolution with its exact continuation occurrence.</summary>
     /// <param name="candidate">The unique occurrence retained as both evidence and continuation.</param>
-    private static SupervisorResolution Found(SupervisorCandidate candidate)
+    private static SupervisorResolution Found(
+        SupervisorCandidate candidate
+    )
         => new(SupervisorResolutionStatus.Found, candidate.StartGroupId, [candidate], candidate);
 
     /// <summary>Creates a valid occurrence with exact current search provenance.</summary>

@@ -2,14 +2,18 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples;
 
 /// <summary>Checks person-rank semantics and storage proportional to people rather than repeated evidence.</summary>
 /// <param name="output">Receives the measured allocation count outside the measured operation.</param>
-public sealed class SupervisorPersonRankScaleTests(ITestOutputHelper output)
+public sealed class SupervisorPersonRankScaleTests(
+    ITestOutputHelper output
+)
 {
     /// <summary>Ranking uses the best nearest priority without replacing the first nearest continuation.</summary>
     /// <param name="reverse">Whether canonical evidence arrives in the opposite order.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void CanonicalPersonRankAndContinuationUseTheirDistinctContracts(bool reverse)
+    public void CanonicalPersonRankAndContinuationUseTheirDistinctContracts(
+        bool reverse
+    )
     {
         // Arrange
         SupervisorCandidate[] rows =
@@ -20,8 +24,16 @@ public sealed class SupervisorPersonRankScaleTests(ITestOutputHelper output)
             Candidate(80, 2, 4),
         ];
 
-        var candidates = reverse ? rows.Reverse().ToArray() : rows;
-        var expectedEvidence = candidates.Where(row => row.CandidateUserId == 90).ToArray();
+        var candidates = reverse
+            ? rows
+                .Reverse()
+                .ToArray()
+            : rows;
+
+        var expectedEvidence = candidates
+            .Where(row => row.CandidateUserId == 90)
+            .ToArray();
+
         var expectedContinuation = expectedEvidence.First(row => row.Distance == 2);
 
         // Act
@@ -40,7 +52,9 @@ public sealed class SupervisorPersonRankScaleTests(ITestOutputHelper output)
     [InlineData(3)]
     [InlineData(4)]
     [InlineData(5)]
-    public void EverySlotInsideLargerRankBandIsAmbiguous(int slot)
+    public void EverySlotInsideLargerRankBandIsAmbiguous(
+        int slot
+    )
     {
         // Arrange
         SupervisorCandidate[] rows =
@@ -53,7 +67,9 @@ public sealed class SupervisorPersonRankScaleTests(ITestOutputHelper output)
             Candidate(80, 3, 1),
         ];
 
-        var candidates = rows.Concat(rows).ToArray();
+        var candidates = rows
+            .Concat(rows)
+            .ToArray();
 
         // Act
         var result = SupervisorSelectionRules.Select(7, candidates, SupervisorSelection.NthPerson(slot));
@@ -71,16 +87,22 @@ public sealed class SupervisorPersonRankScaleTests(ITestOutputHelper output)
     [InlineData(5_001)]
     [InlineData(10_000)]
     [InlineData(10_001)]
-    public void LargeFanInUsesCanonicalDistinctPersonSlots(int slot)
+    public void LargeFanInUsesCanonicalDistinctPersonSlots(
+        int slot
+    )
     {
         // Arrange
         const int people = 10_000;
         const int occurrencesPerPerson = 8;
         var candidates = RankedEvidence(people, occurrencesPerPerson);
         var expectedPerson = people - slot + 1;
-        var expectedEvidence = candidates.Where(row => row.CandidateUserId == expectedPerson).ToArray();
+        var expectedEvidence = candidates
+            .Where(row => row.CandidateUserId == expectedPerson)
+            .ToArray();
+
         var expectedStatus = slot <= people
-            ? SupervisorResolutionStatus.Found : SupervisorResolutionStatus.NotFound;
+            ? SupervisorResolutionStatus.Found
+            : SupervisorResolutionStatus.NotFound;
 
         var expectedContinuation = expectedEvidence.Length == 0 ? null : expectedEvidence[1];
 
@@ -122,6 +144,9 @@ public sealed class SupervisorPersonRankScaleTests(ITestOutputHelper output)
         var candidates = RankedEvidence(people, occurrencesPerPerson);
         var selection = SupervisorSelection.NthPerson(513);
 
+        // WHY: Warm ranking before its allocation interval without buffering another occurrence-sized result.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var iteration = 0; iteration < 4; iteration++)
         {
             _ = SupervisorSelectionRules.Select(7, candidates, selection);
@@ -146,10 +171,16 @@ public sealed class SupervisorPersonRankScaleTests(ITestOutputHelper output)
     }
 
     /// <summary>Creates reversed person IDs with independently known unique distance/priority rank slots.</summary>
-    private static SupervisorCandidate[] RankedEvidence(int people, int occurrencesPerPerson)
+    private static SupervisorCandidate[] RankedEvidence(
+        int people,
+        int occurrencesPerPerson
+    )
     {
         var result = new SupervisorCandidate[people * occurrencesPerPerson];
 
+        // WHY: Rank determines both the independent expected person order and the target evidence-array offset.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var rank = 0; rank < people; rank++)
         {
             var person = people - rank;
@@ -157,6 +188,9 @@ public sealed class SupervisorPersonRankScaleTests(ITestOutputHelper output)
             var farther = Candidate(person, nearest.Distance + 1, 0);
             var offset = (people - rank - 1) * occurrencesPerPerson;
 
+            // WHY: Fill each existing array slot without allocating per-person transport arrays.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var occurrence = 0; occurrence < occurrencesPerPerson; occurrence++)
             {
                 // WHY: Repeated nearest references are separate evidence occurrences; the earlier farther
@@ -169,7 +203,11 @@ public sealed class SupervisorPersonRankScaleTests(ITestOutputHelper output)
     }
 
     /// <summary>Builds pure scalar evidence without coupling rank tests to provider or context setup.</summary>
-    private static SupervisorCandidate Candidate(int person, int distance, int priority) => new()
+    private static SupervisorCandidate Candidate(
+        int person,
+        int distance,
+        int priority
+    ) => new()
     {
         TenantId = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
         SourceUserId = 42,

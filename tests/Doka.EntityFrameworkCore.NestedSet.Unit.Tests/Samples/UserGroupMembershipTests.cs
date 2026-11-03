@@ -45,13 +45,13 @@ public sealed class UserGroupMembershipTests
             {
                 TenantId = tenantId,
                 UserId = assignedUser.Id,
-                UserGroupId = firstGroup.Id
+                UserGroupId = firstGroup.Id,
             },
             new UserGroupMembership
             {
                 TenantId = tenantId,
                 UserId = assignedUser.Id,
-                UserGroupId = secondGroup.Id
+                UserGroupId = secondGroup.Id,
             });
 
         await context.SaveChangesAsync(CancellationToken.None);
@@ -111,7 +111,10 @@ public sealed class UserGroupMembershipTests
 
         // Act
         var exception = await Record.ExceptionAsync(() => context.Database.ExecuteSqlInterpolatedAsync(
-            $"INSERT INTO \"UserGroupMemberships\" (\"TenantId\", \"UserId\", \"UserGroupId\") VALUES ({tenantId}, {user.Id}, {group.Id})",
+            $"""
+            INSERT INTO "UserGroupMemberships" ("TenantId", "UserId", "UserGroupId")
+                VALUES ({tenantId}, {user.Id}, {group.Id})
+            """,
             CancellationToken.None));
 
         var persistedCount = await context
@@ -249,7 +252,7 @@ public sealed class UserGroupMembershipTests
         var user = new User
         {
             Name = "Taylor",
-            Position = "Engineer"
+            Position = "Engineer",
         };
 
         await context
@@ -289,7 +292,9 @@ public sealed class UserGroupMembershipTests
         Assert.Equal(0, remainingMemberships);
     }
 
-    /// <summary>A group with members cannot be removed without an explicit application decision about those links.</summary>
+    /// <summary>
+    /// A group with members cannot be removed without an explicit application decision about those links.
+    /// </summary>
     [Fact]
     public async Task DeletingGroupWithMembershipIsRestrictedAsync()
     {

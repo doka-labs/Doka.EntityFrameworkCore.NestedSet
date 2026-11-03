@@ -3,7 +3,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Protects compact coordinate snapshots and their distinction from configured sentinels.</summary>
 public sealed class BulkOriginalStructureTests
 {
-    /// <summary>Native coordinate snapshots retain zero and extreme values independently of a nonzero sentinel.</summary>
+    /// <summary>
+    /// Native coordinate snapshots retain zero and extreme values independently of a nonzero sentinel.
+    /// </summary>
     /// <param name="boundary">The exact caller-owned boundary and sibling position.</param>
     /// <param name="depth">The exact caller-owned depth.</param>
     [Theory]

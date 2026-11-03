@@ -52,7 +52,20 @@ public sealed class CompositionConsumerAdapterTests
             bytes[^1] ^= 0x7f;
         }
 
-        var expected = value == 0 ? Guid.Empty : new Guid(value, 0x51ab, 0x4000, 0x80, 0, 0, 0, 0, 0, 0, 1);
+        var expected = value == 0
+            ? Guid.Empty
+            : new Guid(value,
+                0x51ab,
+                0x4000,
+                0x80,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                1);
+
         var candidate = new Guid(bytes);
         int? decoded = null;
 
@@ -91,54 +104,76 @@ public sealed class CompositionConsumerAdapterTests
                 ModelCompatibilityDatabase.Options<CompositionCapacityGroupContext>("Sqlite"));
 
         var mapping = NestedSetModelMapping.For(context.Model);
-        var entities = context.Model.GetEntityTypes().Where(entity => entity.ClrType.Assembly
-            == (signal ? typeof(SignalLabContext).Assembly : typeof(GroupContext).Assembly)).ToArray();
+        var entities = context
+            .Model
+            .GetEntityTypes()
+            .Where(entity => entity.ClrType.Assembly
+                == (signal ? typeof(SignalLabContext).Assembly : typeof(GroupContext).Assembly))
+            .ToArray();
 
-        var trees = entities.Where(entity => mapping.TryDescriptor(entity, out _))
-            .Select(entity => mapping.Descriptor(entity).TreeId.Resolve(entity)).ToHashSet();
+        var trees = entities
+            .Where(entity => mapping.TryDescriptor(entity, out _))
+            .Select(entity => mapping
+                .Descriptor(entity)
+                .TreeId
+                .Resolve(entity))
+            .ToHashSet();
 
-        var properties = entities.SelectMany(entity => entity.GetDeclaredProperties())
-            .Where(property => property.ClrType == typeof(Guid) || property.ClrType == typeof(Guid?)).ToArray();
+        var properties = entities
+            .SelectMany(entity => entity.GetDeclaredProperties())
+            .Where(property => property.ClrType == typeof(Guid) || property.ClrType == typeof(Guid?))
+            .ToArray();
 
         var otherTree = Guid.Parse("55555555-1111-2222-3333-444444444444");
         int[] integers = [int.MinValue, -1, 0, 1, int.MaxValue];
 
         // Act
-        var observations = properties.Select(property =>
-        {
-            var converter = property.GetValueConverter()
-                ?? throw new InvalidOperationException(
-                    $"Missing converter for {property.DeclaringType.Name}.{property.Name}.");
+        var observations = properties
+            .Select(property =>
+            {
+                var converter = property.GetValueConverter()
+                    ?? throw new InvalidOperationException(
+                        $"Missing converter for {property.DeclaringType.Name}.{property.Name}.");
 
-            var tree = trees.Contains(property);
-            var values = tree
-                ? [Guid.Empty, CompositionConsumerModel.Tree, otherTree]
-                : integers.Select(CompositionConsumerModel.Identity).ToArray();
+                var tree = trees.Contains(property);
+                var values = tree
+                    ? [Guid.Empty, CompositionConsumerModel.Tree, otherTree]
+                    : integers
+                        .Select(CompositionConsumerModel.Identity)
+                        .ToArray();
 
-            var encoded = values.Select(value => converter.ConvertToProvider(value)).ToArray();
-            var decoded = encoded.Select(converter.ConvertFromProvider).ToArray();
+                var encoded = values
+                    .Select(value => converter.ConvertToProvider(value))
+                    .ToArray();
 
-            return (tree, converter.ProviderClrType, values, encoded, decoded);
-        }).ToArray();
+                var decoded = encoded
+                    .Select(converter.ConvertFromProvider)
+                    .ToArray();
+
+                return (tree, converter.ProviderClrType, values, encoded, decoded);
+            })
+            .ToArray();
 
         // Assert
         Assert.NotEmpty(trees);
         Assert.NotEmpty(observations);
-        Assert.All(observations, observed =>
-        {
-            Assert.Equal(observed.values.Cast<object>(), observed.decoded);
+        Assert.All(observations,
+            observed =>
+            {
+                Assert.Equal(observed.values.Cast<object>(), observed.decoded);
 
-            if (observed.tree)
-            {
-                Assert.Equal(typeof(Guid), observed.ProviderClrType);
-                Assert.Equal(new object[] { CompositionConsumerModel.Tree, Guid.Empty, otherTree }, observed.encoded);
-            }
-            else
-            {
-                Assert.Equal(typeof(int), observed.ProviderClrType);
-                Assert.Equal(integers.Cast<object>(), observed.encoded);
-            }
-        });
+                if (observed.tree)
+                {
+                    Assert.Equal(typeof(Guid), observed.ProviderClrType);
+                    Assert.Equal(new object[] { CompositionConsumerModel.Tree, Guid.Empty, otherTree },
+                        observed.encoded);
+                }
+                else
+                {
+                    Assert.Equal(typeof(int), observed.ProviderClrType);
+                    Assert.Equal(integers.Cast<object>(), observed.encoded);
+                }
+            });
     }
 
     /// <summary>Unbound UNION literals use the same provider identity as their actual property branches.</summary>
@@ -153,7 +188,10 @@ public sealed class CompositionConsumerAdapterTests
     [InlineData("SqlServer", true)]
     [InlineData("Sqlite", false)]
     [InlineData("Sqlite", true)]
-    public void UnboundScalarIdentityMatchesTheMappedUnionBranch(string engine, bool signal)
+    public void UnboundScalarIdentityMatchesTheMappedUnionBranch(
+        string engine,
+        bool signal
+    )
     {
         // Arrange
         using DbContext context = signal
@@ -164,36 +202,46 @@ public sealed class CompositionConsumerAdapterTests
 
         var entity = context.Model.FindEntityType(signal ? typeof(SignalNode) : typeof(UserGroup))!;
 
-        var descriptor = NestedSetModelMapping.For(context.Model).Descriptor(entity);
-        var property = (signal ? descriptor.NodeKey : descriptor.TreeId).Resolve(entity).GetTypeMapping();
+        var descriptor = NestedSetModelMapping
+            .For(context.Model)
+            .Descriptor(entity);
+
+        var property = (signal ? descriptor.NodeKey : descriptor.TreeId)
+            .Resolve(entity)
+            .GetTypeMapping();
+
         var values = signal
             ? new[]
             {
-                Guid.Empty,
-                CompositionConsumerModel.Identity(1),
-                CompositionConsumerModel.Identity(int.MaxValue),
+                Guid.Empty, CompositionConsumerModel.Identity(1), CompositionConsumerModel.Identity(int.MaxValue),
             }
-            : new[]
-            {
-                Guid.Empty,
-                CompositionConsumerModel.Tree,
-                Guid.Parse("55555555-1111-2222-3333-444444444444"),
-            };
+            : new[] { Guid.Empty, CompositionConsumerModel.Tree, Guid.Parse("55555555-1111-2222-3333-444444444444"), };
 
         // Act
         // WHY: A property-only mapping check misses unbound literals in catalog/status UNION branches.
         // Resolve through the actual model's public pre-convention-aware scalar mapping service.
-        var scalar = context.GetService<ITypeMappingSource>().FindMapping(typeof(Guid), context.Model)
+        var scalar = context
+                .GetService<ITypeMappingSource>()
+                .FindMapping(typeof(Guid), context.Model)
             ?? throw new InvalidOperationException("The adapter has no unbound Guid scalar mapping.");
 
-        var encoded = values.Select(value => scalar.Converter is { } converter
-            ? converter.ConvertToProvider(value) : value).ToArray();
+        var encoded = values
+            .Select(value => scalar.Converter is { } converter
+                ? converter.ConvertToProvider(value)
+                : value)
+            .ToArray();
 
-        var expected = values.Select(value => property.Converter is { } converter
-            ? converter.ConvertToProvider(value) : value).ToArray();
+        var expected = values
+            .Select(value => property.Converter is { } converter
+                ? converter.ConvertToProvider(value)
+                : value)
+            .ToArray();
 
-        var decoded = encoded.Select(value => scalar.Converter is { } converter
-            ? converter.ConvertFromProvider(value) : value).ToArray();
+        var decoded = encoded
+            .Select(value => scalar.Converter is { } converter
+                ? converter.ConvertFromProvider(value)
+                : value)
+            .ToArray();
 
         // Assert
         Assert.Equal(expected, encoded);

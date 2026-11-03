@@ -117,7 +117,7 @@ public abstract partial class SaveChangesTests
     }
 
     /// <summary>
-    ///     Runs only the necessary planning and post-callback scans, including after a previous lease reset.
+    ///     Coordinates marked hierarchy work without detecting raw payload when automatic detection is disabled.
     /// </summary>
     [Theory]
     [InlineData(false, false)]
@@ -147,14 +147,25 @@ public abstract partial class SaveChangesTests
         }
 
         context.ChangeTracker.AutoDetectChangesEnabled = automaticDetection;
+
+        if (orderedChange && !automaticDetection)
+        {
+            // WHY: Manual mode requires explicit intent for the order change, independently of raw payload.
+            context.Entry(node).Property(value => value.Name).IsModified = true;
+        }
+
         var detections = 0;
         context.ChangeTracker.DetectedAllChanges += (_, _) => detections++;
 
         // Act
         await context.SaveChangesAsync(CancellationToken.None);
+        var stored = await setup.Set<OrderingNode>().Where(value => value.Id == 1)
+            .Select(value => new { value.Name, value.Payload }).SingleAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(2, detections);
+        Assert.Equal(automaticDetection ? 2 : 0, detections);
+        Assert.Equal(orderedChange ? "Zulu" : "Alpha", stored.Name);
+        Assert.Equal(automaticDetection ? "changed" : "original", stored.Payload);
         Assert.Equal(automaticDetection, context.ChangeTracker.AutoDetectChangesEnabled);
     }
 }

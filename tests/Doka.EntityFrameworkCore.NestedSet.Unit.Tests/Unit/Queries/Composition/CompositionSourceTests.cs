@@ -20,14 +20,22 @@ public sealed class CompositionSourceTests
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
         var hierarchy = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
         var node = new CompositionGuardNode { Id = 1 };
-        var source = new[] { new CompositionGuardRow { Upper = node, Lower = node } }.AsQueryable();
+        var source = new[]
+        {
+            new CompositionGuardRow
+            {
+                Upper = node,
+                Lower = node,
+            },
+        }.AsQueryable();
 
         // Act
         var error = Record.Exception(() => CompositionEndpointTests.Filter(hierarchy, source, operation));
 
         // Assert
         Assert.IsAssignableFrom<EnumerableQuery<CompositionGuardRow>>(source);
-        Assert.Equal("source", Assert.IsType<ArgumentException>(error).ParamName);
+        Assert.Equal("source",
+            Assert.IsType<ArgumentException>(error).ParamName);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
     }
@@ -52,14 +60,20 @@ public sealed class CompositionSourceTests
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
         var hierarchy = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
         var input = new ForbiddenEnumeration();
-        var source = filtered ? input.AsEnumerable().Where(row => row.Distance > 0).AsQueryable() : input.AsQueryable();
+        var source = filtered
+            ? input
+                .AsEnumerable()
+                .Where(row => row.Distance > 0)
+                .AsQueryable()
+            : input.AsQueryable();
 
         // Act
         var error = Record.Exception(() => CompositionEndpointTests.Filter(hierarchy, source, operation));
 
         // Assert
         Assert.IsAssignableFrom<EnumerableQuery<CompositionGuardRow>>(source);
-        Assert.Equal("source", Assert.IsType<ArgumentException>(error).ParamName);
+        Assert.Equal("source",
+            Assert.IsType<ArgumentException>(error).ParamName);
         Assert.Equal(0, input.EnumerationStarts);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
@@ -80,14 +94,20 @@ public sealed class CompositionSourceTests
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
         using var foreign = CompositionGuardContext.Create(boundary, boundary.Commands);
         var hierarchy = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
-        var source = foreign.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping)
-            .Select(node => new CompositionGuardRow { Upper = node, Lower = node });
+        var source = foreign
+            .Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping)
+            .Select(node => new CompositionGuardRow
+            {
+                Upper = node,
+                Lower = node,
+            });
 
         // Act
         var error = Record.Exception(() => CompositionEndpointTests.Filter(hierarchy, source, operation));
 
         // Assert
-        Assert.Equal("source", Assert.IsType<ArgumentException>(error).ParamName);
+        Assert.Equal("source",
+            Assert.IsType<ArgumentException>(error).ParamName);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
     }

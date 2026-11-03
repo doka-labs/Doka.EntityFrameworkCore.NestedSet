@@ -1,6 +1,6 @@
 ---
 id: D-018
-status: accepted
+status: implemented
 date: 2026-10-16
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
@@ -344,6 +344,11 @@ boundary or close a native performance finding.
 
 ### Confirmation
 
+The six compositors and their semantic/provider controls are implemented in the
+references below. RC run 41014625971 passed native SQL Server, MySQL/MariaDB,
+PostgreSQL and SQLite integration on October 30 for the released source.
+That evidence does not requalify subsequent uncommitted changes.
+
 Run the Unit project with `--filter FullyQualifiedName~Composition` and each
 provider project with `--filter FullyQualifiedName~HierarchyComposition` in
 Release. Expect valid pairs and bags, no cross-tree/scope substitution, named
@@ -449,6 +454,8 @@ A malformed existing API fails clearly instead of guessing a server family.
 
 ### Decision History
 
+- 2026-10-16: Decision recorded with status proposed.
+- 2026-10-16: Status changed from proposed to accepted.
 - 2026-10-16: Accepted six deferred compositors over ordinary EF queries, with source bags, exact hierarchy identity, complete visible paths and nearest-owner selection kept separate from consumer business rules.
 - 2026-10-17: Replaced repeated global failure scans with partitioned path and nearest-candidate relations after native work regressions; retained dense, hidden-edge, empty-fringe and mixed-direction counterexamples.
 - 2026-10-18: Restricted reuse to owned immutable syntax and request-local values; qualified collection transport by provider rather than imposing one SQL shape.
@@ -459,6 +466,9 @@ A malformed existing API fails clearly instead of guessing a server family.
 - 2026-10-28: Retained the path and nearest-owner contracts through SQL Server's relational failure summaries and equivalent coordinate ordering; separated supervisor status from complete unique-person evidence. Actual Showplan work controls cover emitted and pre-filter rows; native x64 performance qualification remains mandatory.
 - 2026-10-28: Recorded 36 native successor failures. Preserve collection identifiers through grouped conditional coordinates and retain an explicit EF boundary before outer path filters. Translation boundaries do not establish physical reuse; unchanged native work budgets remain required.
 - 2026-10-29: Replaced SQL Server's grouped ancestor coordinates and failure summaries with owner-first fenced ranges and completed failure points behind a lazy scalar lookup. The owner approved tagging composition queries with `OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 1)` on SQL Server only; budgets, indexes and deadlines are unchanged and native x64 qualification remains required.
+- 2026-11-03: Restored the two original initial status entries from manifest-verified pre-consolidation ADR copies. This recovers previously recorded history; it does not independently establish historical approval or add a new decision.
+- 2026-11-03: Status changed from accepted to implemented.
+- 2026-11-03: Reconciled status with the implemented compositors and successful native-provider qualification in RC run 41014625971 for version 10.1.0. Recorded the correction today; the original acceptance date, historical failures and qualification boundaries remain unchanged.
 
 ### Implementation References
 
@@ -549,3 +559,4 @@ files do not replace a full provider run on another patch.
 - [EF 10.0.13 scalar cardinality reduction](https://github.com/dotnet/efcore/blob/v10.0.13/src/EFCore/Query/Internal/NavigationExpandingExpressionVisitor.ExpressionVisitors.cs#L993-L1024) (primary source; retrieved 2026-10-16)
 - [EF 10.0.13 FirstOrDefault limit](https://github.com/dotnet/efcore/blob/v10.0.13/src/EFCore.Relational/Query/RelationalQueryableMethodTranslatingExpressionVisitor.cs#L704-L732) (primary source; retrieved 2026-10-16)
 - [EF 10.0.13 absent scalar default](https://github.com/dotnet/efcore/blob/v10.0.13/src/EFCore.Relational/Query/RelationalSqlTranslatingExpressionVisitor.cs#L589-L600) (primary source; retrieved 2026-10-16)
+- [Successful native-provider RC qualification](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/runs/41014625971) (primary source; retrieved 2026-11-03)

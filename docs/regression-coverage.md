@@ -279,8 +279,17 @@ per successful suite run. Each generated forest contains at most 64 nodes; the
 existing deterministic mutation sequences and capacity tests remain unchanged.
 
 Sources: [core properties](../tests/Doka.NestedSet.Tests/Unit/NestedSetPropertyTests.cs),
-[bulk-plan properties](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/BulkPlanPropertyTests.cs),
-and [generated-test guidance](../CONTRIBUTING.md#generated-invariant-tests).
+[bulk-plan properties](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/BulkPlanPropertyTests.cs).
+
+### Maintaining generated properties
+
+Use generated arguments rather than an internal random seed so FsCheck can
+shrink a failure. Create fresh mutable state inside each invocation; shrinking
+reexecutes the property. Bound each forest to 64 nodes because the existing
+capacity suites own large-scale evidence. Keep ordinary runs randomized. To
+reproduce a failure, copy the reported seed tuple into the property's `Replay`
+attribute temporarily, then retain the minimal failing input as a regression.
+Each property keeps one Arrange/Act/Assert sequence.
 
 ## Current-source optional migration contracts
 
@@ -1089,6 +1098,440 @@ Sparse `OriginalStructure` values belong to this rollback contract. Their raw
 null/sentinel representation is intentional; these snapshots do not replace
 the typed active NodeKey, Scope, TreeId, or Parent used by an operation.
 
+## Manual detection and hierarchy guards
+
+`SaveChangesTests.ManualDetection` exercises ordinary and coordinated contexts,
+synchronous/asynchronous saves, normal application payload and node payload,
+and both automatic-detection settings. Unmarked manual edits remain unsaved;
+explicit marks and callback-created ordinary writes still persist. Positive
+Parent/order cases explicitly mark the requested property and retain real
+coordinated hierarchy maintenance when automatic detection is disabled. Raw
+unmarked Parent/order edits instead reject before payload SQL or registry locks.
+
+Adversarial callbacks change Parent, bounds, or configured ordering after
+planning. Both a pending ordinary write and EF's zero-write fast path must
+reject those changes without payload SQL or registry locks. Separate completion
+callback cases leave legitimate post-save edits pending rather than treating
+them as writes made by the completed save.
+
+The navigation regressions use a real parent/children model rather than only
+scalar ParentId values. `DetachedChildRemovalPreservesOrdinarySaveSemantics`
+keeps ordinary saves usable after detach and after explicit detection, without
+discovering manual payload. Scope-principal replacements distinguish equal
+keys from real Scope changes. Composite owner relationships share Scope with
+another FK: collection changes and reference clearing that alter only an
+ordinary nullable FK remain ordinary writes. Scope-changing variants still
+reject before SQL. Client-side `CascadeTiming.OnSaveChanges` deletion through
+an ordinary principal is rejected before any hierarchy row can be deleted.
+
+Late DetectedAllChanges edits exercise both the real persistence boundary and
+zero-write completion after removal of the redundant detection-event scans.
+Direct Add/Left errors identify facade operations. Separate positive tests pin
+the uniform manual-detection boundary: facade insertion and actual coordinated
+Parent edits leave unrelated unmarked snapshot-tracked payload unsaved.
+Explicit ordinary callback writes still persist atomically. Callback flag
+changes remain an explicit application request for native EF detection;
+NestedSet itself never turns detection on.
+
+The candidate-plan regressions include Parent-only candidates after suppression,
+raw callback edits to previously unmodified roles/order, changes to tracking
+flags and originals, detached candidates, and ordinary payload flags on the
+same candidate. Managed single/subtree/forest insertion cases cover tracked
+hierarchy entries absent from EF's pending write list as well as navigation
+effects on the staged rows. Rollback checks retain database atomicity and the
+existing ownership of application tracker snapshots.
+
+`StrictManualDetection` covers explicit `CurrentValue`/`IsModified` Parent and
+ordering changes, same-node and foreign payload, acceptance disabled, callback
+writes, and rollback. `StrictManagedDetection` covers single/subtree/forest
+insertion. Its explicit application writes are created inside `SavingChanges`,
+after the existing clean-context preflight; separate negatives retain rejection
+of already registered writes. Both coordinator and managed-scope tests allow
+deliberate callback changes to the EF detection policy and require restoration
+of the initial setting. `StrictManagedNavigations` retains staged-node and
+foreign-tree navigation rejection without relying on automatic detection.
+
+`HierarchyChangeDetectionTests` checks unchanged tracking flags, unrelated
+principal payload, every role, custom value comparers, conceptual nulls, shadow
+values, parent references, collection membership, and notification strategies.
+Mixed TPC collections check only their configured hierarchy members; ordinary
+sibling additions/removals and reference changes must remain ordinary manual
+edits. Positive hierarchy-member and duplicate-reference controls protect the
+same inherited relationship without broadening coordination to sibling types.
+The allocation collection separately checks warmed scalar comparisons and
+whole hierarchy probes, excluding EF setup and test-runner instrumentation.
+`AuthorizedCandidateRejectsClrKeyChangeBehindGeneratedSidecar` and
+`OrdinaryObserverRejectsClrKeyChangeBehindGeneratedSidecar` reproduce a hidden
+CLR key edit while EF still reports the original current value. Both failed
+before their fix. `AuthorizedCandidatePreservesCapturedGeneratedDivergence`
+keeps unchanged independently captured CLR/EF values valid. The shared typed
+getter is also exercised by the existing insertion identity tests.
+`GuardPlanCaptureAllocationDependsOnCandidateCount` and
+`GuardPlanValidationKeepsFixedWarmAllocation` separate capture from warmed
+validation; their unchanged budgets and observations are documented in
+[performance](performance.md#manual-detection-guard-budgets-2026-11-01).
+The [benchmark method](performance.md#manual-detection-guard-budgets-2026-11-01)
+compares explicitly marked equivalent work separately from these deterministic
+regressions. Timing observations are fixture/source-specific, not a throughput gate.
+`ConceptualNullWithoutModifiedFlagIsStillHierarchyWork` isolates the conceptual
+null flag from scalar/original differences and Modified flags.
+`SaveValidationLifetimeTests` verifies exact previous-action restoration after
+asynchronous success, failure and cancellation, including a real pooled lease.
+The synchronous cases independently check prior-action and detection-setting
+restoration after success, failure and cancellation, including real pool reuse.
+`AuthorizedUnchangedCandidateRejectsDeletion` isolates the candidate lifecycle
+check after Parent suppression has cleared its only modified flag.
+`RequiredKeyOnlyOwnerClearIsHierarchyWorkWithoutCascade` isolates required
+key-only severance under `Restrict`, independently of cascading delete behavior.
+The non-key overlap control uses a shared configured ordering value. Actual
+Scope participates in the convention-created Parent principal key, so a
+non-key Scope fixture would contradict the supported model. The valid ordering
+fixture instead proves that the same minimal-overlap selection excludes a
+non-key guarded member from ordinary owner-FK nulling.
+Five independently compiled isolated mutations are killed by these controls:
+candidate lifecycle, key-only deletion, overlap selection, synchronous action
+restoration and synchronous detection restoration. Each was restored before
+the next mutation; assertion failures, rather than compile errors, establish
+the negative evidence. No mutation framework is added to the repository.
+Filled-collection resource cases record the native 40-byte enumerator per
+nonempty collection/pass separately from the unchanged empty-fixture budget.
+
+`MarkedParentWithSynchronizedNavigationsCommits` covers reference, add, remove,
+both collection edits and the complete graph with both detection settings.
+Separate tests check failed-save restoration, an identical retry and a later
+ordinary save. `PlannedParentRejectsDifferentCallbackNavigation` changes a
+reference or inserts the dependent into two unauthorized parent collections;
+it requires rejection before payload SQL and preserves unrelated list order.
+The snapshot assertions compare scalar values/flags, CLR collection identity
+and order, native reference/FK snapshots, principal lookups and dependent buckets.
+
+`PreparedOwnerInputAllowsFollowingOrdinarySave` covers single, subtree and
+forest insertion. The cross-batch `PreparedOwnerImport` cases cover 65/130-node
+subtrees and two-plan forests: success/follow-up save, late failure, identical
+retry, cancellation, unknown members, premature future-node attachment and a
+wrong-scope owner. Batch observations require at most 64 active node writes.
+Exact `InvalidImport` classification remains for an explicitly Added future
+input; raw unauthorized navigation effects retain `InvalidContext`.
+
+`FailedParentMovePreservesAcceptedStalePrincipalMembership` first establishes
+accepted stale membership through public detach, external move, reattach and
+reload operations. It then checks that failed coordination preserves that
+baseline rather than assuming every unexpected principal was initially empty.
+The bounded `NotificationRollbackRestoresAuthorizedMoveAndModifiedUnexpectedParent`
+control additionally exercises real notification fixup, ObservableCollection,
+native dependent buckets, pending owner payload and restored tracking policies.
+`NotificationRollbackPreservesCollectionAndResumesSubscriptions` covers all three
+notification strategies with original null/non-null collections and distinct
+replacement instances. It requires exact native subscription counts, application
+listeners, preserved null/reference storage and no input reattachment.
+`PreparedOwnerImportContinuesFutureCleanupAfterCallbackFailure` preserves both
+the original import rejection and an injected cleanup exception while requiring
+remaining known future inputs to receive cleanup. The context is discarded after
+such an aggregate; the test does not assert retry in that state.
+`MarkedNullParentWithSynchronizedNavigationsRequiresExplicitTreeId` retains the
+existing explicit `DetachAsTreeAsync` contract instead of inventing a TreeId.
+
+Prepared-import scaling controls isolate the actual guard from
+native setup, planning and persistence. `HierarchyImportCollectionAllocationTests`
+observes 1,000/2,000/4,000/8,000 prepared members with at most 65 tracked entries,
+plus equal completed snapshots at fixed tracked size. Foreign replacement at an
+unchanged collection count, duplicate references and tracked removals preserve
+the live inspection contract; these budgets do not establish total import latency.
+
+`CompletedWaveRollbackRestoresReplacedInputCollection` checks original null storage
+and exact replaced collection identity after a completed wave. The paired
+`OwnedGraphRollbackRespectsValidationBoundary` cases distinguish validated owned
+fixup cleanup from caller-owned references in a malformed unvalidated graph.
+`LateSelectedOwnerBaselineExcludesIntroducedInputAndRetainsExistingMembers` checks
+both CLR order and native snapshots when real FK fixup selects a new tracked owner.
+
+`PayloadOwnerSnapshot` covers actually marked versus raw unmarked
+ordinary FKs and mutations after SQL in command and `SavedChanges` callbacks.
+Stored FK values, installed snapshot membership, following saves and full tree
+validation distinguish persisted proof from current CLR state. The model-only
+`ParentRelationshipRespectsStructuralIndexContract` retains rejection of the
+conventional unique Parent index without inventing unique-Parent support.
+
+`PlannedParentCollectionRemovalUsesIntentDespiteSuppressedPhysicalForeignKey`
+covers installed intended-parent snapshots with a suppressed physical Parent
+that is either null or non-null. Both unchanged membership and removal are tested.
+`PersistedRelationshipProofTests` validates ordinary update proof against
+SQL Server procedure metadata without opening a connection. Original-only
+parameters cannot authorize current values; complete generated output requires
+an actual returned sidecar. SQLite tracking controls additionally require genuine
+temporary principal-to-FK propagation and keep unmarked temporary members excluded.
+Independent isolated source mutations demonstrate that removing either guard
+makes its corresponding regressions fail; no mutation framework is added.
+The same persisted-FK behavior applies to ordinary/coordinated and registered
+direct/wrapped synchronous/asynchronous saves. Shared cases include
+`PayloadOwnerCallbackRollbackRestoresInstalledNativeBaseline`, failure after the
+payload in a real structural UPDATE, preservation of preexisting native members,
+independent automatic/manual retry and rejection after detaching an unsaved member.
+Raw setters and public `CurrentValue` fixup have separate recovery expectations.
+`MixedPayloadOwnerRollback` checks member-specific inverse receipts rather than
+copying a late whole-owner baseline. Its shared cases cover
+raw marked A and public `CurrentValue` B in the same callback, B entering/leaving
+the target, two failure boundaries, automatic/manual retries and detached follow-ups.
+An original member removed then re-added must retain its pre-save membership,
+native dependent bucket, current/original FK values and modification flags.
+Two simultaneous raw additions and duplicate CLR references remain covered.
+`TrackerMembershipDeltaTests` checks idempotence and an actual null native slot;
+`TrackerMembershipDeltaAllocationTests` bounds one addition independently of owner
+width at one and 8,192 existing members, without copying the owner's collection.
+`UnchangedPayloadOwnerRollback` checks initially unchanged FKs with only
+Name modified before save, marked/unmarked callback resets, both failure
+boundaries, independent retries/follow-ups, a middle list member, null reference,
+opposite moves and originally absent native membership. The Unit matrix adds
+nullable/shared composite FKs, both occupied hybrid-key variants, actual temporary
+sidecars, selected duplicates beside raw pending edits and repeated Restore.
+`SupplementalParentCapturePreservesUnexpectedMembershipCleanup` retains removal
+of wrong-parent raw membership despite an earlier supplemental endpoint capture.
+`NullCollectionPreservesOnlyUnrelatedPendingMembers` checks both null restoration
+and retaining a new container for unrelated pending raw members. The eleven
+`CompleteForeignKeyCaptureHasLinearAllocation` cases distinguish one selected
+entry's wide-owner preimage from all-entry capture through 20,000 members, including three cold-map
+controls; the 152-byte delta probe is
+not a total snapshot budget.
+`MultipleSelectedMembersKeepOriginalOrderBesidePendingAnchors` checks both normal
+and conflicting raw anchor order. `NativeRoundTripRespectsExplicitAndUnmarkedIntent`
+distinguishes an explicit native round trip from a raw reorder and a deliberately
+unmarked round trip. Four `SupplementalRecoveryKeepsLinearAllocation` cases
+bound complete exceptional recovery, including projection and verification.
+`NativeOnlySharedOwnerRecoveryKeepsLinearAllocation` separately bounds the native
+snapshot repair/verification stage with all entries captured at 128 and 20,000
+members. It is not a budget for the complete all-entry scalar rollback.
+`RequiredConceptualNullRestoresOriginalNativeRelationship` checks callback-created,
+already pending and scalar-reset conceptual nulls against exact native buckets,
+CLR/native references, collection membership and repeated Restore. The framework
+binding tests also reject inexact key-only lookup metadata and return signatures.
+`DivergentRawForeignKeyPreservesActualIndexedBucket` covers native map initialization
+before/after a pending raw FK change, with/without an additional conceptual-null
+flag. It independently compares installed and current-value buckets after repeated
+recovery, including untracked principals. Required-FK controls also reject a stale
+callback bucket outside both original vectors and verify EF's indexed HashSet shape.
+`DetachedOldParentMovePreservesMarkedIntentAndRejectsUnplannedCallbacks` accepts
+the intended tracked destination after detaching the old parent, while rejecting
+wrong-reference and null-Parent callback changes. Every case runs through the
+same provider fixtures; native SQL Server remains an explicit x64 qualification.
+Shared-table and native-only membership controls include:
+
+- `TableSharingRollbackRestoresUnchangedPeer` uses genuine provider concurrency
+  without callbacks, completion failure and later structural UPDATE failure for
+  unsplit, OwnsOne and ordinary table-split rows. It compares tracker/native
+  snapshots, database geometry/payload and exact exception type or identity.
+- `TableSharingRollbackAllowsIdenticalRetry` retries completion/structural failures
+  without manual tracker repair. `TableSharingSuccessfulSavePreservesUnmarkedPayload`
+  preserves the positive save path and independent raw payload.
+- `NativeCollectionRoundTripRestoresPresenceWithoutConsumingRawOrder` checks
+  marked/unmarked FK round trips beside a raw duplicate at both failure boundaries.
+
+Twelve `TableSharingRollbackTests` Unit cases distinguish captured Unchanged from
+already flagless Modified and explicitly marked Modified peers, plus shared shadow
+readback and accepted Added/Deleted aggregates. Eight
+`RoundTripPreservesNativePresenceAndIndependentRawOrder` cases include original
+native absence, library-owned receipts and repeated Restore. Compile-valid
+omissions and overbroad state/CLR-authority mutations fail their intended tests.
+
+`ComplexPeerRollbackTests` covers raw edit/add/remove/replacement, optional null, complex-only and key-only
+peers, originally Modified intent, nested promotion, fresh native Detached slots,
+and optional-only elements with present/absent originals and a nonnullable numeric
+leaf. Its two plain EF SQLite controls distinguish JSON cardinality serialization
+from existing unmarked scalar edits without NestedSet registration.
+`ComplexPeerRollbackPreservesPendingGraph`, `ComplexPeerRollbackAllowsIdenticalRetry`
+and `ComplexPeerSuccessPreservesUnmarkedPayload` retain exact caller identities,
+native originals, actual rollback, success and retry on the provider fixtures.
+`ManagedSharingRollbackRestoresPromotedPeer` and its success/retry counterparts
+cover owned/split peers, reverse writes, single/subtree insertion and genuine
+provider concurrency. `ManagedSharingCaptureTests` compares closure with EF's
+actual command preparer, including exact TPH metadata and directional JSON owner
+promotion, Added/Deleted seeds and unrelated row/FK exclusions. Two serialized
+resource controls hold capture size fixed while tracker population grows.
+Post-capture complex topology controls preserve the same ownership boundary.
+`ComplexTopologyRollbackTests` compares exact CLR containers and element order,
+independent current/original values, flags, native slot identities and unrelated
+tracked state after remove, clear, null, replacement, reorder and addition.
+Its controls retain raw null/duplicate references, already-detected deletions
+and reorders, accepted Added/Deleted owners, supported runtime arrays, struct
+references and repeated recovery. A native Added object whose lane was trimmed
+must not satisfy recovery merely because its state still reads Added.
+`InheritedDocumentRestoresDerivedEntryAfterCallback` distinguishes base-declared
+metadata from the tracked derived entity. `OptionalDocumentRestoresCollectionContainers`
+and `NullDocumentRetiresIntroducedNativeChildren` retain exact old optional and
+nested containers while rejecting leaked callback registrations.
+`HiddenModifiedDocumentChildrenRetainFlagsAfterAcceptance` and
+`RawOuterRemovalPreservesNativeTailAfterCallback` preserve marked native-child
+originals/flags and old CLR values even when a raw-null or shortened current
+parent hides them. Acceptance and repeated recovery remain separate controls.
+`ComplexTopologyRollbackAllocationTests` measures complete capture and complete
+exceptional restoration separately through 20,000 complex rows with nested
+elements; existing ordinary-entry ceilings remain independent and unchanged.
+Its `DetectedCallbackClearRebindsNativeEntriesWithinGraphAllocation` cases at
+128 and 2,048 rows explicitly require the native rebind path and retain its
+allocation and elapsed-time observations without turning elapsed time into a gate.
+
+The shared `ComplexCallbackRollbackRestoresCapturedPeer` and
+`ComplexCallbackRollbackRestoresOrdinaryRow` specifications preserve the original
+error and compare actual database rollback for ordinary, owned and split rows.
+Their success and identical-retry counterparts check the positive save path.
+`ComplexCallbackManagedCompletionRestoresPendingWrite` and
+`ComplexCallbackManagedRollbackAllowsExplicitWriteRetry` retain the distinct
+managed capture timing for single, subtree and forest insertion. Genuine
+concurrency and late structural/completion faults exercise the persistence
+boundary independently from direct tracker restoration. Provider execution
+follows the [supported-host requirements](support-and-qualification.md#provider-and-engine-matrix);
+a source test or inherited specification is not evidence that a native engine ran it.
+
+`ComplexRecoveryCompositionTests` checks interacting graph changes in 102 cases:
+
+- `ComposedCallbackRestoresExactNativeAndClrPreimage`: 42 nullable/uneven-shape
+  combinations, including repeated removal, addition/reordering and replacement
+  at raw, detected and accepted callback boundaries.
+- `PendingAddedCompositionRestoresExactNativeAndClrPreimage`: 36 combinations
+  retain raw or detected pending Added state while nested callback mutations
+  change the same parents.
+- `ReviewSeedCompositionRestoresExactNativeLanes`: six reduced deterministic
+  review traces retain their explicit expected shapes.
+- `CallbackOnlyNestedOwnersRestoreAbsentCapturedMembership`: eight null/empty
+  and keep/remove/clear/null cases check callback-only nested cache occurrences.
+- `RepeatedCallbacksDoNotRetainLostNativeOwners`: two repeated-callback cases
+  retain exact membership through later detection.
+- `DeepCallbackOnlyOwnersRestoreAbsentCapturedMembership`: four depth-four
+  cases check both restored lanes after their CLR ancestor disappears.
+- `DeepCallbackOnlyOwnersAllowActualSqliteRetry`: four matching cases execute
+  actual SQLite persistence after recovery and compare stored payload.
+
+Independent observations include both native lane lengths, null holes, element
+identities, scalar originals/flags and a later save or detection call. State
+equality alone cannot hide a stale staging slot. The orphan oracle checks that
+uncaptured identities are absent from both restored native lanes; it does not
+read invalidated post-capture handles or invent a Detached-state requirement.
+Captured identities and original scalar/flag/ordinal observations remain exact.
+
+`ComplexCollectionStorageRecoveryTests` defines another 60 cases:
+
+- `RuntimeStoragePreservesContainerAndScalarState`: 24 mutable List, array,
+  ReadOnlyCollection and ImmutableList variants under the same mapped interface.
+- `CopyingSetterIsNotCalledForCapturedContainer`: six no-op/remove/add variants
+  retain caller storage without invoking a copying property setter.
+- `StructPrimitiveValuesRestoreComparerSnapshotsAndFlags`: 20 raw/detected
+  primitive collection and byte-array mutation variants retain comparer snapshots.
+- `NestedStructRestoresRawPrimitiveValuesThroughContainingPath`: four nested
+  copyback cases preserve unmarked values and independent originals.
+- `HiddenOriginalStructRestoresPrimitiveValuesAndNativeIntent`: six hidden-tail
+  or cleared-parent variants resolve the retained original element after
+  copyback, including callback acceptance.
+
+`AlignedNativeCaptureAvoidsTransientIdentityMaps` adds four isolated journal
+allocation guards at one, 128, 2,048 and 20,000 rows. It measures native journal
+construction without charging scalar PropertyEntry wrappers or the complete
+tracker snapshot to that interval. Proven aligned lanes avoid the temporary
+identity union; divergent lanes keep their general current/original authority.
+Empty nested metadata does not require recursive path construction. Complete
+capture/recovery guards remain separate and their existing ceilings are unchanged.
+
+`ComplexDeletedElementRecoveryTests` defines 17 recovery cases at three complex
+collection levels, the depth at which EF's Deleted recursion appears:
+
+- `PendingDeletedElementSurvivesCallbackAddition`: seven nested shapes with raw or
+  detected callback additions, including EF's own rejection during detection.
+- `PendingNestedAddedSurvivesRemovalOfItsOwner`: two Added children of a removed
+  owner retire through a borrowed slot and persist afterwards.
+- `NestedInsertionBeforeRemovedOwnerRetiresThroughLiveOrdinals`: retirement reads
+  each entry's own instance after a callback shifted its ordinal.
+- `CallbackEntityDeletionKeepsCapturedLaneLengths`: a whole-entity transition does
+  not keep raw lane growth.
+- `DeletedEntityWithStructElementsCanBeCapturedAndRestored`: two cases capture
+  struct references beneath a Deleted owner.
+- `PendingAddedElementBelowDeletedEntityRestoresItsScalars`: an element without any
+  public EF entry keeps its scalars.
+- `ResurrectedEntityRetainsItsDeletedElements`: two shapes keep Deleted elements in
+  current slots after `Remove` followed by `State = Modified`.
+- `ElementCreatedThroughWrapperWithoutOriginalLaneIsRestored`: an original ordinal
+  without a lane slot still passes EF's validation.
+
+Four additional connection-ownership cases verify successful transfer to the
+returned context, disposal after failed open or seed, and retention of the
+initiating provider error when disposal also fails. They use real SQLite failures
+and observe actual connection disposal.
+
+`ComplexContainerSemanticsRecoveryTests` defines 14 cases: field-mapped staging
+never mutates a validating collection and raises no temporary events, property-mapped
+staging never hands one a null slot, a struct is replayed without its `Equals`,
+nullable struct references restore in-place primitive changes directly and on hidden
+elements, raw unregistered elements keep their scalars, and read-only views and
+copying setters regain exact membership. `ChangeTrackerClearRecoveryTests` tracks
+every captured entry again after `ChangeTracker.Clear()` and persists the pending write.
+
+Relationship-completion controls retain one-pass inputs and exact persistence
+authority. `CollectionBaselineOwnershipTests.Enumeration` covers
+single-use and materialized/lazy inputs, no-FK navigation completion, introduced
+principal ordering and external-owner rollback. `ManagedSavePersistenceSetTests`
+checks exact guarded sets, nested restoration, missing persistence and disposal.
+`CollectionBaselineCompletionAllocationTests` covers five producer shapes at
+zero, one, 64 and 1,024 identities without allowing an eager batch buffer.
+`TreeIdentityResolutionTests` preserves source/target order, typed identities and
+missing-before-ambiguous error precedence, with separate buffer ceilings.
+`StoreObjectEnumerationTests` retains the immediate required-property snapshot
+for a single-use metadata source. These controls complement native insertion,
+prepared-owner and managed-callback tests; they do not replace them.
+
+`TreeRegistryTableNameTests` defines 41 model cases: the unchanged default, one
+explicit name per hierarchy, schema retention, builder rejection, failed callbacks,
+registry and application collisions, other schemas where the provider keeps them,
+the schema-blind SQLite collision, case-variant schemas per provider, SQLite's
+ASCII-only folding with native DDL, inheritance, finalized models at and beyond
+each provider's length limit and reserved names.
+Shared provider cases in `TreeRegistryTableTests` check the delimited DDL, every
+structural and administrative registry operation, and a diffed migration that
+renames a registry with active, revised and tombstoned rows, then executes the
+backward rename and checks the same rows, the retired-TreeId guard and further writes.
+`TreeRegistryCompiledModelTests` writes through an actually generated compiled model.
+
+Shared provider cases `ComplexCompositionRollbackRestoresNativeLanesAndAllowsRetry`,
+`ComplexCompositionPendingGraphRetriesWithoutStagingHoles` and
+`ComplexCompositionSuccessPersistsConsumerTopology` exercise coordinated,
+single, subtree and forest boundaries with actual stored payload, hierarchy
+validation, original exceptions and retry. Their managed snapshot retains its
+later callback-write capture boundary. This inventory describes test contracts;
+it does not claim a new provider or release qualification.
+
+The cold `CompleteForeignKeyCaptureHasLinearAllocation` fixture prepares shared
+process/model metadata through `WarmCaptureMetadataAsync` in a separate disposed
+one-node context. The measured context is then created fresh: its native map
+remains cold when `warmNativeMaps` is false. This separates test-order-dependent
+metadata startup from the per-context cold-map contract without enabling
+detection, opening the connection or changing the existing allocation ceilings.
+
+Sources: [composition controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/ManagedSave/ComplexRecoveryCompositionTests.cs),
+[storage controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/ManagedSave/ComplexCollectionStorageRecoveryTests.cs),
+[native journal allocation](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/ManagedSave/ComplexTopologyRollbackAllocationTests.NativeCapture.cs),
+[provider composition](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/SaveChanges/SaveChangesTests.ComplexComposition.cs),
+[pending provider retry](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/SaveChanges/SaveChangesTests.ComplexComposition.Pending.cs)
+and [cold fixture preparation](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/ManagedSave/UnchangedForeignKeyRollbackTests.Allocations.cs).
+
+`PersistedRelationshipProofAllocationTests` additionally rejects per-row closure
+allocation for Added hierarchy and Modified ordinary write sets at 1/128/8,000
+entries. Its known-owner control binds the existing journal method once outside
+measurement and requires an already-captured lookup to allocate nothing.
+These seven cases use the existing isolated Allocation collection/partition;
+neither instrumentation nor relaxed ceilings hide their initial RED results.
+Required-owner controls cover severance and unique-owner stealing that can
+delete another hierarchy node despite unchanged Scope; the unused-owner
+control remains ordinary payload work.
+The 2026-11-01 uninstrumented Release run on .NET 10.0.14 measured 720 bytes
+for ten complete unchanged passes at both one and 128 tracked nodes, and zero
+bytes for 10,000 warmed Int64 comparisons. Each regression has a fixed
+4,096-byte allowance; the whole-probe budget rejects allocation proportional
+to the tracked node count. These are probe budgets, not complete-save latency
+or allocation claims.
+
+Sources: [save contract regressions](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/SaveChanges/SaveChangesTests.ManualDetection.cs),
+[navigation and cascade regressions](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/SaveChanges/SaveChangesTests.Navigations.cs),
+[role and relationship probes](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/ManagedSave/HierarchyChangeDetectionTests.cs),
+[async validation lifetime](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/ManagedSave/SaveValidationLifetimeTests.cs),
+[exact native reference lookup](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/TrackedReferenceContractTests.cs),
+and [warmed allocation budgets](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/ManagedSave/HierarchyChangeDetectionTests.Allocations.cs).
+
 ## Transactions, locks, and Parent planning
 
 Positive:
@@ -1430,6 +1873,20 @@ Sources: [local and shared ownership guards](../tests/Doka.EntityFrameworkCore.N
 [shared query-plan evidence](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/QueryPlanTestSupport.cs),
 [constructor guard](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Providers/ProviderFixtureContract.cs),
 and [constructor regressions](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/ProviderFixtureContractTests.cs).
+
+`UserSupervisorCommandTests` retains its four sample-entry-point checks and adds
+six child-process cases: successful and nonzero exit with both captured streams,
+cancellation before start and during execution, launch failure and stream-setup
+failure after launch. Failure cleanup terminates and reaps the child before
+propagating the initiating error; recovery has an independent bounded deadline.
+
+`CandidateReuseSelectionTests.OnePassSelectionMatchesIndependentGroupedReference`
+exposes all six selection modes, 256 fixed input bags and both arrival orders as
+3,072 separate theory rows. The independent grouped oracle checks status, ordered
+evidence and continuation identity for each row. These are the same scenarios
+previously exercised inside six batched rows, rather than additional workload.
+Reserved provider-name rejection and the three root-binding variants likewise
+have separate discovered cases.
 
 Run a fresh Release solution build before any `--no-build` test invocation.
 Record the source revision or source hashes, dependencies, provider/image

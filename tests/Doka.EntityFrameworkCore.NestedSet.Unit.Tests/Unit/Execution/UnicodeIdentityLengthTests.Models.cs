@@ -7,7 +7,9 @@ public sealed partial class UnicodeIdentityLengthTests
 {
     /// <summary>Represents an application identity whose stored string includes a converter-owned prefix.</summary>
     /// <param name="Value">The exact application identity contents.</param>
-    private readonly record struct ConvertedIdentity(string Value);
+    private readonly record struct ConvertedIdentity(
+        string Value
+    );
 
     /// <summary>Finalizes real provider mappings while keeping every connection unopened.</summary>
     private sealed class UnicodeContext : DbContext
@@ -189,12 +191,14 @@ public sealed partial class UnicodeIdentityLengthTests
                 case "MySql":
                     builder.UseMySql(
                         "Server=127.0.0.1;Port=1;Database=unicode;User ID=unused;Password=unused;",
-                        MySqlServerVersion.MySql(new Version(8, 4, 0)), provider => provider.UseNestedSets());
+                        MySqlServerVersion.MySql(new Version(8, 4, 0)),
+                        provider => provider.UseNestedSets());
                     break;
                 case "MariaDb":
                     builder.UseMySql(
                         "Server=127.0.0.1;Port=1;Database=unicode;User ID=unused;Password=unused;",
-                        MySqlServerVersion.MariaDb(new Version(11, 8, 0)), provider => provider.UseNestedSets());
+                        MySqlServerVersion.MariaDb(new Version(11, 8, 0)),
+                        provider => provider.UseNestedSets());
                     break;
                 case "PostgreSql":
                     builder.UseNpgsql(

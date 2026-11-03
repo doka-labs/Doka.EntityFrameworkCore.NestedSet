@@ -1,9 +1,13 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-/// <summary>Guards against duplicating singleton provider graphs for equivalent test-only model-key algorithms.</summary>
+/// <summary>
+/// Guards against duplicating singleton provider graphs for equivalent test-only model-key algorithms.
+/// </summary>
 public sealed class TestModelServiceReuseTests
 {
-    /// <summary>Verifies different test families reuse EF services while their actual models stay independent.</summary>
+    /// <summary>
+    /// Verifies different test families reuse EF services while their actual models stay independent.
+    /// </summary>
     [Fact]
     public async Task VariantTestFamiliesShareServicesWithoutSharingTheirModels()
     {

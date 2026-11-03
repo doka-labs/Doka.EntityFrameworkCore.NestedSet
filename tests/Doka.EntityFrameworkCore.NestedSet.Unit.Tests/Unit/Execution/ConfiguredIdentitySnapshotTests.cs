@@ -106,10 +106,7 @@ public sealed class ConfiguredIdentitySnapshotTests
                 property.HasConversion(value => value.Value, value => new MutableIdentity(value));
                 property.Metadata.SetValueComparer(
                     new ValueComparer<MutableIdentity>(
-                        (
-                            left,
-                            right
-                        ) => left != null && right != null && left.Value == right.Value,
+                        (left, right) => left != null && right != null && left.Value == right.Value,
                         value => StringComparer.Ordinal.GetHashCode(value.Value),
                         value => new MutableIdentity(value.Value)));
             }
@@ -135,7 +132,9 @@ public sealed class ConfiguredIdentitySnapshotTests
     }
 
     /// <summary>Represents an application-owned identity requiring its configured copy strategy.</summary>
-    private sealed class MutableIdentity(string value)
+    private sealed class MutableIdentity(
+        string value
+    )
     {
         /// <summary>Gets or sets the converted identity representation.</summary>
         public string Value { get; set; } = value;

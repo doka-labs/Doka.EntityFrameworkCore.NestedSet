@@ -10,11 +10,13 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     /// <param name="destination">The locked destination before the gap is opened.</param>
     /// <param name="offset">The first preorder node included in this batch.</param>
     /// <param name="count">The bounded number of nodes included in this batch.</param>
+    /// <param name="callbackWrites">The complete operation's callback and relationship rollback log.</param>
     /// <param name="cancellationToken">The token checked while assigning the complete input structure.</param>
     internal void StageBatch(
         NestedSetPlacementResolver<TEntity, TKey, TTreeId, TScope>.Destination destination,
         int offset,
         int count,
+        NestedSetCallbackWrites callbackWrites,
         CancellationToken cancellationToken
     )
     {
@@ -79,7 +81,7 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
                 // belongs to this attempt immediately, including when its first transition never completes.
                 entries.Add(entry);
                 AssignStagedStructure(node, entry);
-                TrackInsertionGraph(node, entries, identities, relationships);
+                TrackInsertionGraph(node, index, entries, identities, relationships, callbackWrites);
             }
 
             foreach (var identity in identities.Values)
@@ -189,9 +191,11 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     /// <summary>Tracks one imported node and appends only its owned payload to the bounded batch.</summary>
     private void TrackInsertionGraph(
         Node node,
+        int inputIndex,
         List<EntityEntry> batchEntries,
         Dictionary<IUpdateEntry, NestedSetInsertionTracking.Identity> identities,
-        List<(EntityEntry Owner, INavigationBase Navigation, object Entity)> relationships
+        List<(EntityEntry Owner, INavigationBase Navigation, object Entity)> relationships,
+        NestedSetCallbackWrites callbackWrites
     )
     {
         if (!_hasInputNavigations)
@@ -199,6 +203,7 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
             // WHY: A model without aggregate navigations owns exactly its root entry. Avoid graph iterator
             // and cycle-set allocations for every node in large imports while preserving the same transition.
             var root = batchEntries[^1];
+            callbackWrites.CaptureRelationships(root);
             root.State = EntityState.Added;
             identities.Add(NestedSetInsertionTracking.EntryIdentity(root), NestedSetInsertionTracking.Capture(root));
 
@@ -255,6 +260,10 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
                 return true;
             });
 
+        // WHY: A malformed deep owned graph must retain its original foreign references when validation fails.
+        // Only fully validated input graphs may have their originally empty links reset after tracking fixup.
+        _validatedThrough = Math.Max(_validatedThrough, inputIndex + 1);
+
         // WHY: Capture only entries introduced by the current graph wave before changing their state.
         // ReSharper disable once ForCanBeConvertedToForeach
         // ReSharper disable once LoopCanBeConvertedToQuery
@@ -277,6 +286,7 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         for (var index = firstEntry; index < batchEntries.Count; index++)
         {
             var entry = batchEntries[index];
+            callbackWrites.CaptureRelationships(entry);
             entry.State = EntityState.Added;
             identities.Add(NestedSetInsertionTracking.EntryIdentity(entry), NestedSetInsertionTracking.Capture(entry));
         }
@@ -296,6 +306,10 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     internal IEnumerable<object> ManagedEntities =>
         (_activeEntries ?? throw new InvalidOperationException("No bulk insertion batch is active.")).Select(entry =>
             entry.Entity);
+
+    /// <summary>Gets only the current bounded wave's native lifecycle handles, or none after detachment.</summary>
+    internal IEnumerable<NestedSetInsertionTracking.Identity> ActiveIdentities
+        => _activeIdentities is null ? [] : _activeIdentities.Values;
 
     /// <summary>Returns a parent that is safe to persist without unresolved identities or navigation fixup.</summary>
     private NestedSetParent<TKey> InitialParent(

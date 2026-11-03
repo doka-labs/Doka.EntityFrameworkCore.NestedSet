@@ -3,7 +3,9 @@ using System.Text.Json;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-/// <summary>Calibrates the real collected-heap helper against independently counted, strongly held allocations.</summary>
+/// <summary>
+/// Calibrates the real collected-heap helper against independently counted, strongly held allocations.
+/// </summary>
 internal static class ManagedHeapProbe
 {
     /// <summary>Identifies the exact private command handled before xUnit initializes.</summary>
@@ -12,7 +14,9 @@ internal static class ManagedHeapProbe
     /// <summary>Measures a warmed object shape without loading the test runner's transient state.</summary>
     /// <param name="shape">The independently counted small-object or small-array allocation shape.</param>
     /// <returns>The retained growth, allocation traffic and number of strongly held objects.</returns>
-    internal static Measurement Measure(string shape)
+    internal static Measurement Measure(
+        string shape
+    )
     {
         var arrays = shape switch
         {
@@ -28,10 +32,14 @@ internal static class ManagedHeapProbe
         return MeasureHeldObjects(arrays, 100_000);
     }
 
-    /// <summary>Executes this assembly's private probe without SDK builds, environment mutation or a new project.</summary>
+    /// <summary>
+    /// Executes this assembly's private probe without SDK builds, environment mutation or a new project.
+    /// </summary>
     /// <param name="shape">The allocation shape measured in the independent process.</param>
     /// <returns>The child process's independent counters.</returns>
-    internal static async Task<Measurement> RunIsolatedAsync(string shape)
+    internal static async Task<Measurement> RunIsolatedAsync(
+        string shape
+    )
     {
         var start = new ProcessStartInfo("dotnet")
         {
@@ -77,12 +85,18 @@ internal static class ManagedHeapProbe
 
     /// <summary>Measures only held allocations; the reference array is already included in the baseline.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static Measurement MeasureHeldObjects(bool arrays, int count)
+    private static Measurement MeasureHeldObjects(
+        bool arrays,
+        int count
+    )
     {
         var held = new object[count];
         var baseline = ManagedHeapObservation.CollectedBytes();
         var before = GC.GetAllocatedBytesForCurrentThread();
 
+        // WHY: Populate the already budgeted root array directly so only held objects enter the measured interval.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < held.Length; index++)
         {
             held[index] = arrays ? new byte[17] : new object();
@@ -100,5 +114,9 @@ internal static class ManagedHeapProbe
     /// <param name="Allocated">The independently counted allocation traffic of strongly held objects.</param>
     /// <param name="Retained">The actual helper's collected-heap difference.</param>
     /// <param name="Objects">The number of live references verified after the final collection.</param>
-    internal readonly record struct Measurement(long Allocated, long Retained, int Objects);
+    internal readonly record struct Measurement(
+        long Allocated,
+        long Retained,
+        int Objects
+    );
 }

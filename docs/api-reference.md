@@ -1,7 +1,8 @@
 # API reference
 
-This reference describes the public stable `10.1.0` API, including the explicit
-provider-package/registration break from `10.0.0`. The application keeps its normal
+This reference describes the public stable `10.2.0` API, including optional
+registry table naming. The earlier `10.1.0` provider-package/registration break
+from `10.0.0` remains documented. The application keeps its normal
 `DbSet<TEntity>` and obtains hierarchy behavior from the caller-owned context.
 
 The current stable contract is recorded in the shipped baselines for
@@ -12,7 +13,7 @@ Each provider adapter records its native callback in its own shipped baseline:
 [Postgres](../src/Doka.EntityFrameworkCore.NestedSet.Postgres/PublicAPI.Shipped.txt),
 [Sqlite](../src/Doka.EntityFrameworkCore.NestedSet.Sqlite/PublicAPI.Shipped.txt), and
 [SqlServer](../src/Doka.EntityFrameworkCore.NestedSet.SqlServer/PublicAPI.Shipped.txt).
-Unshipped files are reserved for changes after `10.1.0`.
+Unshipped files are reserved for changes after `10.2.0`.
 
 The historical `10.0.0` declarations remain available in that release's
 [Core baseline](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/blob/v10.0.0/src/Doka.NestedSet/PublicAPI.Shipped.txt) and
@@ -49,6 +50,7 @@ builder supports these structural roles:
 | `HasDepth(...)` | Zero-based `int` depth |
 | `HasPosition(...)` | Dense zero-based `long` sibling position |
 | `HasAncestorIndex(string nonLeafPropertyName = "NestedSetIsNonLeaf")` | Opt into a generated Boolean nonleaf property and additive ancestor access index; requires a migration |
+| `HasTreeRegistryTable(string tableName)` | Optional explicit physical name for this hierarchy's typed tree registry instead of the generated `DokaNestedSetTrees_<hash>`. See [migrations](migrations.md#explicit-registry-table-name). |
 | `OrderBy(...)`, `ThenBy(...)` | Ascending sibling criteria |
 | `OrderByDescending(...)`, `ThenByDescending(...)` | Descending sibling criteria |
 | `HasOrderMode(...)` | Strict or manual-override placement |

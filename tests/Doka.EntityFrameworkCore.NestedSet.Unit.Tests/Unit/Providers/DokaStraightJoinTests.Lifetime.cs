@@ -2,7 +2,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public sealed partial class DokaStraightJoinTests
 {
-    /// <summary>The typed ordered-join metadata does not retain sources, selectors or captured request values.</summary>
+    /// <summary>
+    /// The typed ordered-join metadata does not retain sources, selectors or captured request values.
+    /// </summary>
     [Fact]
     public void TypedOrderedJoinDoesNotRetainInvocationInputs()
     {
@@ -23,7 +25,9 @@ public sealed partial class DokaStraightJoinTests
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
-    public void TypedOrderedJoinReleasesCollectibleRowArguments(int position)
+    public void TypedOrderedJoinReleasesCollectibleRowArguments(
+        int position
+    )
     {
         // Arrange
         var released = ProviderQueryLifetime.ReleaseCollectibleRows(orderedJoin: true, position);

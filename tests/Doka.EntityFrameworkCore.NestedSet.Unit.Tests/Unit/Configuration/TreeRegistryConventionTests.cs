@@ -17,6 +17,7 @@ public sealed class TreeRegistryConventionTests
 
         // Act
         var model = context.GetService<IDesignTimeModel>().Model;
+
         var node = model.FindEntityType(typeof(ScopedNode))!;
         var registry = RegistryFor(node, model);
 
@@ -42,6 +43,7 @@ public sealed class TreeRegistryConventionTests
 
         // Act
         var model = context.GetService<IDesignTimeModel>().Model;
+
         var node = model.FindEntityType(typeof(UnscopedNode))!;
         var registry = RegistryFor(node, model);
 
@@ -63,13 +65,9 @@ public sealed class TreeRegistryConventionTests
         Assert.Equal(source.IsUnicode(), registry.IsUnicode());
         Assert.Equal(source.GetCollation(), registry.GetCollation());
         Assert.Equal(
-            source
-                .GetRelationalTypeMapping()
-                .Converter
+            source.GetRelationalTypeMapping().Converter
                 ?.GetType(),
-            registry
-                .GetRelationalTypeMapping()
-                .Converter
+            registry.GetRelationalTypeMapping().Converter
                 ?.GetType());
     }
 
@@ -79,7 +77,8 @@ public sealed class TreeRegistryConventionTests
         IModel model
     )
     {
-        var name = Assert.IsType<string>(hierarchy.FindAnnotation("Doka:NestedSet:TreeRegistryEntity")?.Value);
+        var name = Assert.IsType<string>(hierarchy.FindAnnotation("Doka:NestedSet:TreeRegistryEntity")
+            ?.Value);
 
         return Assert.IsType<IEntityType>(model.FindEntityType(name), exactMatch: false);
     }

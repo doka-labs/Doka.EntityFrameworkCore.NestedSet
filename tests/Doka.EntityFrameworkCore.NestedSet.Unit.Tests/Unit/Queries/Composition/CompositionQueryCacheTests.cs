@@ -37,7 +37,11 @@ public sealed class CompositionQueryCacheTests
             .Options;
 
         await using var context = new CompositionGuardContext(isolatedOptions);
-        var probe = context.GetService<IEnumerable<IInterceptor>>().OfType<CompilationProbe>().Single();
+        var probe = context
+            .GetService<IEnumerable<IInterceptor>>()
+            .OfType<CompilationProbe>()
+            .Single();
+
         var firstTree = Guid.Parse("04ba1fd5-3159-4c68-b9fb-90f658fc925b");
         var secondTree = Guid.Parse("e1927022-7320-407e-8481-86f7d138c2cd");
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
@@ -46,10 +50,15 @@ public sealed class CompositionQueryCacheTests
         var second = Query(context, operation, 22, secondTree, [4, 6], 3);
         var changedValue = Query(context, operation, 11, firstTree, [1, 3], 1);
         var expectedFirst = Expected(operation.Replace("-bound", string.Empty, StringComparison.Ordinal));
-        var expectedSecond = expectedFirst.Select(id => id + 3).ToArray();
+        var expectedSecond = expectedFirst
+            .Select(id => id + 3)
+            .ToArray();
+
         var expectedChangedValue = operation.StartsWith("nearest", StringComparison.Ordinal)
             ? Array.Empty<int>()
-            : expectedFirst.Where(id => id > 1).ToArray();
+            : expectedFirst
+                .Where(id => id > 1)
+                .ToArray();
 
         probe.Reset();
 
@@ -62,7 +71,9 @@ public sealed class CompositionQueryCacheTests
         var afterRepeat = probe.Compilations;
         var changedValueResult = await changedValue.ToArrayAsync(CancellationToken.None);
         var afterValueChange = probe.Compilations;
-        var changedShapeResult = await second.Select(id => new { Id = id }).ToArrayAsync(CancellationToken.None);
+        var changedShapeResult = await second
+            .Select(id => new { Id = id })
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(expectedFirst, firstResult);
@@ -102,10 +113,16 @@ public sealed class CompositionQueryCacheTests
         Guid secondTree
     )
     {
+        // WHY: Keep each group ordinal aligned with its scope, tree identity, and disjoint key range.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var group = 0; group < 2; group++)
         {
             var offset = group * 3;
 
+            // WHY: The depth ordinal defines each node key, parent, and nested interval in the same chain.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var depth = 0; depth < 3; depth++)
             {
                 var node = new CompositionGuardNode
@@ -119,7 +136,8 @@ public sealed class CompositionQueryCacheTests
                     Depth = depth,
                 };
 
-                await context.Set<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
+                await context
+                    .Set<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
                     .AddAsync(node, CancellationToken.None);
             }
         }
@@ -138,20 +156,32 @@ public sealed class CompositionQueryCacheTests
         int minimumId
     )
     {
-        var hierarchy = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
-            .ForScope(scope).InTree(tree);
+        var hierarchy = context
+            .NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
+            .ForScope(scope)
+            .InTree(tree);
 
-        var nodes = context.Set<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
+        var nodes = context
+            .Set<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
             .Where(node => node.Scope == scope && node.TreeId == tree);
 
         // WHY: Raw sources retain endpoint membership. Bound variants separately exercise its provenance
         // shortcut, so both physical shapes must retain parameterization across scope/tree/value changes.
         var rows = operation.EndsWith("-bound", StringComparison.Ordinal)
             ? hierarchy.SelectSubtrees(upper => Enumerable.Contains(anchors, upper.Id),
-                (upper, lower, distance) => new CompositionGuardRow { Upper = upper, Lower = lower })
-            : nodes.Where(upper => Enumerable.Contains(anchors, upper.Id))
+                (upper, lower, distance) => new CompositionGuardRow
+                {
+                    Upper = upper,
+                    Lower = lower,
+                })
+            : nodes
+                .Where(upper => Enumerable.Contains(anchors, upper.Id))
                 .SelectMany(upper => nodes.Where(lower => lower.Left >= upper.Left && lower.Right <= upper.Right),
-                    (upper, lower) => new CompositionGuardRow { Upper = upper, Lower = lower });
+                    (upper, lower) => new CompositionGuardRow
+                    {
+                        Upper = upper,
+                        Lower = lower,
+                    });
 
         var query = operation.Replace("-bound", string.Empty, StringComparison.Ordinal) switch
         {
@@ -161,17 +191,29 @@ public sealed class CompositionQueryCacheTests
                 (node, ancestor, distance) => ancestor.Id),
             "subtrees" => hierarchy.SelectSubtrees(anchor => Enumerable.Contains(anchors, anchor.Id),
                 (anchor, node, distance) => node.Id),
-            "path" => hierarchy.WherePathEdges(rows, row => row.Upper, row => row.Lower,
-                (row, parent, child) => child.Id > minimumId).Select(row => row.Lower.Id),
-            "any" => hierarchy.WhereAnyAncestorOrSelf(rows, row => row.Lower,
-                (row, owner) => owner.Id > minimumId).Select(row => row.Lower.Id),
-            "nearest" => hierarchy.WhereNearestAncestorOrSelf(rows, row => row.Lower,
-                (row, owner) => owner.Depth == 0, (row, owner) => owner.Id > minimumId)
+            "path" => hierarchy
+                .WherePathEdges(rows,
+                    row => row.Upper,
+                    row => row.Lower,
+                    (row, parent, child) => child.Id > minimumId)
+                .Select(row => row.Lower.Id),
+            "any" => hierarchy
+                .WhereAnyAncestorOrSelf(rows,
+                    row => row.Lower,
+                    (row, owner) => owner.Id > minimumId)
+                .Select(row => row.Lower.Id),
+            "nearest" => hierarchy
+                .WhereNearestAncestorOrSelf(rows,
+                    row => row.Lower,
+                    (row, owner) => owner.Depth == 0,
+                    (row, owner) => owner.Id > minimumId)
                 .Select(row => row.Lower.Id),
             _ => throw new ArgumentOutOfRangeException(nameof(operation)),
         };
 
-        return query.Where(id => id > minimumId).OrderBy(id => id);
+        return query
+            .Where(id => id > minimumId)
+            .OrderBy(id => id);
     }
 
     /// <summary>Lists expected bags from the two explicitly selected chain endpoints.</summary>

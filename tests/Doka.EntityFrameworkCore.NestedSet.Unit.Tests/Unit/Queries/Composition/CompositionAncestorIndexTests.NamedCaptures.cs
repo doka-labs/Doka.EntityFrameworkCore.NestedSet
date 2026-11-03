@@ -5,7 +5,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public sealed partial class CompositionAncestorIndexTests
 {
-    /// <summary>Deferred fallback retains the named hierarchy and rejects equal-shaped foreign endpoint mappings.</summary>
+    /// <summary>
+    /// Deferred fallback retains the named hierarchy and rejects equal-shaped foreign endpoint mappings.
+    /// </summary>
     /// <param name="includeSelf">Whether the selected source can be its own ancestor.</param>
     /// <param name="scoped">Whether the exact named hierarchy has an application scope.</param>
     [Theory]
@@ -13,7 +15,10 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public async Task DeferredNamedHierarchyRetainsExactMappingAndRejectsForeignEndpoints(bool includeSelf, bool scoped)
+    public async Task DeferredNamedHierarchyRetainsExactMappingAndRejectsForeignEndpoints(
+        bool includeSelf,
+        bool scoped
+    )
     {
         // Arrange
         var options = ModelCompatibilityDatabase.Options<CompositionGuardContext>("MariaDb",
@@ -21,30 +26,52 @@ public sealed partial class CompositionAncestorIndexTests
 
         await using var provider = SelectionServices(options);
         await using var context = new CompositionGuardContext(
-            new DbContextOptionsBuilder<CompositionGuardContext>(options).UseInternalServiceProvider(provider).Options);
+            new DbContextOptionsBuilder<CompositionGuardContext>(options)
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var mapping = scoped ? CompositionGuardContext.ScopedMapping : CompositionGuardContext.FirstMapping;
         var tree = Guid.Parse("aeb74cb5-54e6-4d57-825d-45ad9e6d2e99");
         var hierarchy = scoped
-            ? context.NestedSet<CompositionGuardNode>(mapping).ForScope(17).InTree(tree)
-            : context.NestedSet<CompositionGuardNode>(mapping).InTree(tree);
+            ? context
+                .NestedSet<CompositionGuardNode>(mapping)
+                .ForScope(17)
+                .InTree(tree)
+            : context
+                .NestedSet<CompositionGuardNode>(mapping)
+                .InTree(tree);
 
         var nodes = context.Set<CompositionGuardNode>(mapping);
         var pairs = includeSelf
             ? hierarchy.SelectAncestorsOrSelf(node => nodes.Any(other => other.Id == node.Id),
-                (node, owner, distance) => new CompositionGuardRow { Upper = owner, Lower = node, Distance = distance })
+                (node, owner, distance) => new CompositionGuardRow
+                {
+                    Upper = owner,
+                    Lower = node,
+                    Distance = distance,
+                })
             : hierarchy.SelectAncestors(node => nodes.Any(other => other.Id == node.Id),
-                (node, owner, distance) => new CompositionGuardRow { Upper = owner, Lower = node, Distance = distance });
+                (node, owner, distance) => new CompositionGuardRow
+                {
+                    Upper = owner,
+                    Lower = node,
+                    Distance = distance,
+                });
 
-        var composed = hierarchy.WherePathEdges(pairs, row => row.Upper, row => row.Lower,
+        var composed = hierarchy.WherePathEdges(pairs,
+            row => row.Upper,
+            row => row.Lower,
             (row, parent, child) => child.Id > 0);
 
-        var foreign = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.SecondMapping).InTree(tree);
+        var foreign = context
+            .NestedSet<CompositionGuardNode>(CompositionGuardContext.SecondMapping)
+            .InTree(tree);
 
         // Act
         var sql = composed.ToQueryString();
         var failure = Record.Exception(() => foreign.WhereAnyAncestorOrSelf(pairs,
-            row => row.Lower, (row, owner) => owner.Id > 0));
+            row => row.Lower,
+            (row, owner) => owner.Id > 0));
 
         // Assert
         Assert.Contains(mapping, sql, StringComparison.Ordinal);
@@ -63,7 +90,10 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData("captured", false)]
     [InlineData("getter", false)]
     [InlineData("modifier", false)]
-    public async Task DeferredEndpointVisibilityDoesNotTrustUnexpandedCaptures(string shape, bool visible)
+    public async Task DeferredEndpointVisibilityDoesNotTrustUnexpandedCaptures(
+        string shape,
+        bool visible
+    )
     {
         // Arrange
         var options = ModelCompatibilityDatabase.Options<CompositionGuardContext>("MySql",
@@ -71,9 +101,14 @@ public sealed partial class CompositionAncestorIndexTests
 
         await using var provider = SelectionServices(options);
         await using var context = new CompositionGuardContext(
-            new DbContextOptionsBuilder<CompositionGuardContext>(options).UseInternalServiceProvider(provider).Options);
+            new DbContextOptionsBuilder<CompositionGuardContext>(options)
+                .UseInternalServiceProvider(provider)
+                .Options);
 
-        var tree = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.FirstMapping).InTree(Guid.Empty);
+        var tree = context
+            .NestedSet<CompositionGuardNode>(CompositionGuardContext.FirstMapping)
+            .InTree(Guid.Empty);
+
         var nodes = tree.Nodes;
         var holder = new DeferredHierarchyGetter();
         var source = shape == "modifier" ? nodes.IgnoreQueryFilters() : nodes;
@@ -82,11 +117,15 @@ public sealed partial class CompositionAncestorIndexTests
         if (shape is "embedded" or "modifier")
         {
             Expression<Func<CompositionGuardNode, CompositionGuardNode, bool>> match =
-                (node, other) => other.Id == node.Id;
+            (node, other) => other.Id == node.Id;
 
-            var exists = Expression.Call(typeof(Queryable), nameof(Queryable.Any), [typeof(CompositionGuardNode)],
-                source.Expression, Expression.Quote(Expression.Lambda<Func<CompositionGuardNode, bool>>(
-                    match.Body, match.Parameters[1])));
+            var exists = Expression.Call(typeof(Queryable),
+                nameof(Queryable.Any),
+                [typeof(CompositionGuardNode)],
+                source.Expression,
+                Expression.Quote(Expression.Lambda<Func<CompositionGuardNode, bool>>(
+                    match.Body,
+                    match.Parameters[1])));
 
             selected = Expression.Lambda<Func<CompositionGuardNode, bool>>(exists, match.Parameters[0]);
         }
@@ -98,7 +137,12 @@ public sealed partial class CompositionAncestorIndexTests
         }
 
         var query = tree.SelectAncestorsOrSelf(selected,
-            (node, owner, distance) => new CompositionGuardRow { Upper = owner, Lower = node, Distance = distance });
+            (node, owner, distance) => new CompositionGuardRow
+            {
+                Upper = owner,
+                Lower = node,
+                Distance = distance,
+            });
 
         var marker = Assert.IsAssignableFrom<MethodCallExpression>(query.Expression);
         var entity = context.Model.FindEntityType(CompositionGuardContext.FirstMapping)!;

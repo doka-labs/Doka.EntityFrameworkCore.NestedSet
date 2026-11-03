@@ -5,15 +5,16 @@ guide by the task you need to complete. Feature guides define supported
 behavior, architecture records explain why material decisions exist, and
 runbooks own operational procedures.
 
-These guides describe the stable `10.1.0` contract, including query composition
-and the breaking provider-package/registration transition from `10.0.0`.
+These guides describe the stable `10.2.0` contract, including optional registry
+naming, manual detection and save recovery. The historical `10.1.0` provider
+package/registration transition still applies when upgrading from `10.0.0`.
 See the [upgrade guide](upgrading-provider-packages.md) and
 [changelog](../CHANGELOG.md) for changes, and the
 [support matrix](support-and-qualification.md) for qualified versions.
 
 ## Use NestedSet
 
-- [Provider Package Upgrade](upgrading-provider-packages.md) explains the breaking adapter installation and native-callback registration transition.
+- [Package Upgrade](upgrading-provider-packages.md) covers the compatible 10.2.0 update and the earlier breaking adapter/native-callback transition.
 - [Getting Started](getting-started.md) builds a complete Doka MySQL/MariaDB
   application and its first hierarchy.
 - [Hierarchy Model](hierarchy-model.md) defines scopes, forests, roots, parent
@@ -51,6 +52,12 @@ See the [upgrade guide](upgrading-provider-packages.md) and
   summarizes semantic/native-work controls and the optional ancestor-index trade-offs.
 - [Query and Consumer Performance](qualification/query-performance.md)
   separates construction, complete-reader, materializer and framework observations.
+- [Manual Detection and Recovery](configuration.md#manual-change-detection)
+  defines explicit write intent, callback ownership and exact recovery boundaries.
+- [Import Resource Model](bulk-import.md#resource-model) explains bounded active
+  tracking, retained plans and prepared external-owner collections.
+- [Save and Recovery Costs](performance.md#prepared-imports-and-recovery-costs)
+  separates deterministic budgets, scoped allocation observations and native work.
 - [Provider and Migration Qualification](qualification/provider-migrations.md)
   records exact local package inputs, actual migrations/replay, retained negatives
   and the published-package/native SQL Server boundaries.
@@ -61,6 +68,8 @@ See the [upgrade guide](upgrading-provider-packages.md) and
 
 ## Understand and maintain the repository
 
+- [Contributing](../CONTRIBUTING.md) covers setup, checks, code/test requirements
+  and the contribution process.
 - [Developer Databases](../docker/README.md) explains optional Compose profiles,
   Rider connections, shared image pins, and developer volume ownership.
 - [Engineering Tools](../eng/README.md) documents local qualification, package
@@ -104,6 +113,7 @@ See the [upgrade guide](upgrading-provider-packages.md) and
 
 | Document type | Owns | Does not own |
 | --- | --- | --- |
+| Contributor guide | Setup, checks, contribution rules and review process | Private working procedures |
 | Root README | Installation, first use, and high-level contracts | Complete edge cases and operator procedures |
 | Feature guide | Supported behavior, examples, and failures | Decision history |
 | API reference | Public entry points and exact method contracts | Tutorials |

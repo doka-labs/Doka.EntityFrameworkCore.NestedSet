@@ -157,7 +157,7 @@ public sealed partial class ProviderTestContractTests
             [string.Empty, -1],
             [
                 typeof(EngineFactAttribute).GetProperty(nameof(EngineFactAttribute.ExcludedEngines))!,
-                typeof(EngineFactAttribute).GetProperty(nameof(EngineFactAttribute.Reason))!
+                typeof(EngineFactAttribute).GetProperty(nameof(EngineFactAttribute.Reason))!,
             ],
             [new[] { engine }, reason]);
 
@@ -184,7 +184,8 @@ public sealed partial class ProviderTestContractTests
     )
     {
         // Arrange
-        var method = CreateProbe([SharedMember(memberName)]).GetMethod("Probe0")!;
+        var method = CreateProbe([SharedMember(memberName)])
+            .GetMethod("Probe0")!;
 
         // Act
         var errors = await ProviderTestContract.FindSharedDataErrorsAsync(method);

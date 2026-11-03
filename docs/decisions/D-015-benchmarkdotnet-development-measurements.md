@@ -1,6 +1,6 @@
 ---
 id: D-015
-status: accepted
+status: implemented
 date: 2026-09-28
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
@@ -155,6 +155,11 @@ require a repeated comparison against stable source before attributing results.
 
 ### Confirmation
 
+The BenchmarkDotNet launcher, measurement configuration, lifecycle, diagnostics,
+and regression project are implemented in the references below. RC run
+41014625971 passed the benchmark contract job on October 30. Implementation
+status does not qualify every optional benchmark scenario or timing observation.
+
 - Run `eng/validate-adrs.sh`; expect the complete decision corpus and generated
   indexes to validate, including primary-source and local-link provenance.
 - Run `dotnet run --project tests/Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests`
@@ -238,6 +243,8 @@ by recording this decision or its run procedures.
 - 2026-09-28: The owner accepted the BenchmarkDotNet proposal and requested its implementation with optional runs and no performance gate.
 - 2026-09-29: Clarified selected-case preflight, explicit native execution selection, Core-only resource provenance, synchronous fixture construction, iteration Action binding, and regression ownership under tests.
 - 2026-09-29: Limited the Debug launcher rejection to actual measurements; untimed diagnostics and their regression suite also run in Debug for Rider diagnosis.
+- 2026-11-03: Status changed from accepted to implemented.
+- 2026-11-03: Reconciled status with the existing BenchmarkDotNet implementation and the successful benchmark contract job in RC run 41014625971. Recorded the status correction today without changing the original acceptance date or claiming new benchmark measurements.
 
 ### Implementation References
 
@@ -277,3 +284,4 @@ by recording this decision or its run procedures.
 - [Versioned case glob filter](https://github.com/dotnet/BenchmarkDotNet/blob/v0.15.8/src/BenchmarkDotNet/Filters/GlobFilter.cs) (primary source; retrieved 2026-09-28)
 - [Pinned Testcontainers MySQL readiness command](https://github.com/testcontainers/testcontainers-dotnet/blob/37352559c0af87d5c7eeaced1accc2d21e3a4e69/src/Testcontainers.MySql/MySqlBuilder.cs) (primary source; retrieved 2026-09-28)
 - [Pinned native Unix readiness strategy](https://github.com/testcontainers/testcontainers-dotnet/blob/37352559c0af87d5c7eeaced1accc2d21e3a4e69/src/Testcontainers/Configurations/WaitStrategies/WaitForContainerUnix.cs) (primary source; retrieved 2026-09-28)
+- [Successful RC benchmark contract job](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/runs/41014625971/job/123929194289) (primary source; retrieved 2026-11-03)

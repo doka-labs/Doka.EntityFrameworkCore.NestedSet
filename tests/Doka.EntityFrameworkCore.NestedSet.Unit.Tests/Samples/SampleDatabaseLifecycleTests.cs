@@ -14,17 +14,16 @@ public sealed class SampleDatabaseLifecycleTests
 
         // Act
         await SampleDatabase.PrepareAsync(context, configuration, reset: false, CancellationToken.None);
+        var migrations = await context.Database.GetAppliedMigrationsAsync(CancellationToken.None);
+        var rows = await context
+            .Sentinels
+            .AsNoTracking()
+            .ToListAsync(CancellationToken.None);
 
         // Assert
-        var migrations = await context.Database.GetAppliedMigrationsAsync(CancellationToken.None);
-
         Assert.True(File.Exists(configuration.SqlitePath));
         Assert.Equal(["20260929000000_SampleLifecycleInitial"], migrations);
-        Assert.Empty(
-            await context
-                .Sentinels
-                .AsNoTracking()
-                .ToListAsync(CancellationToken.None));
+        Assert.Empty(rows);
     }
 
     /// <summary>An explicit reset removes prior application rows while applying the complete schema again.</summary>
@@ -39,16 +38,15 @@ public sealed class SampleDatabaseLifecycleTests
 
         // Act
         await SampleDatabase.PrepareAsync(context, configuration, reset: true, CancellationToken.None);
+        var migrations = await context.Database.GetAppliedMigrationsAsync(CancellationToken.None);
+        var rows = await context
+            .Sentinels
+            .AsNoTracking()
+            .ToListAsync(CancellationToken.None);
 
         // Assert
-        var migrations = await context.Database.GetAppliedMigrationsAsync(CancellationToken.None);
-
         Assert.Equal(["20260929000000_SampleLifecycleInitial"], migrations);
-        Assert.Empty(
-            await context
-                .Sentinels
-                .AsNoTracking()
-                .ToListAsync(CancellationToken.None));
+        Assert.Empty(rows);
     }
 
     /// <summary>Resetting one sample does not delete a different sample's persistent results.</summary>
@@ -66,19 +64,19 @@ public sealed class SampleDatabaseLifecycleTests
 
         // Act
         await SampleDatabase.PrepareAsync(context, configuration, reset: true, CancellationToken.None);
-
-        // Assert
         var preserved = await otherContext
             .Sentinels
             .AsNoTracking()
             .SingleAsync(CancellationToken.None);
 
+        var rows = await context
+            .Sentinels
+            .AsNoTracking()
+            .ToListAsync(CancellationToken.None);
+
+        // Assert
         Assert.Equal("signal-data", preserved.Value);
-        Assert.Empty(
-            await context
-                .Sentinels
-                .AsNoTracking()
-                .ToListAsync(CancellationToken.None));
+        Assert.Empty(rows);
     }
 
     /// <summary>A second run explains reset or inspection instead of appending data or mutating the schema.</summary>
@@ -98,17 +96,19 @@ public sealed class SampleDatabaseLifecycleTests
             reset: false,
             CancellationToken.None));
 
-        // Assert
-        var invalid = Assert.IsType<InvalidOperationException>(error);
         var preserved = await context
             .Sentinels
             .AsNoTracking()
             .SingleAsync(CancellationToken.None);
 
+        var migrations = await context.Database.GetAppliedMigrationsAsync(CancellationToken.None);
+
+        // Assert
+        var invalid = Assert.IsType<InvalidOperationException>(error);
         Assert.Contains("--inspect", invalid.Message, StringComparison.Ordinal);
         Assert.Contains("--reset", invalid.Message, StringComparison.Ordinal);
         Assert.Equal("preserved", preserved.Value);
-        Assert.Single(await context.Database.GetAppliedMigrationsAsync(CancellationToken.None));
+        Assert.Single(migrations);
     }
 
     /// <summary>Migration history identifies an earlier run even when every application row was deleted.</summary>
@@ -130,17 +130,18 @@ public sealed class SampleDatabaseLifecycleTests
             reset: false,
             CancellationToken.None));
 
+        var rows = await context
+            .Sentinels
+            .AsNoTracking()
+            .ToListAsync(CancellationToken.None);
+
+        var migrations = await context.Database.GetAppliedMigrationsAsync(CancellationToken.None);
+
         // Assert
         var invalid = Assert.IsType<InvalidOperationException>(error);
-
         Assert.Contains("--reset", invalid.Message, StringComparison.Ordinal);
-        Assert.Empty(
-            await context
-                .Sentinels
-                .AsNoTracking()
-                .ToListAsync(CancellationToken.None));
-
-        Assert.Single(await context.Database.GetAppliedMigrationsAsync(CancellationToken.None));
+        Assert.Empty(rows);
+        Assert.Single(migrations);
     }
 
     /// <summary>A context bound to a different file cannot reset it under another sample's ownership.</summary>
@@ -161,13 +162,13 @@ public sealed class SampleDatabaseLifecycleTests
             reset: true,
             CancellationToken.None));
 
-        // Assert
-        var invalid = Assert.IsType<InvalidOperationException>(error);
         var preserved = await foreignContext
             .Sentinels
             .AsNoTracking()
             .SingleAsync(CancellationToken.None);
 
+        // Assert
+        var invalid = Assert.IsType<InvalidOperationException>(error);
         Assert.Contains("owned SQLite file", invalid.Message, StringComparison.Ordinal);
         Assert.Equal("foreign-data", preserved.Value);
         Assert.False(File.Exists(configuration.SqlitePath));
@@ -180,13 +181,17 @@ public sealed class SampleDatabaseLifecycleTests
         // Arrange
         const string endpoint = "Server=127.0.0.1;Port=1;User ID=sample;Password=test-secret;";
         var configuration = SampleDatabaseConfiguration.Create("filesystem", SampleProvider.MariaDb, endpoint);
-        var options = new DbContextOptionsBuilder<SampleLifecycleContext>().UseMySql(
-            endpoint + "Database=application;",
-            MySqlServerVersion.MariaDb(new Version(11, 8, 0))).Options;
+        var options = new DbContextOptionsBuilder<SampleLifecycleContext>()
+            .UseMySql(
+                endpoint + "Database=application;",
+                MySqlServerVersion.MariaDb(new Version(11, 8, 0)))
+            .Options;
 
         await using var services = SampleTestServices.Create(options);
         await using var context = new SampleLifecycleContext(
-            new DbContextOptionsBuilder<SampleLifecycleContext>(options).UseInternalServiceProvider(services).Options);
+            new DbContextOptionsBuilder<SampleLifecycleContext>(options)
+                .UseInternalServiceProvider(services)
+                .Options);
 
         // Act
         var error = await Record.ExceptionAsync(() => SampleDatabase.PrepareAsync(
@@ -199,7 +204,8 @@ public sealed class SampleDatabaseLifecycleTests
         var invalid = Assert.IsType<InvalidOperationException>(error);
 
         Assert.Contains("owned server database", invalid.Message, StringComparison.Ordinal);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>An already canceled reset leaves the owned data and schema intact.</summary>
@@ -221,16 +227,17 @@ public sealed class SampleDatabaseLifecycleTests
             reset: true,
             stop.Token));
 
+        var preserved = await context
+            .Sentinels
+            .AsNoTracking()
+            .SingleAsync(CancellationToken.None);
+
+        var migrations = await context.Database.GetAppliedMigrationsAsync(CancellationToken.None);
+
         // Assert
         Assert.IsType<OperationCanceledException>(error, exactMatch: false);
-        Assert.Equal(
-            "preserved",
-            (await context
-                .Sentinels
-                .AsNoTracking()
-                .SingleAsync(CancellationToken.None)).Value);
-
-        Assert.Single(await context.Database.GetAppliedMigrationsAsync(CancellationToken.None));
+        Assert.Equal("preserved", preserved.Value);
+        Assert.Single(migrations);
     }
 
     /// <summary>An already canceled first run does not create its storage directory or file.</summary>
@@ -316,19 +323,20 @@ public sealed class SampleDatabaseLifecycleTests
         var error = await Record.ExceptionAsync(() =>
             SampleDatabase.EnsureAvailableForInspectionAsync(context, CancellationToken.None));
 
-        // Assert
-        var invalid = Assert.IsType<InvalidOperationException>(error);
         var preserved = await context
             .Sentinels
             .AsNoTracking()
             .SingleAsync(CancellationToken.None);
 
         var actual = await File.ReadAllBytesAsync(configuration.SqlitePath!, CancellationToken.None);
+        var migrations = await context.Database.GetAppliedMigrationsAsync(CancellationToken.None);
 
+        // Assert
+        var invalid = Assert.IsType<InvalidOperationException>(error);
         Assert.Contains("Run a scenario first", invalid.Message, StringComparison.Ordinal);
         Assert.Equal("unmigrated", preserved.Value);
         Assert.Equal(original, actual);
-        Assert.Empty(await context.Database.GetAppliedMigrationsAsync(CancellationToken.None));
+        Assert.Empty(migrations);
     }
 
     /// <summary>Read-only inspection preserves rows and the complete database file.</summary>
@@ -348,17 +356,17 @@ public sealed class SampleDatabaseLifecycleTests
 
         // Act
         await SampleDatabase.EnsureAvailableForInspectionAsync(context, CancellationToken.None);
-
-        // Assert
         var preserved = await context
             .Sentinels
             .AsNoTracking()
             .SingleAsync(CancellationToken.None);
 
         var actual = await File.ReadAllBytesAsync(configuration.SqlitePath!, CancellationToken.None);
+        var migrations = await context.Database.GetAppliedMigrationsAsync(CancellationToken.None);
 
+        // Assert
         Assert.Equal("inspection-data", preserved.Value);
         Assert.Equal(original, actual);
-        Assert.Single(await context.Database.GetAppliedMigrationsAsync(CancellationToken.None));
+        Assert.Single(migrations);
     }
 }

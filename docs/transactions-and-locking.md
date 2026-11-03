@@ -42,6 +42,138 @@ update, or delete registry rows directly.
 same transaction and exact-tree lock protocol, accepts only a tombstone, and
 verifies that no hidden or visible nodes remain before deleting the row.
 
+## Registry cardinality and read-only diagnostics
+
+One registry row represents one complete tree identity in that configured
+hierarchy: `TreeId`, or `(Scope, TreeId)` when scoped. It does not represent a
+node, save, lock attempt or mutation log entry. Creating a new root/tree reserves
+one identity; forest import reserves each distinct new tree. Structural work on
+an existing tree updates that same row's `Revision` rather than inserting a row
+for each operation. Transaction rollback also rolls back its registry changes.
+
+`Lifecycle = 0` means active and `Lifecycle = 1` means tombstoned. Deleting or
+merging away a tree retains its tombstone indefinitely to prevent accidental
+TreeId reuse. There is no automatic expiry or cleanup. Only explicit
+`PurgeTreeIdAsync` can remove an empty tombstone under the normal locks and
+transaction. `Revision` is a structural counter, not a timestamp or retention
+age; it cannot identify tombstones that are safe to delete.
+
+Registry cardinality alone establishes neither healthy usage nor a leak. Split
+active from tombstoned identities, then compare active identities with the
+complete mapped node source and the application's tree-creation policy. A
+consumer that deliberately creates many distinct TreeIds needs correspondingly
+many registry rows. No particular production count or distribution is established
+by this guide, and these diagnostics authorize no data cleanup or naming change.
+
+The following MariaDB statements are read-only. A hierarchy configured with
+[`HasTreeRegistryTable`](migrations.md#explicit-registry-table-name) uses that
+name instead of the generated one. Otherwise, first locate the registry table
+in the selected database and confirm its primary key from model/migration
+metadata. `TABLE_ROWS` is an estimate for InnoDB; the later queries count actual
+rows. MariaDB documents the [TABLES metadata](https://mariadb.com/docs/server/reference/system-tables/information-schema/information-schema-tables/information-schema-tables-table)
+and the [LIKE escape syntax](https://mariadb.com/docs/server/reference/sql-functions/string-functions/like).
+
+```sql
+SELECT TABLE_SCHEMA, TABLE_NAME, TABLE_ROWS AS EstimatedRows
+FROM information_schema.TABLES
+WHERE TABLE_SCHEMA = DATABASE()
+  AND TABLE_TYPE = 'BASE TABLE'
+  AND TABLE_NAME LIKE 'DokaNestedSetTrees!_%' ESCAPE '!'
+ORDER BY TABLE_NAME;
+
+SELECT INDEX_NAME, SEQ_IN_INDEX, COLUMN_NAME
+FROM information_schema.STATISTICS
+WHERE TABLE_SCHEMA = DATABASE()
+  AND TABLE_NAME = 'DokaNestedSetTrees_REPLACE_HASH'
+  AND INDEX_NAME = 'PRIMARY'
+ORDER BY SEQ_IN_INDEX;
+
+SELECT Lifecycle, COUNT(*) AS ExactRegistryRows,
+       MIN(Revision) AS MinimumRevision, MAX(Revision) AS MaximumRevision
+FROM `DokaNestedSetTrees_REPLACE_HASH`
+GROUP BY Lifecycle
+ORDER BY Lifecycle;
+```
+
+Replace every placeholder below with the exact physical table/column name from
+the mapped hierarchy. Use the complete persisted node source, without tenant,
+soft-delete or other application visibility filters. These examples assume one
+physical node table for one configured hierarchy. For a shared inheritance table,
+include its exact mapped discriminator selection; for multiple physical node
+tables, supply their complete mapped union. Do not combine different hierarchies
+merely because their CLR entities have similar names. Each comparison is one
+statement; use an application-owned consistent read transaction when several
+observations must describe the same point while writers are active.
+
+Unscoped hierarchy:
+
+```sql
+WITH node_identities AS (
+    SELECT `YourTreeIdColumn` AS TreeId, COUNT(*) AS NodeCount
+    FROM `YourNodeTable`
+    GROUP BY `YourTreeIdColumn`
+)
+SELECT 'registry' AS Population, r.Lifecycle,
+       COUNT(*) AS Identities,
+       COUNT(n.TreeId) AS IdentitiesWithNodes,
+       COUNT(*) - COUNT(n.TreeId) AS IdentitiesWithoutNodes,
+       COALESCE(SUM(n.NodeCount), 0) AS Nodes
+FROM `DokaNestedSetTrees_REPLACE_HASH` AS r
+LEFT JOIN node_identities AS n ON n.TreeId = r.TreeId
+GROUP BY r.Lifecycle
+UNION ALL
+SELECT 'missing_registry', NULL, COUNT(*), COUNT(*), 0,
+       COALESCE(SUM(n.NodeCount), 0)
+FROM node_identities AS n
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM `DokaNestedSetTrees_REPLACE_HASH` AS r
+    WHERE r.TreeId = n.TreeId
+);
+```
+
+Scoped hierarchy:
+
+```sql
+WITH node_identities AS (
+    SELECT `YourScopeColumn` AS Scope, `YourTreeIdColumn` AS TreeId,
+           COUNT(*) AS NodeCount
+    FROM `YourNodeTable`
+    GROUP BY `YourScopeColumn`, `YourTreeIdColumn`
+)
+SELECT 'registry' AS Population, r.Lifecycle,
+       COUNT(*) AS Identities,
+       COUNT(n.TreeId) AS IdentitiesWithNodes,
+       COUNT(*) - COUNT(n.TreeId) AS IdentitiesWithoutNodes,
+       COALESCE(SUM(n.NodeCount), 0) AS Nodes
+FROM `DokaNestedSetTrees_REPLACE_HASH` AS r
+LEFT JOIN node_identities AS n ON n.Scope = r.Scope AND n.TreeId = r.TreeId
+GROUP BY r.Lifecycle
+UNION ALL
+SELECT 'missing_registry', NULL, COUNT(*), COUNT(*), 0,
+       COALESCE(SUM(n.NodeCount), 0)
+FROM node_identities AS n
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM `DokaNestedSetTrees_REPLACE_HASH` AS r
+    WHERE r.Scope = n.Scope AND r.TreeId = n.TreeId
+);
+```
+
+`registry` rows group actual reservations by every observed lifecycle value,
+including unsupported values. `missing_registry` counts persisted node identities
+and nodes without a registry match; it is not another lifecycle. The output
+contains aggregates rather than node identities or Scope values. Tombstones
+without nodes demonstrate retained reservations; tombstones with nodes, active
+identities without nodes or missing registry identities require review of the
+mapping, node source and write history. None of those counts is permission to
+delete rows. The normal API refuses to purge a tombstone that still has nodes.
+
+Source: [registry lifecycle updates](../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetTreeRegistryState.cs),
+[tree reservation](../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetTreeLock.cs),
+[registry metadata](../src/Doka.EntityFrameworkCore.NestedSet/Infrastructure/NestedSetTreeRegistryMetadata.cs)
+and [locked purge](../src/Doka.EntityFrameworkCore.NestedSet/Features/Maintenance/NestedSetTreeRegistryPurger.cs).
+
 ## Provider lock behavior
 
 | Provider | Registry lock behavior |

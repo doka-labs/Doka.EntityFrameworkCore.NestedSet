@@ -76,7 +76,8 @@ public sealed partial class InsertionRefreshAllocationTests
 
         // Assert
         Assert.False(matches);
-        Assert.Equal(37, entry.Property(property).CurrentValue);
+        Assert.Equal(37,
+            entry.Property(property).CurrentValue);
         Assert.Equal(replacement, entry.Entity.Id);
     }
 
@@ -206,17 +207,14 @@ public sealed partial class InsertionRefreshAllocationTests
             .Create();
 
         var retained = NestedSetInsertionTracking.EntryIdentity(unrelated);
+        var foreignKey = entry
+            .Metadata
+            .GetForeignKeys()
+            .Single();
 
         // Act
         identity.PrepareDetach();
         identity.Detach();
-
-        // Assert
-        Assert.Equal(EntityState.Detached, entry.State);
-        Assert.Null(updates.TryGetEntry(key, [3]));
-        Assert.Same(retained, updates.TryGetEntry(key, [2]));
-        Assert.Equal(1, unrelated.Entity.ParentId);
-        var foreignKey = Assert.Single(entry.Metadata.GetForeignKeys());
         var nativeMap = NestedSetInsertionContract.Instance.FindMap(
             NestedSetInsertionContract.Instance.Manager(retained),
             key)!;
@@ -228,6 +226,13 @@ public sealed partial class InsertionRefreshAllocationTests
 
         var bucket = NestedSetInsertionContract.Instance.Dependents(dependents, [1]);
         var introduced = NestedSetInsertionTracking.EntryIdentity(entry);
+
+        // Assert
+        Assert.Equal(EntityState.Detached, entry.State);
+        Assert.Null(updates.TryGetEntry(key, [3]));
+        Assert.Same(retained, updates.TryGetEntry(key, [2]));
+        Assert.Equal(1, unrelated.Entity.ParentId);
+        Assert.Single(entry.Metadata.GetForeignKeys());
         Assert.Single(bucket, candidate => ReferenceEquals(candidate, retained));
         Assert.DoesNotContain(bucket, candidate => ReferenceEquals(candidate, introduced));
     }

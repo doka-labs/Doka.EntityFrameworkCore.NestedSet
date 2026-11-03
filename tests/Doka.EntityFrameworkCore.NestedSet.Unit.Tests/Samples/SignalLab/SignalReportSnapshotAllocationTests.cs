@@ -7,25 +7,40 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples.SignalLab;
 // WHY: Only the allocation probe needs the existing nonparallel measurement collection; ordinary
 // validation tests keep their previous scheduling. Work, warmup and allocation budget are unchanged.
 [Collection("Allocation measurements")]
-public sealed class SignalReportSnapshotAllocationTests(ITestOutputHelper output)
+public sealed class SignalReportSnapshotAllocationTests(
+    ITestOutputHelper output
+)
 {
     /// <summary>Owner groups avoid reconstructing independent grouping sets for each scalar field.</summary>
     [Fact]
     public void SnapshotRetainsABoundedPerCriterionAllocation()
     {
         // Arrange
-        var criteria = Enumerable.Range(1, 20).SelectMany(type => Enumerable.Range(1, 4)
-            .SelectMany(field =>
-            {
-                var criterion = new TagCriterion(SignalReportDataset.Id(type), $"Field{field}", "choice");
+        var criteria = Enumerable
+            .Range(1, 20)
+            .SelectMany(type => Enumerable
+                .Range(1, 4)
+                .SelectMany(field =>
+                {
+                    var criterion = new TagCriterion(SignalReportDataset.Id(type), $"Field{field}", "choice");
 
-                return new[] { criterion, criterion };
-            })).ToArray();
+                    return new[] { criterion, criterion };
+                }))
+            .ToArray();
 
-        var request = new SignalReportRequest(Guid.NewGuid(), Guid.NewGuid(), [SignalReportDataset.Id(1)],
-            [SignalReportDataset.PulseChannel], [CapturePort.Pulse], SignalReportDataset.FirstDay, SignalReportDataset.FirstDay.AddDays(2),
-            MeasurementGranularity.Daily, criteria);
+        var request = new SignalReportRequest(Guid.NewGuid(),
+            Guid.NewGuid(),
+            [SignalReportDataset.Id(1)],
+            [SignalReportDataset.PulseChannel],
+            [CapturePort.Pulse],
+            SignalReportDataset.FirstDay,
+            SignalReportDataset.FirstDay.AddDays(2),
+            MeasurementGranularity.Daily,
+            criteria);
 
+        // WHY: Repeated calls warm snapshot construction outside the measured allocation interval.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var warmup = 0; warmup < 10; warmup++)
         {
             _ = SignalReportValidation.Snapshot(request);

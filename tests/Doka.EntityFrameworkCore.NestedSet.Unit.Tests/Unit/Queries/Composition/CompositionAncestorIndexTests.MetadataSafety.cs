@@ -37,13 +37,17 @@ public sealed partial class CompositionAncestorIndexTests
 
         await using var provider = SelectionServices(options);
         await using var context = new IndexCompositionContext(
-            new DbContextOptionsBuilder<IndexCompositionContext>(options).UseInternalServiceProvider(provider).Options);
+            new DbContextOptionsBuilder<IndexCompositionContext>(options)
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var model = context.Model;
         var probe = new MetadataReadProbe();
         var payload = MetadataPayload(kind, custom: true, probe);
         var decision = MetadataDecision(WrapMetadataPayload(payload, parent));
-        var facts = FactSelection(context.Set<SelectionFact>(), (node, fact) => fact.NodeId == node.Id);
+        var facts = FactSelection(context.Set<SelectionFact>(),
+            (node, fact) => fact.NodeId == node.Id);
+
         var scalar = Expression.Lambda<Func<CompositionNode, bool>>(decision, facts.Parameters);
         var combined = Expression.Lambda<Func<CompositionNode, bool>>(
             metadataFirst ? Expression.AndAlso(decision, facts.Body) : Expression.AndAlso(facts.Body, decision),
@@ -100,22 +104,28 @@ public sealed partial class CompositionAncestorIndexTests
 
         await using var provider = SelectionServices(options);
         await using var context = new IndexCompositionContext(
-            new DbContextOptionsBuilder<IndexCompositionContext>(options).UseInternalServiceProvider(provider).Options);
+            new DbContextOptionsBuilder<IndexCompositionContext>(options)
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var model = context.Model;
         var probe = new MetadataReadProbe();
         var payload = MetadataPayload(kind, custom: false, probe);
         var decision = MetadataDecision(WrapMetadataPayload(payload, parent));
-        var facts = FactSelection(context.Set<SelectionFact>(), (node, fact) => fact.NodeId == node.Id);
+        var facts = FactSelection(context.Set<SelectionFact>(),
+            (node, fact) => fact.NodeId == node.Id);
+
         var scalar = Expression.Lambda<Func<CompositionNode, bool>>(decision, facts.Parameters);
         var combined = Expression.Lambda<Func<CompositionNode, bool>>(
-            Expression.AndAlso(facts.Body, decision), facts.Parameters);
+            Expression.AndAlso(facts.Body, decision),
+            facts.Parameters);
 
         probe.Arm();
 
         // Act
         var usesQueryOperators = NestedSetQuerySelection.UsesQueryOperators(scalar);
-        var requiresCorrelation = NestedSetQuerySelection.RequiresAncestorDecorrelation(combined, model,
+        var requiresCorrelation = NestedSetQuerySelection.RequiresAncestorDecorrelation(combined,
+            model,
             out var factSelection);
 
         // Assert
@@ -145,16 +155,21 @@ public sealed partial class CompositionAncestorIndexTests
 
         await using var provider = SelectionServices(options);
         await using var context = new IndexCompositionContext(
-            new DbContextOptionsBuilder<IndexCompositionContext>(options).UseInternalServiceProvider(provider).Options);
+            new DbContextOptionsBuilder<IndexCompositionContext>(options)
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var model = context.Model;
         var probe = new MetadataReadProbe();
         var delegateType = new DynamicDelegateMetadataProbe(probe);
-        var dynamic = Expression.MakeDynamic(delegateType, new MetadataBinderProbe(),
+        var dynamic = Expression.MakeDynamic(delegateType,
+            new MetadataBinderProbe(),
             Expression.Constant(1, typeof(object)));
 
         var decision = MetadataDecision(WrapMetadataPayload(dynamic, parent));
-        var facts = FactSelection(context.Set<SelectionFact>(), (node, fact) => fact.NodeId == node.Id);
+        var facts = FactSelection(context.Set<SelectionFact>(),
+            (node, fact) => fact.NodeId == node.Id);
+
         var scalar = Expression.Lambda<Func<CompositionNode, bool>>(decision, facts.Parameters);
         var combined = Expression.Lambda<Func<CompositionNode, bool>>(
             metadataFirst ? Expression.AndAlso(decision, facts.Body) : Expression.AndAlso(facts.Body, decision),
@@ -193,9 +208,11 @@ public sealed partial class CompositionAncestorIndexTests
             "constructor" => Expression.New(custom
                 ? new ConstructorMetadataProbe(typeof(object).GetConstructor(Type.EmptyTypes)!, probe)
                 : typeof(object).GetConstructor(Type.EmptyTypes)!),
-            "index" => Expression.MakeIndex(Expression.Constant(new List<int> { 0 }), custom
-                ? new IndexMetadataProbe(typeof(List<int>).GetProperty("Item")!, probe)
-                : typeof(List<int>).GetProperty("Item")!, [Expression.Constant(0)]),
+            "index" => Expression.MakeIndex(Expression.Constant(new List<int> { 0 }),
+                custom
+                    ? new IndexMetadataProbe(typeof(List<int>).GetProperty("Item")!, probe)
+                    : typeof(List<int>).GetProperty("Item")!,
+                [Expression.Constant(0)]),
             "constant" => Expression.Constant(null, custom ? new ConstantMetadataProbe(probe) : typeof(string)),
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
@@ -220,7 +237,9 @@ public sealed partial class CompositionAncestorIndexTests
     }
 
     /// <summary>Embeds each scalar payload into a Boolean predicate without executing or compiling it.</summary>
-    private static BinaryExpression MetadataDecision(Expression payload)
+    private static BinaryExpression MetadataDecision(
+        Expression payload
+    )
         => payload.Type == typeof(int)
             ? Expression.Equal(payload, Expression.Constant(0))
             : Expression.ReferenceNotEqual(payload, Expression.Constant(null, payload.Type));

@@ -43,7 +43,7 @@ call to succeed and rejects failed, canceled, or skipped gates.
 The build job runs the release-mode build once:
 
 ```bash
-python3 -m eng.release.qualification --job build --version 10.1.0 --output artifacts/qualification
+python3 -m eng.release.qualification --job build --version 10.2.0 --output artifacts/qualification
 ```
 
 It copies the reviewed shipping locks, adapts internal project-version edges
@@ -74,7 +74,7 @@ After the shared call, the release candidate's `qualify` job checks both direct
 by their scalar IDs plus the current-attempt test artifacts, and seals:
 
 ```bash
-python3 -m eng.release.qualification --job seal --version 10.1.0 --output artifacts/qualification
+python3 -m eng.release.qualification --job seal --version 10.2.0 --output artifacts/qualification
 ```
 
 The seal restores the build identity of the same run and attempt. It rejects
@@ -151,7 +151,7 @@ activation, environment grants and actual .NET 11 adoption remain separate.
 Verify already-produced files without packing again:
 
 ```bash
-bash eng/verify-package-consumer.sh --package-dir artifacts/packages --version 10.1.0 \
+bash eng/verify-package-consumer.sh --package-dir artifacts/packages --version 10.2.0 \
   --output artifacts/package-consumers
 ```
 

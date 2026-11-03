@@ -32,13 +32,34 @@ public sealed class CompositionEndpointTests
         var second = context.Set<CompositionGuardNode>(CompositionGuardContext.SecondMapping);
         var source = shape switch
         {
-            "anonymous" => first.Select(node => new { Endpoint = node })
-                .Select(row => new CompositionGuardRow { Upper = row.Endpoint, Lower = row.Endpoint }),
-            "initializer" => first.Select(node => new CompositionGuardRow { Upper = node, Lower = node }),
-            "join-payload" => first.Join(second, node => node.Id, payload => payload.Id,
-                (node, payload) => new CompositionGuardRow { Upper = node, Lower = node, Payload = payload }),
+            "anonymous" => first
+                .Select(node => new { Endpoint = node })
+                .Select(row => new CompositionGuardRow
+                {
+                    Upper = row.Endpoint,
+                    Lower = row.Endpoint,
+                }),
+            "initializer" => first.Select(node => new CompositionGuardRow
+            {
+                Upper = node,
+                Lower = node,
+            }),
+            "join-payload" => first.Join(second,
+                node => node.Id,
+                payload => payload.Id,
+                (node, payload) => new CompositionGuardRow
+                {
+                    Upper = node,
+                    Lower = node,
+                    Payload = payload,
+                }),
             "select-many-payload" => first.SelectMany(node => second.Where(payload => payload.Id == node.Id),
-                (node, payload) => new CompositionGuardRow { Upper = node, Lower = node, Payload = payload }),
+                (node, payload) => new CompositionGuardRow
+                {
+                    Upper = node,
+                    Lower = node,
+                    Payload = payload,
+                }),
             _ => throw new ArgumentOutOfRangeException(nameof(shape)),
         };
 
@@ -67,8 +88,14 @@ public sealed class CompositionEndpointTests
         var hierarchy = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
         var first = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
         var second = context.Set<CompositionGuardNode>(CompositionGuardContext.SecondMapping);
-        var source = first.Join(second, node => node.Id, other => other.Id,
-            (node, other) => new CompositionGuardRow { Upper = node, Lower = other });
+        var source = first.Join(second,
+            node => node.Id,
+            other => other.Id,
+            (node, other) => new CompositionGuardRow
+            {
+                Upper = node,
+                Lower = other,
+            });
 
         // Act
         var error = Record.Exception(() => Filter(hierarchy, source, operation));
@@ -94,7 +121,8 @@ public sealed class CompositionEndpointTests
         var boundary = new CompositionIoBoundary();
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
         var hierarchy = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
-        var source = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping)
+        var source = context
+            .Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping)
             .Select(node => new CompositionGuardRow
             {
                 Upper = node,
@@ -123,10 +151,14 @@ public sealed class CompositionEndpointTests
 
         using var context = new ConcreteTpcContext(options);
         var hierarchy = context.NestedSet<TpcFolderNode>();
-        var source = context.Set<TpcNode>().OfType<TpcFolderNode>();
+        var source = context
+            .Set<TpcNode>()
+            .OfType<TpcFolderNode>();
 
         // Act
-        var query = hierarchy.WhereAnyAncestorOrSelf(source, node => node, (row, owner) => owner.Id == row.Id);
+        var query = hierarchy.WhereAnyAncestorOrSelf(source,
+            node => node,
+            (row, owner) => owner.Id == row.Id);
 
         // Assert
         Assert.NotNull(query.Expression);
@@ -150,7 +182,9 @@ public sealed class CompositionEndpointTests
         var source = context.Set<TphFolderNode>();
 
         // Act
-        var query = hierarchy.WhereAnyAncestorOrSelf(source, node => node, (row, owner) => owner.Id == row.Id);
+        var query = hierarchy.WhereAnyAncestorOrSelf(source,
+            node => node,
+            (row, owner) => owner.Id == row.Id);
 
         // Assert
         Assert.NotNull(query.Expression);
@@ -166,9 +200,16 @@ public sealed class CompositionEndpointTests
     ) => operation switch
     {
         "path" => hierarchy.WherePathEdges(
-            source, row => row.Upper, row => row.Lower, (row, parent, child) => parent.Id != child.Id),
-        "any" => hierarchy.WhereAnyAncestorOrSelf(source, row => row.Lower, (row, owner) => owner.Id == row.Upper.Id),
-        "nearest" => hierarchy.WhereNearestAncestorOrSelf(source, row => row.Lower, (row, owner) => owner.Depth == 1,
+            source,
+            row => row.Upper,
+            row => row.Lower,
+            (row, parent, child) => parent.Id != child.Id),
+        "any" => hierarchy.WhereAnyAncestorOrSelf(source,
+            row => row.Lower,
+            (row, owner) => owner.Id == row.Upper.Id),
+        "nearest" => hierarchy.WhereNearestAncestorOrSelf(source,
+            row => row.Lower,
+            (row, owner) => owner.Depth == 1,
             (row, owner) => owner.Id == row.Upper.Id),
         _ => throw new ArgumentOutOfRangeException(nameof(operation)),
     };

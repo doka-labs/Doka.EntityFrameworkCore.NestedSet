@@ -54,13 +54,13 @@ public sealed partial class ProviderTestContractTests
         var method = CreateProbe(
             [
                 NeutralFact(
-                [
-                    "MySql",
-                    "MariaDb",
-                    "PostgreSql",
-                    "SqlServer",
-                    "Sqlite",
-                ]),
+                    [
+                        "MySql",
+                        "MariaDb",
+                        "PostgreSql",
+                        "SqlServer",
+                        "Sqlite",
+                    ]),
             ])
             .GetMethod("Probe0")!;
 
@@ -103,7 +103,7 @@ public sealed partial class ProviderTestContractTests
             [
                 NeutralTheory(),
                 NeutralInline([17], ["MySql", "MariaDb", "SqlServer", "Sqlite"]),
-                NeutralInline([18], ["MySql", "MariaDb", "PostgreSql", "Sqlite"])
+                NeutralInline([18], ["MySql", "MariaDb", "PostgreSql", "Sqlite"]),
             ])
             .GetMethod("Probe0")!;
 
@@ -127,7 +127,7 @@ public sealed partial class ProviderTestContractTests
         var method = CreateProbe(
             [
                 NeutralTheory(["MySql"]),
-                SharedMember(nameof(RawSources.ValidConditionalRows), ["MariaDb", "SqlServer"])
+                SharedMember(nameof(RawSources.ValidConditionalRows), ["MariaDb", "SqlServer"]),
             ])
             .GetMethod("Probe0")!;
 
@@ -163,7 +163,7 @@ public sealed partial class ProviderTestContractTests
         var method = CreateProbe(
             [
                 NeutralTheory(["MySql", "MariaDb", "PostgreSql"]),
-                SharedMember(nameof(RawSources.ValidConditionalRows), ["SqlServer"])
+                SharedMember(nameof(RawSources.ValidConditionalRows), ["SqlServer"]),
             ])
             .GetMethod("Probe0")!;
 

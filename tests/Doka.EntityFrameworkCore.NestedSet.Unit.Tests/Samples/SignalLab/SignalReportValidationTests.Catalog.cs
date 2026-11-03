@@ -12,11 +12,15 @@ public sealed partial class SignalReportValidationTests
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request() with { Criteria = [] });
-        var catalog = Catalog(snapshot).Reverse().Concat(Catalog(snapshot)).Append(new SignalCatalogRow
-        {
-            Kind = 99,
-            UnitCode = "ignored",
-        }).ToArray();
+        var catalog = Catalog(snapshot)
+            .Reverse()
+            .Concat(Catalog(snapshot))
+            .Append(new SignalCatalogRow
+            {
+                Kind = 99,
+                UnitCode = "ignored",
+            })
+            .ToArray();
 
         // Act
         var error = Record.Exception(() => SignalReportValidation.RequireCatalog(snapshot, catalog));
@@ -29,7 +33,9 @@ public sealed partial class SignalReportValidationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void CatalogRequiresEverySelectedIdentity(bool missingMetric)
+    public void CatalogRequiresEverySelectedIdentity(
+        bool missingMetric
+    )
     {
         // Arrange
         var request = Request();
@@ -89,16 +95,21 @@ public sealed partial class SignalReportValidationTests
     [InlineData("", false)]
     [InlineData(null, false)]
     [InlineData("currency", true)]
-    public void CatalogRejectsNonidenticalOrMissingUnitEvidence(string? unit, bool duplicateId)
+    public void CatalogRejectsNonidenticalOrMissingUnitEvidence(
+        string? unit,
+        bool duplicateId
+    )
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request());
-        var catalog = Catalog(snapshot).Append(new SignalCatalogRow
-        {
-            Kind = 1,
-            Id = duplicateId ? SignalReportDataset.PulseChannel : SignalReportDataset.SweepChannel,
-            UnitCode = unit!,
-        }).ToArray();
+        var catalog = Catalog(snapshot)
+            .Append(new SignalCatalogRow
+            {
+                Kind = 1,
+                Id = duplicateId ? SignalReportDataset.PulseChannel : SignalReportDataset.SweepChannel,
+                UnitCode = unit!,
+            })
+            .ToArray();
 
         // Act
         var error = Record.Exception(() => SignalReportValidation.RequireCatalog(snapshot, catalog));
@@ -120,7 +131,9 @@ public sealed partial class SignalReportValidationTests
     [InlineData("choice-case")]
     [InlineData("choice-padding")]
     [InlineData("missing-choice")]
-    public void CatalogRequiresExactClassificationFieldAndChoiceEvidence(string shape)
+    public void CatalogRequiresExactClassificationFieldAndChoiceEvidence(
+        string shape
+    )
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request());
@@ -128,9 +141,14 @@ public sealed partial class SignalReportValidationTests
         var definition = shape.StartsWith("definition", StringComparison.Ordinal);
         catalog[definition ? 2 : 3] = new SignalCatalogRow
         {
-            Kind = definition ? 2 : shape == "missing-choice" ? 99 : 3,
+            Kind = definition
+                ? 2
+                : shape == "missing-choice"
+                    ? 99
+                    : 3,
             TypeId = shape.EndsWith("type", StringComparison.Ordinal)
-                ? SignalReportDataset.SensorKind : SignalReportDataset.ArrayKind,
+                ? SignalReportDataset.SensorKind
+                : SignalReportDataset.ArrayKind,
             FieldCode = shape switch
             {
                 "definition-case" => "band",

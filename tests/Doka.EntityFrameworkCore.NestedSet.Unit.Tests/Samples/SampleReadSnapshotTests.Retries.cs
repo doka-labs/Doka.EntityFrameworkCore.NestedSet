@@ -1,5 +1,4 @@
 extern alias UserGroupsSample;
-
 using Microsoft.EntityFrameworkCore.Storage;
 using SampleReadSnapshot = UserGroupsSample::Doka.EntityFrameworkCore.NestedSet.Samples.SampleReadSnapshot;
 
@@ -29,36 +28,55 @@ public sealed partial class SampleReadSnapshotTests
 
         services.AddScoped<IExecutionStrategyFactory, SnapshotRetryingStrategyFactory>();
         await using var provider = services.BuildServiceProvider();
-        await using var context = new SampleLifecycleContext(options.UseInternalServiceProvider(provider).Options);
+        await using var context = new SampleLifecycleContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
 
         // WHY: The caller holds the in-memory database open independently of each owned read transaction.
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
-        context.Sentinels.Add(new SampleLifecycleSentinel { Id = 1, Value = "persisted" });
+        context.Sentinels.Add(new SampleLifecycleSentinel
+        {
+            Id = 1,
+            Value = "persisted",
+        });
         await context.SaveChangesAsync(CancellationToken.None);
         observer.Reset();
         var attempts = new List<SqliteTransaction>();
         var reads = 0;
 
         // Act
-        var result = await SampleReadSnapshot.RunAsync(context, async token =>
-        {
-            attempts.Add((SqliteTransaction)context.Database.CurrentTransaction!.GetDbTransaction());
-            var first = await context.Sentinels.AsNoTracking().Select(row => row.Value).SingleAsync(token);
-            reads++;
-
-            if (attempts.Count == 1)
+        var result = await SampleReadSnapshot.RunAsync(context,
+            async token =>
             {
-                throw new SnapshotTransientException();
-            }
+                attempts.Add((SqliteTransaction)context.Database.CurrentTransaction!.GetDbTransaction());
+                var first = await context
+                    .Sentinels
+                    .AsNoTracking()
+                    .Select(row => row.Value)
+                    .SingleAsync(token);
 
-            var second = await context.Sentinels.AsNoTracking().Select(row => row.Value).SingleAsync(token);
-            reads++;
+                reads++;
 
-            return (First: first, Second: second);
-        }, CancellationToken.None);
+                if (attempts.Count == 1)
+                {
+                    throw new SnapshotTransientException();
+                }
+
+                var second = await context
+                    .Sentinels
+                    .AsNoTracking()
+                    .Select(row => row.Value)
+                    .SingleAsync(token);
+
+                reads++;
+
+                return (First: first, Second: second);
+            },
+            CancellationToken.None);
 
         var connectionState = context.Database.GetDbConnection().State;
+
         await context.Database.CloseConnectionAsync();
 
         // Assert
@@ -72,11 +90,14 @@ public sealed partial class SampleReadSnapshotTests
         Assert.Equal(1, observer.Committed);
         Assert.Null(context.Database.CurrentTransaction);
         Assert.Equal(ConnectionState.Open, connectionState);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>Installs one narrowly defined transient retry through EF's public strategy registration.</summary>
-    private sealed class SnapshotRetryingStrategyFactory(ExecutionStrategyDependencies dependencies)
+    private sealed class SnapshotRetryingStrategyFactory(
+        ExecutionStrategyDependencies dependencies
+    )
         : IExecutionStrategyFactory
     {
         /// <inheritdoc />
@@ -84,11 +105,15 @@ public sealed partial class SampleReadSnapshotTests
     }
 
     /// <summary>Retries only the deliberate first-read failure, without timing or arbitrary retries in tests.</summary>
-    private sealed class SnapshotRetryingStrategy(ExecutionStrategyDependencies dependencies)
+    private sealed class SnapshotRetryingStrategy(
+        ExecutionStrategyDependencies dependencies
+    )
         : ExecutionStrategy(dependencies, maxRetryCount: 1, maxRetryDelay: TimeSpan.Zero)
     {
         /// <inheritdoc />
-        protected override bool ShouldRetryOn(Exception exception) => exception is SnapshotTransientException;
+        protected override bool ShouldRetryOn(
+            Exception exception
+        ) => exception is SnapshotTransientException;
     }
 
     /// <summary>Marks the single deliberate transient read failure recognized by the test's EF strategy.</summary>

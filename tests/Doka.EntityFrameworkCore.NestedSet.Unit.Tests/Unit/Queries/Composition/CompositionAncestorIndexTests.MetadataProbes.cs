@@ -73,7 +73,9 @@ public sealed partial class CompositionAncestorIndexTests
         public override ParameterInfo[] GetParameters() => constructor.GetParameters();
 
         /// <inheritdoc />
-        public override object[] GetCustomAttributes(bool inherit) => constructor.GetCustomAttributes(inherit);
+        public override object[] GetCustomAttributes(
+            bool inherit
+        ) => constructor.GetCustomAttributes(inherit);
 
         /// <inheritdoc />
         public override object[] GetCustomAttributes(
@@ -141,19 +143,27 @@ public sealed partial class CompositionAncestorIndexTests
         public override Type? ReflectedType => property.ReflectedType;
 
         /// <inheritdoc />
-        public override MethodInfo[] GetAccessors(bool nonPublic) => property.GetAccessors(nonPublic);
+        public override MethodInfo[] GetAccessors(
+            bool nonPublic
+        ) => property.GetAccessors(nonPublic);
 
         /// <inheritdoc />
-        public override MethodInfo? GetGetMethod(bool nonPublic) => property.GetGetMethod(nonPublic);
+        public override MethodInfo? GetGetMethod(
+            bool nonPublic
+        ) => property.GetGetMethod(nonPublic);
 
         /// <inheritdoc />
-        public override MethodInfo? GetSetMethod(bool nonPublic) => property.GetSetMethod(nonPublic);
+        public override MethodInfo? GetSetMethod(
+            bool nonPublic
+        ) => property.GetSetMethod(nonPublic);
 
         /// <inheritdoc />
         public override ParameterInfo[] GetIndexParameters() => property.GetIndexParameters();
 
         /// <inheritdoc />
-        public override object[] GetCustomAttributes(bool inherit) => property.GetCustomAttributes(inherit);
+        public override object[] GetCustomAttributes(
+            bool inherit
+        ) => property.GetCustomAttributes(inherit);
 
         /// <inheritdoc />
         public override object[] GetCustomAttributes(
@@ -188,7 +198,9 @@ public sealed partial class CompositionAncestorIndexTests
     }
 
     /// <summary>Supplies a valid declared null type without allowing later virtual type inspection.</summary>
-    private sealed class ConstantMetadataProbe(MetadataReadProbe probe) : TypeDelegator(typeof(string))
+    private sealed class ConstantMetadataProbe(
+        MetadataReadProbe probe
+    ) : TypeDelegator(typeof(string))
     {
         /// <inheritdoc />
         public override Type UnderlyingSystemType
@@ -203,11 +215,15 @@ public sealed partial class CompositionAncestorIndexTests
     }
 
     /// <summary>Detects dynamic reduction reaching CallSite.Create's virtual delegate-type validation.</summary>
-    private sealed class DynamicDelegateMetadataProbe(MetadataReadProbe probe)
+    private sealed class DynamicDelegateMetadataProbe(
+        MetadataReadProbe probe
+    )
         : TypeDelegator(typeof(Func<CallSite, object, object>))
     {
         /// <inheritdoc />
-        public override bool IsSubclassOf(Type type)
+        public override bool IsSubclassOf(
+            Type type
+        )
         {
             probe.Read();
 

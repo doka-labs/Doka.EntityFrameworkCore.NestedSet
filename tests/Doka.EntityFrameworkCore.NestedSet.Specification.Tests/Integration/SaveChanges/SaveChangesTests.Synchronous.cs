@@ -57,7 +57,7 @@ public abstract partial class SaveChangesTests
                 .SingleAsync(CancellationToken.None));
     }
 
-    /// <summary>Allows explicitly synchronous unrelated writes with native acceptance and one detection pass.</summary>
+    /// <summary>Allows explicitly synchronous unrelated writes with native acceptance and detection policy.</summary>
     [Theory]
     [InlineData(false, false)]
     [InlineData(false, true)]
@@ -90,7 +90,7 @@ public abstract partial class SaveChangesTests
 
         // Assert
         Assert.Equal(1, saved);
-        Assert.Equal(1, detections);
+        Assert.Equal(automaticDetection ? 1 : 0, detections);
         Assert.Equal(1, probe.PayloadCommands);
         Assert.Equal(0, probe.LockCommands);
         Assert.Equal(automaticDetection, context.ChangeTracker.AutoDetectChangesEnabled);

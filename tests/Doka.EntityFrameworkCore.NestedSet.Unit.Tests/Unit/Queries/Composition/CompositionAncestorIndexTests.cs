@@ -3,7 +3,9 @@ using Doka.EntityFrameworkCore.NestedSet.Providers;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-/// <summary>Qualifies deferred indexed ancestor construction with both published and feature-enabled Doka binaries.</summary>
+/// <summary>
+/// Qualifies deferred indexed ancestor construction with both published and feature-enabled Doka binaries.
+/// </summary>
 public sealed partial class CompositionAncestorIndexTests
 {
     /// <summary>The optional path uses its configured flag and completed structural selection without I/O.</summary>
@@ -40,26 +42,55 @@ public sealed partial class CompositionAncestorIndexTests
         }
 
         await using var provider = services.BuildServiceProvider();
-        await using var context = new IndexCompositionContext(options.UseInternalServiceProvider(provider).Options);
-        var hierarchy = context.NestedSet<CompositionNode>()
+        await using var context = new IndexCompositionContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
             .ForScope(Guid.Parse("820bc0eb-7a3c-4dd9-9cbb-87d758889237"));
 
         var query = treeBound
             ? includeSelf
-                ? hierarchy.InTree(Guid.Empty).SelectAncestorsOrSelf(node => node.Id == 3,
-                    (source, ancestor, distance) => new { Source = source, Ancestor = ancestor, Distance = distance })
-                : hierarchy.InTree(Guid.Empty).SelectAncestors(node => node.Id == 3,
-                    (source, ancestor, distance) => new { Source = source, Ancestor = ancestor, Distance = distance })
+                ? hierarchy
+                    .InTree(Guid.Empty)
+                    .SelectAncestorsOrSelf(node => node.Id == 3,
+                        (source, ancestor, distance) => new
+                        {
+                            Source = source,
+                            Ancestor = ancestor,
+                            Distance = distance,
+                        })
+                : hierarchy
+                    .InTree(Guid.Empty)
+                    .SelectAncestors(node => node.Id == 3,
+                        (source, ancestor, distance) => new
+                        {
+                            Source = source,
+                            Ancestor = ancestor,
+                            Distance = distance,
+                        })
             : includeSelf
                 ? hierarchy.SelectAncestorsOrSelf(node => node.Id == 3,
-                    (source, ancestor, distance) => new { Source = source, Ancestor = ancestor, Distance = distance })
+                    (source, ancestor, distance) => new
+                    {
+                        Source = source,
+                        Ancestor = ancestor,
+                        Distance = distance,
+                    })
                 : hierarchy.SelectAncestors(node => node.Id == 3,
-                    (source, ancestor, distance) => new { Source = source, Ancestor = ancestor, Distance = distance });
+                    (source, ancestor, distance) => new
+                    {
+                        Source = source,
+                        Ancestor = ancestor,
+                        Distance = distance,
+                    });
 
         // WHY: This same contract runs against the published fallback and exact private feature
         // binary. Availability changes the SQL strategy; neither installation may perform I/O here.
         var hasBinding = NestedSetProviderCapabilities.Resolve(context).CompletedSourceMethod is not null
-            && (!includeSelf || NestedSetProviderCapabilities.Resolve(context).OrderedJoinMethod is not null);
+            && (!includeSelf
+                || NestedSetProviderCapabilities.Resolve(context).OrderedJoinMethod is not null);
 
         // Act
         var sql = query.ToQueryString();
@@ -94,7 +125,9 @@ public sealed partial class CompositionAncestorIndexTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>Source completion retains the caller predicate once, including a correlated selection fallback.</summary>
+    /// <summary>
+    /// Source completion retains the caller predicate once, including a correlated selection fallback.
+    /// </summary>
     /// <param name="engine">The explicitly configured Doka engine.</param>
     /// <param name="includeSelf">Whether equal-bound owners participate.</param>
     /// <param name="queryBearing">Whether the predicate contains a relational query operator.</param>
@@ -128,20 +161,36 @@ public sealed partial class CompositionAncestorIndexTests
         }
 
         await using var provider = services.BuildServiceProvider();
-        await using var context = new IndexCompositionContext(options.UseInternalServiceProvider(provider).Options);
-        var hierarchy = context.NestedSet<CompositionNode>()
+        await using var context = new IndexCompositionContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
             .ForScope(Guid.Parse("820bc0eb-7a3c-4dd9-9cbb-87d758889237"));
 
         Expression<Func<CompositionNode, bool>> selected = queryBearing
-            ? node => context.Set<CompositionNode>().Any(other => other.Id == node.Id && SelectedNode(other.Id))
+            ? node => context
+                .Set<CompositionNode>()
+                .Any(other => other.Id == node.Id && SelectedNode(other.Id))
             : node => SelectedNode(node.Id);
 
         // Act
         var query = includeSelf
             ? hierarchy.SelectAncestorsOrSelf(selected,
-                (source, ancestor, distance) => new { Source = source, Ancestor = ancestor, Distance = distance })
+                (source, ancestor, distance) => new
+                {
+                    Source = source,
+                    Ancestor = ancestor,
+                    Distance = distance,
+                })
             : hierarchy.SelectAncestors(selected,
-                (source, ancestor, distance) => new { Source = source, Ancestor = ancestor, Distance = distance });
+                (source, ancestor, distance) => new
+                {
+                    Source = source,
+                    Ancestor = ancestor,
+                    Distance = distance,
+                });
 
         var counter = new SelectionCounter();
         counter.Visit(query.Expression);
@@ -154,7 +203,9 @@ public sealed partial class CompositionAncestorIndexTests
     }
 
     /// <summary>Marks application code that must never execute during deferred construction.</summary>
-    private static bool SelectedNode(int key)
+    private static bool SelectedNode(
+        int key
+    )
         => throw new InvalidOperationException($"Selection for node {key} must remain deferred.");
 
     /// <summary>Counts the caller's exact marker rather than matching unrelated query operators.</summary>
@@ -164,7 +215,9 @@ public sealed partial class CompositionAncestorIndexTests
         internal int Occurrences { get; private set; }
 
         /// <inheritdoc />
-        protected override Expression VisitMethodCall(MethodCallExpression node)
+        protected override Expression VisitMethodCall(
+            MethodCallExpression node
+        )
         {
             if (node.Method.DeclaringType == typeof(CompositionAncestorIndexTests)
                 && node.Method.Name == nameof(SelectedNode))

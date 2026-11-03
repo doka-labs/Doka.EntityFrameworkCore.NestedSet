@@ -19,7 +19,11 @@ public sealed class SupervisorServerRankTests
     [InlineData(int.MaxValue, -1, 9_223_372_034_707_292_159L)]
     [InlineData(int.MaxValue, 0, 9_223_372_034_707_292_160L)]
     [InlineData(int.MaxValue, int.MaxValue, long.MaxValue)]
-    public void ActualServerRankFitsTheCompleteSupportedRange(int distance, int priority, long expected)
+    public void ActualServerRankFitsTheCompleteSupportedRange(
+        int distance,
+        int priority,
+        long expected
+    )
     {
         // Arrange
         var rank = ActualRank();
@@ -64,13 +68,55 @@ public sealed class SupervisorServerRankTests
     /// <param name="evidenceCount">The number of retained original occurrences.</param>
     /// <param name="cursorGroupIndex">The canonical continuation group, or a negative unresolved sentinel.</param>
     [Theory]
-    [InlineData(false, 1, false, "Found", 2, 1, 4)]
-    [InlineData(false, 2, false, "Found", 1, 2, 4)]
-    [InlineData(false, 1, true, "Ambiguous", -1, 0, -1)]
-    [InlineData(false, 2, true, "Ambiguous", -1, 0, -1)]
-    [InlineData(false, 99, false, "NotFound", -1, 0, -1)]
-    [InlineData(false, int.MaxValue, false, "NotFound", -1, 0, -1)]
-    [InlineData(true, 1, false, "Found", 1, 2, 2)]
+    [InlineData(false,
+        1,
+        false,
+        "Found",
+        2,
+        1,
+        4)]
+    [InlineData(false,
+        2,
+        false,
+        "Found",
+        1,
+        2,
+        4)]
+    [InlineData(false,
+        1,
+        true,
+        "Ambiguous",
+        -1,
+        0,
+        -1)]
+    [InlineData(false,
+        2,
+        true,
+        "Ambiguous",
+        -1,
+        0,
+        -1)]
+    [InlineData(false,
+        99,
+        false,
+        "NotFound",
+        -1,
+        0,
+        -1)]
+    [InlineData(false,
+        int.MaxValue,
+        false,
+        "NotFound",
+        -1,
+        0,
+        -1)]
+    [InlineData(true,
+        1,
+        false,
+        "Found",
+        1,
+        2,
+        2)]
     public async Task ActualReaderPreservesNearestPersonRanksAndAllOriginalEvidence(
         bool highest,
         int slot,
@@ -89,30 +135,43 @@ public sealed class SupervisorServerRankTests
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
         var data = await SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await context.UserGroupMemberships.Where(member => member.TenantId == data.TenantId
+        await context
+            .UserGroupMemberships
+            .Where(member => member.TenantId == data.TenantId
                 && member.UserId == data.Users[1])
             .ExecuteUpdateAsync(setters => setters.SetProperty(member => member.LeadershipPriority,
-                tie ? 0 : int.MaxValue), CancellationToken.None);
-        await context.UserGroupMemberships.Where(member => member.TenantId == data.TenantId
+                    tie ? 0 : int.MaxValue),
+                CancellationToken.None);
+        await context
+            .UserGroupMemberships
+            .Where(member => member.TenantId == data.TenantId
                 && member.UserId == data.Users[2])
             .ExecuteUpdateAsync(setters => setters.SetProperty(member => member.LeadershipPriority, 0),
                 CancellationToken.None);
         context.UserGroupMemberships.Add(new UserGroupMembership
         {
-            TenantId = data.TenantId, UserId = data.Users[1], UserGroupId = data.Groups[2],
+            TenantId = data.TenantId,
+            UserId = data.Users[1],
+            UserGroupId = data.Groups[2],
             LeadershipPriority = int.MinValue,
         });
 
         context.MembershipRoles.Add(new MembershipRole
         {
-            TenantId = data.TenantId, UserId = data.Users[1], UserGroupId = data.Groups[2],
+            TenantId = data.TenantId,
+            UserId = data.Users[1],
+            UserGroupId = data.Groups[2],
             RoleId = data.ManagerRoleId,
         });
 
         context.MembershipMetadatas.Add(new MembershipMetadata
         {
-            TenantId = data.TenantId, UserId = data.Users[1], UserGroupId = data.Groups[2],
-            GroupTypeId = 1, FieldCode = "Route", Value = "lane-blue",
+            TenantId = data.TenantId,
+            UserId = data.Users[1],
+            UserGroupId = data.Groups[2],
+            GroupTypeId = 1,
+            FieldCode = "Route",
+            Value = "lane-blue",
         });
 
         await context.SaveChangesAsync(CancellationToken.None);
@@ -123,7 +182,11 @@ public sealed class SupervisorServerRankTests
 
         // Act
         var result = await SupervisorQueries.ResolveAsync(
-            context, data.TenantId, request, selection, CancellationToken.None);
+            context,
+            data.TenantId,
+            request,
+            selection,
+            CancellationToken.None);
 
         // Assert
         Assert.Equal(SupervisorBatchStatus.Completed, result.Status);
@@ -133,12 +196,13 @@ public sealed class SupervisorServerRankTests
         Assert.Equal(cursorGroupIndex < 0 ? null : data.Groups[cursorGroupIndex],
             origin.Continuation?.FoundGroupId);
         Assert.Equal(evidenceCount, origin.Evidence.Count);
-        Assert.All(origin.Evidence, row =>
-        {
-            Assert.Equal(data.Users[personIndex], row.CandidateUserId);
-            Assert.Equal(data.Groups[5], row.StartGroupId);
-            Assert.Equal(data.TreeId, row.StartTreeId);
-        });
+        Assert.All(origin.Evidence,
+            row =>
+            {
+                Assert.Equal(data.Users[personIndex], row.CandidateUserId);
+                Assert.Equal(data.Groups[5], row.StartGroupId);
+                Assert.Equal(data.TreeId, row.StartTreeId);
+            });
 
         Assert.Single(probe.Commands);
         Assert.Equal(0, probe.Entities);
@@ -151,7 +215,10 @@ public sealed class SupervisorServerRankTests
     [Theory]
     [InlineData(1, true)]
     [InlineData(2, false)]
-    public async Task ValidRankZeroIsDistinctFromAnUnoccupiedSlot(int slot, bool found)
+    public async Task ValidRankZeroIsDistinctFromAnUnoccupiedSlot(
+        int slot,
+        bool found
+    )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
@@ -163,20 +230,28 @@ public sealed class SupervisorServerRankTests
         var data = await SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         context.UserGroupMemberships.Add(new UserGroupMembership
         {
-            TenantId = data.TenantId, UserId = data.Users[1], UserGroupId = data.Groups[5],
+            TenantId = data.TenantId,
+            UserId = data.Users[1],
+            UserGroupId = data.Groups[5],
             LeadershipPriority = int.MinValue,
         });
 
         context.MembershipRoles.Add(new MembershipRole
         {
-            TenantId = data.TenantId, UserId = data.Users[1], UserGroupId = data.Groups[5],
+            TenantId = data.TenantId,
+            UserId = data.Users[1],
+            UserGroupId = data.Groups[5],
             RoleId = data.ManagerRoleId,
         });
 
         context.MembershipMetadatas.Add(new MembershipMetadata
         {
-            TenantId = data.TenantId, UserId = data.Users[1], UserGroupId = data.Groups[5],
-            GroupTypeId = 4, FieldCode = "Route", Value = "lane-blue",
+            TenantId = data.TenantId,
+            UserId = data.Users[1],
+            UserGroupId = data.Groups[5],
+            GroupTypeId = 4,
+            FieldCode = "Route",
+            Value = "lane-blue",
         });
 
         await context.SaveChangesAsync(CancellationToken.None);
@@ -190,18 +265,23 @@ public sealed class SupervisorServerRankTests
 
         // Act
         var result = await SupervisorQueries.ResolveAsync(
-            context, data.TenantId, request, SupervisorSelection.NthPerson(slot), CancellationToken.None);
+            context,
+            data.TenantId,
+            request,
+            SupervisorSelection.NthPerson(slot),
+            CancellationToken.None);
 
         // Assert
         var origin = Assert.Single(result.Origins);
         Assert.Equal(found ? SupervisorResolutionStatus.Found : SupervisorResolutionStatus.NotFound, origin.Status);
         Assert.Equal(found ? data.Users[1] : (int?)null, origin.Continuation?.CandidateUserId);
         Assert.Equal(found ? 1 : 0, origin.Evidence.Count);
-        Assert.All(origin.Evidence, row =>
-        {
-            Assert.Equal(0, row.Distance);
-            Assert.Equal(int.MinValue, row.LeadershipPriority);
-        });
+        Assert.All(origin.Evidence,
+            row =>
+            {
+                Assert.Equal(0, row.Distance);
+                Assert.Equal(int.MinValue, row.LeadershipPriority);
+            });
 
         Assert.Single(probe.Commands);
         Assert.Equal(0, probe.Entities);
@@ -220,11 +300,16 @@ public sealed class SupervisorServerRankTests
         {
             SearchStart = SearchStart.ParentsOnly,
             Matches = [],
-            SourceUserId = 1, Roles = new NoRoleFilter(), Groups = new AllEligibleGroups(),
+            SourceUserId = 1,
+            Roles = new NoRoleFilter(),
+            Groups = new AllEligibleGroups(),
         };
 
         var query = SupervisorQueries.ResolutionRows(
-            context, Guid.NewGuid(), request, SupervisorSelection.NthPerson(1));
+            context,
+            Guid.NewGuid(),
+            request,
+            SupervisorSelection.NthPerson(1));
 
         var probe = new RankSelectorProbe();
         probe.Visit(query.Expression);
@@ -237,7 +322,9 @@ public sealed class SupervisorServerRankTests
     }
 
     /// <summary>Owns each test's EF graph so singleton interceptor identities cannot enter the global cache.</summary>
-    private static ServiceProvider CreateServices(SupervisorCommandProbe? probe = null)
+    private static ServiceProvider CreateServices(
+        SupervisorCommandProbe? probe = null
+    )
     {
         var services = new ServiceCollection();
         foreach (var extension in Options().Extensions)
@@ -256,19 +343,34 @@ public sealed class SupervisorServerRankTests
     }
 
     /// <summary>Creates the actual sample context inside the test-owned service scope.</summary>
-    private static UserGroupContext CreateContext(IServiceProvider services)
-        => new(new DbContextOptionsBuilder<UserGroupContext>(Options()).UseInternalServiceProvider(services).Options);
+    private static UserGroupContext CreateContext(
+        IServiceProvider services
+    )
+        => new(new DbContextOptionsBuilder<UserGroupContext>(Options())
+            .UseInternalServiceProvider(services)
+            .Options);
 
     /// <summary>Uses the actual sample model and standard in-memory SQLite provider configuration.</summary>
     private static DbContextOptions<UserGroupContext> Options()
         => new DbContextOptionsBuilder<UserGroupContext>()
-            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets()).Options;
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
+            .Options;
 
     /// <summary>Creates only the scalar input consumed by the production rank selector.</summary>
-    private static SupervisorCandidate Candidate(int person, int distance, int priority) => new()
+    private static SupervisorCandidate Candidate(
+        int person,
+        int distance,
+        int priority
+    ) => new()
     {
-        TenantId = Guid.Empty, SourceUserId = 0, StartGroupId = 0, StartTreeId = Guid.Empty,
-        FoundGroupId = 0, CandidateUserId = person, Distance = distance, LeadershipPriority = priority,
+        TenantId = Guid.Empty,
+        SourceUserId = 0,
+        StartGroupId = 0,
+        StartTreeId = Guid.Empty,
+        FoundGroupId = 0,
+        CandidateUserId = person,
+        Distance = distance,
+        LeadershipPriority = priority,
     };
 
     /// <summary>Finds the actual Int64 aggregate selector within the deferred server query.</summary>
@@ -278,15 +380,20 @@ public sealed class SupervisorServerRankTests
         internal List<LambdaExpression> Selectors { get; } = [];
 
         /// <inheritdoc />
-        protected override Expression VisitMethodCall(MethodCallExpression node)
+        protected override Expression VisitMethodCall(
+            MethodCallExpression node
+        )
         {
-            if (node.Method.Name == nameof(Enumerable.Min) && node.Arguments.Count == 2)
+            if (node.Method.Name == nameof(Enumerable.Min)
+                && node.Arguments.Count == 2)
             {
                 var argument = node.Arguments[1] is UnaryExpression { NodeType: ExpressionType.Quote } quote
-                    ? quote.Operand : node.Arguments[1];
+                    ? quote.Operand
+                    : node.Arguments[1];
 
                 if (argument is LambdaExpression { ReturnType: { } result } selector
-                    && result == typeof(long) && selector.Parameters.Count == 1
+                    && result == typeof(long)
+                    && selector.Parameters.Count == 1
                     && selector.Parameters[0].Type == typeof(SupervisorCandidate))
                 {
                     Selectors.Add(selector);

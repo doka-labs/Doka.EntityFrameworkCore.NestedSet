@@ -52,7 +52,9 @@ public sealed class CompositionEndpointSourcesTests
         };
 
         // Act
-        var sql = Filter(hierarchy, source, node => node, operation).Select(node => node.Id).ToQueryString();
+        var sql = Filter(hierarchy, source, node => node, operation)
+            .Select(node => node.Id)
+            .ToQueryString();
 
         // Assert
         Assert.Contains("SELECT", sql, StringComparison.OrdinalIgnoreCase);
@@ -77,10 +79,17 @@ public sealed class CompositionEndpointSourcesTests
         var hierarchy = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
         var first = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
         var second = context.Set<CompositionGuardNode>(CompositionGuardContext.SecondMapping);
-        var source = second.SelectMany(payload => first, (payload, node) => new { Node = node, Payload = payload });
+        var source = second.SelectMany(payload => first,
+            (payload, node) => new
+            {
+                Node = node,
+                Payload = payload,
+            });
 
         // Act
-        var sql = Filter(hierarchy, source, row => row.Node, operation).Select(row => row.Node.Id).ToQueryString();
+        var sql = Filter(hierarchy, source, row => row.Node, operation)
+            .Select(row => row.Node.Id)
+            .ToQueryString();
 
         // Assert
         Assert.Contains(CompositionGuardContext.FirstMapping, sql, StringComparison.Ordinal);
@@ -108,7 +117,9 @@ public sealed class CompositionEndpointSourcesTests
         var source = second.SelectMany(payload => first);
 
         // Act
-        var sql = Filter(hierarchy, source, node => node, operation).Select(node => node.Id).ToQueryString();
+        var sql = Filter(hierarchy, source, node => node, operation)
+            .Select(node => node.Id)
+            .ToQueryString();
 
         // Assert
         Assert.Contains(CompositionGuardContext.FirstMapping, sql, StringComparison.Ordinal);
@@ -133,7 +144,12 @@ public sealed class CompositionEndpointSourcesTests
         var hierarchy = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
         var first = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
         var second = context.Set<CompositionGuardNode>(CompositionGuardContext.SecondMapping);
-        var source = first.SelectMany(payload => second, (payload, node) => new { Node = node, Payload = payload });
+        var source = first.SelectMany(payload => second,
+            (payload, node) => new
+            {
+                Node = node,
+                Payload = payload,
+            });
 
         // Act
         var error = Record.Exception(() => Filter(hierarchy, source, row => row.Node, operation));
@@ -189,7 +205,8 @@ public sealed class CompositionEndpointSourcesTests
         var first = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
         var second = context.Set<CompositionGuardNode>(CompositionGuardContext.SecondMapping);
         var trap = new QueryGetterTrap(first);
-        var source = second.SelectMany(payload => trap.Query, (payload, node) => new { Node = node });
+        var source = second.SelectMany(payload => trap.Query,
+            (payload, node) => new { Node = node });
 
         // Act
         var error = Record.Exception(() => Filter(hierarchy, source, row => row.Node, operation));
@@ -209,10 +226,17 @@ public sealed class CompositionEndpointSourcesTests
         string operation
     ) => operation switch
     {
-        "path" => hierarchy.WherePathEdges(source, endpoint, endpoint, (row, parent, child) => parent.Id != child.Id),
-        "any" => hierarchy.WhereAnyAncestorOrSelf(source, endpoint, (row, owner) => owner.Id > 0),
-        "nearest" => hierarchy.WhereNearestAncestorOrSelf(source, endpoint,
-            (row, owner) => owner.Id > 0, (row, owner) => owner.Depth >= 0),
+        "path" => hierarchy.WherePathEdges(source,
+            endpoint,
+            endpoint,
+            (row, parent, child) => parent.Id != child.Id),
+        "any" => hierarchy.WhereAnyAncestorOrSelf(source,
+            endpoint,
+            (row, owner) => owner.Id > 0),
+        "nearest" => hierarchy.WhereNearestAncestorOrSelf(source,
+            endpoint,
+            (row, owner) => owner.Id > 0,
+            (row, owner) => owner.Depth >= 0),
         _ => throw new ArgumentOutOfRangeException(nameof(operation)),
     };
 

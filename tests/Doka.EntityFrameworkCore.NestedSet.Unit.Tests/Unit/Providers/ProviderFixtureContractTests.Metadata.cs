@@ -34,8 +34,7 @@ public sealed partial class ProviderFixtureContractTests
     ) => new(
         assembly,
         configFilePath: null,
-        assemblyName: assembly.GetName()
-            .FullName);
+        assemblyName: assembly.GetName().FullName);
 
     /// <summary>
     /// Attaches real assembly fixture attributes without modifying or initializing the Unit executable.

@@ -41,7 +41,11 @@ public sealed class SupervisorOriginSelectionTests
     )
     {
         // Arrange
-        var candidates = Enumerable.Range(1, people).Select(person => Candidate(7, person)).ToArray();
+        var candidates = Enumerable
+            .Range(1, people)
+            .Select(person => Candidate(7, person))
+            .ToArray();
+
         var batch = Batch(people == 0 ? Missing(7) : Found(7, candidates), Missing(9));
 
         // Act
@@ -113,7 +117,9 @@ public sealed class SupervisorOriginSelectionTests
     [Theory]
     [InlineData("NotFound")]
     [InlineData("Ambiguous")]
-    public void PreferredPresentOriginDoesNotFallBackAfterFailure(string status)
+    public void PreferredPresentOriginDoesNotFallBackAfterFailure(
+        string status
+    )
     {
         // Arrange
         var first = new SupervisorResolution(Enum.Parse<SupervisorResolutionStatus>(status), 7, [], null);
@@ -175,7 +181,9 @@ public sealed class SupervisorOriginSelectionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void IncompleteBatchIsNeverReducedToSuccessfulUniqueness(bool prioritize)
+    public void IncompleteBatchIsNeverReducedToSuccessfulUniqueness(
+        bool prioritize
+    )
     {
         // Arrange
         var batch = Batch(Found(7, Candidate(7, 21))) with { Complete = false };
@@ -195,7 +203,9 @@ public sealed class SupervisorOriginSelectionTests
     [Theory]
     [InlineData("SourceNotFound")]
     [InlineData("NoVisibleMemberships")]
-    public void MissingRequestStatusIsPreserved(string status)
+    public void MissingRequestStatusIsPreserved(
+        string status
+    )
     {
         // Arrange
         var batch = new SupervisorResolutionBatch(Enum.Parse<SupervisorBatchStatus>(status), []);
@@ -229,7 +239,9 @@ public sealed class SupervisorOriginSelectionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void InvalidOriginPriorityIsRejected(bool repeated)
+    public void InvalidOriginPriorityIsRejected(
+        bool repeated
+    )
     {
         // Arrange
         var batch = Batch(Found(7, Candidate(7, 21)));
@@ -339,7 +351,9 @@ public sealed class SupervisorOriginSelectionTests
 
     /// <summary>Constructs a completed batch with every explicitly evaluated origin.</summary>
     /// <param name="origins">The origins retained in their explicit application order.</param>
-    private static SupervisorResolutionBatch Batch(params SupervisorResolution[] origins)
+    private static SupervisorResolutionBatch Batch(
+        params SupervisorResolution[] origins
+    )
         => new(SupervisorBatchStatus.Completed, origins);
 
     /// <summary>Constructs an All-style found origin without asserting unique person selection in advance.</summary>
@@ -352,7 +366,9 @@ public sealed class SupervisorOriginSelectionTests
 
     /// <summary>Constructs an evaluated origin that has no supervisor candidates.</summary>
     /// <param name="group">The evaluated own-membership origin group.</param>
-    private static SupervisorResolution Missing(int group)
+    private static SupervisorResolution Missing(
+        int group
+    )
         => new(SupervisorResolutionStatus.NotFound, group, [], null);
 
     /// <summary>Builds one candidate occurrence with a complete source identity.</summary>

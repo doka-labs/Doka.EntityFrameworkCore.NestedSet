@@ -12,6 +12,7 @@ Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity>.HasPosition(string!
 Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity>.HasScope<TScope>(System.Linq.Expressions.Expression<System.Func<TEntity!, TScope>!>! property) -> Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity!>!
 Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity>.HasScope(string! propertyName) -> Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity!>!
 Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity>.HasDepth(string! propertyName) -> Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity!>!
+Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity>.HasTreeRegistryTable(string! tableName) -> Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity!>!
 Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity>.HasTreeId<TTreeId>(System.Linq.Expressions.Expression<System.Func<TEntity!, TTreeId>!>! property) -> Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity!>!
 Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity>.HasTreeId(string! propertyName) -> Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity!>!
 Doka.EntityFrameworkCore.NestedSet.NestedSetEntityTypeBuilderExtensions

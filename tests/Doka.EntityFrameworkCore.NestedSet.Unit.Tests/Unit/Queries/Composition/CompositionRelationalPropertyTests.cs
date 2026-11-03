@@ -12,7 +12,7 @@ public sealed class CompositionRelationalPropertyTests
     /// <param name="includeSelf">Whether zero-distance pairs are retained.</param>
     /// <returns>A task completing after one real SQL result is compared with its independent adjacency bag.</returns>
     [Trait("Category", "Relational")]
-    [Property(MaxTest = 64, StartSize = 0, EndSize = 24, Replay = "20261016,104729")]
+    [Property(MaxTest = 64, StartSize = 0, EndSize = 24)]
     public async Task GeneratedSqlResultsMatchIndependentAdjacencyBags(
         int[] input,
         int selector,
@@ -33,7 +33,8 @@ public sealed class CompositionRelationalPropertyTests
 
         await using var context = new CompositionGuardContext(options);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
-        await context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping)
+        await context
+            .Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping)
             .AddRangeAsync(nodes, CancellationToken.None);
 
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
@@ -64,13 +65,17 @@ public sealed class CompositionRelationalPropertyTests
                     Distance = distance,
                 });
 
-        if (!upward && !includeSelf)
+        if (!upward
+            && !includeSelf)
         {
             pairs = pairs.Where(pair => pair.Distance > 0);
         }
 
         var query = pairs;
 
+        // WHY: Retain the generated bag multiplicity by concatenating the previous query with the same source.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var copy = 1; copy < copies; copy++)
         {
             query = query.Concat(pairs);
@@ -83,8 +88,14 @@ public sealed class CompositionRelationalPropertyTests
 
         // Assert
         Assert.Equal(
-            expected.OrderBy(pair => pair.Origin).ThenBy(pair => pair.Related).ThenBy(pair => pair.Distance),
-            actual.OrderBy(pair => pair.Origin).ThenBy(pair => pair.Related).ThenBy(pair => pair.Distance));
+            expected
+                .OrderBy(pair => pair.Origin)
+                .ThenBy(pair => pair.Related)
+                .ThenBy(pair => pair.Distance),
+            actual
+                .OrderBy(pair => pair.Origin)
+                .ThenBy(pair => pair.Related)
+                .ThenBy(pair => pair.Distance));
 
         Assert.Empty(context.ChangeTracker.Entries());
     }
@@ -104,11 +115,17 @@ public sealed class CompositionRelationalPropertyTests
         parents[2] = 1;
         parents[3] = -1;
 
+        // WHY: Align generated input slots with parent slots while restricting each parent to a preceding node.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 4; index < count; index++)
         {
             parents[index] = (int)((uint)input[index - 4] % (uint)(index + 1)) - 1;
         }
 
+        // WHY: Keep node identities aligned with their independent parent-array ordinals.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < count; index++)
         {
             nodes[index] = new CompositionGuardNode
@@ -118,6 +135,9 @@ public sealed class CompositionRelationalPropertyTests
             };
         }
 
+        // WHY: Use each root ordinal as both the adjacency entry and the stable tree identity seed.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var root = 0; root < count; root++)
         {
             if (parents[root] >= 0)
@@ -125,7 +145,18 @@ public sealed class CompositionRelationalPropertyTests
                 continue;
             }
 
-            var treeId = new Guid(root + 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+            var treeId = new Guid(root + 1,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0);
+
             var boundary = 1L;
             Visit(root, 0, 0, treeId, ref boundary);
         }
@@ -147,6 +178,9 @@ public sealed class CompositionRelationalPropertyTests
             node.Left = boundary++;
             var childPosition = 0L;
 
+            // WHY: Visit only later child ordinals because generated parents always precede their children.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var child = index + 1; child < count; child++)
             {
                 if (parents[child] == index)
@@ -170,6 +204,9 @@ public sealed class CompositionRelationalPropertyTests
     {
         var expected = new List<RelationalPair>();
 
+        // WHY: Keep origin identities aligned with the parent-array slots used by the independent oracle.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var origin = 0; origin < parents.Length; origin++)
         {
             if ((origin + 1) % 2 != parity)
@@ -177,23 +214,31 @@ public sealed class CompositionRelationalPropertyTests
                 continue;
             }
 
+            // WHY: Resolve each related ordinal against the same adjacency array without reading stored coordinates.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var related = 0; related < parents.Length; related++)
             {
                 var upper = upward ? related : origin;
                 var current = upward ? origin : related;
                 var distance = 0;
 
-                while (current >= 0 && current != upper)
+                while (current >= 0
+                       && current != upper)
                 {
                     current = parents[current];
                     distance++;
                 }
 
-                if (current < 0 || (!includeSelf && distance == 0))
+                if (current < 0
+                    || (!includeSelf && distance == 0))
                 {
                     continue;
                 }
 
+                // WHY: Retain every generated duplicate occurrence in the expected bag.
+                // ReSharper disable once ForCanBeConvertedToForeach
+                // ReSharper disable once LoopCanBeConvertedToQuery
                 for (var copy = 0; copy < copies; copy++)
                 {
                     expected.Add(new RelationalPair(origin + 1, related + 1, distance));

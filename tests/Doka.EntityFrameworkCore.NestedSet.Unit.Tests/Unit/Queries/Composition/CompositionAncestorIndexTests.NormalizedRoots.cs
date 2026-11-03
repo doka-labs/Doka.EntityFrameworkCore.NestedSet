@@ -6,7 +6,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public sealed partial class CompositionAncestorIndexTests
 {
-    /// <summary>Only complete equivalent bindings share references; model, named mapping, parameter and literal changes do not.</summary>
+    /// <summary>
+    /// Only complete equivalent bindings share references; model, named mapping, parameter and literal changes do not.
+    /// </summary>
     /// <param name="difference">The binding component that differs from the first normalized root.</param>
     /// <param name="same">Whether the complete safe binding should be canonicalized.</param>
     [Theory]
@@ -15,17 +17,24 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData("literal", false)]
     [InlineData("mapping", false)]
     [InlineData("model", false)]
-    public async Task NormalizedOwnedRootsPreserveEveryBindingIdentity(string difference, bool same)
+    public async Task NormalizedOwnedRootsPreserveEveryBindingIdentity(
+        string difference,
+        bool same
+    )
     {
         // Arrange
         var options = ModelCompatibilityDatabase.Options<CompositionGuardContext>("Sqlite", "Data Source=:memory:");
         await using var provider = SelectionServices(options);
         await using var otherProvider = SelectionServices(options);
         await using var context = new CompositionGuardContext(
-            new DbContextOptionsBuilder<CompositionGuardContext>(options).UseInternalServiceProvider(provider).Options);
+            new DbContextOptionsBuilder<CompositionGuardContext>(options)
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         await using var other = new CompositionGuardContext(
-            new DbContextOptionsBuilder<CompositionGuardContext>(options).UseInternalServiceProvider(otherProvider).Options);
+            new DbContextOptionsBuilder<CompositionGuardContext>(options)
+                .UseInternalServiceProvider(otherProvider)
+                .Options);
 
         var entity = context.Model.FindEntityType(CompositionGuardContext.ScopedMapping)!;
         var secondEntity = difference switch
@@ -37,12 +46,15 @@ public sealed partial class CompositionAncestorIndexTests
 
         var marker = RootMarker(context);
         var first = WithNormalizedBinding(marker,
-            NormalizedBinding(entity, new QueryParameterExpression("scope", typeof(int)), 0, null), entity);
+            NormalizedBinding(entity, new QueryParameterExpression("scope", typeof(int)), 0, null),
+            entity);
 
         var second = WithNormalizedBinding(marker,
             NormalizedBinding(secondEntity,
                 new QueryParameterExpression(difference == "parameter" ? "anotherScope" : "scope", typeof(int)),
-                difference == "literal" ? 1 : 0, null), secondEntity);
+                difference == "literal" ? 1 : 0,
+                null),
+            secondEntity);
 
         var roots = new NestedSetNormalizedQueryRoots();
 
@@ -57,7 +69,9 @@ public sealed partial class CompositionAncestorIndexTests
             ReferenceEquals(canonicalFirst.Arguments[1], canonicalSecond.Arguments[1]));
     }
 
-    /// <summary>Opaque syntax, metadata and literal comparison callbacks never enter normalized-root comparison.</summary>
+    /// <summary>
+    /// Opaque syntax, metadata and literal comparison callbacks never enter normalized-root comparison.
+    /// </summary>
     /// <param name="shape">The application-owned callback hidden inside an otherwise ordinary binding.</param>
     [Theory]
     [InlineData("object")]
@@ -68,13 +82,17 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData("constructor-metadata")]
     [InlineData("index-metadata")]
     [InlineData("constant-type")]
-    public async Task NormalizedRootAdmissionNeverInvokesApplicationCallbacks(string shape)
+    public async Task NormalizedRootAdmissionNeverInvokesApplicationCallbacks(
+        string shape
+    )
     {
         // Arrange
         var options = ModelCompatibilityDatabase.Options<CompositionGuardContext>("Sqlite", "Data Source=:memory:");
         await using var provider = SelectionServices(options);
         await using var context = new CompositionGuardContext(
-            new DbContextOptionsBuilder<CompositionGuardContext>(options).UseInternalServiceProvider(provider).Options);
+            new DbContextOptionsBuilder<CompositionGuardContext>(options)
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var entity = context.Model.FindEntityType(CompositionGuardContext.ScopedMapping)!;
         var probe = new MetadataReadProbe();
@@ -110,11 +128,16 @@ public sealed partial class CompositionAncestorIndexTests
     }
 
     /// <summary>Creates a real library marker before substituting the normalized binding under test.</summary>
-    private static MethodCallExpression RootMarker(CompositionGuardContext context)
+    private static MethodCallExpression RootMarker(
+        CompositionGuardContext context
+    )
     {
         var nodes = context.Set<CompositionGuardNode>(CompositionGuardContext.ScopedMapping);
-        var query = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
-            .ForScope(17).InTree(Guid.Empty).SelectAncestorsOrSelf(node => nodes.Any(other => other.Id == node.Id),
+        var query = context
+            .NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
+            .ForScope(17)
+            .InTree(Guid.Empty)
+            .SelectAncestorsOrSelf(node => nodes.Any(other => other.Id == node.Id),
                 (node, owner, distance) => owner.Id);
 
         return Assert.IsAssignableFrom<MethodCallExpression>(query.Expression);
@@ -134,7 +157,9 @@ public sealed partial class CompositionAncestorIndexTests
         return marker.Update(marker.Object, arguments);
     }
 
-    /// <summary>Builds the small normalized binding grammar without depending on a database or parameter values.</summary>
+    /// <summary>
+    /// Builds the small normalized binding grammar without depending on a database or parameter values.
+    /// </summary>
     private static MethodCallExpression NormalizedBinding(
         IEntityType entity,
         QueryParameterExpression scope,
@@ -145,20 +170,26 @@ public sealed partial class CompositionAncestorIndexTests
         var node = Expression.Parameter(typeof(CompositionGuardNode), "node");
         Expression condition = Expression.AndAlso(
             Expression.Equal(Expression.Property(node, nameof(CompositionGuardNode.Scope)), scope),
-            Expression.GreaterThan(Expression.Property(node, nameof(CompositionGuardNode.Id)), Expression.Constant(literal)));
+            Expression.GreaterThan(Expression.Property(node, nameof(CompositionGuardNode.Id)),
+                Expression.Constant(literal)));
 
         if (extra is not null)
         {
             condition = Expression.AndAlso(condition, extra);
         }
 
-        return Expression.Call(typeof(Queryable), nameof(Queryable.Where), [typeof(CompositionGuardNode)],
+        return Expression.Call(typeof(Queryable),
+            nameof(Queryable.Where),
+            [typeof(CompositionGuardNode)],
             new EntityQueryRootExpression(entity),
             Expression.Quote(Expression.Lambda<Func<CompositionGuardNode, bool>>(condition, node)));
     }
 
     /// <summary>Hides application equality in an object, boxed struct, or structural array literal.</summary>
-    private static BinaryExpression LiteralBindingPayload(string shape, MetadataReadProbe probe)
+    private static BinaryExpression LiteralBindingPayload(
+        string shape,
+        MetadataReadProbe probe
+    )
     {
         object value = shape switch
         {
@@ -172,7 +203,9 @@ public sealed partial class CompositionAncestorIndexTests
     }
 
     /// <summary>Exposes equality callbacks that must never run while admitting a binding.</summary>
-    private sealed class UntrustedBindingLiteral(MetadataReadProbe probe)
+    private sealed class UntrustedBindingLiteral(
+        MetadataReadProbe probe
+    )
     {
         /// <inheritdoc />
         public override int GetHashCode()
@@ -183,7 +216,9 @@ public sealed partial class CompositionAncestorIndexTests
         }
 
         /// <inheritdoc />
-        public override bool Equals(object? obj)
+        public override bool Equals(
+            object? obj
+        )
         {
             probe.Read();
 
@@ -191,8 +226,12 @@ public sealed partial class CompositionAncestorIndexTests
         }
     }
 
-    /// <summary>Prevents value-type status alone from admitting an application-defined equality implementation.</summary>
-    private readonly struct UntrustedBindingValue(MetadataReadProbe probe)
+    /// <summary>
+    /// Prevents value-type status alone from admitting an application-defined equality implementation.
+    /// </summary>
+    private readonly struct UntrustedBindingValue(
+        MetadataReadProbe probe
+    )
     {
         /// <inheritdoc />
         public override int GetHashCode()
@@ -203,7 +242,9 @@ public sealed partial class CompositionAncestorIndexTests
         }
 
         /// <inheritdoc />
-        public override bool Equals(object? obj)
+        public override bool Equals(
+            object? obj
+        )
         {
             probe.Read();
 
@@ -212,7 +253,9 @@ public sealed partial class CompositionAncestorIndexTests
     }
 
     /// <summary>Rejects an extension before visiting children or requesting its reduction.</summary>
-    private sealed class UntrustedBindingExpression(MetadataReadProbe probe) : Expression
+    private sealed class UntrustedBindingExpression(
+        MetadataReadProbe probe
+    ) : Expression
     {
         /// <inheritdoc />
         public override Type Type => typeof(bool);
@@ -232,7 +275,9 @@ public sealed partial class CompositionAncestorIndexTests
         }
 
         /// <inheritdoc />
-        protected override Expression VisitChildren(ExpressionVisitor visitor)
+        protected override Expression VisitChildren(
+            ExpressionVisitor visitor
+        )
         {
             probe.Read();
 
@@ -241,7 +286,9 @@ public sealed partial class CompositionAncestorIndexTests
     }
 
     /// <summary>Shows that inheriting EF's parameter type cannot make application callbacks trusted.</summary>
-    private sealed class UntrustedBindingParameter(MetadataReadProbe probe) : QueryParameterExpression("scope", typeof(int))
+    private sealed class UntrustedBindingParameter(
+        MetadataReadProbe probe
+    ) : QueryParameterExpression("scope", typeof(int))
     {
         /// <inheritdoc />
         public override int GetHashCode()
@@ -252,7 +299,9 @@ public sealed partial class CompositionAncestorIndexTests
         }
 
         /// <inheritdoc />
-        public override bool Equals(object? obj)
+        public override bool Equals(
+            object? obj
+        )
         {
             probe.Read();
 

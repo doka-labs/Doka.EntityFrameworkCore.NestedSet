@@ -14,7 +14,8 @@ public sealed partial class AncestorIndexTests
         entity.HasKey(node => node.Id);
         entity.HasNestedSet(builder =>
         {
-            builder.HasTreeId(node => node.TreeId)
+            builder
+                .HasTreeId(node => node.TreeId)
                 .HasBounds(node => node.Left, node => node.Right)
                 .HasParent(node => node.ParentId)
                 .HasDepth(node => node.Depth)
@@ -29,7 +30,9 @@ public sealed partial class AncestorIndexTests
         return entity;
     }
 
-    /// <summary>Maps a named dictionary hierarchy without initializing any database-generated implementation value.</summary>
+    /// <summary>
+    /// Maps a named dictionary hierarchy without initializing any database-generated implementation value.
+    /// </summary>
     private static EntityTypeBuilder<Dictionary<string, object>> ConfigureBag(
         ModelBuilder model
     )
@@ -59,6 +62,7 @@ public sealed partial class AncestorIndexTests
     {
         /// <summary>The model configuration executed after all provider conventions are installed.</summary>
         private readonly Action<ModelBuilder> _configure;
+
         private readonly OwnedModelTestServices<AncestorContext> _services;
 
         /// <summary>Creates one disconnected model-building context for the requested engine.</summary>
@@ -66,10 +70,10 @@ public sealed partial class AncestorIndexTests
             string engine,
             Action<ModelBuilder> configure
         ) : this(
-            OwnedModelTestServices<AncestorContext>.Create(Options(engine), static services =>
-                services.Replace(ServiceDescriptor.Singleton<IModelCacheKeyFactory, TestModelCacheKeyFactory>())),
-            configure)
-        { }
+            OwnedModelTestServices<AncestorContext>.Create(Options(engine),
+                static services =>
+                    services.Replace(ServiceDescriptor.Singleton<IModelCacheKeyFactory, TestModelCacheKeyFactory>())),
+            configure) { }
 
         /// <summary>Binds the complete owned provider before EF initializes the context.</summary>
         private AncestorContext(
@@ -120,8 +124,7 @@ public sealed partial class AncestorIndexTests
             string engine
         )
         {
-            var options = new DbContextOptionsBuilder<AncestorContext>()
-                .ConfigureTestWarnings();
+            var options = new DbContextOptionsBuilder<AncestorContext>().ConfigureTestWarnings();
 
             switch (engine)
             {
@@ -203,7 +206,9 @@ public sealed partial class AncestorIndexTests
         public bool Id { get; set; }
     }
 
-    /// <summary>Supplies required application payload sharing the hierarchy table through an identifying relationship.</summary>
+    /// <summary>
+    /// Supplies required application payload sharing the hierarchy table through an identifying relationship.
+    /// </summary>
     private sealed class AncestorPayload
     {
         /// <summary>Gets or sets the shared row identity.</summary>

@@ -59,7 +59,10 @@ public sealed class ProviderCollectionFixtureContractTests
     {
         // Arrange
         var expected = ExpectedRegistrations("MySql");
-        var definition = CreateDefinition(expected.Where((_, index) => index != omitted).ToArray());
+        var definition = CreateDefinition(expected
+            .Where((_, index) => index != omitted)
+            .ToArray());
+
         var assemblyName = AssemblyName("MySql");
 
         // Act

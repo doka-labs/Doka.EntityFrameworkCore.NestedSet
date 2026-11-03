@@ -85,7 +85,7 @@ provider ownership before hierarchy I/O, including supplied/compiled models.
 Repeated identical selection is idempotent and conflicting selections fail.
 
 The four adapters depend on exactly the common kernel release they were built
-against: `[10.1.0]` for this source. Their overrides and internal calls are a
+against: an exact version (`[10.1.0]` at introduction). Their overrides and internal calls are a
 private ABI, not a public compatibility promise across patches. A small SDK
 pack target pins only the generated adapter-to-kernel package edges. Source
 `ProjectReference` restore locks retain their ordinary SDK-defined minimum
@@ -234,6 +234,8 @@ version, source mapping, fresh cache and archive-byte checks.
 - 2026-10-26: SQL-free adapter defaults were consolidated; the shipping PKCS minimum was separated from the qualified servicing pin. Pack metadata uses the supported in-target modification form, and delivery reuses validated manifest ordering and result checks without introducing another framework.
 - 2026-10-26: The qualification-only PKCS pin advanced to the .NET 10 package 10.0.14 while the shipping first-patched 9.x minimum remains 9.0.21 without an upper bound.
 - 2026-10-28: Candidate project inputs became explicit templates after automatic NuGet submission attempted to restore them without a candidate version. The existing runner materializes identical project XML in isolated output; no release guard or dependency check was relaxed.
+
+- 2026-11-03: Clarified the exact adapter/kernel example as its historical introduction version while preparing stable 10.2.0. The private ABI policy, original approval and compatibility exception are unchanged.
 
 ### Implementation References
 

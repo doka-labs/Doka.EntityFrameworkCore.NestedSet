@@ -17,13 +17,17 @@ public sealed partial class CompositionVisibilityTraversalTests
     [InlineData("method", true)]
     [InlineData("member", false)]
     [InlineData("member", true)]
-    public void OpaqueBoundCandidateRetainsSecondInspection(string shape, bool rejectSecondVisit)
+    public void OpaqueBoundCandidateRetainsSecondInspection(
+        string shape,
+        bool rejectSecondVisit
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
         var nodes = Nodes(context);
         var forbidden = Any(nodes.IgnoreQueryFilters().Expression);
+
         var second = rejectSecondVisit ? forbidden : Expression.Constant(true);
         var children = new ChangingPredicate(second);
         var dispatch = new ChangingDispatch(second);

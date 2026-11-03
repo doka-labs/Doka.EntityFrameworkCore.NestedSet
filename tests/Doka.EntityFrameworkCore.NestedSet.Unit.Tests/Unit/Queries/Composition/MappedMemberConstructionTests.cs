@@ -26,11 +26,14 @@ public sealed class MappedMemberConstructionTests
         var incompatible = NestedSetExpressions.QueryProperty(unrelated, property);
 
         // Assert
-        Assert.Same(second, Assert.IsAssignableFrom<MemberExpression>(compatible).Expression);
-        Assert.Same(property.PropertyInfo, Assert.IsAssignableFrom<MemberExpression>(compatible).Member);
+        Assert.Same(second,
+            Assert.IsAssignableFrom<MemberExpression>(compatible).Expression);
+        Assert.Same(property.PropertyInfo,
+            Assert.IsAssignableFrom<MemberExpression>(compatible).Member);
         var marker = Assert.IsAssignableFrom<MethodCallExpression>(incompatible);
         Assert.Same(unrelated, marker.Arguments[0]);
-        Assert.Equal(nameof(MemberNode.Value), Assert.IsType<ConstantExpression>(marker.Arguments[1]).Value);
+        Assert.Equal(nameof(MemberNode.Value),
+            Assert.IsType<ConstantExpression>(marker.Arguments[1]).Value);
     }
 
     /// <summary>Equal property names in independent mappings retain their own CLR and shadow storage.</summary>
@@ -38,7 +41,9 @@ public sealed class MappedMemberConstructionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void MappedMemberDoesNotCrossNamedMappingsOrModels(bool sameModel)
+    public void MappedMemberDoesNotCrossNamedMappingsOrModels(
+        bool sameModel
+    )
     {
         // Arrange
         var (model, _, mapped) = RuntimeProperty();
@@ -54,9 +59,11 @@ public sealed class MappedMemberConstructionTests
 
         // Assert
         Assert.NotSame(mapped, shadow);
-        Assert.Same(mapped.PropertyInfo, Assert.IsAssignableFrom<MemberExpression>(direct).Member);
-        Assert.Equal(nameof(MemberNode.Value), Assert.IsType<ConstantExpression>(
-            Assert.IsAssignableFrom<MethodCallExpression>(indirect).Arguments[1]).Value);
+        Assert.Same(mapped.PropertyInfo,
+            Assert.IsAssignableFrom<MemberExpression>(direct).Member);
+        Assert.Equal(nameof(MemberNode.Value),
+            Assert.IsType<ConstantExpression>(
+                    Assert.IsAssignableFrom<MethodCallExpression>(indirect).Arguments[1]).Value);
     }
 
     /// <summary>Design-time and convention metadata observe a removed property mapping on the next call.</summary>
@@ -64,7 +71,9 @@ public sealed class MappedMemberConstructionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void MutableMetadataIsInspectedAgainAfterItsMappingIsRemoved(bool convention)
+    public void MutableMetadataIsInspectedAgainAfterItsMappingIsRemoved(
+        bool convention
+    )
     {
         // Arrange
         var builder = new ModelBuilder(new ConventionSet());
@@ -86,7 +95,8 @@ public sealed class MappedMemberConstructionTests
         var after = NestedSetExpressions.QueryProperty(alias, (IProperty)property);
 
         // Assert
-        Assert.Equal(nameof(MemberNode.Stored), Assert.IsAssignableFrom<MemberExpression>(before).Member.Name);
+        Assert.Equal(nameof(MemberNode.Stored),
+            Assert.IsAssignableFrom<MemberExpression>(before).Member.Name);
         Assert.IsAssignableFrom<MethodCallExpression>(after);
     }
 
@@ -116,7 +126,9 @@ public sealed class MappedMemberConstructionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void CustomReflectionIsNeverTreatedAsImmutable(bool customDeclaringType)
+    public void CustomReflectionIsNeverTreatedAsImmutable(
+        bool customDeclaringType
+    )
     {
         // Arrange
         var model = NewModel();
@@ -146,12 +158,16 @@ public sealed class MappedMemberConstructionTests
         Assert.IsAssignableFrom<MethodCallExpression>(after);
     }
 
-    /// <summary>A custom expression observes only the alias check in addition to framework member construction.</summary>
+    /// <summary>
+    /// A custom expression observes only the alias check in addition to framework member construction.
+    /// </summary>
     /// <param name="warm">Whether the exact mapped read has already been constructed.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void CustomExpressionTypeDoesNotAcquireAdditionalMetadataReads(bool warm)
+    public void CustomExpressionTypeDoesNotAcquireAdditionalMetadataReads(
+        bool warm
+    )
     {
         // Arrange
         var (_, _, property) = RuntimeProperty();
@@ -168,7 +184,8 @@ public sealed class MappedMemberConstructionTests
         var reference = Expression.MakeMemberAccess(referenceAlias, property.PropertyInfo!);
 
         // Assert
-        Assert.Same(actualAlias, Assert.IsAssignableFrom<MemberExpression>(actual).Expression);
+        Assert.Same(actualAlias,
+            Assert.IsAssignableFrom<MemberExpression>(actual).Expression);
         Assert.Same(referenceAlias, reference.Expression);
         // WHY: QueryProperty must test alias assignability once. An additional Type read would be
         // an observable behavior change for a custom expression, even when its result is RuntimeType.
@@ -181,27 +198,35 @@ public sealed class MappedMemberConstructionTests
     {
         // Arrange
         var (_, _, property) = RuntimeProperty();
-        var aliases = Enumerable.Range(0, 32)
+        var aliases = Enumerable
+            .Range(0, 32)
             .Select(index => Expression.Parameter(typeof(MemberNode), $"node{index}"))
             .ToArray();
 
         var expressions = new Expression[aliases.Length];
 
         // Act
-        Parallel.For(0, aliases.Length,
+        Parallel.For(0,
+            aliases.Length,
             index => expressions[index] = NestedSetExpressions.QueryProperty(aliases[index], property));
 
         // Assert
-        Assert.All(Enumerable.Range(0, aliases.Length), index =>
-            Assert.Same(aliases[index], Assert.IsAssignableFrom<MemberExpression>(expressions[index]).Expression));
+        Assert.All(Enumerable.Range(0, aliases.Length),
+            index =>
+                Assert.Same(aliases[index],
+                    Assert.IsAssignableFrom<MemberExpression>(expressions[index]).Expression));
     }
 
-    /// <summary>Construction does not extend model or alias lifetime; a retained model is the positive control.</summary>
+    /// <summary>
+    /// Construction does not extend model or alias lifetime; a retained model is the positive control.
+    /// </summary>
     /// <param name="retainModel">Whether the caller deliberately keeps the model strongly reachable.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ConstructionDoesNotRootModelsOrQueryAliases(bool retainModel)
+    public void ConstructionDoesNotRootModelsOrQueryAliases(
+        bool retainModel
+    )
     {
         // Arrange
         var witnesses = PopulateWeakMembers(retainModel, out var retained);
@@ -241,7 +266,8 @@ public sealed class MappedMemberConstructionTests
     {
         var model = NewModel();
         var entity = model.AddEntityType("Mapped", typeof(MemberNode), sharedClrType: true);
-        var property = entity.AddProperty(nameof(MemberNode.Value), typeof(int),
+        var property = entity.AddProperty(nameof(MemberNode.Value),
+            typeof(int),
             propertyInfo: typeof(MemberNode).GetProperty(nameof(MemberNode.Value)));
 
         return (model, entity, property);
@@ -261,14 +287,19 @@ public sealed class MappedMemberConstructionTests
         }
 
         using var provider = services.BuildServiceProvider();
-        using var context = new ModelContext(options.UseInternalServiceProvider(provider).Options);
+        using var context = new ModelContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
 
         return Assert.IsType<RuntimeModel>(context.Model);
     }
 
     /// <summary>Builds the mapped read on detached runtime metadata before dropping its construction frames.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static WeakReference[] PopulateWeakMembers(bool retainModel, out IModel? retained)
+    private static WeakReference[] PopulateWeakMembers(
+        bool retainModel,
+        out IModel? retained
+    )
     {
         var options = new DbContextOptionsBuilder<ModelContext>().UseSqlite("Data Source=:memory:");
         var services = new ServiceCollection();
@@ -279,18 +310,26 @@ public sealed class MappedMemberConstructionTests
         }
 
         using var provider = services.BuildServiceProvider();
-        using var context = new ModelContext(options.UseInternalServiceProvider(provider).Options);
-        var builder = new ModelBuilder(context.GetService<IConventionSetBuilder>().CreateConventionSet());
-        builder.SharedTypeEntity<MemberNode>("Mapped", mapping =>
-        {
-            mapping.HasNoKey();
-            mapping.Property(node => node.Value);
-        });
+        using var context = new ModelContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
+        var builder = new ModelBuilder(context
+            .GetService<IConventionSetBuilder>()
+            .CreateConventionSet());
+
+        builder.SharedTypeEntity<MemberNode>("Mapped",
+            mapping =>
+            {
+                mapping.HasNoKey();
+                mapping.Property(node => node.Value);
+            });
 
         // WHY: Pending DI resolver compilation can retain the provider and its cached context model.
         // Initialize this independent model through EF's public services without entering ModelSource's
         // cache, so that unrelated background work cannot become a root in this ownership counterexample.
-        var model = Assert.IsType<RuntimeModel>(context.GetService<IModelRuntimeInitializer>()
+        var model = Assert.IsType<RuntimeModel>(context
+            .GetService<IModelRuntimeInitializer>()
             .Initialize(builder.FinalizeModel(), designTime: false));
 
         var entity = ((IModel)model).FindEntityType("Mapped")!;
@@ -300,14 +339,22 @@ public sealed class MappedMemberConstructionTests
         _ = NestedSetExpressions.QueryProperty(alias, property);
         retained = retainModel ? model : null;
 
-        return [new WeakReference(model), new WeakReference(entity), new WeakReference(property),
-            new WeakReference(alias)];
+        return
+        [
+            new WeakReference(model), new WeakReference(entity), new WeakReference(property),
+            new WeakReference(alias),
+        ];
     }
 
-    /// <summary>Separates garbage collection from weak-target observation to avoid extending JIT local lifetimes.</summary>
+    /// <summary>
+    /// Separates garbage collection from weak-target observation to avoid extending JIT local lifetimes.
+    /// </summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void CollectGarbage()
     {
+        // WHY: Complete repeated collect/finalizer passes before observing collectible model and member witnesses.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var attempt = 0; attempt < 8; attempt++)
         {
             GC.Collect();
@@ -318,11 +365,18 @@ public sealed class MappedMemberConstructionTests
 
     /// <summary>Measures only warm construction with preexisting alias and metadata objects.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static long MeasureAllocations(ParameterExpression alias, IProperty property, bool mapped)
+    private static long MeasureAllocations(
+        ParameterExpression alias,
+        IProperty property,
+        bool mapped
+    )
     {
         Expression? last = null;
         var before = GC.GetAllocatedBytesForCurrentThread();
 
+        // WHY: Count repeated construction over the same prepared alias and property within one allocation window.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < 1_024; index++)
         {
             last = mapped
@@ -347,7 +401,6 @@ public sealed class MappedMemberConstructionTests
 
         /// <summary>Supplies a real field for changing the mutable model's storage mapping.</summary>
         public int Stored = -1;
-
     }
 
     /// <summary>Provides a compatible but distinct alias type for the same mapped CLR declaration.</summary>
@@ -357,9 +410,13 @@ public sealed class MappedMemberConstructionTests
     private sealed class UnrelatedNode;
 
     /// <summary>Lets EF initialize an independent empty runtime model through its ordinary context services.</summary>
-    private sealed class ModelContext(DbContextOptions<ModelContext> options) : DbContext(options);
+    private sealed class ModelContext(
+        DbContextOptions<ModelContext> options
+    ) : DbContext(options);
 
-    /// <summary>Exposes observable Type reads while behaving as a readable expression with an ordinary CLR type.</summary>
+    /// <summary>
+    /// Exposes observable Type reads while behaving as a readable expression with an ordinary CLR type.
+    /// </summary>
     private sealed class TypeObservationExpression : Expression
     {
         /// <summary>Gets the number of times query construction observed this expression's CLR type.</summary>
@@ -380,7 +437,9 @@ public sealed class MappedMemberConstructionTests
         }
     }
 
-    /// <summary>Wraps metadata to prove that custom implementations retain their original per-call inspection.</summary>
+    /// <summary>
+    /// Wraps metadata to prove that custom implementations retain their original per-call inspection.
+    /// </summary>
     public class MetadataProbe : DispatchProxy
     {
         /// <summary>Gets or sets the immutable metadata delegated by this custom implementation.</summary>
@@ -390,7 +449,10 @@ public sealed class MappedMemberConstructionTests
         internal int PropertyReads { get; private set; }
 
         /// <inheritdoc />
-        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        protected override object? Invoke(
+            MethodInfo? targetMethod,
+            object?[]? args
+        )
         {
             var method = targetMethod ?? throw new InvalidOperationException("The proxy call requires metadata.");
 
@@ -404,17 +466,24 @@ public sealed class MappedMemberConstructionTests
     }
 
     /// <summary>Changes assignability without changing the represented CLR type.</summary>
-    private sealed class MutableDeclaringType(Type type) : TypeDelegator(type)
+    private sealed class MutableDeclaringType(
+        Type type
+    ) : TypeDelegator(type)
     {
         /// <summary>Gets or sets whether the next alias check accepts the represented type.</summary>
         internal bool AcceptsAlias { get; set; } = true;
 
         /// <inheritdoc />
-        public override bool IsAssignableFrom(Type? candidate) => AcceptsAlias && base.IsAssignableFrom(candidate);
+        public override bool IsAssignableFrom(
+            Type? candidate
+        ) => AcceptsAlias && base.IsAssignableFrom(candidate);
     }
 
     /// <summary>Preserves a real getter while deliberately exposing mutable reflection facts.</summary>
-    private sealed class MutableProperty(PropertyInfo property, Type declaringType) : PropertyInfo
+    private sealed class MutableProperty(
+        PropertyInfo property,
+        Type declaringType
+    ) : PropertyInfo
     {
         /// <summary>Gets or sets the name reported to EF's exact mapped-member lookup.</summary>
         internal string ReportedName { get; set; } = property.Name;
@@ -441,33 +510,58 @@ public sealed class MappedMemberConstructionTests
         public override Type? ReflectedType => property.ReflectedType;
 
         /// <inheritdoc />
-        public override MethodInfo[] GetAccessors(bool nonPublic) => property.GetAccessors(nonPublic);
+        public override MethodInfo[] GetAccessors(
+            bool nonPublic
+        ) => property.GetAccessors(nonPublic);
 
         /// <inheritdoc />
-        public override MethodInfo? GetGetMethod(bool nonPublic) => property.GetGetMethod(nonPublic);
+        public override MethodInfo? GetGetMethod(
+            bool nonPublic
+        ) => property.GetGetMethod(nonPublic);
 
         /// <inheritdoc />
-        public override MethodInfo? GetSetMethod(bool nonPublic) => property.GetSetMethod(nonPublic);
+        public override MethodInfo? GetSetMethod(
+            bool nonPublic
+        ) => property.GetSetMethod(nonPublic);
 
         /// <inheritdoc />
         public override ParameterInfo[] GetIndexParameters() => property.GetIndexParameters();
 
         /// <inheritdoc />
-        public override object? GetValue(object? obj, BindingFlags invokeAttr, Binder? binder, object?[]? index,
-            CultureInfo? culture) => property.GetValue(obj, invokeAttr, binder, index, culture);
+        public override object? GetValue(
+            object? obj,
+            BindingFlags invokeAttr,
+            Binder? binder,
+            object?[]? index,
+            CultureInfo? culture
+        ) => property.GetValue(obj, invokeAttr, binder, index, culture);
 
         /// <inheritdoc />
-        public override void SetValue(object? obj, object? value, BindingFlags invokeAttr, Binder? binder,
-            object?[]? index, CultureInfo? culture) => property.SetValue(obj, value, invokeAttr, binder, index, culture);
+        public override void SetValue(
+            object? obj,
+            object? value,
+            BindingFlags invokeAttr,
+            Binder? binder,
+            object?[]? index,
+            CultureInfo? culture
+        ) => property.SetValue(obj, value, invokeAttr, binder, index, culture);
 
         /// <inheritdoc />
-        public override object[] GetCustomAttributes(bool inherit) => property.GetCustomAttributes(inherit);
+        public override object[] GetCustomAttributes(
+            bool inherit
+        ) => property.GetCustomAttributes(inherit);
 
         /// <inheritdoc />
-        public override object[] GetCustomAttributes(Type attributeType, bool inherit)
+        public override object[] GetCustomAttributes(
+            Type attributeType,
+            bool inherit
+        )
             => property.GetCustomAttributes(attributeType, inherit);
 
         /// <inheritdoc />
-        public override bool IsDefined(Type attributeType, bool inherit) => property.IsDefined(attributeType, inherit);
+        public override bool IsDefined(
+            Type attributeType,
+            bool inherit
+        ) => property.IsDefined(attributeType, inherit);
     }
 }

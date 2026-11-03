@@ -20,8 +20,7 @@ public sealed partial class OptionsExtensionTests
         using var context = new EnabledContext(options);
 
         // Act
-        var model = context.GetService<IDesignTimeModel>()
-            .Model;
+        var model = context.GetService<IDesignTimeModel>().Model;
 
         var nodeEntity = model.FindEntityType(typeof(Node))
             ?? throw new InvalidOperationException("The enabled test model did not contain its hierarchy entity.");
@@ -65,9 +64,15 @@ public sealed partial class OptionsExtensionTests
         Assert.Equal(
             nodeEntity.FindProperty(nameof(Node.TreeId))!.GetColumnType(),
             registry.FindProperty("TreeId")!.GetColumnType());
-        Assert.Equal(nameof(Node.NodeKey), nodeEntity.FindAnnotation("Doka:NestedSet:NodeKey")?.Value);
-        Assert.Equal(nameof(Node.TreeId), nodeEntity.FindAnnotation("Doka:NestedSet:TreeId")?.Value);
-        Assert.Equal(nameof(Node.Scope), nodeEntity.FindAnnotation("Doka:NestedSet:Scope")?.Value);
+        Assert.Equal(nameof(Node.NodeKey),
+            nodeEntity.FindAnnotation("Doka:NestedSet:NodeKey")
+                ?.Value);
+        Assert.Equal(nameof(Node.TreeId),
+            nodeEntity.FindAnnotation("Doka:NestedSet:TreeId")
+                ?.Value);
+        Assert.Equal(nameof(Node.Scope),
+            nodeEntity.FindAnnotation("Doka:NestedSet:Scope")
+                ?.Value);
         Assert.False(nodeEntity.FindProperty(nameof(Node.TreeId))!.IsNullable);
         Assert.Equal(ValueGenerated.Never, nodeEntity.FindProperty(nameof(Node.TreeId))!.ValueGenerated);
         Assert.Contains(
@@ -92,25 +97,16 @@ public sealed partial class OptionsExtensionTests
         var order = Assert.Single(
             indexes,
             index => index.Properties.SequenceEqual(
-            [
-                nameof(Node.Scope),
-                nameof(Node.TreeId),
-                nameof(Node.ParentId),
-                nameof(Node.Name),
-                nameof(Node.Kind),
-                nameof(Node.NodeKey),
-            ]));
+                [
+                    nameof(Node.Scope),
+                    nameof(Node.TreeId),
+                    nameof(Node.ParentId),
+                    nameof(Node.Name),
+                    nameof(Node.Kind),
+                    nameof(Node.NodeKey),
+                ]));
 
-        Assert.Equal(
-            [
-                false,
-                false,
-                false,
-                false,
-                true,
-                false,
-            ],
-            order.Descending);
+        Assert.Equal([false, false, false, false, true, false], order.Descending);
         Assert.Equal([nameof(Node.Scope), nameof(Node.ParentId)], parent.Properties.Select(property => property.Name));
         Assert.Equal(
             [nameof(Node.Scope), nameof(Node.NodeKey)],
@@ -193,13 +189,19 @@ public sealed partial class OptionsExtensionTests
     public void RegistryTableNameIncludesPhysicalHierarchyIdentity()
     {
         // Arrange
+        const string schema = "app";
+        const string table = "Folders";
+        const string keyColumn = "Id";
+        const string treeColumn = "TreeId";
+
         // Act
-        var first = NestedSetTreeRegistryMetadata.TableName("app", "Folders", "Id", null, "TreeId");
-        var second = NestedSetTreeRegistryMetadata.TableName("archive", "Folders", "Id", null, "TreeId");
-        var third = NestedSetTreeRegistryMetadata.TableName("app", "ArchivedFolders", "Id", null, "TreeId");
-        var fourth = NestedSetTreeRegistryMetadata.TableName("app", "Folders", "Id", "TenantId", "TreeId");
-        var fifth = NestedSetTreeRegistryMetadata.TableName("app", "Folders", "FolderId", null, "TreeId");
-        var sixth = NestedSetTreeRegistryMetadata.TableName("app", "Folders", "Id", null, "HierarchyId");
+        var first = NestedSetTreeRegistryMetadata.TableName(schema, table, keyColumn, null, treeColumn);
+        var second = NestedSetTreeRegistryMetadata.TableName("archive", table, keyColumn, null, treeColumn);
+        var third = NestedSetTreeRegistryMetadata.TableName(schema, "ArchivedFolders", keyColumn, null, treeColumn);
+        var fourth = NestedSetTreeRegistryMetadata.TableName(schema, table, keyColumn, "TenantId", treeColumn);
+        var fifth = NestedSetTreeRegistryMetadata.TableName(schema, table, "FolderId", null, treeColumn);
+        var sixth = NestedSetTreeRegistryMetadata.TableName(schema, table, keyColumn, null, "HierarchyId");
+        var repeated = NestedSetTreeRegistryMetadata.TableName(schema, table, keyColumn, null, treeColumn);
 
         // Assert
         Assert.NotEqual(first, second);
@@ -207,7 +209,7 @@ public sealed partial class OptionsExtensionTests
         Assert.NotEqual(first, fourth);
         Assert.NotEqual(first, fifth);
         Assert.NotEqual(first, sixth);
-        Assert.Equal(first, NestedSetTreeRegistryMetadata.TableName("app", "Folders", "Id", null, "TreeId"));
+        Assert.Equal(first, repeated);
     }
 
     /// <summary>Keeps the options convention out of EF Core's internal migration-history model.</summary>
@@ -279,13 +281,16 @@ public sealed partial class OptionsExtensionTests
             NestedSetProviderRegistration.Register(builder, NestedSetTestAdapters.ForEngine("Sqlite"));
         }
 
-        var options = builder.UseSqlite("Data Source=:memory:", sqlite =>
-        {
-            if (!nestedSetsFirst)
-            {
-                sqlite.UseNestedSets();
-            }
-        }).Options;
+        var options = builder
+            .UseSqlite("Data Source=:memory:",
+                sqlite =>
+                {
+                    if (!nestedSetsFirst)
+                    {
+                        sqlite.UseNestedSets();
+                    }
+                })
+            .Options;
 
         using var context = new EnabledContext(options);
 
@@ -306,7 +311,8 @@ public sealed partial class OptionsExtensionTests
             IDatabase,
             RelationalDatabase>();
 
-        var extension = (IDbContextOptionsExtension)new NestedSetOptionsExtension(NestedSetTestAdapters.ForEngine("Sqlite"));
+        var extension =
+            (IDbContextOptionsExtension)new NestedSetOptionsExtension(NestedSetTestAdapters.ForEngine("Sqlite"));
 
         // Act
         extension.ApplyServices(services);

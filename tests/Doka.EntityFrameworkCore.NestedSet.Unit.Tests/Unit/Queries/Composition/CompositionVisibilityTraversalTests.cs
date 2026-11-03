@@ -8,7 +8,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 // WHY: Concurrent collections can perturb thread allocation counters. Use the existing isolated
 // measurement collection without relaxing the budget or serializing unrelated regression tests.
 [Collection("Allocation measurements")]
-public sealed partial class CompositionVisibilityTraversalTests(ITestOutputHelper output)
+public sealed partial class CompositionVisibilityTraversalTests(
+    ITestOutputHelper output
+)
 {
     private static readonly MethodInfo s_where = ((MethodCallExpression)
         ((Expression<Func<IQueryable<CompositionGuardNode>, IQueryable<CompositionGuardNode>>>)
@@ -21,7 +23,10 @@ public sealed partial class CompositionVisibilityTraversalTests(ITestOutputHelpe
     [InlineData(1, 1)]
     [InlineData(32, 1)]
     [InlineData(256, 2)]
-    public void SharedQuerySubtreeRetainsVisibilityAcrossOperations(int references, int operations)
+    public void SharedQuerySubtreeRetainsVisibilityAcrossOperations(
+        int references,
+        int operations
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -34,6 +39,9 @@ public sealed partial class CompositionVisibilityTraversalTests(ITestOutputHelpe
         var visible = true;
 
         // Act
+        // WHY: Accumulate visibility across repeated operations to verify each operation establishes its own proof.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < operations; index++)
         {
             visible &= NestedSetQueryEndpoint.Require(source, node => node, entityType, bound, "node").IsVisible;
@@ -51,7 +59,9 @@ public sealed partial class CompositionVisibilityTraversalTests(ITestOutputHelpe
     [InlineData(0)]
     [InlineData(8)]
     [InlineData(16)]
-    public void SharedBinaryQueryGraphRetainsVisibleEndpoint(int depth)
+    public void SharedBinaryQueryGraphRetainsVisibleEndpoint(
+        int depth
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -59,10 +69,16 @@ public sealed partial class CompositionVisibilityTraversalTests(ITestOutputHelpe
         var nodes = Nodes(context);
         var shared = nodes.Expression;
 
+        // WHY: Each layer must reuse the prior expression twice so the fixture remains a shared graph.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < depth; index++)
         {
-            shared = Expression.Call(typeof(Queryable), nameof(Queryable.Concat),
-                [typeof(CompositionGuardNode)], shared, shared);
+            shared = Expression.Call(typeof(Queryable),
+                nameof(Queryable.Concat),
+                [typeof(CompositionGuardNode)],
+                shared,
+                shared);
         }
 
         var source = Source(nodes, [shared]);
@@ -92,16 +108,22 @@ public sealed partial class CompositionVisibilityTraversalTests(ITestOutputHelpe
     [InlineData(9, true)]
     [InlineData(32, true)]
     [InlineData(128, true)]
-    public void DistinctQuerySubtreesAreAllProved(int queries, bool unsafeLastQuery)
+    public void DistinctQuerySubtreesAreAllProved(
+        int queries,
+        bool unsafeLastQuery
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
         var nodes = Nodes(context);
-        var sources = Enumerable.Range(0, queries)
+        var sources = Enumerable
+            .Range(0, queries)
             .Select(index => Where(unsafeLastQuery && index == queries - 1
-                ? nodes.IgnoreQueryFilters().Expression
-                : nodes.Expression, Expression.Constant(true))).ToArray();
+                    ? nodes.IgnoreQueryFilters().Expression
+                    : nodes.Expression,
+                Expression.Constant(true)))
+            .ToArray();
 
         var source = Source(nodes, sources);
         var entityType = context.Model.FindEntityType(CompositionGuardContext.ScopedMapping)!;
@@ -121,13 +143,16 @@ public sealed partial class CompositionVisibilityTraversalTests(ITestOutputHelpe
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void SharedQueryContainingOpaqueExtensionRetainsEveryVisit(bool rejectSecondVisit)
+    public void SharedQueryContainingOpaqueExtensionRetainsEveryVisit(
+        bool rejectSecondVisit
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
         var nodes = Nodes(context);
         var forbidden = Any(nodes.IgnoreQueryFilters().Expression);
+
         var extension = new ChangingPredicate(rejectSecondVisit ? forbidden : Expression.Constant(true));
         var shared = Where(nodes.Expression, extension);
         var source = Source(nodes, [shared, shared]);
@@ -149,13 +174,16 @@ public sealed partial class CompositionVisibilityTraversalTests(ITestOutputHelpe
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void SharedParentRetainsCustomAcceptDispatches(bool rejectSecondVisit)
+    public void SharedParentRetainsCustomAcceptDispatches(
+        bool rejectSecondVisit
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
         var nodes = Nodes(context);
         var forbidden = Any(nodes.IgnoreQueryFilters().Expression);
+
         var extension = new ChangingDispatch(rejectSecondVisit ? forbidden : Expression.Constant(true));
         var shared = Where(nodes.Expression, extension);
         var source = Source(nodes, [shared, shared]);
@@ -177,7 +205,9 @@ public sealed partial class CompositionVisibilityTraversalTests(ITestOutputHelpe
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void SharedParentRetainsCustomMethodMetadataInspections(bool rejectSecondVisit)
+    public void SharedParentRetainsCustomMethodMetadataInspections(
+        bool rejectSecondVisit
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -205,7 +235,9 @@ public sealed partial class CompositionVisibilityTraversalTests(ITestOutputHelpe
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void SharedParentRetainsCustomMemberMetadataInspections(bool rejectSecondVisit)
+    public void SharedParentRetainsCustomMemberMetadataInspections(
+        bool rejectSecondVisit
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -240,7 +272,9 @@ public sealed partial class CompositionVisibilityTraversalTests(ITestOutputHelpe
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
         var nodes = Nodes(context);
         var safe = Where(nodes.Expression, Expression.Constant(true));
-        var unsafeQuery = Where(nodes.IgnoreQueryFilters().Expression, Expression.Constant(true));
+        var unsafeQuery = Where(nodes.IgnoreQueryFilters().Expression,
+            Expression.Constant(true));
+
         var safeSource = Source(nodes, [safe, safe]);
         var unsafeSource = Source(nodes, [safe, safe, unsafeQuery]);
         var entityType = context.Model.FindEntityType(CompositionGuardContext.ScopedMapping)!;
@@ -297,6 +331,9 @@ public sealed partial class CompositionVisibilityTraversalTests(ITestOutputHelpe
         var bound = ((MethodCallExpression)nodes.Expression).Arguments[0];
         Expression<Func<CompositionGuardNode, CompositionGuardNode>> selector = node => node;
 
+        // WHY: Warm both proof shapes before comparing their repeated allocation windows.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < 64; index++)
         {
             NestedSetQueryEndpoint.Require(single, selector, entityType, bound, "node");
@@ -315,9 +352,14 @@ public sealed partial class CompositionVisibilityTraversalTests(ITestOutputHelpe
     }
 
     /// <summary>Creates one visible mapped source without executing or translating it.</summary>
-    private static IQueryable<CompositionGuardNode> Nodes(CompositionGuardContext context)
-        => context.NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
-            .ForScope(1).InTree(Guid.Empty).Nodes;
+    private static IQueryable<CompositionGuardNode> Nodes(
+        CompositionGuardContext context
+    )
+        => context
+            .NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
+            .ForScope(1)
+            .InTree(Guid.Empty)
+            .Nodes;
 
     /// <summary>Embeds actual queries in a predicate so endpoint resolution does not visit the probes.</summary>
     private static IQueryable<CompositionGuardNode> Source(
@@ -325,7 +367,10 @@ public sealed partial class CompositionVisibilityTraversalTests(ITestOutputHelpe
         IEnumerable<Expression> sources
     )
     {
-        var tests = sources.Select(Any).ToArray();
+        var tests = sources
+            .Select(Any)
+            .ToArray();
+
         var predicate = tests.Aggregate(Expression.AndAlso);
         var node = Expression.Parameter(typeof(CompositionGuardNode), "node");
 
@@ -333,15 +378,21 @@ public sealed partial class CompositionVisibilityTraversalTests(ITestOutputHelpe
     }
 
     /// <summary>Uses the public Queryable Any metadata without evaluating a query or compiling a delegate.</summary>
-    private static Expression Any(Expression source)
+    private static Expression Any(
+        Expression source
+    )
         => Expression.Call(typeof(Queryable), nameof(Queryable.Any), [typeof(CompositionGuardNode)], source);
 
     /// <summary>Creates an ordinary immutable query operator with runtime-owned reflection metadata.</summary>
-    private static MethodCallExpression Where(Expression source, Expression predicate)
+    private static MethodCallExpression Where(
+        Expression source,
+        Expression predicate
+    )
     {
         var node = Expression.Parameter(typeof(CompositionGuardNode), "node");
 
-        return Expression.Call(s_where, source,
+        return Expression.Call(s_where,
+            source,
             Expression.Quote(Expression.Lambda<Func<CompositionGuardNode, bool>>(predicate, node)));
     }
 
@@ -355,6 +406,9 @@ public sealed partial class CompositionVisibilityTraversalTests(ITestOutputHelpe
     {
         var before = GC.GetAllocatedBytesForCurrentThread();
 
+        // WHY: Repeat the same proof operation within one fixed allocation window.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < 128; index++)
         {
             NestedSetQueryEndpoint.Require(source, selector, entityType, bound, "node");

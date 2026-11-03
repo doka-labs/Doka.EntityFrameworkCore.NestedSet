@@ -13,15 +13,30 @@ public sealed class UserGroupsInitialMigrationTests
         var options = SqliteOptions();
         await using var services = SampleTestServices.Create(options);
         await using var context = new UserGroupSqliteContext(
-            new DbContextOptionsBuilder<UserGroupSqliteContext>(options).UseInternalServiceProvider(services).Options);
+            new DbContextOptionsBuilder<UserGroupSqliteContext>(options)
+                .UseInternalServiceProvider(services)
+                .Options);
 
         await context.Database.OpenConnectionAsync(CancellationToken.None);
-        var initial = context.Database.GetMigrations().First();
-        await context.GetService<IMigrator>().MigrateAsync(initial, CancellationToken.None);
+        var initial = context
+            .Database
+            .GetMigrations()
+            .First();
+
+        await context
+            .GetService<IMigrator>()
+            .MigrateAsync(initial, CancellationToken.None);
         var tenant = Guid.NewGuid();
         var tree = Guid.NewGuid();
         var role = Guid.NewGuid();
-        var timestamp = new DateTime(2026, 10, 16, 0, 0, 0, DateTimeKind.Utc);
+        var timestamp = new DateTime(2026,
+            10,
+            16,
+            0,
+            0,
+            0,
+            DateTimeKind.Utc);
+
         await context.Database.ExecuteSqlInterpolatedAsync($"""
             INSERT INTO "UserGroups"
                 ("Id", "TenantId", "TreeId", "ParentId", "Name", "Left", "Right", "Depth", "Position", "UpdatedAtUtc")
@@ -33,14 +48,30 @@ public sealed class UserGroupsInitialMigrationTests
             INSERT INTO "Roles" ("Id", "TenantId", "Name", "UpdatedAtUtc")
                 VALUES ({role}, {tenant}, 'Existing role', {timestamp});
             INSERT INTO "UserGroupMemberships" ("TenantId", "UserId", "UserGroupId") VALUES ({tenant}, 1, 1);
-            """, CancellationToken.None);
+            """,
+            CancellationToken.None);
 
         // Act
         await context.Database.MigrateAsync(CancellationToken.None);
-        var user = await context.Users.AsNoTracking().SingleAsync(CancellationToken.None);
-        var group = await context.Groups.AsNoTracking().SingleAsync(CancellationToken.None);
-        var savedRole = await context.Roles.AsNoTracking().SingleAsync(CancellationToken.None);
-        var membership = await context.UserGroupMemberships.AsNoTracking().SingleAsync(CancellationToken.None);
+        var user = await context
+            .Users
+            .AsNoTracking()
+            .SingleAsync(CancellationToken.None);
+
+        var group = await context
+            .Groups
+            .AsNoTracking()
+            .SingleAsync(CancellationToken.None);
+
+        var savedRole = await context
+            .Roles
+            .AsNoTracking()
+            .SingleAsync(CancellationToken.None);
+
+        var membership = await context
+            .UserGroupMemberships
+            .AsNoTracking()
+            .SingleAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal("Existing user", user.Name);
@@ -64,7 +95,8 @@ public sealed class UserGroupsInitialMigrationTests
         var dokaOptions = new DbContextOptionsBuilder<UserGroupContext>()
             .UseMySql(
                 "Server=127.0.0.1;Port=1;Database=nestedset_sample_usergroups;User ID=unused;Password=unused;",
-                MySqlServerVersion.MySql(new Version(8, 4, 0)), provider => provider.UseNestedSets())
+                MySqlServerVersion.MySql(new Version(8, 4, 0)),
+                provider => provider.UseNestedSets())
             .Options;
 
         var sqliteOptions = new DbContextOptionsBuilder<UserGroupSqliteContext>()
@@ -75,11 +107,13 @@ public sealed class UserGroupsInitialMigrationTests
         using var sqliteServices = SampleTestServices.Create(sqliteOptions);
         using var doka = new UserGroupContext(
             new DbContextOptionsBuilder<UserGroupContext>(dokaOptions)
-                .UseInternalServiceProvider(dokaServices).Options);
+                .UseInternalServiceProvider(dokaServices)
+                .Options);
 
         using var sqlite = new UserGroupSqliteContext(
             new DbContextOptionsBuilder<UserGroupSqliteContext>(sqliteOptions)
-                .UseInternalServiceProvider(sqliteServices).Options);
+                .UseInternalServiceProvider(sqliteServices)
+                .Options);
 
         // Act
         var dokaMigrations = doka
@@ -109,7 +143,9 @@ public sealed class UserGroupsInitialMigrationTests
         var options = SqliteOptions();
         await using var services = SampleTestServices.Create(options);
         await using var context = new UserGroupSqliteContext(
-            new DbContextOptionsBuilder<UserGroupSqliteContext>(options).UseInternalServiceProvider(services).Options);
+            new DbContextOptionsBuilder<UserGroupSqliteContext>(options)
+                .UseInternalServiceProvider(services)
+                .Options);
 
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         await context.Database.MigrateAsync(CancellationToken.None);
@@ -148,13 +184,13 @@ public sealed class UserGroupsInitialMigrationTests
             {
                 TenantId = tenantId,
                 UserId = employee.Id,
-                UserGroupId = firstGroup.Id
+                UserGroupId = firstGroup.Id,
             },
             new UserGroupMembership
             {
                 TenantId = tenantId,
                 UserId = employee.Id,
-                UserGroupId = secondGroup.Id
+                UserGroupId = secondGroup.Id,
             });
 
         await context.SaveChangesAsync(CancellationToken.None);
@@ -193,7 +229,9 @@ public sealed class UserGroupsInitialMigrationTests
         var options = SqliteOptions();
         await using var services = SampleTestServices.Create(options);
         await using var context = new UserGroupSqliteContext(
-            new DbContextOptionsBuilder<UserGroupSqliteContext>(options).UseInternalServiceProvider(services).Options);
+            new DbContextOptionsBuilder<UserGroupSqliteContext>(options)
+                .UseInternalServiceProvider(services)
+                .Options);
 
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         await context.Database.MigrateAsync(CancellationToken.None);

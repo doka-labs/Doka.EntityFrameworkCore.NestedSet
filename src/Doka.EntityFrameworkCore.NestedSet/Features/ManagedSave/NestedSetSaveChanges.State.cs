@@ -8,6 +8,15 @@ internal static partial class NestedSetSaveChanges
         /// <summary>Marks the one underlying save inside a guarded execution boundary.</summary>
         internal bool Active { get; set; }
 
+        /// <summary>Gets or sets the read-only guard for the current ordinary or coordinated base save.</summary>
+        internal Action? SaveValidation { get; set; }
+
+        /// <summary>Captures written relationship values before SQL for completion after provider success.</summary>
+        internal Func<IList<IUpdateEntry>, Action?>? SavePersistenceCompleted { get; set; }
+
+        /// <summary>Gets or sets the detached-input proof and bounded scratch for the complete import.</summary>
+        internal NestedSetImportInputs? ImportInputs { get; set; }
+
         /// <summary>Counts bounded internal insertion saves that already own their write protocol.</summary>
         internal int ManagedDepth { get; set; }
 
@@ -20,8 +29,8 @@ internal static partial class NestedSetSaveChanges
         /// <summary>Gets or sets bounded identity bookkeeping before EF accepts provider-generated values.</summary>
         internal Action? ManagedPersistenceCompleted { get; set; }
 
-        /// <summary>Marks that EF passed the current plan's validated write set to its persistence step.</summary>
-        internal bool ManagedPersistenceReached { get; set; }
+        /// <summary>Retains the exact validated native insertion set once EF reaches persistence.</summary>
+        internal HashSet<IUpdateEntry>? ManagedPersistenceEntries { get; set; }
 
         /// <summary>Gets or sets pending application writes captured at the plan's persistence step.</summary>
         internal NestedSetTrackerSnapshot? ManagedCallbackWrites { get; set; }
@@ -40,7 +49,7 @@ internal static partial class NestedSetSaveChanges
         private readonly Action? _previousValidation;
         private readonly Action? _previousPersistenceCompleted;
         private readonly NestedSetTrackerSnapshot? _previousCallbackWrites;
-        private readonly bool _previousPersistenceReached;
+        private readonly HashSet<IUpdateEntry>? _previousPersistenceEntries;
         private bool _disposed;
 
         /// <summary>Captures the outer context-local state before a nested plan replaces it.</summary>
@@ -58,7 +67,7 @@ internal static partial class NestedSetSaveChanges
             _previousValidation = state.ManagedValidation;
             _previousPersistenceCompleted = state.ManagedPersistenceCompleted;
             _previousCallbackWrites = state.ManagedCallbackWrites;
-            _previousPersistenceReached = state.ManagedPersistenceReached;
+            _previousPersistenceEntries = state.ManagedPersistenceEntries;
         }
 
         /// <summary>Gets ordinary callback writes captured at this plan's persistence step.</summary>
@@ -76,6 +85,32 @@ internal static partial class NestedSetSaveChanges
             }
         }
 
+        /// <summary>Gets the exact native insertion set already checked at the persistence boundary.</summary>
+        /// <exception cref="ObjectDisposedException">This managed-save scope is already disposed.</exception>
+        /// <exception cref="NestedSetException">The planned insertion never reached persistence.</exception>
+        internal IReadOnlySet<IUpdateEntry> PersistedEntries
+        {
+            get
+            {
+                RequirePersisted();
+
+                return _state.ManagedPersistenceEntries!;
+            }
+        }
+
+        /// <summary>Gets the matching input reference set without copying the validated save plan.</summary>
+        /// <exception cref="ObjectDisposedException">This managed-save scope is already disposed.</exception>
+        /// <exception cref="NestedSetException">The planned insertion never reached persistence.</exception>
+        internal IReadOnlySet<object> PersistedEntities
+        {
+            get
+            {
+                RequirePersisted();
+
+                return _state.ManagedEntities!;
+            }
+        }
+
         /// <summary>Requires that EF passed this validated plan to its persistence step.</summary>
         /// <exception cref="NestedSetException">
         /// A save callback suppressed or emptied the planned insertion.
@@ -84,7 +119,7 @@ internal static partial class NestedSetSaveChanges
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
 
-            if (!_state.ManagedPersistenceReached)
+            if (_state.ManagedPersistenceEntries is null)
             {
                 throw new NestedSetException(
                     NestedSetErrorCode.InvalidContext,
@@ -106,7 +141,7 @@ internal static partial class NestedSetSaveChanges
             _state.ManagedValidation = _previousValidation;
             _state.ManagedPersistenceCompleted = _previousPersistenceCompleted;
             _state.ManagedCallbackWrites = _previousCallbackWrites;
-            _state.ManagedPersistenceReached = _previousPersistenceReached;
+            _state.ManagedPersistenceEntries = _previousPersistenceEntries;
             _disposed = true;
         }
     }

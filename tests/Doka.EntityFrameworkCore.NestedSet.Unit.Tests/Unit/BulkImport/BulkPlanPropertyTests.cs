@@ -2,10 +2,14 @@ using FsCheck.Xunit;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-/// <summary>Checks production bulk planning against independently generated adjacency and sibling-order oracles.</summary>
+/// <summary>
+/// Checks production bulk planning against independently generated adjacency and sibling-order oracles.
+/// </summary>
 public sealed class BulkPlanPropertyTests
 {
-    /// <summary>Generated forests receive paired dense bounds, exact ancestor counts, and local sibling positions.</summary>
+    /// <summary>
+    /// Generated forests receive paired dense bounds, exact ancestor counts, and local sibling positions.
+    /// </summary>
     /// <param name="input">Shrinkable parent selectors describing a forest.</param>
     /// <param name="boundary">The destination-coordinate input.</param>
     /// <param name="depth">The destination depth.</param>
@@ -32,18 +36,19 @@ public sealed class BulkPlanPropertyTests
         // Act
         var plan = CreatePlan(store, forest.Roots, CancellationToken.None);
         plan.PrepareGeometry(destination, null, CancellationToken.None);
+        var states = plan
+            .Nodes
+            .Select(node => context.Entry(node.Entity).State)
+            .ToArray();
 
         // Assert
         AssertGeometry(plan, forest.Parents, destination, null);
-        Assert.All(
-            plan.Nodes,
-            node => Assert.Equal(
-                EntityState.Detached,
-                context.Entry(node.Entity)
-                    .State));
+        Assert.All(states, state => Assert.Equal(EntityState.Detached, state));
     }
 
-    /// <summary>Native ranks reorder only sibling groups without losing parent containment or dense coordinates.</summary>
+    /// <summary>
+    /// Native ranks reorder only sibling groups without losing parent containment or dense coordinates.
+    /// </summary>
     /// <param name="input">Shrinkable parent selectors describing a forest.</param>
     /// <param name="rankInputs">Shrinkable inputs defining a complete stable ranking.</param>
     /// <returns>A task that completes after verifying one reordered forest.</returns>
@@ -100,10 +105,10 @@ public sealed class BulkPlanPropertyTests
         // Assert
         Assert.Equal(
             NestedSetErrorCode.InvalidImport,
-            Assert.IsType<NestedSetException>(exception)
-                .Code);
+            Assert.IsType<NestedSetException>(exception).Code);
         Assert.Empty(context.ChangeTracker.Entries());
-        Assert.All(forest.Entities, node => Assert.Equal((0L, 0L, 0, 0L), (node.Start, node.End, node.Depth, node.Position)));
+        Assert.All(forest.Entities,
+            node => Assert.Equal((0L, 0L, 0, 0L), (node.Start, node.End, node.Depth, node.Position)));
     }
 
     /// <summary>Assigned-key collisions cannot be hidden by distinct entity references or generated topology.</summary>
@@ -129,11 +134,14 @@ public sealed class BulkPlanPropertyTests
         var exception = Record.Exception(() => CreatePlan(store, roots, CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidImport, Assert.IsType<NestedSetException>(exception).Code);
+        Assert.Equal(NestedSetErrorCode.InvalidImport,
+            Assert.IsType<NestedSetException>(exception).Code);
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>Builds a model-only context; generated geometry tests neither open a database nor share tracker state.</summary>
+    /// <summary>
+    /// Builds a model-only context; generated geometry tests neither open a database nor share tracker state.
+    /// </summary>
     private static TreeContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<TreeContext>()
@@ -168,6 +176,9 @@ public sealed class BulkPlanPropertyTests
         var children = new List<NestedSetBranch<TreeNode>>[count];
         var roots = new List<NestedSetBranch<TreeNode>>();
 
+        // WHY: Matching slots keep each entity, its parent selector and its child buffer aligned.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < count; index++)
         {
             entities[index] = new TreeNode { NodeId = index + 1 };
@@ -176,10 +187,11 @@ public sealed class BulkPlanPropertyTests
         }
 
         // WHY: Every parent precedes its children, so reverse construction needs no recursion or mutable branches.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = count - 1; index >= 0; index--)
         {
-            children[index]
-                .Reverse();
+            children[index].Reverse();
             branches[index] = new NestedSetBranch<TreeNode>(entities[index], children[index]);
             if (parents[index] < 0)
             {
@@ -218,6 +230,9 @@ public sealed class BulkPlanPropertyTests
                 .Select(index => destination.Boundary + index),
             coordinates);
 
+        // WHY: Input positions connect independent adjacency to the planner's one-based entity identities.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < parents.Length; index++)
         {
             var node = nodes[index + 1];
@@ -225,6 +240,7 @@ public sealed class BulkPlanPropertyTests
             var ancestors = new HashSet<int>();
             var parent = parents[index];
 
+            // WHY: Following only input parents keeps the depth oracle independent of planner traversal links.
             while (parent >= 0)
             {
                 ancestors.Add(parent);
@@ -253,6 +269,7 @@ public sealed class BulkPlanPropertyTests
                 Assert.True(previous.Geometry.Right < node.Geometry.Left);
             }
 
+            // WHY: Every node pair must agree with input ancestry, including non-ancestor pairs.
             foreach (var other in nodes.Values)
             {
                 var otherBounds = new NestedSetBounds(other.Geometry.Left, other.Geometry.Right);
@@ -260,7 +277,8 @@ public sealed class BulkPlanPropertyTests
             }
 
             Assert.Equal(
-                nodes.Values.Count(other => bounds.Contains(new NestedSetBounds(other.Geometry.Left, other.Geometry.Right))),
+                nodes.Values.Count(other =>
+                    bounds.Contains(new NestedSetBounds(other.Geometry.Left, other.Geometry.Right))),
                 bounds.DescendantCount);
         }
     }

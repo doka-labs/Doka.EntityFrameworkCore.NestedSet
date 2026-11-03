@@ -12,7 +12,9 @@ public sealed partial class OptionsExtensionTests
     [InlineData("foreign-adapter")]
     [InlineData("opaque-factory")]
     [InlineData("unvalidated-singleton")]
-    public void AdapterServicesRejectUnvalidatedBindingWithoutChangingTheGraph(string registration)
+    public void AdapterServicesRejectUnvalidatedBindingWithoutChangingTheGraph(
+        string registration
+    )
     {
         // Arrange
         var adapter = NestedSetTestAdapters.ForEngine("Sqlite");
@@ -46,7 +48,9 @@ public sealed partial class OptionsExtensionTests
         Assert.DoesNotContain(services, candidate => candidate.ServiceType == typeof(NestedSetProviderCapabilities));
     }
 
-    /// <summary>Repeated service registration preserves one validated scoped factory and one immutable adapter.</summary>
+    /// <summary>
+    /// Repeated service registration preserves one validated scoped factory and one immutable adapter.
+    /// </summary>
     [Fact]
     public void RepeatedAdapterServicesPreserveTheScopedBindingDescriptor()
     {
@@ -60,8 +64,11 @@ public sealed partial class OptionsExtensionTests
         extension.ApplyServices(services);
 
         // Assert
-        var binding = Assert.Single(services, descriptor => descriptor.ServiceType == typeof(INestedSetProviderBinding));
-        var provider = Assert.Single(services, descriptor => descriptor.ServiceType == typeof(NestedSetProviderCapabilities));
+        var binding = Assert.Single(services,
+            descriptor => descriptor.ServiceType == typeof(INestedSetProviderBinding));
+
+        var provider = Assert.Single(services,
+            descriptor => descriptor.ServiceType == typeof(NestedSetProviderCapabilities));
 
         Assert.Same(NestedSetProviderRegistration.BindingService, binding);
         Assert.Equal(ServiceLifetime.Scoped, binding.Lifetime);
@@ -70,7 +77,9 @@ public sealed partial class OptionsExtensionTests
         Assert.Same(adapter, provider.ImplementationInstance);
     }
 
-    /// <summary>Every real context scope validates native ownership once and returns its existing adapter without a wrapper.</summary>
+    /// <summary>
+    /// Every real context scope validates native ownership once and returns its existing adapter without a wrapper.
+    /// </summary>
     /// <param name="engine">The actual configured native provider whose ownership is checked.</param>
     [Theory]
     [InlineData("MySql")]
@@ -78,7 +87,9 @@ public sealed partial class OptionsExtensionTests
     [InlineData("PostgreSql")]
     [InlineData("Sqlite")]
     [InlineData("SqlServer")]
-    public void ScopedBindingValidatesOncePerScopeAndReusesTheImmutableAdapter(string engine)
+    public void ScopedBindingValidatesOncePerScopeAndReusesTheImmutableAdapter(
+        string engine
+    )
     {
         // Arrange
         var options = ModelCompatibilityDatabase.Options<DbContext>(engine, Connection(engine));
@@ -87,6 +98,7 @@ public sealed partial class OptionsExtensionTests
         var native = new ObservedDatabaseProvider(nativeServices.GetRequiredService<IDatabaseProvider>());
         var services = new ServiceCollection();
 
+        // WHY: Apply the native extension order to one service graph before observing scoped binding resolution.
         foreach (var extension in options.Extensions)
         {
             extension.ApplyServices(services);
@@ -123,7 +135,9 @@ public sealed partial class OptionsExtensionTests
         private int _configurationChecks;
 
         /// <summary>Wraps the native singleton from an actual provider service graph.</summary>
-        internal ObservedDatabaseProvider(IDatabaseProvider inner) => _inner = inner;
+        internal ObservedDatabaseProvider(
+            IDatabaseProvider inner
+        ) => _inner = inner;
 
         /// <summary>Gets how often the binding inspected native provider identity.</summary>
         internal int NameReads => Volatile.Read(ref _nameReads);
@@ -146,7 +160,9 @@ public sealed partial class OptionsExtensionTests
         public string? Version => _inner.Version;
 
         /// <inheritdoc />
-        public bool IsConfigured(IDbContextOptions options)
+        public bool IsConfigured(
+            IDbContextOptions options
+        )
         {
             Interlocked.Increment(ref _configurationChecks);
 

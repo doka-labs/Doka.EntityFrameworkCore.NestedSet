@@ -9,13 +9,17 @@ public sealed partial class SqlServerPathFailureTranslationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task NamedShadowRolesKeepOneCompletedFailureRelation(bool scoped)
+    public async Task NamedShadowRolesKeepOneCompletedFailureRelation(
+        bool scoped
+    )
     {
         // Arrange
         var options = ModelCompatibilityDatabase.Options<NamedPathContext>("SqlServer");
         await using var services = NestedSetTestAdapters.BuildServices(options);
         await using var context = new NamedPathContext(
-            new DbContextOptionsBuilder<NamedPathContext>(options).UseInternalServiceProvider(services).Options);
+            new DbContextOptionsBuilder<NamedPathContext>(options)
+                .UseInternalServiceProvider(services)
+                .Options);
 
         var mapping = scoped ? "ScopedPaths" : "UnscopedPaths";
         var root = new NestedSetQuery<Dictionary<string, object>>(context, context.Model.FindEntityType(mapping)!);
@@ -26,15 +30,26 @@ public sealed partial class SqlServerPathFailureTranslationTests
         }
 
         var nodes = root.OrderedNodes;
-        var rows = nodes.Where(node => EF.Property<int>(node, "Key") == 0)
+        var rows = nodes
+            .Where(node => EF.Property<int>(node, "Key") == 0)
             .SelectMany(_ => nodes.Where(node => EF.Property<int>(node, "Level") == 12),
-                (upper, lower) => new { Upper = upper, Lower = lower });
+                (upper, lower) => new
+                {
+                    Upper = upper,
+                    Lower = lower,
+                });
 
-        var query = root.WherePathEdges(rows, row => row.Upper, row => row.Lower,
-            (_, parent, child) => EF.Property<bool>(child, "Open"), normalized: true);
+        var query = root.WherePathEdges(rows,
+            row => row.Upper,
+            row => row.Lower,
+            (_, parent, child) => EF.Property<bool>(child, "Open"),
+            normalized: true);
 
         // Act
-        var sql = query.Select(row => EF.Property<int>(row.Lower, "Key")).ToQueryString();
+        var sql = query
+            .Select(row => EF.Property<int>(row.Lower, "Key"))
+            .ToQueryString();
+
         var fenced = FencedRelations(sql);
         output.WriteLine(sql);
 
@@ -48,19 +63,29 @@ public sealed partial class SqlServerPathFailureTranslationTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>Maps two independent property bags with renamed shadow roles and native converted tree storage.</summary>
-    private sealed class NamedPathContext(DbContextOptions<NamedPathContext> options) : DbContext(options)
+    /// <summary>
+    /// Maps two independent property bags with renamed shadow roles and native converted tree storage.
+    /// </summary>
+    private sealed class NamedPathContext(
+        DbContextOptions<NamedPathContext> options
+    ) : DbContext(options)
     {
         /// <inheritdoc />
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        protected override void OnModelCreating(
+            ModelBuilder modelBuilder
+        )
         {
             foreach (var scoped in new[] { false, true })
             {
                 var mapping = scoped ? "ScopedPaths" : "UnscopedPaths";
                 var node = modelBuilder.SharedTypeEntity<Dictionary<string, object>>(mapping);
                 node.ToTable(mapping);
-                node.Property<int>("Key").ValueGeneratedNever();
-                node.Property<Guid>("Tree").HasConversion<string>();
+                node
+                    .Property<int>("Key")
+                    .ValueGeneratedNever();
+                node
+                    .Property<Guid>("Tree")
+                    .HasConversion<string>();
                 node.Property<int?>("Parent");
                 node.Property<long>("Begin");
                 node.Property<long>("End");
@@ -80,8 +105,13 @@ public sealed partial class SqlServerPathFailureTranslationTests
 
                 node.HasNestedSet(hierarchy =>
                 {
-                    hierarchy.HasNodeKey("Key").HasTreeId("Tree").HasParent("Parent")
-                        .HasBounds("Begin", "End").HasDepth("Level").HasPosition("Ordinal");
+                    hierarchy
+                        .HasNodeKey("Key")
+                        .HasTreeId("Tree")
+                        .HasParent("Parent")
+                        .HasBounds("Begin", "End")
+                        .HasDepth("Level")
+                        .HasPosition("Ordinal");
 
                     if (scoped)
                     {

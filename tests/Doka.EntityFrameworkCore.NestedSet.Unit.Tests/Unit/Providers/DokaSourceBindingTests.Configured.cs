@@ -10,7 +10,9 @@ public sealed partial class DokaSourceBindingTests
     [Theory]
     [InlineData("MySql")]
     [InlineData("MariaDb")]
-    public async Task ConfiguredProviderUsesItsActualPublicIdentityWithoutIo(string engine)
+    public async Task ConfiguredProviderUsesItsActualPublicIdentityWithoutIo(
+        string engine
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -39,8 +41,10 @@ public sealed partial class DokaSourceBindingTests
         Func<IQueryable<int>, Expression<Func<IQueryable<int>, IQueryable<int>>>, IQueryable<int>> publicApi =
             MySqlQueryableExtensions.WithMaterializedSource;
 
-        var source = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping)
-            .Where(node => node.Id > 4).Select(node => node.Id);
+        var source = context
+            .Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping)
+            .Where(node => node.Id > 4)
+            .Select(node => node.Id);
 
         Expression<Func<IQueryable<int>, IQueryable<int>>> compose = rows => rows.Where(value => value < 12);
 

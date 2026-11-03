@@ -62,6 +62,61 @@ an application uses EF's build-time generation, verify that generation has run
 for the new model. See EF Core's [compiled-model guidance][compiled-models] and
 [MSBuild integration](https://learn.microsoft.com/en-us/ef/core/cli/msbuild).
 
+### Explicit registry table name
+
+An application with its own naming scheme can name a hierarchy's registry:
+
+```csharp
+builder.HasNestedSet(tree => tree
+    .HasNodeKey(node => node.Id)
+    .HasTreeId(node => node.TreeId)
+    .HasParent(node => node.ParentId)
+    .HasBounds(node => node.Left, node => node.Right)
+    .HasDepth(node => node.Depth)
+    .HasPosition(node => node.Position)
+    .HasTreeRegistryTable("Reporting_HierarchyTrees"));
+```
+
+The name applies to exactly this hierarchy; other hierarchies keep their own
+explicit or generated name. Without the option nothing changes, so a package
+upgrade alone never renames a registry. The option changes only the physical
+table name: schema, key, columns, type mapping, collations, locking, revisions
+and tombstones keep their meaning, and each hierarchy keeps its own registry.
+
+The value is one unqualified identifier, not SQL and not `schema.table`. Providers
+quote it, so spaces and hyphens are legal. Separators, quote characters, control
+characters and surrounding whitespace are rejected when the builder runs. Model
+finalization rejects a name beyond the provider's limit, a reserved name, a
+collision with another registry or application table or view in the same schema,
+and a derived hierarchy that contradicts its base type's name. Schema names are
+compared like table names. The SQLite provider
+[does not support schemas](https://learn.microsoft.com/en-us/ef/core/providers/sqlite/limitations)
+and drops them from its DDL, so on SQLite a collision in any schema is rejected. A derived type
+without its own `HasNestedSet` call shares its base hierarchy's registry as before.
+
+| Provider | Length limit | Reserved | Names differing only in case |
+| --- | --- | --- | --- |
+| PostgreSQL | [63 bytes](https://www.postgresql.org/docs/17/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS) | none | Distinct, because quoted identifiers are case-sensitive |
+| MySQL | [64 characters](https://dev.mysql.com/doc/refman/8.4/en/identifier-length.html) | none | Collide, because [lower_case_table_names](https://dev.mysql.com/doc/refman/8.4/en/identifier-case-sensitivity.html) can make them equal |
+| MariaDB | [64 characters](https://mariadb.com/docs/server/reference/sql-structure/sql-language-structure/identifier-names) | none | Collide, for the [same setting](https://mariadb.com/docs/server/reference/sql-structure/sql-language-structure/identifier-case-sensitivity) |
+| SQL Server | [128 characters](https://learn.microsoft.com/en-us/sql/relational-databases/databases/database-identifiers) | Leading `#`, a temporary table | Collide, because the database collation can make them equal |
+| SQLite | [None documented](https://www.sqlite.org/limits.html) | [`sqlite_` prefix](https://www.sqlite.org/lang_createtable.html) in any ASCII case | Collide only in the ASCII letters A to Z, which SQLite's [identifier comparison](https://www.sqlite.org/c3ref/stricmp.html) folds through an [ASCII-only table](https://github.com/sqlite/sqlite/blob/master/src/global.c); U+00C4 and U+00E4 stay distinct |
+
+Sources retrieved 2026-11-03.
+
+Naming an existing registry is a schema change of that application. EF identifies
+the table by its unchanged internal entity name, so `dotnet ef migrations add`
+scaffolds a `RenameTable` rather than a new table, plus the matching primary-key
+rename. Review the generated SQL before applying it: it must keep the table and
+all of its rows, including active trees, revisions and tombstones. Never accept a
+`DropTable`/`CreateTable` pair and never reseed, because that would make a retired
+TreeId reusable. `Down` renames the table back under the same conditions. The
+regular migration is sufficient; SafeMigrations stays optional. Regenerate any
+compiled model afterwards, because it captures the table name.
+
+This option does not change the number of registry rows. See
+[registry cardinality](transactions-and-locking.md#registry-cardinality-and-read-only-diagnostics).
+
 [compiled-models]: https://learn.microsoft.com/en-us/ef/core/performance/advanced-performance-topics#compiled-models
 
 If an existing application migration or database used the earlier
@@ -95,6 +150,15 @@ length, column type, and collation. `Revision` records structural progress and
 Applications do not seed, modify, or delete registry rows. Mutations create and
 lock active rows, and deletion or merge preserves a tombstone so a historical
 TreeId cannot be reused accidentally.
+There is one row per complete identity, not per node or mutation. Existing-tree
+structural work updates `Revision` on the same row. `Lifecycle = 0` is active;
+`Lifecycle = 1` is a tombstone retained indefinitely until explicit locked
+`PurgeTreeIdAsync` confirms that no nodes remain. No migration-time or background
+cleanup expires these reservations. Use the
+[read-only registry diagnostics](transactions-and-locking.md#registry-cardinality-and-read-only-diagnostics)
+to distinguish lifecycle counts, mapped node identities and missing registry
+rows before interpreting cardinality. A count alone does not establish its
+cause and does not authorize deleting or reseeding infrastructure.
 
 ## Generated structural indexes
 

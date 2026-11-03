@@ -1,3 +1,6 @@
+using System.Collections.Specialized;
+using System.ComponentModel;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Execution;
 
 /// <summary>Binds the model-free EF insertion seams before options registration can complete.</summary>
@@ -21,14 +24,47 @@ internal sealed class NestedSetInsertionContract
     /// <summary>Reads the context-local manager belonging to an introduced entry.</summary>
     internal Func<IUpdateEntry, object> Manager { get; }
 
+    /// <summary>Closes EF's exact changing handler for rollback-only notification pause and resumption.</summary>
+    internal Func<IUpdateEntry, PropertyChangingEventHandler> PropertyChangingHandler { get; }
+
+    /// <summary>Closes EF's exact changed handler without capturing a context in the binding owner.</summary>
+    internal Func<IUpdateEntry, PropertyChangedEventHandler> PropertyChangedHandler { get; }
+
+    /// <summary>Closes EF's exact collection handler without creating or replacing a collection.</summary>
+    internal Func<IUpdateEntry, NotifyCollectionChangedEventHandler> CollectionChangedHandler { get; }
+
+    /// <summary>Reads an exact reference registration without detecting changes or creating entries.</summary>
+    internal Func<object, object, IEntityType, IUpdateEntry?> FindTrackedEntry { get; }
+
     /// <summary>Restores a shadow key through EF's setter with setModified disabled.</summary>
     internal Action<IUpdateEntry, IProperty, object?> SetProperty { get; }
+
+    /// <summary>Restores a scalar or reference relationship snapshot without changing its live value.</summary>
+    internal Action<IUpdateEntry, IPropertyBase, object?> SetRelationshipSnapshot { get; }
+
+    /// <summary>Records one known collection relationship without attaching or adding the live object.</summary>
+    internal Action<IUpdateEntry, INavigationBase, object> AddCollectionSnapshot { get; }
+
+    /// <summary>Removes one member from an existing collection snapshot without changing its live collection.</summary>
+    internal Action<IUpdateEntry, INavigationBase, object> RemoveCollectionSnapshot { get; }
 
     /// <summary>Finds an existing native identity map without creating one.</summary>
     internal Func<object, IKey, object?> FindMap { get; }
 
     /// <summary>Reads an exact native foreign-key bucket through its public update-entry result.</summary>
     internal Func<object, IReadOnlyList<object?>, IEnumerable<IUpdateEntry>> Dependents { get; }
+
+    /// <summary>Reads actual FK membership, letting EF initialize its own lazy dependent map when needed.</summary>
+    internal Func<object, IReadOnlyList<object?>, IForeignKey, IEnumerable<IUpdateEntry>> GetOrCreateDependents { get; }
+
+    /// <summary>Re-indexes one tracked dependent through EF's map when a lazy map missed its reattachment.</summary>
+    internal Action<object, IUpdateEntry, IForeignKey> UpdateDependentMap { get; }
+
+    /// <summary>Reads EF's count of pending entries, which gates whether a save does any work.</summary>
+    internal Func<object, int> GetChangedCount { get; }
+
+    /// <summary>Corrects EF's pending count after a transition of an entry that Clear already uncounted.</summary>
+    internal Action<object, int> SetChangedCount { get; }
 
     /// <summary>Removes a partially installed entry through EF's normal identity cleanup.</summary>
     internal Action<object, IUpdateEntry, EntityState> StopTracking { get; }
@@ -86,6 +122,52 @@ internal sealed class NestedSetInsertionContract
                 update)
             .Compile();
 
+        var changing = RequireMethod(
+            _entryType,
+            "HandleINotifyPropertyChanging",
+            typeof(void),
+            [typeof(object), typeof(PropertyChangingEventArgs)]);
+
+        var changed = RequireMethod(
+            _entryType,
+            "HandleINotifyPropertyChanged",
+            typeof(void),
+            [typeof(object), typeof(PropertyChangedEventArgs)]);
+
+        var collectionChanged = RequireMethod(
+            _entryType,
+            "HandleINotifyCollectionChanged",
+            typeof(void),
+            [typeof(object), typeof(NotifyCollectionChangedEventArgs)]);
+
+        // WHY: AutoDetectChanges=false does not pause notification fixup. Subscriber service methods call
+        // GetOrCreateCollection and would replace a legitimate null collection while rollback restores it.
+        // Close the validated native method directly, so event -= matches EF's original method/target pair.
+        // Delegate creation is failure-only; neither reflection lookup nor a wrapper invocation runs per row.
+        PropertyChangingHandler = changing.CreateDelegate<PropertyChangingEventHandler>;
+        PropertyChangedHandler = changed.CreateDelegate<PropertyChangedEventHandler>;
+        CollectionChangedHandler = collectionChanged.CreateDelegate<NotifyCollectionChangedEventHandler>;
+
+        var entity = Expression.Parameter(typeof(object), "entity");
+        var entityType = Expression.Parameter(typeof(IEntityType), "entityType");
+        var findEntry = RequireMethod(
+            managerType,
+            "TryGetEntry",
+            _entryType,
+            [typeof(object), typeof(IEntityType), typeof(bool)]);
+
+        // WHY: IUpdateAdapter has no reference lookup. Reuse EF's own side-effect-free navigation-fixup lookup
+        // instead of building an O(n) tracked-entry index whenever one relationship changes.
+        FindTrackedEntry = Expression
+            .Lambda<Func<object, object, IEntityType, IUpdateEntry?>>(
+                Expression.Convert(
+                    Expression.Call(nativeManager, findEntry, entity, entityType, Expression.Constant(true)),
+                    typeof(IUpdateEntry)),
+                manager,
+                entity,
+                entityType)
+            .Compile();
+
         var setProperty = RequireMethod(
             _entryType,
             "SetProperty",
@@ -113,6 +195,55 @@ internal sealed class NestedSetInsertionContract
                 value)
             .Compile();
 
+        var setRelationship = RequireMethod(
+            _entryType,
+            "SetRelationshipSnapshotValue",
+            typeof(void),
+            [typeof(IPropertyBase), typeof(object)]);
+
+        var relationshipProperty = Expression.Parameter(typeof(IPropertyBase), "property");
+
+        // WHY: Scalar setters run FK fixup and cannot restore independently edited relationship snapshots.
+        // Bind the existing native boundary once; save/rollback paths must not reflect per entry or navigation.
+        SetRelationshipSnapshot = Expression
+            .Lambda<Action<IUpdateEntry, IPropertyBase, object?>>(
+                Expression.Call(nativeEntry, setRelationship, relationshipProperty, value),
+                update,
+                relationshipProperty,
+                value)
+            .Compile();
+
+        var navigation = Expression.Parameter(typeof(INavigationBase), "navigation");
+        var addCollection = RequireMethod(
+            _entryType,
+            "AddToCollectionSnapshot",
+            typeof(void),
+            [typeof(INavigationBase), typeof(object)]);
+
+        var removeCollection = RequireMethod(
+            _entryType,
+            "RemoveFromCollectionSnapshot",
+            typeof(void),
+            [typeof(INavigationBase), typeof(object)]);
+
+        // WHY: Collection snapshots have reference-set semantics; the scalar/reference setter is not valid
+        // for their slots. Separate native add/remove operations also preserve notification-strategy behavior.
+        AddCollectionSnapshot = Expression
+            .Lambda<Action<IUpdateEntry, INavigationBase, object>>(
+                Expression.Call(nativeEntry, addCollection, navigation, value),
+                update,
+                navigation,
+                value)
+            .Compile();
+
+        RemoveCollectionSnapshot = Expression
+            .Lambda<Action<IUpdateEntry, INavigationBase, object>>(
+                Expression.Call(nativeEntry, removeCollection, navigation, value),
+                update,
+                navigation,
+                value)
+            .Compile();
+
         var key = Expression.Parameter(typeof(IKey), "key");
         var findMap = RequireMethod(managerType, "FindIdentityMap", NativeType("IIdentityMap"), [typeof(IKey)]);
 
@@ -137,6 +268,52 @@ internal sealed class NestedSetInsertionContract
                 Expression.Call(Expression.Convert(map, dependentType), getDependents, values),
                 map,
                 values)
+            .Compile();
+
+        var foreignKey = Expression.Parameter(typeof(IForeignKey), "foreignKey");
+        var getOrCreateDependents = RequireMethod(
+            managerType,
+            "GetDependents",
+            typeof(IEnumerable<IUpdateEntry>),
+            [typeof(IReadOnlyList<object>), typeof(IForeignKey)]);
+
+        // WHY: A missing lazy map is not proof of absent membership. EF initializes it from its own entries;
+        // capturing that actual membership avoids guessing from raw keys or conceptual-null flags.
+        GetOrCreateDependents = Expression
+            .Lambda<Func<object, IReadOnlyList<object?>, IForeignKey, IEnumerable<IUpdateEntry>>>(
+                Expression.Call(nativeManager, getOrCreateDependents, values, foreignKey),
+                manager,
+                values,
+                foreignKey)
+            .Compile();
+
+        UpdateDependentMap = Expression
+            .Lambda<Action<object, IUpdateEntry, IForeignKey>>(
+                Expression.Call(
+                    nativeManager,
+                    RequireMethod(managerType, "UpdateDependentMap", typeof(void), [_entryType, typeof(IForeignKey)]),
+                    nativeEntry,
+                    foreignKey),
+                manager,
+                update,
+                foreignKey)
+            .Compile();
+
+        var changedCount = Expression.Parameter(typeof(int), "changedCount");
+        GetChangedCount = Expression
+            .Lambda<Func<object, int>>(
+                Expression.Call(nativeManager, RequireMethod(managerType, "get_ChangedCount", typeof(int), [])),
+                manager)
+            .Compile();
+
+        SetChangedCount = Expression
+            .Lambda<Action<object, int>>(
+                Expression.Call(
+                    nativeManager,
+                    RequireMethod(managerType, "set_ChangedCount", typeof(void), [typeof(int)]),
+                    changedCount),
+                manager,
+                changedCount)
             .Compile();
 
         var state = Expression.Parameter(typeof(EntityState), "state");

@@ -2,13 +2,17 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public sealed partial class AncestorIndexTests
 {
-    /// <summary>Absent generated indexer entries remain safe through ordinary EF tracking and change detection.</summary>
+    /// <summary>
+    /// Absent generated indexer entries remain safe through ordinary EF tracking and change detection.
+    /// </summary>
     [Fact]
     public void MissingGeneratedBagEntryUsesNaturalSentinel()
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite", model =>
-            ConfigureBag(model).HasNestedSet(builder => builder.HasAncestorIndex("Branch")));
+        using var context = new AncestorContext("Sqlite",
+            model =>
+                ConfigureBag(model)
+                    .HasNestedSet(builder => builder.HasAncestorIndex("Branch")));
 
         var row = new Dictionary<string, object>
         {
@@ -21,7 +25,10 @@ public sealed partial class AncestorIndexTests
         };
 
         // Act
-        var entry = context.Set<Dictionary<string, object>>("NamedHierarchy").Add(row);
+        var entry = context
+            .Set<Dictionary<string, object>>("NamedHierarchy")
+            .Add(row);
+
         context.ChangeTracker.DetectChanges();
 
         // Assert
@@ -32,20 +39,26 @@ public sealed partial class AncestorIndexTests
         Assert.Null(flag.Metadata.Sentinel);
         Assert.False(row.ContainsKey("Branch"));
         Assert.Equal(EntityState.Added, entry.State);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
-    /// <summary>An application sentinel cannot silently invalidate missing-key access for a generated Boolean indexer.</summary>
+    /// <summary>
+    /// An application sentinel cannot silently invalidate missing-key access for a generated Boolean indexer.
+    /// </summary>
     [Fact]
     public void ExplicitNonNullBagSentinelIsRejected()
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite", model =>
-        {
-            var entity = ConfigureBag(model);
-            entity.Property<bool>("Branch").HasSentinel(false);
-            entity.HasNestedSet(builder => builder.HasAncestorIndex("Branch"));
-        });
+        using var context = new AncestorContext("Sqlite",
+            model =>
+            {
+                var entity = ConfigureBag(model);
+                entity
+                    .Property<bool>("Branch")
+                    .HasSentinel(false);
+                entity.HasNestedSet(builder => builder.HasAncestorIndex("Branch"));
+            });
 
         // Act
         var error = Record.Exception(() => _ = context.Model);

@@ -34,7 +34,8 @@ public sealed partial class TypedPropertyReadTests
         Assert.Equal(present, parent.HasValue);
         Assert.Equal(0, parent.Value);
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>A present empty Guid remains distinct from an absent Guid parent.</summary>
@@ -66,7 +67,8 @@ public sealed partial class TypedPropertyReadTests
         Assert.Equal(present, parent.HasValue);
         Assert.Equal(Guid.Empty, parent.Value);
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>Nullable reference storage remains live after the wrapper was created.</summary>
@@ -98,7 +100,8 @@ public sealed partial class TypedPropertyReadTests
         Assert.Equal(present, parent.HasValue);
         Assert.Equal(node.ReferenceParent, parent.Value);
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>Domain inequality operators cannot hide a non-null converted reference parent.</summary>
@@ -131,7 +134,8 @@ public sealed partial class TypedPropertyReadTests
         Assert.Same(node.ConvertedReferenceParent, parent.Value);
         Assert.NotNull(property.GetTypeMapping().Converter);
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>A nullable converted struct does not require equality operators for live parent reads.</summary>
@@ -164,7 +168,8 @@ public sealed partial class TypedPropertyReadTests
         Assert.Equal(0, parent.Value.Value);
         Assert.NotNull(property.GetTypeMapping().Converter);
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>An already nullable CLR key uses one nullable shape rather than nested Nullable types.</summary>
@@ -205,7 +210,8 @@ public sealed partial class TypedPropertyReadTests
         Assert.Equal(present ? 0 : null, parent.Value);
         Assert.False(entry.Metadata.FindProperty(nameof(NullableKeyNode.Id))!.IsNullable);
         Assert.Equal(typeof(int?), property.ClrType);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>Typed optional reads observe shadow values through the same live wrapper.</summary>
@@ -233,7 +239,8 @@ public sealed partial class TypedPropertyReadTests
         Assert.Equal(0, parent.Value);
         Assert.True(property.IsShadowProperty());
         Assert.Single(context.ChangeTracker.Entries<ReadNode>());
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>Named dictionary mappings read updated optional indexer values without another entry wrapper.</summary>
@@ -270,7 +277,8 @@ public sealed partial class TypedPropertyReadTests
         Assert.Equal(ReadContext.SharedEntity, entry.Metadata.Name);
         Assert.True(property.IsIndexerProperty());
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>Live reads observe generated temporary sidecars while the CLR identity stays zero.</summary>
@@ -292,9 +300,11 @@ public sealed partial class TypedPropertyReadTests
         Assert.True(entry.Property(value => value.Id).IsTemporary);
         Assert.NotEqual(0, key);
         Assert.Equal(0, node.Id);
-        Assert.Equal(key, entry.Property(value => value.Id).CurrentValue);
+        Assert.Equal(key,
+            entry.Property(value => value.Id).CurrentValue);
         Assert.Equal(EntityState.Added, entry.State);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>Warm multi-role reads have a fixed allocation budget instead of boxing each parent and bound.</summary>
@@ -329,7 +339,8 @@ public sealed partial class TypedPropertyReadTests
         Assert.Equal(11L * iterations, sum);
         Assert.InRange(allocated, 0L, 4096L);
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>Exercises exact nullable runtime keys without putting reflection inside a read loop.</summary>
@@ -353,6 +364,9 @@ public sealed partial class TypedPropertyReadTests
     {
         var sum = 0L;
 
+        // WHY: Read every structural role repeatedly without iterator or delegate allocation in the measured path.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < iterations; index++)
         {
             var integer = NestedSetParent<int>.Read(values, properties.IntegerParent);

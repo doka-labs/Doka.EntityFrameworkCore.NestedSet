@@ -9,6 +9,7 @@ public sealed partial class DokaQueryFeaturesTests
 {
     private const string QueryEventPrefix = "Doka.EntityFrameworkCore.NestedSet.Query.";
     private const string AncestorFallbackName = QueryEventPrefix + "AncestorIndexWithoutReader";
+
     private const string AncestorFallbackMessage =
         "HasAncestorIndex is configured, but this provider has no optimized NestedSet ancestor reader. "
         + "The schema remains configured and this read uses the portable query strategy.";
@@ -38,7 +39,10 @@ public sealed partial class DokaQueryFeaturesTests
         Assert.All(events, entry => Assert.Equal(70_004, entry.EventId.Id));
         Assert.All(events, entry => Assert.Equal(AncestorFallbackName, entry.EventId.Name));
         Assert.All(events, entry => Assert.Equal(AncestorFallbackMessage, entry.ToString()));
-        Assert.DoesNotContain(events, entry => entry.ToString().Contains("CompositionFirst", StringComparison.Ordinal));
+        Assert.DoesNotContain(events,
+            entry => entry
+                .ToString()
+                .Contains("CompositionFirst", StringComparison.Ordinal));
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
     }
@@ -58,8 +62,10 @@ public sealed partial class DokaQueryFeaturesTests
         NestedSetQueryDiagnostics.AncestorIndexWithoutReader(context);
 
         // Assert
-        Assert.Equal("context", Assert.IsType<ArgumentNullException>(error).ParamName);
-        Assert.Equal(AncestorFallbackName, Assert.Single(events).EventId.Name);
+        Assert.Equal("context",
+            Assert.IsType<ArgumentNullException>(error).ParamName);
+        Assert.Equal(AncestorFallbackName,
+            Assert.Single(events).EventId.Name);
     }
 
     /// <summary>Concurrent first reporting claims one bounded event after EF service initialization.</summary>
@@ -76,8 +82,11 @@ public sealed partial class DokaQueryFeaturesTests
         _ = context.GetService<IDiagnosticsLogger<DbLoggerCategory.Query>>();
 
         // Act
-        await Task.WhenAll(Enumerable.Range(0, 32).Select(_ => Task.Run(
-            () => NestedSetQueryDiagnostics.AncestorIndexWithoutReader(context), CancellationToken.None)));
+        await Task.WhenAll(Enumerable
+            .Range(0, 32)
+            .Select(_ => Task.Run(
+                () => NestedSetQueryDiagnostics.AncestorIndexWithoutReader(context),
+                CancellationToken.None)));
 
         // Assert
         Assert.Single(events);
@@ -111,7 +120,10 @@ public sealed partial class DokaQueryFeaturesTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public void AncestorFallbackHonorsIndependentDiagnosticSourceFiltering(bool enabled, bool ignored)
+    public void AncestorFallbackHonorsIndependentDiagnosticSourceFiltering(
+        bool enabled,
+        bool ignored
+    )
     {
         // Arrange
         var events = new List<EventData>();
@@ -125,8 +137,8 @@ public sealed partial class DokaQueryFeaturesTests
         var options = builder.Options;
         using var provider = NestedSetTestAdapters.BuildServices(options);
         using var context = new CompositionGuardContext(IsolateDiagnosticOptions(options, provider));
-        var listener = Assert.IsType<DiagnosticListener>(context.GetService<IDiagnosticsLogger<DbLoggerCategory.Query>>()
-            .DiagnosticSource);
+        var listener = Assert.IsType<DiagnosticListener>(context
+            .GetService<IDiagnosticsLogger<DbLoggerCategory.Query>>().DiagnosticSource);
 
         using var observer = new QueryDiagnosticObserver();
         using var subscription = listener.Subscribe(observer, name => enabled && name == AncestorFallbackName);
@@ -162,7 +174,10 @@ public sealed partial class DokaQueryFeaturesTests
         }
         else
         {
-            Assert.Equal(AncestorFallbackMessage, Assert.Single(events).ToString());
+            Assert.Equal(AncestorFallbackMessage,
+                Assert
+                    .Single(events)
+                    .ToString());
         }
     }
 
@@ -177,6 +192,9 @@ public sealed partial class DokaQueryFeaturesTests
         using var context = new CompositionGuardContext(IsolateDiagnosticOptions(options, provider));
         NestedSetQueryDiagnostics.AncestorIndexWithoutReader(context);
 
+        // WHY: Warm the exact fallback-check measurement method before opening the asserted allocation window.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var repetition = 0; repetition < 8; repetition++)
         {
             MeasureFallbackChecks(context);
@@ -212,7 +230,8 @@ public sealed partial class DokaQueryFeaturesTests
     )
     {
         var builder = new DbContextOptionsBuilder<CompositionGuardContext>()
-            .UseSqlite("Data Source=:memory:", sqlite => sqlite.UseNestedSets()).LogTo(IsQueryEvent, events.Add);
+            .UseSqlite("Data Source=:memory:", sqlite => sqlite.UseNestedSets())
+            .LogTo(IsQueryEvent, events.Add);
 
         if (boundary is not null)
         {
@@ -223,21 +242,31 @@ public sealed partial class DokaQueryFeaturesTests
     }
 
     /// <summary>Filters only this library's bounded query events.</summary>
-    private static bool IsQueryEvent(EventId eventId, LogLevel level)
+    private static bool IsQueryEvent(
+        EventId eventId,
+        LogLevel level
+    )
         => eventId.Name?.StartsWith(QueryEventPrefix, StringComparison.Ordinal) is true;
 
     /// <summary>Keeps fresh diagnostic settings out of EF's process-global provider cache.</summary>
     private static DbContextOptions<CompositionGuardContext> IsolateDiagnosticOptions(
         DbContextOptions<CompositionGuardContext> options,
         ServiceProvider provider
-    ) => new DbContextOptionsBuilder<CompositionGuardContext>(options).UseInternalServiceProvider(provider).Options;
+    ) => new DbContextOptionsBuilder<CompositionGuardContext>(options)
+        .UseInternalServiceProvider(provider)
+        .Options;
 
     /// <summary>Measures only the already reported context's classification lookup.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static long MeasureFallbackChecks(DbContext context)
+    private static long MeasureFallbackChecks(
+        DbContext context
+    )
     {
         var before = GC.GetAllocatedBytesForCurrentThread();
 
+        // WHY: Repeat the same disabled diagnostic path within one fixed allocation window.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < 10_000; index++)
         {
             NestedSetQueryDiagnostics.AncestorIndexWithoutReader(context);
@@ -276,7 +305,9 @@ public sealed partial class DokaQueryFeaturesTests
         internal List<KeyValuePair<string, object?>> Events { get; } = [];
 
         /// <inheritdoc />
-        public void OnNext(KeyValuePair<string, object?> value)
+        public void OnNext(
+            KeyValuePair<string, object?> value
+        )
         {
             if (ReferenceEquals(s_owner.Value, _owner))
             {
@@ -285,7 +316,9 @@ public sealed partial class DokaQueryFeaturesTests
         }
 
         /// <inheritdoc />
-        public void OnError(Exception error) => throw error;
+        public void OnError(
+            Exception error
+        ) => throw error;
 
         /// <inheritdoc />
         public void OnCompleted() { }

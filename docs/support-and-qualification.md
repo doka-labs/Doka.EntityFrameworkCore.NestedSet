@@ -8,6 +8,7 @@ defines what this repository has exercised.
 
 | Component | Repository baseline |
 | --- | --- |
+| Stable package source contract | `10.2.0` across all six packages |
 | Target framework | .NET 10 |
 | SDK | `10.0.403`, pinned by `global.json`; includes runtime `10.0.14` |
 | Common EF Core declared range | `10.0.12` through, but excluding, `11.0.0`; adapter dependencies may narrow it |
@@ -63,8 +64,13 @@ dependency on `Doka.NestedSet` remains a minimum. Package inspection checks the
 actual primary and symbol archives, not just the source declarations. The SDK
 also validates the two original packages against their published `10.0.0`
 baseline; the approved removal of the former options-registration API is
-recorded by a narrowly scoped compatibility suppression. The four new adapter
-IDs have no preceding package to use as a baseline.
+recorded by a narrowly scoped compatibility suppression. This deliberately
+retains the original two-package baseline scope; the adapters introduced in
+`10.1.0` retain their own shipped API records and package/consumer qualification.
+
+Stable `10.2.0` adds optional registry naming and corrects manual detection and
+recovery, preserving the selected provider and framework ranges. See the
+[compatible upgrade](upgrading-provider-packages.md#upgrade-from-1010-to-1020).
 
 Version `10.0.0` is the initial stable contract. Stable `10.1.0` includes
 generic query composition and the explicitly breaking provider-package/callback
@@ -91,7 +97,7 @@ This statement does not assert the same limitation for the separate
 ## Framework release lines
 
 The current source and qualified graph remain .NET/EF Core 10 at package version
-`10.1.0`. [Release lines](operations/release-lines.md) defines future independent
+`10.2.0`. [Release lines](operations/release-lines.md) defines future independent
 framework servicing: main/10 starts active; maintenance/10.x and optional
 preview/11.x are registered inactive. The capability does not qualify .NET 11,
 create a branch or enable publication. Each later activated line needs its own

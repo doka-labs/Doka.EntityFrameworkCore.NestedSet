@@ -30,19 +30,35 @@ public sealed class CompositionPathTranslationTests
         // WHY: Dialect-specific translation cases own their service graphs instead of adding them to EF's
         // process-wide cache. Apply the actual options extensions so provider and NestedSet services stay complete.
         await using var provider = BuildServices(options.Options);
-        await using var context = new CompositionContext(options.UseInternalServiceProvider(provider).Options);
+        await using var context = new CompositionContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
         var scope = Guid.Parse("820bc0eb-7a3c-4dd9-9cbb-87d758889237");
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
         var rows = hierarchy.SelectSubtrees(node => node.Id <= 2,
-            (upper, lower, distance) => new { Upper = upper, Lower = lower });
+            (upper, lower, distance) => new
+            {
+                Upper = upper,
+                Lower = lower,
+            });
 
         var filtered = shape switch
         {
-            "Path" => hierarchy.WherePathEdges(rows, row => row.Upper, row => row.Lower,
+            "Path" => hierarchy.WherePathEdges(rows,
+                row => row.Upper,
+                row => row.Lower,
                 (row, parent, child) => child.EdgeOpen),
-            "Nearest" => hierarchy.WhereNearestAncestorOrSelf(rows, row => row.Lower,
-                (row, owner) => owner.Candidate, (row, owner) => owner.Matches),
-            "Correlated" => hierarchy.WherePathEdges(rows, row => row.Upper, row => row.Lower,
+            "Nearest" => hierarchy.WhereNearestAncestorOrSelf(rows,
+                row => row.Lower,
+                (row, owner) => owner.Candidate,
+                (row, owner) => owner.Matches),
+            "Correlated" => hierarchy.WherePathEdges(rows,
+                row => row.Upper,
+                row => row.Lower,
                 (row, parent, child) => child.EdgeOpen && child.Id <= row.Upper.Id + 100),
             _ => throw new ArgumentOutOfRangeException(nameof(shape)),
         };
@@ -50,7 +66,9 @@ public sealed class CompositionPathTranslationTests
         // Act
         // WHY: Translation is synchronous and performs no I/O. This guards the EF boundary only;
         // native capacity cases separately prove actual materialization, semantics and access cost.
-        var sql = filtered.Select(row => row.Lower.Id).ToQueryString();
+        var sql = filtered
+            .Select(row => row.Lower.Id)
+            .ToQueryString();
 
         // Assert
         Assert.Equal(0, boundary.ConnectionStarts);
@@ -107,28 +125,44 @@ public sealed class CompositionPathTranslationTests
             .AddInterceptors(boundary);
 
         await using var provider = BuildServices(options.Options);
-        await using var context = new CompositionContext(options.UseInternalServiceProvider(provider).Options);
+        await using var context = new CompositionContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
         var scope = Guid.Parse("820bc0eb-7a3c-4dd9-9cbb-87d758889237");
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
-        var rows = context.Set<CompositionNode>().Where(node => node.Scope == scope)
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
+        var rows = context
+            .Set<CompositionNode>()
+            .Where(node => node.Scope == scope)
             .Select(node => new { Node = node });
 
         var filtered = shape switch
         {
-            "Independent" => hierarchy.WhereNearestAncestorOrSelf(rows, row => row.Node,
-                (row, owner) => owner.Candidate, (row, owner) => owner.Matches),
-            "RowAware" => hierarchy.WhereNearestAncestorOrSelf(rows, row => row.Node,
+            "Independent" => hierarchy.WhereNearestAncestorOrSelf(rows,
+                row => row.Node,
+                (row, owner) => owner.Candidate,
+                (row, owner) => owner.Matches),
+            "RowAware" => hierarchy.WhereNearestAncestorOrSelf(rows,
+                row => row.Node,
                 (row, owner) => owner.Candidate && owner.Id < row.Node.Id + 100,
                 (row, owner) => owner.Matches),
-            "QueryBearing" => hierarchy.WhereNearestAncestorOrSelf(rows, row => row.Node,
+            "QueryBearing" => hierarchy.WhereNearestAncestorOrSelf(rows,
+                row => row.Node,
                 (row, owner) => owner.Candidate
-                    && context.Set<CompositionNode>().Any(other => other.ParentId == owner.Id),
+                    && context
+                        .Set<CompositionNode>()
+                        .Any(other => other.ParentId == owner.Id),
                 (row, owner) => owner.Matches),
             _ => throw new ArgumentOutOfRangeException(nameof(shape)),
         };
 
         // Act
-        var sql = filtered.Select(row => row.Node.Id).ToQueryString();
+        var sql = filtered
+            .Select(row => row.Node.Id)
+            .ToQueryString();
 
         // Assert
         // WHY: Failure partitions carry ordinary Left/Right aliases. Candidate-specific aliases identify
@@ -168,24 +202,44 @@ public sealed class CompositionPathTranslationTests
             .AddInterceptors(boundary);
 
         await using var provider = BuildServices(options.Options);
-        await using var context = new CompositionContext(options.UseInternalServiceProvider(provider).Options);
-        var hierarchy = context.NestedSet<CompositionNode>()
+        await using var context = new CompositionContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
             .ForScope(Guid.Parse("820bc0eb-7a3c-4dd9-9cbb-87d758889237"));
 
         var upward = hierarchy.SelectAncestors(node => node.Id >= 100,
-            (node, ancestor, distance) => new { Node = node, Ancestor = ancestor });
+            (node, ancestor, distance) => new
+            {
+                Node = node,
+                Ancestor = ancestor,
+            });
 
         var downward = queryBearing
             ? hierarchy.SelectSubtrees(anchor => upward.Any(row => row.Ancestor == anchor),
-                (anchor, node, distance) => new { Anchor = anchor, Node = node })
+                (anchor, node, distance) => new
+                {
+                    Anchor = anchor,
+                    Node = node,
+                })
             : hierarchy.SelectSubtrees(anchor => anchor.Id <= 2,
-                (anchor, node, distance) => new { Anchor = anchor, Node = node });
+                (anchor, node, distance) => new
+                {
+                    Anchor = anchor,
+                    Node = node,
+                });
 
         var boundaryCounter = new DownwardUnionCounter();
 
         // Act
         // WHY: Translation checks the intended boundary quickly; native Mixed profiles prove its actual plan.
-        var sql = downward.Where(row => row.Node.Id == 200).Select(row => row.Anchor.Id).ToQueryString();
+        var sql = downward
+            .Where(row => row.Node.Id == 200)
+            .Select(row => row.Anchor.Id)
+            .ToQueryString();
+
         boundaryCounter.Visit(downward.Expression);
 
         // Assert
@@ -204,9 +258,12 @@ public sealed class CompositionPathTranslationTests
         internal int Occurrences { get; private set; }
 
         /// <inheritdoc />
-        protected override Expression VisitMethodCall(MethodCallExpression node)
+        protected override Expression VisitMethodCall(
+            MethodCallExpression node
+        )
         {
-            if (node.Method.DeclaringType == typeof(Queryable) && node.Method.Name == nameof(Queryable.Union))
+            if (node.Method.DeclaringType == typeof(Queryable)
+                && node.Method.Name == nameof(Queryable.Union))
             {
                 Occurrences++;
             }

@@ -22,8 +22,11 @@ public sealed class CompositionCoordinateWidthTests
         // Act
         var repeated = Width(first);
         var next = Width(rebound);
-        var originalSql = Project(nodes, width).ToQueryString();
-        var reboundSql = Project(nodes, next).ToQueryString();
+        var originalSql = Project(nodes, width)
+            .ToQueryString();
+
+        var reboundSql = Project(nodes, next)
+            .ToQueryString();
 
         // Assert
         Assert.Same(width, repeated);
@@ -39,17 +42,24 @@ public sealed class CompositionCoordinateWidthTests
     }
 
     /// <summary>Invokes the actual private builder without exposing a diagnostic-only public API.</summary>
-    private static Expression Width(NestedSetQuery<CompositionGuardNode> query)
+    private static Expression Width(
+        NestedSetQuery<CompositionGuardNode> query
+    )
         => typeof(NestedSetQuery<CompositionGuardNode>)
             .GetMethod("VisibleCoordinateBlockWidth", BindingFlags.NonPublic | BindingFlags.Instance)!
             .CreateDelegate<Func<Expression>>(query)();
 
     /// <summary>Translates the retained width expression without evaluating its aggregate or opening SQLite.</summary>
-    private static IQueryable<long> Project(IQueryable<CompositionGuardNode> nodes, Expression width)
+    private static IQueryable<long> Project(
+        IQueryable<CompositionGuardNode> nodes,
+        Expression width
+    )
     {
         var node = Expression.Parameter(typeof(CompositionGuardNode), "node");
-        var select = Expression.Call(typeof(Queryable), nameof(Queryable.Select),
-            [typeof(CompositionGuardNode), typeof(long)], nodes.Expression,
+        var select = Expression.Call(typeof(Queryable),
+            nameof(Queryable.Select),
+            [typeof(CompositionGuardNode), typeof(long)],
+            nodes.Expression,
             Expression.Quote(Expression.Lambda<Func<CompositionGuardNode, long>>(width, node)));
 
         return nodes.Provider.CreateQuery<long>(select);

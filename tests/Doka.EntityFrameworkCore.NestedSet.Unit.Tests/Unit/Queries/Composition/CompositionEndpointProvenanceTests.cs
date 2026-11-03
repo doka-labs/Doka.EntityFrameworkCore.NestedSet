@@ -40,26 +40,44 @@ public sealed class CompositionEndpointProvenanceTests
         var boundary = new CompositionIoBoundary();
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
         var treeId = Guid.NewGuid();
-        var tree = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
-            .ForScope(1).InTree(treeId);
+        var tree = context
+            .NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
+            .ForScope(1)
+            .InTree(treeId);
 
         var nodes = tree.Nodes;
         var raw = context.Set<CompositionGuardNode>(CompositionGuardContext.ScopedMapping);
         var payloads = context.Set<CompositionGuardNode>(CompositionGuardContext.SecondMapping);
-        var other = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
-            .ForScope(1).InTree(treeId).Nodes;
+        var other = context
+            .NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
+            .ForScope(1)
+            .InTree(treeId)
+            .Nodes;
 
         var projected = Project(nodes);
         var source = shape switch
         {
             "nodes" => projected,
             "pairs" => tree.SelectSubtrees(node => node.Id == 1,
-                (upper, lower, distance) => new CompositionGuardRow { Upper = upper, Lower = lower }),
-            "join" => nodes.Join(payloads, node => node.Id, payload => payload.Id,
-                (node, payload) => new CompositionGuardRow { Upper = node, Lower = node, Payload = payload }),
+                (upper, lower, distance) => new CompositionGuardRow
+                {
+                    Upper = upper,
+                    Lower = lower,
+                }),
+            "join" => nodes.Join(payloads,
+                node => node.Id,
+                payload => payload.Id,
+                (node, payload) => new CompositionGuardRow
+                {
+                    Upper = node,
+                    Lower = node,
+                    Payload = payload,
+                }),
             "concat" => projected.Concat(projected),
             "union" => projected.Union(projected),
-            "safe-modifiers" => Project(nodes.AsTracking().TagWith("provenance")),
+            "safe-modifiers" => Project(nodes
+                .AsTracking()
+                .TagWith("provenance")),
             "raw" => Project(raw),
             "same-values" => Project(raw.Where(node => node.Scope == 1 && node.TreeId == treeId)),
             "another-facade" => Project(other),
@@ -68,25 +86,55 @@ public sealed class CompositionEndpointProvenanceTests
             "mixed-intersect" => projected.Intersect(Project(other)),
             "mixed-except" => projected.Except(Project(other)),
             "captured-inner" => payloads.SelectMany(payload => nodes,
-                (payload, node) => new CompositionGuardRow { Upper = node, Lower = node, Payload = payload }),
+                (payload, node) => new CompositionGuardRow
+                {
+                    Upper = node,
+                    Lower = node,
+                    Payload = payload,
+                }),
             "ignore-filters" => Project(nodes.IgnoreQueryFilters()),
-            "payload-ignore-filters" => nodes.Join(payloads.IgnoreQueryFilters(), node => node.Id,
+            "payload-ignore-filters" => nodes.Join(payloads.IgnoreQueryFilters(),
+                node => node.Id,
                 payload => payload.Id,
-                (node, payload) => new CompositionGuardRow { Upper = node, Lower = node, Payload = payload }),
+                (node, payload) => new CompositionGuardRow
+                {
+                    Upper = node,
+                    Lower = node,
+                    Payload = payload,
+                }),
             "unknown-modifier" => Project(nodes.IgnoreAutoIncludes()),
-            "default-if-empty" => Project(nodes.DefaultIfEmpty().Select(node => node!)),
-            "optional-left" => payloads.LeftJoin(nodes, payload => payload.Id, node => node.Id,
-                (payload, node) => new CompositionGuardRow { Upper = node!, Lower = node!, Payload = payload }),
-            "optional-right" => nodes.RightJoin(payloads, node => node.Id, payload => payload.Id,
-                (node, payload) => new CompositionGuardRow { Upper = node!, Lower = node!, Payload = payload }),
+            "default-if-empty" => Project(nodes
+                .DefaultIfEmpty()
+                .Select(node => node!)),
+            "optional-left" => payloads.LeftJoin(nodes,
+                payload => payload.Id,
+                node => node.Id,
+                (payload, node) => new CompositionGuardRow
+                {
+                    Upper = node!,
+                    Lower = node!,
+                    Payload = payload,
+                }),
+            "optional-right" => nodes.RightJoin(payloads,
+                node => node.Id,
+                payload => payload.Id,
+                (node, payload) => new CompositionGuardRow
+                {
+                    Upper = node!,
+                    Lower = node!,
+                    Payload = payload,
+                }),
             _ => throw new ArgumentOutOfRangeException(nameof(shape)),
         };
 
         var entityType = context.Model.FindEntityType(CompositionGuardContext.ScopedMapping)!;
 
         // Act
-        var actual = NestedSetQueryEndpoint.Require(source, row => row.Lower,
-            entityType, BoundSource(nodes), "node");
+        var actual = NestedSetQueryEndpoint.Require(source,
+            row => row.Lower,
+            entityType,
+            BoundSource(nodes),
+            "node");
 
         // Assert
         Assert.Same(entityType, actual.EntityType);
@@ -111,10 +159,13 @@ public sealed class CompositionEndpointProvenanceTests
         var boundary = new CompositionIoBoundary();
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
         var treeId = Guid.NewGuid();
-        var tree = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
-            .ForScope(1).InTree(treeId);
+        var tree = context
+            .NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
+            .ForScope(1)
+            .InTree(treeId);
 
-        var uncertain = context.Set<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
+        var uncertain = context
+            .Set<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
             .Where(node => node.Scope == 1 && node.TreeId == treeId);
 
         // Act
@@ -182,23 +233,53 @@ public sealed class CompositionEndpointProvenanceTests
         var treeId = Guid.NewGuid();
         var foreignTreeId = Guid.NewGuid();
         await SeedAsync(context, scope, foreignScope, treeId, foreignTreeId);
-        var tree = context.NestedSet<CompositionNode>().ForScope(scope).InTree(treeId);
+        var tree = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope)
+            .InTree(treeId);
+
         var raw = context.Set<CompositionNode>();
-        var otherScope = context.NestedSet<CompositionNode>().ForScope(foreignScope).InTree(treeId).Nodes;
+        var otherScope = context
+            .NestedSet<CompositionNode>()
+            .ForScope(foreignScope)
+            .InTree(treeId)
+            .Nodes;
+
         var source = shape switch
         {
             "bound" => tree.Nodes,
             "raw" => raw,
             "same-values" => raw.Where(node => node.Scope == scope && node.TreeId == treeId),
-            "another-facade" => context.NestedSet<CompositionNode>().ForScope(scope).InTree(treeId).Nodes,
+            "another-facade" => context
+                .NestedSet<CompositionNode>()
+                .ForScope(scope)
+                .InTree(treeId)
+                .Nodes,
             "foreign-scope" => otherScope,
-            "foreign-tree" => context.NestedSet<CompositionNode>().ForScope(scope).InTree(foreignTreeId).Nodes,
+            "foreign-tree" => context
+                .NestedSet<CompositionNode>()
+                .ForScope(scope)
+                .InTree(foreignTreeId)
+                .Nodes,
             "mixed-concat" => tree.Nodes.Concat(otherScope),
             "ignore-filters" => raw.IgnoreQueryFilters(),
             "payload-ignore-filters" => tree.Nodes.Join(raw.IgnoreQueryFilters(),
-                node => new { node.Scope, node.Id }, payload => new { payload.Scope, payload.Id },
+                node => new
+                {
+                    node.Scope,
+                    node.Id,
+                },
+                payload => new
+                {
+                    payload.Scope,
+                    payload.Id,
+                },
                 (node, payload) => node),
-            "default-if-empty" => tree.Nodes.Where(node => node.Id < 0).DefaultIfEmpty().Select(node => node!),
+            "default-if-empty" => tree
+                .Nodes
+                .Where(node => node.Id < 0)
+                .DefaultIfEmpty()
+                .Select(node => node!),
             _ => throw new ArgumentOutOfRangeException(nameof(shape)),
         };
 
@@ -210,8 +291,10 @@ public sealed class CompositionEndpointProvenanceTests
         };
 
         // Act
-        var actual = await Filter(tree, source, operation).OrderBy(node => node.Id)
-            .Select(node => node.Id).ToArrayAsync(CancellationToken.None);
+        var actual = await Filter(tree, source, operation)
+            .OrderBy(node => node.Id)
+            .Select(node => node.Id)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -219,11 +302,19 @@ public sealed class CompositionEndpointProvenanceTests
     }
 
     /// <summary>Retains an ordinary mapped alias in an explicitly selected application row.</summary>
-    private static IQueryable<CompositionGuardRow> Project(IQueryable<CompositionGuardNode> nodes)
-        => nodes.Select(node => new CompositionGuardRow { Upper = node, Lower = node });
+    private static IQueryable<CompositionGuardRow> Project(
+        IQueryable<CompositionGuardNode> nodes
+    )
+        => nodes.Select(node => new CompositionGuardRow
+        {
+            Upper = node,
+            Lower = node,
+        });
 
     /// <summary>Reads the source of the public presentation ordering without comparing predicate values.</summary>
-    private static Expression BoundSource(IQueryable<CompositionGuardNode> nodes)
+    private static Expression BoundSource(
+        IQueryable<CompositionGuardNode> nodes
+    )
     {
         // WHY: Nodes adds presentation OrderBy over the private immutable binding. Its actual argument is
         // reused by composition; rebuilding an equivalent predicate here would prove the wrong contract.
@@ -239,10 +330,17 @@ public sealed class CompositionEndpointProvenanceTests
         where TNode : class
         => operation switch
         {
-            "path" => tree.WherePathEdges(source, node => node, node => node, (row, parent, child) => true),
-            "any" => tree.WhereAnyAncestorOrSelf(source, node => node, (row, owner) => true),
-            "nearest" => tree.WhereNearestAncestorOrSelf(source, node => node,
-                (row, owner) => true, (row, owner) => true),
+            "path" => tree.WherePathEdges(source,
+                node => node,
+                node => node,
+                (row, parent, child) => true),
+            "any" => tree.WhereAnyAncestorOrSelf(source,
+                node => node,
+                (row, owner) => true),
+            "nearest" => tree.WhereNearestAncestorOrSelf(source,
+                node => node,
+                (row, owner) => true,
+                (row, owner) => true),
             _ => throw new ArgumentOutOfRangeException(nameof(operation)),
         };
 
@@ -255,6 +353,9 @@ public sealed class CompositionEndpointProvenanceTests
         Guid foreignTreeId
     )
     {
+        // WHY: Use the node ordinal to seed matching identities and bounds in both compared trees.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var id = 1; id <= 3; id++)
         {
             var node = new CompositionNode
@@ -273,23 +374,24 @@ public sealed class CompositionEndpointProvenanceTests
         }
 
         await context.AddRangeAsync([
-            new CompositionNode
-            {
-                Scope = foreignScope,
-                Id = 1,
-                TreeId = treeId,
-                Left = 1,
-                Right = 2,
-            },
-            new CompositionNode
-            {
-                Scope = scope,
-                Id = 4,
-                TreeId = foreignTreeId,
-                Left = 1,
-                Right = 2,
-            },
-        ], CancellationToken.None);
+                new CompositionNode
+                {
+                    Scope = foreignScope,
+                    Id = 1,
+                    TreeId = treeId,
+                    Left = 1,
+                    Right = 2,
+                },
+                new CompositionNode
+                {
+                    Scope = scope,
+                    Id = 4,
+                    TreeId = foreignTreeId,
+                    Left = 1,
+                    Right = 2,
+                },
+            ],
+            CancellationToken.None);
 
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
@@ -301,7 +403,9 @@ public sealed class CompositionEndpointProvenanceTests
         private int _count;
 
         /// <summary>Counts actual root occurrences, including deliberately repeated references.</summary>
-        internal static int Count(Expression expression)
+        internal static int Count(
+            Expression expression
+        )
         {
             var counter = new EntityRootCounter();
             counter.Visit(expression);
@@ -310,7 +414,9 @@ public sealed class CompositionEndpointProvenanceTests
         }
 
         /// <inheritdoc />
-        protected override Expression VisitExtension(Expression node)
+        protected override Expression VisitExtension(
+            Expression node
+        )
         {
             if (node is EntityQueryRootExpression)
             {

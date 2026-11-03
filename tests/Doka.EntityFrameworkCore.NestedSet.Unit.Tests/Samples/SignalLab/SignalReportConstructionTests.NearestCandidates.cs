@@ -10,7 +10,9 @@ public sealed partial class SignalReportConstructionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void NearestCandidatesRetainIndependentClassificationSlots(bool sameType)
+    public void NearestCandidatesRetainIndependentClassificationSlots(
+        bool sameType
+    )
     {
         // Arrange
         var factory = typeof(SignalReportBuilder)
@@ -27,20 +29,33 @@ public sealed partial class SignalReportConstructionTests
 
         // WHY: The candidate must depend only on its owner. Omitting the row parameter here also rejects
         // accidental free row references while executing the actual expression instead of a copied predicate.
-        var firstMatches = Expression.Lambda<Func<SignalNode, bool>>(first.Body, first.Parameters[1]).Compile();
-        var secondMatches = Expression.Lambda<Func<SignalNode, bool>>(second.Body, second.Parameters[1]).Compile();
+        var firstMatches = Expression
+            .Lambda<Func<SignalNode, bool>>(first.Body, first.Parameters[1])
+            .Compile();
+
+        var secondMatches = Expression
+            .Lambda<Func<SignalNode, bool>>(second.Body, second.Parameters[1])
+            .Compile();
 
         // Act
         var actual = new[]
         {
-            firstMatches(firstNode), firstMatches(secondNode), firstMatches(otherNode),
-            secondMatches(firstNode), secondMatches(secondNode), secondMatches(otherNode),
+            firstMatches(firstNode),
+            firstMatches(secondNode),
+            firstMatches(otherNode),
+            secondMatches(firstNode),
+            secondMatches(secondNode),
+            secondMatches(otherNode),
         };
 
         // Assert
         Assert.Equal([true, sameType, false, sameType, true, false], actual);
-        var firstSlot = Assert.IsAssignableFrom<MemberExpression>(Assert.IsAssignableFrom<BinaryExpression>(first.Body).Right);
-        var secondSlot = Assert.IsAssignableFrom<MemberExpression>(Assert.IsAssignableFrom<BinaryExpression>(second.Body).Right);
+        var firstSlot = Assert.IsAssignableFrom<MemberExpression>(Assert.IsAssignableFrom<BinaryExpression>(first.Body)
+            .Right);
+
+        var secondSlot = Assert.IsAssignableFrom<MemberExpression>(Assert
+            .IsAssignableFrom<BinaryExpression>(second.Body).Right);
+
         Assert.NotSame(Assert.IsType<ConstantExpression>(firstSlot.Expression).Value,
             Assert.IsType<ConstantExpression>(secondSlot.Expression).Value);
         Assert.NotSame(first, second);

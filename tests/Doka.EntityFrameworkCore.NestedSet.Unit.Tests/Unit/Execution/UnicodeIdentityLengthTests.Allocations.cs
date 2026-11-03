@@ -19,6 +19,8 @@ public sealed partial class UnicodeIdentityLengthTests
         var total = 0;
 
         // WHY: Initialization and tiered compilation do not belong to the repeated identity-validation budget.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var iteration = 0; iteration < 10_000; iteration++)
         {
             total += NestedSetIdentityLength.CountUnicodeScalars(input, "TreeId");
@@ -27,6 +29,9 @@ public sealed partial class UnicodeIdentityLengthTests
         var before = GC.GetAllocatedBytesForCurrentThread();
 
         // Act
+        // WHY: Count repeated validation of the same string within one allocation window.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var iteration = 0; iteration < 10_000; iteration++)
         {
             total += NestedSetIdentityLength.CountUnicodeScalars(input, "TreeId");

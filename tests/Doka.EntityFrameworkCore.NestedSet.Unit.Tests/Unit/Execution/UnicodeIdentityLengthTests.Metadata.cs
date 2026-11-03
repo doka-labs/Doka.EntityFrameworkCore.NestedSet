@@ -15,7 +15,10 @@ public sealed partial class UnicodeIdentityLengthTests
     [InlineData("PostgreSql", true)]
     [InlineData("Sqlite", false)]
     [InlineData("SqlServer", false)]
-    public void RuntimeModelRetainsPrimitiveNativeIdentityPolicies(string engine, bool expected)
+    public void RuntimeModelRetainsPrimitiveNativeIdentityPolicies(
+        string engine,
+        bool expected
+    )
     {
         // Arrange
         using var context = new UnicodeContext(engine);
@@ -25,16 +28,20 @@ public sealed partial class UnicodeIdentityLengthTests
         var mapping = NestedSetTreeRegistryMapping.For(entity);
 
         // Assert
-        Assert.Equal(expected, Assert.IsType<bool>(entity.FindAnnotation(
-            NestedSetAnnotationNames.ScopeUnicodeScalarLength)!.Value));
-        Assert.Equal(expected, Assert.IsType<bool>(entity.FindAnnotation(
-            NestedSetAnnotationNames.TreeIdUnicodeScalarLength)!.Value));
+        Assert.Equal(expected,
+            Assert.IsType<bool>(entity.FindAnnotation(
+                NestedSetAnnotationNames.ScopeUnicodeScalarLength)!.Value));
+        Assert.Equal(expected,
+            Assert.IsType<bool>(entity.FindAnnotation(
+                NestedSetAnnotationNames.TreeIdUnicodeScalarLength)!.Value));
         Assert.Equal(expected, mapping.ScopeUsesUnicodeScalarLength);
         Assert.Equal(expected, mapping.TreeIdUsesUnicodeScalarLength);
         AssertNoDatabaseAccess(context);
     }
 
-    /// <summary>Missing or malformed old model facts require regeneration rather than changing a length guard.</summary>
+    /// <summary>
+    /// Missing or malformed old model facts require regeneration rather than changing a length guard.
+    /// </summary>
     /// <param name="scopeRole">Whether the missing or malformed fact belongs to Scope.</param>
     /// <param name="invalid">The invalid non-Boolean value, or null for an absent annotation.</param>
     [Theory]
@@ -44,10 +51,16 @@ public sealed partial class UnicodeIdentityLengthTests
     [InlineData(true, "false")]
     [InlineData(false, 1)]
     [InlineData(true, 0)]
-    public void InvalidCapturedIdentityPolicyRequiresRegeneration(bool scopeRole, object? invalid)
+    public void InvalidCapturedIdentityPolicyRequiresRegeneration(
+        bool scopeRole,
+        object? invalid
+    )
     {
         // Arrange
-        var entity = new ModelBuilder().Entity<UnicodePolicyMetadataProbe>().Metadata;
+        var entity = new ModelBuilder()
+            .Entity<UnicodePolicyMetadataProbe>()
+            .Metadata;
+
         var annotation = scopeRole
             ? NestedSetAnnotationNames.ScopeUnicodeScalarLength
             : NestedSetAnnotationNames.TreeIdUnicodeScalarLength;
@@ -76,10 +89,16 @@ public sealed partial class UnicodeIdentityLengthTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public void CapturedIdentityPolicyKeepsBothBooleanDecisions(bool scopeRole, bool expected)
+    public void CapturedIdentityPolicyKeepsBothBooleanDecisions(
+        bool scopeRole,
+        bool expected
+    )
     {
         // Arrange
-        var entity = new ModelBuilder().Entity<UnicodePolicyMetadataProbe>().Metadata;
+        var entity = new ModelBuilder()
+            .Entity<UnicodePolicyMetadataProbe>()
+            .Metadata;
+
         var annotation = scopeRole
             ? NestedSetAnnotationNames.ScopeUnicodeScalarLength
             : NestedSetAnnotationNames.TreeIdUnicodeScalarLength;
@@ -98,23 +117,43 @@ public sealed partial class UnicodeIdentityLengthTests
     [Theory]
     [InlineData("MySql")]
     [InlineData("PostgreSql")]
-    public void NamesakeProviderAssemblyCannotAuthorizeCharacterPolicy(string engine)
+    public void NamesakeProviderAssemblyCannotAuthorizeCharacterPolicy(
+        string engine
+    )
     {
         // Arrange
         using var context = new UnicodeContext(engine);
         var original = context.Model.FindEntityType(UnicodeContext.Raw)!.FindProperty("TreeId")!
             .GetRelationalTypeMapping();
-        var foreign = CreateNamedCharacterMapping(original.GetType().Assembly.GetName().Name!,
+
+        var foreign = CreateNamedCharacterMapping(original
+                .GetType()
+                .Assembly
+                .GetName()
+                .Name!,
             original.GetType().FullName!);
 
         // Act
-        var authorized = NestedSetProviderCapabilities.Resolve(context).UsesUnicodeScalarLength(foreign);
+        var authorized = NestedSetProviderCapabilities
+            .Resolve(context)
+            .UsesUnicodeScalarLength(foreign);
 
         // Assert
         Assert.False(authorized);
-        Assert.Equal(original.GetType().FullName, foreign.GetType().FullName);
-        Assert.Equal(original.GetType().Assembly.GetName().Name, foreign.GetType().Assembly.GetName().Name);
-        Assert.NotSame(original.GetType().Assembly, foreign.GetType().Assembly);
+        Assert.Equal(original.GetType().FullName,
+            foreign.GetType().FullName);
+        Assert.Equal(original
+                .GetType()
+                .Assembly
+                .GetName()
+                .Name,
+            foreign
+                .GetType()
+                .Assembly
+                .GetName()
+                .Name);
+        Assert.NotSame(original.GetType().Assembly,
+            foreign.GetType().Assembly);
         AssertNoDatabaseAccess(context);
     }
 
@@ -126,36 +165,59 @@ public sealed partial class UnicodeIdentityLengthTests
         using var context = new UnicodeContext("PostgreSql");
         var original = context.Model.FindEntityType(UnicodeContext.Raw)!.FindProperty("TreeId")!
             .GetRelationalTypeMapping();
+
         var assembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("NestedSet.DerivedUnicodeProbe"),
             AssemblyBuilderAccess.RunAndCollect);
-        var type = assembly.DefineDynamicModule("MappingProbe")
-            .DefineType("DerivedNativeCharacterMapping", TypeAttributes.Public | TypeAttributes.Sealed, original.GetType());
-        var generator = type.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, Type.EmptyTypes)
+
+        var type = assembly
+            .DefineDynamicModule("MappingProbe")
+            .DefineType("DerivedNativeCharacterMapping",
+                TypeAttributes.Public | TypeAttributes.Sealed,
+                original.GetType());
+
+        var generator = type
+            .DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, Type.EmptyTypes)
             .GetILGenerator();
+
         generator.Emit(OpCodes.Ldarg_0);
         generator.Emit(OpCodes.Ldstr, "varchar(8)");
         generator.Emit(OpCodes.Ldc_I4, (int)NpgsqlDbType.Varchar);
-        generator.Emit(OpCodes.Call, original.GetType().GetConstructor([typeof(string), typeof(NpgsqlDbType)])!);
+        generator.Emit(OpCodes.Call,
+            original
+                .GetType()
+                .GetConstructor([typeof(string), typeof(NpgsqlDbType)])!);
         generator.Emit(OpCodes.Ret);
         var mapping = (RelationalTypeMapping)Activator.CreateInstance(type.CreateType()!)!;
 
         // Act
-        var authorized = NestedSetProviderCapabilities.Resolve(context).UsesUnicodeScalarLength(mapping);
+        var authorized = NestedSetProviderCapabilities
+            .Resolve(context)
+            .UsesUnicodeScalarLength(mapping);
 
         // Assert
         Assert.False(authorized);
-        Assert.Equal(original.GetType(), mapping.GetType().BaseType);
+        Assert.Equal(original.GetType(),
+            mapping.GetType().BaseType);
         AssertNoDatabaseAccess(context);
     }
 
     /// <summary>Builds an adversarial ordinary mapping with caller-selected owner and type names.</summary>
-    private static RelationalTypeMapping CreateNamedCharacterMapping(string assemblyName, string typeName)
+    private static RelationalTypeMapping CreateNamedCharacterMapping(
+        string assemblyName,
+        string typeName
+    )
     {
-        var assembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(assemblyName), AssemblyBuilderAccess.RunAndCollect);
-        var type = assembly.DefineDynamicModule("MappingProbe")
+        var assembly =
+            AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(assemblyName), AssemblyBuilderAccess.RunAndCollect);
+
+        var type = assembly
+            .DefineDynamicModule("MappingProbe")
             .DefineType(typeName, TypeAttributes.Public | TypeAttributes.Sealed, typeof(StringTypeMapping));
-        var generator = type.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, Type.EmptyTypes)
+
+        var generator = type
+            .DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, Type.EmptyTypes)
             .GetILGenerator();
+
         generator.Emit(OpCodes.Ldarg_0);
         generator.Emit(OpCodes.Ldstr, "varchar(8)");
         generator.Emit(OpCodes.Ldc_I4, (int)DbType.String);
@@ -163,8 +225,9 @@ public sealed partial class UnicodeIdentityLengthTests
         generator.Emit(OpCodes.Ldc_I4_1);
         generator.Emit(OpCodes.Ldc_I4_8);
         generator.Emit(OpCodes.Newobj, typeof(int?).GetConstructor([typeof(int)])!);
-        generator.Emit(OpCodes.Call, typeof(StringTypeMapping).GetConstructor(
-            [typeof(string), typeof(DbType?), typeof(bool), typeof(int?)])!);
+        generator.Emit(OpCodes.Call,
+            typeof(StringTypeMapping).GetConstructor(
+                [typeof(string), typeof(DbType?), typeof(bool), typeof(int?)])!);
         generator.Emit(OpCodes.Ret);
 
         return (RelationalTypeMapping)Activator.CreateInstance(type.CreateType()!)!;

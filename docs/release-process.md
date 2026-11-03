@@ -6,7 +6,7 @@ authority is in [Release governance](release-governance.md).
 The [release-line contract](operations/release-lines.md) governs exact branch
 eligibility, framework ownership, preparation and ongoing servicing.
 
-Version `10.1.0` is the current stable six-package contract; `10.0.0` is the
+Version `10.2.0` is the current stable six-package contract; `10.0.0` is the
 first stable contract. Each version, including the
 earlier `10.0.0-rc.1`, retains its own exact packages and qualification evidence.
 RC archives are never renamed into stable packages.
@@ -33,7 +33,7 @@ leading `v`. It must match the reviewed source version and one dated changelog
 section. All six NuGet identities must be unused, the release tag must not exist,
 and dispatch must target that line's exact current protected head. The version
 major must match the line's approved framework/toolchain and package major.
-Current source is .NET 10 with `10.1.0`; additional lines remain inactive.
+Current source is .NET 10 with `10.2.0`; additional lines remain inactive.
 
 ## Qualification stages
 

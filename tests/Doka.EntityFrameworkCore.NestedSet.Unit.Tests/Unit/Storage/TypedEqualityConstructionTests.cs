@@ -6,7 +6,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Preserves native and converted equality while binding reflection once per mapped type.</summary>
 /// <param name="output">Records paired construction allocation evidence.</param>
 [Collection("Allocation measurements")]
-public sealed class TypedEqualityConstructionTests(ITestOutputHelper output)
+public sealed class TypedEqualityConstructionTests(
+    ITestOutputHelper output
+)
 {
     /// <summary>Cached operator metadata retains the framework's native and nullable binary expression shape.</summary>
     /// <param name="shape">The native or operator-free mapped expression type.</param>
@@ -50,7 +52,8 @@ public sealed class TypedEqualityConstructionTests(ITestOutputHelper output)
         else
         {
             var call = Assert.IsAssignableFrom<MethodCallExpression>(actual);
-            Assert.Equal(Assert.IsAssignableFrom<MethodCallExpression>(expected).Method, call.Method);
+            Assert.Equal(Assert.IsAssignableFrom<MethodCallExpression>(expected).Method,
+                call.Method);
         }
     }
 
@@ -94,10 +97,14 @@ public sealed class TypedEqualityConstructionTests(ITestOutputHelper output)
     {
         // Arrange
         var prepared = Values(shape, left, right);
-        var expected = Expression.Lambda<Func<bool>>(prepared.Reference()).Compile()();
+        var expected = Expression
+            .Lambda<Func<bool>>(prepared.Reference())
+            .Compile()();
 
         // Act
-        var actual = Expression.Lambda<Func<bool>>(prepared.Current()).Compile()();
+        var actual = Expression
+            .Lambda<Func<bool>>(prepared.Current())
+            .Compile()();
 
         // Assert
         Assert.Equal(expected, actual);
@@ -146,6 +153,9 @@ public sealed class TypedEqualityConstructionTests(ITestOutputHelper output)
         // Arrange
         var prepared = Shape(shape);
 
+        // WHY: Warm both expression factories equally before measuring their steady-state allocation difference.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < 1000; index++)
         {
             GC.KeepAlive(prepared.Reference());
@@ -211,11 +221,16 @@ public sealed class TypedEqualityConstructionTests(ITestOutputHelper output)
     {
         var equals = typeof(T).GetMethod(nameof(object.Equals),
             BindingFlags.Public | BindingFlags.Instance | BindingFlags.ExactBinding,
-            binder: null, types: [typeof(T)], modifiers: null);
+            binder: null,
+            types: [typeof(T)],
+            modifiers: null);
 
         Func<Expression> reference = equals is null
-            ? () => Expression.Call(typeof(object), nameof(object.Equals), [],
-                Expression.Convert(left, typeof(object)), Expression.Convert(right, typeof(object)))
+            ? () => Expression.Call(typeof(object),
+                nameof(object.Equals),
+                [],
+                Expression.Convert(left, typeof(object)),
+                Expression.Convert(right, typeof(object)))
             : () => Expression.Call(left, equals, right);
 
         return new ConstructionCase(reference, () => NestedSetTypedEquality<T>.Equal(left, right));
@@ -275,53 +290,76 @@ public sealed class TypedEqualityConstructionTests(ITestOutputHelper output)
     /// <summary>Keeps both prepared construction delegates outside measured operations.</summary>
     /// <param name="Reference">The original framework-backed construction factory.</param>
     /// <param name="Current">The current cached construction factory.</param>
-    private sealed record ConstructionCase(Func<Expression> Reference, Func<Expression> Current);
+    private sealed record ConstructionCase(
+        Func<Expression> Reference,
+        Func<Expression> Current
+    );
 
     /// <summary>Provides exact typed equality without declaring an equality operator.</summary>
-    private readonly struct TypedIdentity(int value) : IEquatable<TypedIdentity>
+    private readonly struct TypedIdentity(
+        int value
+    ) : IEquatable<TypedIdentity>
     {
         /// <summary>Gets the model identity before its normalized equality comparison.</summary>
         private int Value { get; } = value;
 
         /// <inheritdoc />
-        public bool Equals(TypedIdentity other) => Value % 10 == other.Value % 10;
+        public bool Equals(
+            TypedIdentity other
+        ) => Value % 10 == other.Value % 10;
 
         /// <inheritdoc />
-        public override bool Equals(object? obj) => obj is TypedIdentity other && Equals(other);
+        public override bool Equals(
+            object? obj
+        ) => obj is TypedIdentity other && Equals(other);
 
         /// <inheritdoc />
         public override int GetHashCode() => Value % 10;
     }
 
     /// <summary>Provides only object equality for the explicit object marker fallback.</summary>
-    private readonly struct ObjectIdentity(int value)
+    private readonly struct ObjectIdentity(
+        int value
+    )
     {
         /// <summary>Gets the model identity before its normalized equality comparison.</summary>
         private int Value { get; } = value;
 
         /// <inheritdoc />
-        public override bool Equals(object? obj) => obj is ObjectIdentity other && Value % 10 == other.Value % 10;
+        public override bool Equals(
+            object? obj
+        ) => obj is ObjectIdentity other && Value % 10 == other.Value % 10;
 
         /// <inheritdoc />
         public override int GetHashCode() => Value % 10;
     }
 
     /// <summary>Throws if expression construction accidentally executes the discovered CLR operator.</summary>
-    private readonly struct OperatorProbe(int value)
+    private readonly struct OperatorProbe(
+        int value
+    )
     {
         /// <summary>Gets the probe value used only by ordinary object equality.</summary>
         private int Value { get; } = value;
 
         /// <summary>Rejects executing operator equality while its expression node is being built.</summary>
-        public static bool operator ==(OperatorProbe left, OperatorProbe right)
+        public static bool operator ==(
+            OperatorProbe left,
+            OperatorProbe right
+        )
             => throw new InvalidOperationException("Construction must not invoke CLR equality.");
 
         /// <summary>Rejects executing operator inequality while its expression node is being built.</summary>
-        public static bool operator !=(OperatorProbe left, OperatorProbe right)
+        public static bool operator !=(
+            OperatorProbe left,
+            OperatorProbe right
+        )
             => throw new InvalidOperationException("Construction must not invoke CLR inequality.");
 
         /// <inheritdoc />
-        public override bool Equals(object? obj) => obj is OperatorProbe other && Value == other.Value;
+        public override bool Equals(
+            object? obj
+        ) => obj is OperatorProbe other && Value == other.Value;
 
         /// <inheritdoc />
         public override int GetHashCode() => Value;

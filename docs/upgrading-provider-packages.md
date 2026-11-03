@@ -1,4 +1,30 @@
-# Upgrade to provider-owned packages
+# Upgrade NestedSet packages
+
+## Upgrade from 10.1.0 to 10.2.0
+
+`10.2.0` is an additive update on .NET/EF Core 10. Update all selected NestedSet
+adapters and the common EF package together; each adapter requires kernel
+`[10.2.0]`. The provider-callback registration remains unchanged.
+
+Existing mappings retain their generated registry name and require no migration
+for this update. To adopt `HasTreeRegistryTable(...)`, scaffold and review the
+[data-preserving registry rename](migrations.md#explicit-registry-table-name).
+Regenerate compiled models after changing that model configuration.
+
+With `AutoDetectChangesEnabled = false`, unmarked application payload remains
+unrecorded across ordinary, coordinated and facade saves. Mark intended changes
+through EF entry APIs, notifications or an application detection pass. Unrecorded
+hierarchy edits still reject rather than triggering context-wide detection.
+Review [manual detection and recovery](configuration.md#manual-change-detection)
+if application code relied on the previously unintended detection. Callback
+writes remain subject to the existing explicit-write and hierarchy guards.
+
+The update also strengthens recovery of relationships, complex containers and
+table-sharing peers, and prepared-owner imports across batches. These fixes
+retain the documented transaction, cancellation, retry and restoration contracts.
+No SafeMigrations dependency or new database/provider requirement is introduced.
+
+## Registration transition introduced in 10.1.0
 
 The stable `10.1.0` contract changes package installation and infrastructure
 registration. `Doka.EntityFrameworkCore.NestedSet` remains the common EF kernel;
@@ -22,10 +48,11 @@ preserve the removed registration API.
 Install the adapter matching each context's database. It brings the common EF
 kernel, `Doka.NestedSet`, and the matching EF database provider transitively.
 Use one qualified NestedSet version for all NestedSet packages in an application.
-The commands below upgrade an application to stable `10.1.0`.
+The commands below install the current stable `10.2.0` contract. Applications
+coming from `10.0.0` must also apply the registration transition described here.
 
 Each adapter depends on exactly that release of the common EF kernel:
-`[10.1.0]` for this release. The adapter implements assembly-internal kernel
+`[10.2.0]` for this release. The adapter implements assembly-internal kernel
 contracts, so a different kernel patch is not an advertised compatible
 combination. Update all selected adapters together, including applications
 using different providers in separate contexts. The public-only dependency
@@ -47,7 +74,7 @@ not an unconditional runtime barrier.
 For example:
 
 ```sh
-dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.1.0
+dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.2.0
 ```
 
 A provider already referenced directly by the application must satisfy the

@@ -12,11 +12,15 @@ public sealed partial class CompositionCoordinateProjectionTests
             .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets());
 
     /// <summary>Owns the model cache so the weak-lifetime test does not exercise EF's global provider cache.</summary>
-    private static ServiceProvider CoordinateServices(DbContextOptionsBuilder<CoordinateContext> options)
+    private static ServiceProvider CoordinateServices(
+        DbContextOptionsBuilder<CoordinateContext> options
+    )
         => CoordinateServices(options.Options);
 
     /// <summary>Isolates provider services for both structural selector and direct projection test contexts.</summary>
-    private static ServiceProvider CoordinateServices(DbContextOptions options)
+    private static ServiceProvider CoordinateServices(
+        DbContextOptions options
+    )
     {
         // WHY: Independent test models must not accumulate global EF singleton providers and make
         // an unrelated later sample fail with ManyServiceProvidersCreatedWarning during a full run.
@@ -39,7 +43,9 @@ public sealed partial class CompositionCoordinateProjectionTests
     {
         var entity = context.Model.FindEntityType(mapping)!;
         var root = new NestedSetQuery<Dictionary<string, object>>(context, entity);
-        var nodes = context.Set<Dictionary<string, object>>(mapping).AsQueryable();
+        var nodes = context
+            .Set<Dictionary<string, object>>(mapping)
+            .AsQueryable();
 
         return CoordinateSelection(root, nodes, includeNonLeaf);
     }
@@ -52,8 +58,10 @@ public sealed partial class CompositionCoordinateProjectionTests
     )
         where TEntity : class
     {
-        var method = root.GetType().GetMethod("AncestorIndexCoordinates",
-            BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var method = root
+            .GetType()
+            .GetMethod("AncestorIndexCoordinates",
+                BindingFlags.NonPublic | BindingFlags.Instance)!;
 
         var query = Assert.IsAssignableFrom<IQueryable>(method.Invoke(root, [nodes, includeNonLeaf]));
         var select = Assert.IsAssignableFrom<MethodCallExpression>(query.Expression);
@@ -68,11 +76,17 @@ public sealed partial class CompositionCoordinateProjectionTests
     {
         var options = CoordinateOptions();
         using var provider = CoordinateServices(options);
-        using var context = new CoordinateContext(options.UseInternalServiceProvider(provider).Options);
+        using var context = new CoordinateContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
         _ = Coordinates(context, CoordinateContext.Scoped, includeNonLeaf: true);
 
-        return [new WeakReference(context), new WeakReference(context.Model),
-            new WeakReference(context.Model.FindEntityType(CoordinateContext.Scoped)!)];
+        return
+        [
+            new WeakReference(context), new WeakReference(context.Model),
+            new WeakReference(context.Model.FindEntityType(CoordinateContext.Scoped)!),
+        ];
     }
 
     /// <summary>Optionally exposes the actual model as a deliberate strong-root control.</summary>
@@ -85,12 +99,18 @@ public sealed partial class CompositionCoordinateProjectionTests
         // unchanged. The counterfactual must isolate witness observation rather than factory lifetime.
         var options = CoordinateOptions();
         using var provider = CoordinateServices(options);
-        using var context = new CoordinateContext(options.UseInternalServiceProvider(provider).Options);
+        using var context = new CoordinateContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
         _ = Coordinates(context, CoordinateContext.Scoped, includeNonLeaf: true);
         model = context.Model;
 
-        return [new WeakReference(context), new WeakReference(model),
-            new WeakReference(model.FindEntityType(CoordinateContext.Scoped)!)];
+        return
+        [
+            new WeakReference(context), new WeakReference(model),
+            new WeakReference(model.FindEntityType(CoordinateContext.Scoped)!),
+        ];
     }
 
     /// <summary>Applies the unchanged collection budget without observing a witness target in the GC frame.</summary>
@@ -99,6 +119,8 @@ public sealed partial class CompositionCoordinateProjectionTests
     {
         // WHY: Reading weak targets can introduce strong JIT temporaries. Keep every witness observation
         // outside this noninlined collection frame so the probe cannot extend the lifetime it measures.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var attempt = 0; attempt < 8; attempt++)
         {
             GC.Collect();
@@ -108,7 +130,9 @@ public sealed partial class CompositionCoordinateProjectionTests
     }
 
     /// <summary>Maps the same CLR property bag with independent role names and one shadow-role entity.</summary>
-    private sealed class CoordinateContext(DbContextOptions<CoordinateContext> options) : DbContext(options)
+    private sealed class CoordinateContext(
+        DbContextOptions<CoordinateContext> options
+    ) : DbContext(options)
     {
         /// <summary>Names a scope-partitioned mapping with renamed interval properties.</summary>
         internal const string Scoped = "ScopedCoordinates";
@@ -117,21 +141,30 @@ public sealed partial class CompositionCoordinateProjectionTests
         internal const string Unscoped = "UnscopedCoordinates";
 
         /// <inheritdoc />
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        protected override void OnModelCreating(
+            ModelBuilder modelBuilder
+        )
         {
             ConfigureBag(modelBuilder, Scoped, scoped: true);
             ConfigureBag(modelBuilder, Unscoped, scoped: false);
 
             var node = modelBuilder.Entity<CoordinateNode>();
             node.HasKey(entity => entity.Id);
-            node.Property(entity => entity.Id).ValueGeneratedNever();
-            node.Property<Guid>("TreeId").HasConversion<string>();
+            node
+                .Property(entity => entity.Id)
+                .ValueGeneratedNever();
+            node
+                .Property<Guid>("TreeId")
+                .HasConversion<string>();
             node.Property<int?>("ParentId");
             node.Property<long>("Left");
             node.Property<long>("Right");
             node.Property<int>("Depth");
             node.Property<long>("Position");
-            node.HasMany(entity => entity.Items).WithOne().HasForeignKey(entity => entity.NodeId);
+            node
+                .HasMany(entity => entity.Items)
+                .WithOne()
+                .HasForeignKey(entity => entity.NodeId);
             node.HasNestedSet(hierarchy => hierarchy
                 .HasNodeKey(entity => entity.Id)
                 .HasTreeId("TreeId")
@@ -149,44 +182,54 @@ public sealed partial class CompositionCoordinateProjectionTests
             bool scoped
         )
         {
-            modelBuilder.SharedTypeEntity<Dictionary<string, object>>(mapping, entity =>
-            {
-                var key = scoped ? "NodeId" : "Key";
-                var tree = scoped ? "TreeId" : "Tree";
-                var parent = scoped ? "ParentId" : "Parent";
-                var left = scoped ? "Start" : "Left";
-                var right = scoped ? "End" : "Right";
-                entity.ToTable(mapping);
-                entity.Property<int>(key).ValueGeneratedNever();
-                entity.Property<Guid>(tree).HasConversion<string>();
-                entity.Property<int?>(parent);
-                entity.Property<long>(left);
-                entity.Property<long>(right);
-                entity.Property<int>("Depth");
-                entity.Property<long>("Position");
-
-                if (scoped)
+            modelBuilder.SharedTypeEntity<Dictionary<string, object>>(mapping,
+                entity =>
                 {
-                    entity.Property<int>("TenantId");
-                    entity.HasKey("TenantId", key);
-                }
-                else
-                {
-                    entity.HasKey(key);
-                }
-
-                entity.HasNestedSet(hierarchy =>
-                {
-                    hierarchy.HasNodeKey(key).HasTreeId(tree).HasParent(parent).HasBounds(left, right)
-                        .HasDepth("Depth").HasPosition("Position")
-                        .HasAncestorIndex(scoped ? "HasChildren" : "Branches");
+                    var key = scoped ? "NodeId" : "Key";
+                    var tree = scoped ? "TreeId" : "Tree";
+                    var parent = scoped ? "ParentId" : "Parent";
+                    var left = scoped ? "Start" : "Left";
+                    var right = scoped ? "End" : "Right";
+                    entity.ToTable(mapping);
+                    entity
+                        .Property<int>(key)
+                        .ValueGeneratedNever();
+                    entity
+                        .Property<Guid>(tree)
+                        .HasConversion<string>();
+                    entity.Property<int?>(parent);
+                    entity.Property<long>(left);
+                    entity.Property<long>(right);
+                    entity.Property<int>("Depth");
+                    entity.Property<long>("Position");
 
                     if (scoped)
                     {
-                        hierarchy.HasScope("TenantId");
+                        entity.Property<int>("TenantId");
+                        entity.HasKey("TenantId", key);
                     }
+                    else
+                    {
+                        entity.HasKey(key);
+                    }
+
+                    entity.HasNestedSet(hierarchy =>
+                    {
+                        hierarchy
+                            .HasNodeKey(key)
+                            .HasTreeId(tree)
+                            .HasParent(parent)
+                            .HasBounds(left, right)
+                            .HasDepth("Depth")
+                            .HasPosition("Position")
+                            .HasAncestorIndex(scoped ? "HasChildren" : "Branches");
+
+                        if (scoped)
+                        {
+                            hierarchy.HasScope("TenantId");
+                        }
+                    });
                 });
-            });
         }
     }
 

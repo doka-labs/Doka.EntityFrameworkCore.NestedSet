@@ -15,6 +15,7 @@ public sealed partial class DokaSourceBindingTests
         var source = probe.Source<int>();
         Expression<Func<IQueryable<int>, IQueryable<string>>> compose =
             rows => rows.Select(value => value.ToString(CultureInfo.InvariantCulture));
+
         var adapter = NestedSetTestAdapters.ForEngine("MySql");
 
         // Act
@@ -27,7 +28,8 @@ public sealed partial class DokaSourceBindingTests
         Assert.Equal(adapter.CompletedSourceMethod, call.Method.GetGenericMethodDefinition());
         Assert.Equal(typeof(MySqlQueryableExtensions).Assembly, call.Method.DeclaringType!.Assembly);
         Assert.Same(source.Expression, call.Arguments[0]);
-        Assert.Same(compose, Assert.IsType<UnaryExpression>(call.Arguments[1], exactMatch: false).Operand);
+        Assert.Same(compose,
+            Assert.IsType<UnaryExpression>(call.Arguments[1], exactMatch: false).Operand);
         Assert.Equal(0, probe.Executions);
     }
 
@@ -50,8 +52,13 @@ public sealed partial class DokaSourceBindingTests
         adapter.TryBindSource(source, second, out var secondBound);
         firstLimit = 4;
         secondLimit = 8;
-        var firstValues = Composition(firstBound!).Compile()(values.AsQueryable()).ToArray();
-        var secondValues = Composition(secondBound!).Compile()(values.AsQueryable()).ToArray();
+        var firstValues = Composition(firstBound!)
+            .Compile()(values.AsQueryable())
+            .ToArray();
+
+        var secondValues = Composition(secondBound!)
+            .Compile()(values.AsQueryable())
+            .ToArray();
 
         // Assert
         Assert.NotSame(firstBound, secondBound);
@@ -67,12 +74,18 @@ public sealed partial class DokaSourceBindingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void CompleteSourceRetainsDuplicatesAndEmptyPaging(bool empty)
+    public void CompleteSourceRetainsDuplicatesAndEmptyPaging(
+        bool empty
+    )
     {
         // Arrange
         var probe = new ProviderQueryProbe();
         var root = probe.Source<int>();
-        var source = root.Concat(root).OrderBy(value => value).Take(empty ? 0 : 4);
+        var source = root
+            .Concat(root)
+            .OrderBy(value => value)
+            .Take(empty ? 0 : 4);
+
         var adapter = NestedSetTestAdapters.ForEngine("MySql");
 
         // Act
@@ -91,7 +104,9 @@ public sealed partial class DokaSourceBindingTests
     [InlineData("Sqlite")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public void PortableAdaptersLeaveCompletedSourceUnavailable(string engine)
+    public void PortableAdaptersLeaveCompletedSourceUnavailable(
+        string engine
+    )
     {
         // Arrange
         var probe = new ProviderQueryProbe();
@@ -113,7 +128,10 @@ public sealed partial class DokaSourceBindingTests
     public void ClientSourceIsRejectedWithoutReflectionWrapping()
     {
         // Arrange
-        var source = Array.Empty<int>().AsQueryable();
+        var source = Array
+            .Empty<int>()
+            .AsQueryable();
+
         var adapter = NestedSetTestAdapters.ForEngine("MySql");
 
         // Act
@@ -147,7 +165,9 @@ public sealed partial class DokaSourceBindingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void NullInputsAreRejectedAtTheTypedBoundary(bool sourceMissing)
+    public void NullInputsAreRejectedAtTheTypedBoundary(
+        bool sourceMissing
+    )
     {
         // Arrange
         var probe = new ProviderQueryProbe();
@@ -157,15 +177,20 @@ public sealed partial class DokaSourceBindingTests
 
         // Act
         var error = Record.Exception(() => adapter.TryBindSource(
-            sourceMissing ? null! : source, sourceMissing ? compose : null!, out _));
+            sourceMissing ? null! : source,
+            sourceMissing ? compose : null!,
+            out _));
 
         // Assert
-        Assert.Equal(sourceMissing ? "source" : "compose", Assert.IsType<ArgumentNullException>(error).ParamName);
+        Assert.Equal(sourceMissing ? "source" : "compose",
+            Assert.IsType<ArgumentNullException>(error).ParamName);
         Assert.Equal(0, probe.Executions);
     }
 
     /// <summary>Reads the actual quoted user composition without executing the provider marker.</summary>
-    private static Expression<Func<IQueryable<int>, IQueryable<int>>> Composition(IQueryable<int> query)
-        => (Expression<Func<IQueryable<int>, IQueryable<int>>>)((UnaryExpression)((MethodCallExpression)query.Expression)
-            .Arguments[1]).Operand;
+    private static Expression<Func<IQueryable<int>, IQueryable<int>>> Composition(
+        IQueryable<int> query
+    )
+        => (Expression<Func<IQueryable<int>, IQueryable<int>>>)((UnaryExpression)
+            ((MethodCallExpression)query.Expression).Arguments[1]).Operand;
 }

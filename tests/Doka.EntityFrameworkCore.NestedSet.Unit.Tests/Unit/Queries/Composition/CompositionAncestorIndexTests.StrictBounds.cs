@@ -11,7 +11,9 @@ public sealed partial class CompositionAncestorIndexTests
         internal int CompletePredicates { get; private set; }
 
         /// <inheritdoc />
-        protected override Expression VisitMethodCall(MethodCallExpression node)
+        protected override Expression VisitMethodCall(
+            MethodCallExpression node
+        )
         {
             if (node.Method.DeclaringType == typeof(Queryable)
                 && node.Method.Name == nameof(Queryable.Where)
@@ -47,15 +49,19 @@ public sealed partial class CompositionAncestorIndexTests
         internal bool HasCompleteStrictBounds => _comparisons.IsSupersetOf(s_required);
 
         /// <inheritdoc />
-        protected override Expression VisitBinary(BinaryExpression node)
+        protected override Expression VisitBinary(
+            BinaryExpression node
+        )
         {
             // WHY: Mapped endpoints can use ordinary CLR members, so their final guard cannot
             // prove rejected candidates avoided hydration. Exclude this model's entity aliases;
             // an envelope's MaxLeft/MinRight alone is only a necessary prefilter.
             if (node.Left is MemberExpression { Expression: MemberExpression leftAlias } left
                 && node.Right is MemberExpression { Expression: MemberExpression rightAlias } right
-                && left.Type == typeof(long) && right.Type == typeof(long)
-                && leftAlias.Type != typeof(CompositionNode) && rightAlias.Type != typeof(CompositionNode)
+                && left.Type == typeof(long)
+                && right.Type == typeof(long)
+                && leftAlias.Type != typeof(CompositionNode)
+                && rightAlias.Type != typeof(CompositionNode)
                 && leftAlias.Expression is ParameterExpression parameter
                 && ReferenceEquals(parameter, rightAlias.Expression)
                 && leftAlias.Member != rightAlias.Member)

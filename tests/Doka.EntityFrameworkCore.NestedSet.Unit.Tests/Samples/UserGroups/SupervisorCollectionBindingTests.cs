@@ -11,7 +11,9 @@ public sealed class SupervisorCollectionBindingTests
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
     [InlineData("Sqlite")]
-    public async Task CatalogCollectionsUseEnumerableAndOriginsRemainQueryable(string engine)
+    public async Task CatalogCollectionsUseEnumerableAndOriginsRemainQueryable(
+        string engine
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();

@@ -16,6 +16,7 @@ public sealed partial class DokaStraightJoinTests
         Expression<Func<int, int>> outerKey = value => value;
         Expression<Func<string, int>> innerKey = value => value.Length;
         Expression<Func<int, string, string>> projection = (left, right) => right + left;
+
         var adapter = NestedSetTestAdapters.ForEngine("MySql");
 
         // Act
@@ -40,13 +41,18 @@ public sealed partial class DokaStraightJoinTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void FreshCapturesAndCompleteSourceOccurrencesArePreserved(bool empty)
+    public void FreshCapturesAndCompleteSourceOccurrencesArePreserved(
+        bool empty
+    )
     {
         // Arrange
         var probe = new ProviderQueryProbe();
         var root = probe.Source<int>();
         var outer = root.Concat(root);
-        var inner = root.OrderBy(value => value).Take(empty ? 0 : 4);
+        var inner = root
+            .OrderBy(value => value)
+            .Take(empty ? 0 : 4);
+
         var firstOffset = 2;
         var secondOffset = 7;
         Expression<Func<int, int>> firstKey = value => value + firstOffset;
@@ -54,19 +60,34 @@ public sealed partial class DokaStraightJoinTests
         var adapter = NestedSetTestAdapters.ForEngine("MySql");
 
         // Act
-        adapter.TryOrderedJoin(outer, inner, firstKey, firstKey, (left, right) => left + right, out var first);
-        adapter.TryOrderedJoin(outer, inner, secondKey, secondKey, (left, right) => left + right, out var second);
+        adapter.TryOrderedJoin(outer,
+            inner,
+            firstKey,
+            firstKey,
+            (left, right) => left + right,
+            out var first);
+        adapter.TryOrderedJoin(outer,
+            inner,
+            secondKey,
+            secondKey,
+            (left, right) => left + right,
+            out var second);
         firstOffset = 4;
         secondOffset = 8;
         var firstSelector = KeySelector(first!);
         var secondSelector = KeySelector(second!);
+        var firstValue = firstSelector
+            .Compile()(1);
+
+        var secondValue = secondSelector
+            .Compile()(1);
 
         // Assert
         Assert.NotSame(first, second);
         Assert.Same(firstKey, firstSelector);
         Assert.Same(secondKey, secondSelector);
-        Assert.Equal(5, firstSelector.Compile()(1));
-        Assert.Equal(9, secondSelector.Compile()(1));
+        Assert.Equal(5, firstValue);
+        Assert.Equal(9, secondValue);
         Assert.Same(outer.Expression, ((MethodCallExpression)second!.Expression).Arguments[0]);
         Assert.Same(inner.Expression, ((MethodCallExpression)second.Expression).Arguments[1]);
         Assert.Equal(0, probe.Executions);
@@ -78,7 +99,9 @@ public sealed partial class DokaStraightJoinTests
     [InlineData("Sqlite")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public void PortableAdaptersKeepOrderedJoinUnavailable(string engine)
+    public void PortableAdaptersKeepOrderedJoinUnavailable(
+        string engine
+    )
     {
         // Arrange
         var probe = new ProviderQueryProbe();
@@ -86,8 +109,12 @@ public sealed partial class DokaStraightJoinTests
         var adapter = NestedSetTestAdapters.ForEngine(engine);
 
         // Act
-        var available = adapter.TryOrderedJoin(source, source, value => value, value => value,
-            (left, right) => left + right, out var joined);
+        var available = adapter.TryOrderedJoin(source,
+            source,
+            value => value,
+            value => value,
+            (left, right) => left + right,
+            out var joined);
 
         // Assert
         Assert.False(available);
@@ -101,12 +128,19 @@ public sealed partial class DokaStraightJoinTests
     public void ClientSourcesAreRejectedWithoutReflectionWrapping()
     {
         // Arrange
-        var source = Array.Empty<int>().AsQueryable();
+        var source = Array
+            .Empty<int>()
+            .AsQueryable();
+
         var adapter = NestedSetTestAdapters.ForEngine("MySql");
 
         // Act
-        var error = Record.Exception(() => adapter.TryOrderedJoin(source, source, value => value, value => value,
-            (left, right) => left + right, out _));
+        var error = Record.Exception(() => adapter.TryOrderedJoin(source,
+            source,
+            value => value,
+            value => value,
+            (left, right) => left + right,
+            out _));
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);
@@ -124,8 +158,12 @@ public sealed partial class DokaStraightJoinTests
         var adapter = NestedSetTestAdapters.ForEngine("MySql");
 
         // Act
-        var error = Record.Exception(() => adapter.TryOrderedJoin(source, source, value => value, value => value,
-            (left, right) => left + right, out _));
+        var error = Record.Exception(() => adapter.TryOrderedJoin(source,
+            source,
+            value => value,
+            value => value,
+            (left, right) => left + right,
+            out _));
 
         // Assert
         Assert.Same(expected, error);
@@ -133,6 +171,8 @@ public sealed partial class DokaStraightJoinTests
     }
 
     /// <summary>Reads the actual quoted outer-key selector without executing an ordered join.</summary>
-    private static Expression<Func<int, int>> KeySelector(IQueryable<int> query)
+    private static Expression<Func<int, int>> KeySelector(
+        IQueryable<int> query
+    )
         => (Expression<Func<int, int>>)((UnaryExpression)((MethodCallExpression)query.Expression).Arguments[2]).Operand;
 }

@@ -20,7 +20,11 @@ public sealed class SupervisorProjectionCacheTests
     [InlineData("MariaDb", 1, 4)]
     [InlineData("MariaDb", 16, 1)]
     [InlineData("MariaDb", 16, 4)]
-    public async Task WarmResolutionConstructionKeepsItsAllocationBudget(string engine, int origins, int fields)
+    public async Task WarmResolutionConstructionKeepsItsAllocationBudget(
+        string engine,
+        int origins,
+        int fields
+    )
     {
         // Arrange
         const int warmup = 32;
@@ -41,25 +45,40 @@ public sealed class SupervisorProjectionCacheTests
         // WHY: An owned provider graph keeps this no-I/O calibration independent of process-wide
         // service-cache history. Initial model and selector construction are outside the observation.
         await using var provider = services.BuildServiceProvider();
-        await using var context = new UserGroupContext(options.UseInternalServiceProvider(provider).Options);
+        await using var context = new UserGroupContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
         var tenantId = Guid.Parse("a296dbcb-a9c1-4c70-9bbb-ff506af5d546");
         var catalog = new[] { "Route", "ChannelClass", "ManagerRoute", "RoutingZone" };
         var request = new SupervisorRequest
         {
-            SourceUserId = 17, StartGroupId = origins == 1 ? 31 : null,
+            SourceUserId = 17,
+            StartGroupId = origins == 1 ? 31 : null,
             SearchStart = SearchStart.ParentsOnly,
             Roles = new MembershipRoleFilter(Guid.Parse("358bc287-e4ec-4413-93c4-23ec6dd4ef93")),
             Groups = new NthEligibleGroup([], 1),
-            Matches = catalog.Take(fields).Select(field => new MetadataMatch(
-                MetadataOwner.SourceUser, field, MetadataOwner.CandidateMembership, field)).ToArray(),
+            Matches = catalog
+                .Take(fields)
+                .Select(field => new MetadataMatch(
+                    MetadataOwner.SourceUser,
+                    field,
+                    MetadataOwner.CandidateMembership,
+                    field))
+                .ToArray(),
             OnDay = new DateOnly(2026, 10, 16),
         };
 
         // WHY: The actual benchmark selects one explicit group for one origin and leaves StartGroupId
         // unset for sixteen origins. A deferred builder has no database cardinality to inspect.
+        // Warm this shape before observing its allocation.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < warmup; index++)
         {
-            GC.KeepAlive(SupervisorQueries.ResolutionRows(context, tenantId, request,
+            GC.KeepAlive(SupervisorQueries.ResolutionRows(context,
+                tenantId,
+                request,
                 SupervisorSelection.RequireUnique));
         }
 
@@ -67,9 +86,16 @@ public sealed class SupervisorProjectionCacheTests
         IQueryable<SupervisorQueries.SupervisorReadRow>? last = null;
 
         // Act
+        // WHY: Every fixed batch contributes to the mean; a query projection would alter measured allocations.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var batch = 0; batch < batches; batch++)
         {
             var before = GC.GetAllocatedBytesForCurrentThread();
+
+            // WHY: Measure repeated real builds directly, without allocating an intermediate result sequence.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var index = 0; index < operations; index++)
             {
                 last = SupervisorQueries.ResolutionRows(context, tenantId, request, SupervisorSelection.RequireUnique);
@@ -100,8 +126,10 @@ public sealed class SupervisorProjectionCacheTests
     public void CachedSelectorsDoNotRetainInvocationState()
     {
         // Arrange
-        var fields = typeof(SupervisorQueries).GetFields(BindingFlags.NonPublic | BindingFlags.Static)
-            .Where(field => typeof(LambdaExpression).IsAssignableFrom(field.FieldType)).ToArray();
+        var fields = typeof(SupervisorQueries)
+            .GetFields(BindingFlags.NonPublic | BindingFlags.Static)
+            .Where(field => typeof(LambdaExpression).IsAssignableFrom(field.FieldType))
+            .ToArray();
 
         var probe = new CapturedStateProbe();
 
@@ -129,7 +157,9 @@ public sealed class SupervisorProjectionCacheTests
     [InlineData("request")]
     [InlineData("closure")]
     [InlineData("extension")]
-    public async Task CaptureInspectionRejectsInvocationOwnedNodes(string shape)
+    public async Task CaptureInspectionRejectsInvocationOwnedNodes(
+        string shape
+    )
     {
         // Arrange
         await using var context = new DbContext(new DbContextOptions<DbContext>());
@@ -139,11 +169,16 @@ public sealed class SupervisorProjectionCacheTests
         {
             "context" => Expression.Constant(context),
             "model" => Expression.Constant(new ModelBuilder().Model),
-            "query" => Expression.Constant(Array.Empty<int>().AsQueryable()),
+            "query" => Expression.Constant(Array
+                .Empty<int>()
+                .AsQueryable()),
             "request" => Expression.Constant(new SupervisorRequest
             {
-                SourceUserId = source, SearchStart = SearchStart.ParentsOnly,
-                Roles = new NoRoleFilter(), Groups = new AllEligibleGroups(), Matches = [],
+                SourceUserId = source,
+                SearchStart = SearchStart.ParentsOnly,
+                Roles = new NoRoleFilter(),
+                Groups = new AllEligibleGroups(),
+                Matches = [],
             }),
             "closure" => (Expression)closure,
             "extension" => new UnboundProjectionExtension(),
@@ -167,7 +202,10 @@ public sealed class SupervisorProjectionCacheTests
     [InlineData("s_singleGroupRowProjection", 0L)]
     [InlineData("s_singleGroupRowProjection", 1L)]
     [InlineData("s_singleGroupRowProjection", 2L)]
-    public void ReadRowsUseEachAuthorizedMembershipWithoutCapturingASource(string field, long? count)
+    public void ReadRowsUseEachAuthorizedMembershipWithoutCapturingASource(
+        string field,
+        long? count
+    )
     {
         // Arrange
         var selector = (LambdaExpression)typeof(SupervisorQueries)
@@ -184,14 +222,15 @@ public sealed class SupervisorProjectionCacheTests
         // Assert
         Assert.Equal(17, firstRow.SourceUserId);
         Assert.Equal(73, secondRow.SourceUserId);
-        Assert.All(new[] { firstRow, secondRow }, row =>
-        {
-            Assert.Equal(1, row.Kind);
-            Assert.Equal(31, row.StartGroupId);
-            Assert.Equal(count ?? 0, row.Count);
-            Assert.Equal(count == 1, row.HasEvidence);
-            Assert.Equal(count == 1 ? 29 : 0, row.CandidateUserId);
-        });
+        Assert.All(new[] { firstRow, secondRow },
+            row =>
+            {
+                Assert.Equal(1, row.Kind);
+                Assert.Equal(31, row.StartGroupId);
+                Assert.Equal(count ?? 0, row.Count);
+                Assert.Equal(count == 1, row.HasEvidence);
+                Assert.Equal(count == 1 ? 29 : 0, row.CandidateUserId);
+            });
     }
 
     /// <summary>Single-group outcomes receive their source key from each origin's exact membership.</summary>
@@ -214,16 +253,21 @@ public sealed class SupervisorProjectionCacheTests
         var markerType = selector.ReturnType;
         Assert.Equal(17, markerType.GetProperty("SourceUserId")!.GetValue(firstMarker));
         Assert.Equal(73, markerType.GetProperty("SourceUserId")!.GetValue(secondMarker));
-        Assert.All(new[] { firstMarker, secondMarker }, marker =>
-        {
-            Assert.Equal(31, markerType.GetProperty("StartGroupId")!.GetValue(marker));
-            Assert.Null(markerType.GetProperty("CandidateUserId")!.GetValue(marker));
-            Assert.Null(markerType.GetProperty("FoundGroupId")!.GetValue(marker));
-        });
+        Assert.All(new[] { firstMarker, secondMarker },
+            marker =>
+            {
+                Assert.Equal(31, markerType.GetProperty("StartGroupId")!.GetValue(marker));
+                Assert.Null(markerType.GetProperty("CandidateUserId")!.GetValue(marker));
+                Assert.Null(markerType.GetProperty("FoundGroupId")!.GetValue(marker));
+            });
     }
 
     /// <summary>Creates only the private alias shape required by the actual selector under test.</summary>
-    private static object CreateProjectionInput(Type inputType, int source, long? count)
+    private static object CreateProjectionInput(
+        Type inputType,
+        int source,
+        long? count
+    )
     {
         // WHY: The alias types deliberately stay private in the sample. Reflecting their data-only
         // inputs here executes the real cached lambda without exposing a production testing API.
@@ -252,10 +296,15 @@ public sealed class SupervisorProjectionCacheTests
         internal List<Expression> CapturedNodes { get; } = [];
 
         /// <inheritdoc />
-        protected override Expression VisitConstant(ConstantExpression node)
+        protected override Expression VisitConstant(
+            ConstantExpression node
+        )
         {
-            if (node.Value is not null && node.Value is not string
-                && !node.Type.IsPrimitive && !node.Type.IsEnum && node.Value is not decimal)
+            if (node.Value is not null
+                && node.Value is not string
+                && !node.Type.IsPrimitive
+                && !node.Type.IsEnum
+                && node.Value is not decimal)
             {
                 CapturedNodes.Add(node);
             }
@@ -264,7 +313,9 @@ public sealed class SupervisorProjectionCacheTests
         }
 
         /// <inheritdoc />
-        protected override Expression VisitExtension(Expression node)
+        protected override Expression VisitExtension(
+            Expression node
+        )
         {
             CapturedNodes.Add(node);
 

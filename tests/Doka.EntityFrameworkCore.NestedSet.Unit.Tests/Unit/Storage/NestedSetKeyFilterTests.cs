@@ -153,7 +153,10 @@ public sealed class NestedSetKeyFilterTests
 
         // Act
         var body = NestedSetKeyFilter<KeyFilterNode>.Equal(alias, property, 12);
-        var query = context.Set<KeyFilterNode>().Where(Expression.Lambda<Func<KeyFilterNode, bool>>(body, alias));
+        var query = context
+            .Set<KeyFilterNode>()
+            .Where(Expression.Lambda<Func<KeyFilterNode, bool>>(body, alias));
+
         var sql = query.ToQueryString();
 
         // Assert
@@ -170,7 +173,9 @@ public sealed class NestedSetKeyFilterTests
     [Theory]
     [InlineData(null)]
     [InlineData(12)]
-    public void MetadataEqualityPreservesNullableReferences(int? value)
+    public void MetadataEqualityPreservesNullableReferences(
+        int? value
+    )
     {
         // Arrange
         using var services = CreateServices();
@@ -180,7 +185,9 @@ public sealed class NestedSetKeyFilterTests
 
         // Act
         var body = NestedSetKeyFilter<KeyFilterNode>.Equal(alias, property, value);
-        var sql = context.Set<KeyFilterNode>().Where(Expression.Lambda<Func<KeyFilterNode, bool>>(body, alias))
+        var sql = context
+            .Set<KeyFilterNode>()
+            .Where(Expression.Lambda<Func<KeyFilterNode, bool>>(body, alias))
             .ToQueryString();
 
         // Assert
@@ -202,7 +209,9 @@ public sealed class NestedSetKeyFilterTests
 
         // Act
         var body = NestedSetKeyFilter<KeyFilterNode>.Equal(alias, property, new OperatorFreeKey(12));
-        var sql = context.Set<KeyFilterNode>().Where(Expression.Lambda<Func<KeyFilterNode, bool>>(body, alias))
+        var sql = context
+            .Set<KeyFilterNode>()
+            .Where(Expression.Lambda<Func<KeyFilterNode, bool>>(body, alias))
             .ToQueryString();
 
         // Assert
@@ -232,9 +241,12 @@ public sealed class NestedSetKeyFilterTests
     }
 
     /// <summary>Finalizes real provider mappings without opening a database connection.</summary>
-    private static KeyFilterContext CreateContext(ServiceProvider provider)
+    private static KeyFilterContext CreateContext(
+        ServiceProvider provider
+    )
     {
-        var options = new DbContextOptionsBuilder<KeyFilterContext>().UseNpgsql(
+        var options = new DbContextOptionsBuilder<KeyFilterContext>()
+            .UseNpgsql(
                 "Host=localhost;Database=key_filter_metadata;Username=unused;Password=unused")
             .UseInternalServiceProvider(provider)
             .Options;
@@ -247,7 +259,9 @@ public sealed class NestedSetKeyFilterTests
     {
         // WHY: Other test families legitimately use different provider graphs. Keeping these probes
         // outside EF's global cache makes their unchanged warning policy independent of test order.
-        return new ServiceCollection().AddEntityFrameworkNpgsql().BuildServiceProvider();
+        return new ServiceCollection()
+            .AddEntityFrameworkNpgsql()
+            .BuildServiceProvider();
     }
 
     /// <summary>Resolves the exact finalized property used by each predicate case.</summary>
@@ -257,7 +271,9 @@ public sealed class NestedSetKeyFilterTests
     ) => context.Model.FindEntityType(typeof(KeyFilterNode))!.FindProperty(name)!;
 
     /// <summary>Provides native integer, converted integer, and native array mappings for policy boundaries.</summary>
-    private sealed class KeyFilterContext(DbContextOptions<KeyFilterContext> options) : DbContext(options)
+    private sealed class KeyFilterContext(
+        DbContextOptions<KeyFilterContext> options
+    ) : DbContext(options)
     {
         /// <inheritdoc />
         protected override void OnModelCreating(
@@ -271,7 +287,8 @@ public sealed class NestedSetKeyFilterTests
             node
                 .Property(value => value.ConvertedText)
                 .HasConversion(value => value.ToUpperInvariant(), value => value);
-            node.Property(value => value.OperatorFree)
+            node
+                .Property(value => value.OperatorFree)
                 .HasConversion(value => value.Value, value => new OperatorFreeKey(value));
         }
     }
@@ -299,16 +316,22 @@ public sealed class NestedSetKeyFilterTests
     }
 
     /// <summary>Exposes value equality without operator overloads for metadata-aware SQL comparison.</summary>
-    private readonly struct OperatorFreeKey(int value) : IEquatable<OperatorFreeKey>
+    private readonly struct OperatorFreeKey(
+        int value
+    ) : IEquatable<OperatorFreeKey>
     {
         /// <summary>Gets the scalar representation used by the provider converter.</summary>
         public int Value { get; } = value;
 
         /// <inheritdoc />
-        public bool Equals(OperatorFreeKey other) => Value == other.Value;
+        public bool Equals(
+            OperatorFreeKey other
+        ) => Value == other.Value;
 
         /// <inheritdoc />
-        public override bool Equals(object? obj) => obj is OperatorFreeKey other && Equals(other);
+        public override bool Equals(
+            object? obj
+        ) => obj is OperatorFreeKey other && Equals(other);
 
         /// <inheritdoc />
         public override int GetHashCode() => Value;

@@ -48,9 +48,15 @@ public sealed class EntityTypeConfigurationUxTests
                 .Properties
                 .Select(property => property.Name)
                 .SequenceEqual([nameof(ScopedNode.TenantId), nameof(ScopedNode.NodeKey)]));
-        Assert.Equal(nameof(ScopedNode.NodeKey), entity.FindAnnotation("Doka:NestedSet:NodeKey")?.Value);
-        Assert.Equal(nameof(ScopedNode.TreeId), entity.FindAnnotation("Doka:NestedSet:TreeId")?.Value);
-        Assert.Equal(nameof(ScopedNode.TenantId), entity.FindAnnotation("Doka:NestedSet:Scope")?.Value);
+        Assert.Equal(nameof(ScopedNode.NodeKey),
+            entity.FindAnnotation("Doka:NestedSet:NodeKey")
+                ?.Value);
+        Assert.Equal(nameof(ScopedNode.TreeId),
+            entity.FindAnnotation("Doka:NestedSet:TreeId")
+                ?.Value);
+        Assert.Equal(nameof(ScopedNode.TenantId),
+            entity.FindAnnotation("Doka:NestedSet:Scope")
+                ?.Value);
         Assert.Equal(5, indexes.Length);
         Assert.Contains(
             indexes,
@@ -63,35 +69,26 @@ public sealed class EntityTypeConfigurationUxTests
         Assert.Contains(
             indexes,
             index => index.Properties.SequenceEqual(
-            [
-                nameof(ScopedNode.TenantId),
-                nameof(ScopedNode.TreeId),
-                nameof(ScopedNode.ParentId),
-                nameof(ScopedNode.Position),
-            ]));
+                [
+                    nameof(ScopedNode.TenantId),
+                    nameof(ScopedNode.TreeId),
+                    nameof(ScopedNode.ParentId),
+                    nameof(ScopedNode.Position),
+                ]));
 
         var order = Assert.Single(
             indexes,
             index => index.Properties.SequenceEqual(
-            [
-                nameof(ScopedNode.TenantId),
-                nameof(ScopedNode.TreeId),
-                nameof(ScopedNode.ParentId),
-                nameof(ScopedNode.Name),
-                nameof(ScopedNode.Kind),
-                nameof(ScopedNode.NodeKey),
-            ]));
+                [
+                    nameof(ScopedNode.TenantId),
+                    nameof(ScopedNode.TreeId),
+                    nameof(ScopedNode.ParentId),
+                    nameof(ScopedNode.Name),
+                    nameof(ScopedNode.Kind),
+                    nameof(ScopedNode.NodeKey),
+                ]));
 
-        Assert.Equal(
-            [
-                false,
-                false,
-                false,
-                false,
-                true,
-                false,
-            ],
-            order.Descending);
+        Assert.Equal([false, false, false, false, true, false], order.Descending);
         Assert.Equal(
             [nameof(ScopedNode.TenantId), nameof(ScopedNode.ParentId)],
             parent.Properties.Select(property => property.Name));
@@ -143,8 +140,12 @@ public sealed class EntityTypeConfigurationUxTests
                 .Properties
                 .Select(property => property.Name)
                 .SequenceEqual([nameof(ScopelessNode.NodeKey)]));
-        Assert.Equal(nameof(ScopelessNode.NodeKey), entity.FindAnnotation("Doka:NestedSet:NodeKey")?.Value);
-        Assert.Equal(nameof(ScopelessNode.TreeId), entity.FindAnnotation("Doka:NestedSet:TreeId")?.Value);
+        Assert.Equal(nameof(ScopelessNode.NodeKey),
+            entity.FindAnnotation("Doka:NestedSet:NodeKey")
+                ?.Value);
+        Assert.Equal(nameof(ScopelessNode.TreeId),
+            entity.FindAnnotation("Doka:NestedSet:TreeId")
+                ?.Value);
         Assert.Null(entity.FindAnnotation("Doka:NestedSet:Scope"));
         Assert.Equal(5, indexes.Length);
         Assert.Contains(
@@ -161,23 +162,15 @@ public sealed class EntityTypeConfigurationUxTests
         var order = Assert.Single(
             indexes,
             index => index.Properties.SequenceEqual(
-            [
-                nameof(ScopelessNode.TreeId),
-                nameof(ScopelessNode.ParentId),
-                nameof(ScopelessNode.Name),
-                nameof(ScopelessNode.Kind),
-                nameof(ScopelessNode.NodeKey),
-            ]));
+                [
+                    nameof(ScopelessNode.TreeId),
+                    nameof(ScopelessNode.ParentId),
+                    nameof(ScopelessNode.Name),
+                    nameof(ScopelessNode.Kind),
+                    nameof(ScopelessNode.NodeKey),
+                ]));
 
-        Assert.Equal(
-            [
-                false,
-                false,
-                false,
-                true,
-                false,
-            ],
-            order.Descending);
+        Assert.Equal([false, false, false, true, false], order.Descending);
         Assert.All(indexes, index => Assert.DoesNotContain("Scope", index.Properties));
         Assert.Equal([nameof(ScopelessNode.ParentId)], parent.Properties.Select(property => property.Name));
         Assert.Equal([nameof(ScopelessNode.NodeKey)], parent.PrincipalKey.Properties.Select(property => property.Name));

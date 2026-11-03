@@ -3,7 +3,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Checks diagnostic command ownership and complete plan result handling without a database server.</summary>
 public sealed partial class QueryPlanReplayTests
 {
-    /// <summary>A plan-only watchdog honors explicit context settings without changing ordinary query options.</summary>
+    /// <summary>
+    /// A plan-only watchdog honors explicit context settings without changing ordinary query options.
+    /// </summary>
     /// <param name="configured">An explicit context timeout, or null for the untouched provider default.</param>
     /// <param name="expected">The deadline applied only to the raw diagnostic command.</param>
     [Theory]
@@ -70,11 +72,12 @@ public sealed partial class QueryPlanReplayTests
         var probe = Probe();
 
         // Act
-        var error = await Record.ExceptionAsync(
-            () => QueryPlanTestSupport.ExplainAsync(context, probe, 0, "MySql"));
+        var error = await Record.ExceptionAsync(() => QueryPlanTestSupport.ExplainAsync(context, probe, 0, "MySql"));
 
         // Assert
-        Assert.Contains("1317", Assert.IsType<InvalidOperationException>(error).Message, StringComparison.Ordinal);
+        Assert.Contains("1317",
+            Assert.IsType<InvalidOperationException>(error).Message,
+            StringComparison.Ordinal);
     }
 
     /// <summary>SQL Server's ordinary result values are drained before its separate XML plan is retained.</summary>

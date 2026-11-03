@@ -77,7 +77,9 @@ public sealed class CompositionPostgreSqlPlanWorkTests
     [InlineData("[{\"Plan\":{\"Actual Rows\":1,\"Actual Loops\":1,\"Rows Removed by Join Filter\":-1}}]")]
     [InlineData("[{\"Plan\":{\"Actual Rows\":1,\"Actual Loops\":1,\"Plans\":null}}]")]
     [InlineData("[{\"Plan\":{\"Actual Rows\":1,\"Actual Loops\":1,\"Plans\":[null]}}]")]
-    public void MissingOrMalformedNativeWorkIsRejected(string plan)
+    public void MissingOrMalformedNativeWorkIsRejected(
+        string plan
+    )
     {
         // Arrange
         var act = () =>

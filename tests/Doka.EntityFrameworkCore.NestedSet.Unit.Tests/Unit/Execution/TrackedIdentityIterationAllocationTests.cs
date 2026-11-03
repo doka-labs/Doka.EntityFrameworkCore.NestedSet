@@ -28,27 +28,34 @@ public sealed class TrackedIdentityIterationAllocationTests
         var metadata = context.Model.FindEntityType(typeof(TreeNode))!;
         var map = NestedSetMapping<TreeNode, int, int>.For(context, metadata);
         const int scope = 7;
-        context.AttachRange(Enumerable.Range(1, candidates).Select(id => new TreeNode
-        {
-            NodeId = id,
-            Tree = scope,
-            TreeId = Guid.NewGuid(),
-            Start = 1,
-            End = 2,
-        }));
+        context.AttachRange(Enumerable
+            .Range(1, candidates)
+            .Select(id => new TreeNode
+            {
+                NodeId = id,
+                Tree = scope,
+                TreeId = Guid.NewGuid(),
+                Start = 1,
+                End = 2,
+            }));
 
         using var guard =
             NestedSetTrackedIdentityGuard<TreeNode, int, Guid, int>.Capture(
                 context,
                 map,
-                [new NestedSetTreeLockRequest<Guid, int>(
-                    metadata,
-                    scope,
-                    Guid.NewGuid(),
-                    NestedSetTreeLockMode.Existing)])!;
+                [
+                    new NestedSetTreeLockRequest<Guid, int>(
+                        metadata,
+                        scope,
+                        Guid.NewGuid(),
+                        NestedSetTreeLockMode.Existing),
+                ])!;
 
         const int repetitions = 1000;
 
+        // WHY: Warm repeated checks over this stable candidate capture before opening the allocation window.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < repetitions; index++)
         {
             guard.VerifyUnchanged();
@@ -57,6 +64,9 @@ public sealed class TrackedIdentityIterationAllocationTests
         var before = GC.GetAllocatedBytesForCurrentThread();
 
         // Act
+        // WHY: Check the same captured candidates repeatedly within one fixed allocation window.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < repetitions; index++)
         {
             guard.VerifyUnchanged();
@@ -68,8 +78,13 @@ public sealed class TrackedIdentityIterationAllocationTests
         // WHY: A fixed allowance tolerates runtime noise while rejecting the former 80-byte iterator on every check.
         Assert.InRange(allocated, 0, 4096);
         Assert.Equal(candidates != 0, guard.HasCandidates);
-        Assert.Equal(candidates, context.ChangeTracker.Entries<TreeNode>().Count());
+        Assert.Equal(candidates,
+            context
+                .ChangeTracker
+                .Entries<TreeNode>()
+                .Count());
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 }

@@ -3,7 +3,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Guards native SQL Server work independently of timing, estimates and final result size.</summary>
 public sealed class CompositionSqlServerPlanWorkTests
 {
-    /// <summary>Residual filtering cannot conceal the population repeatedly scanned by the old long-path plan.</summary>
+    /// <summary>
+    /// Residual filtering cannot conceal the population repeatedly scanned by the old long-path plan.
+    /// </summary>
     [Fact]
     public void RepeatedReadsExceedTheUnchangedPathBudget()
     {
@@ -11,6 +13,7 @@ public sealed class CompositionSqlServerPlanWorkTests
         var plan = Plan("""
             <RunTimeCountersPerThread Thread="0" ActualRows="95050" ActualRowsRead="10000100" ActualExecutions="100" />
             """);
+
         var budget = CompositionPlanWorkBudget.ForPaths(100_001, 100, 95_050);
 
         // Act
@@ -78,11 +81,15 @@ public sealed class CompositionSqlServerPlanWorkTests
     [InlineData(95_050, 100_001, true)]
     [InlineData(95_050, 10_000_100, false)]
     [InlineData(10_000_100, 100_001, false)]
-    public void ActualBudgetGuardChecksBothCounters(long output, long read, bool accepted)
+    public void ActualBudgetGuardChecksBothCounters(
+        long output,
+        long read,
+        bool accepted
+    )
     {
         // Arrange
         var plan = Plan(FormattableString.Invariant(
-            $"<RunTimeCountersPerThread ActualRows=\"{output}\" ActualRowsRead=\"{read}\" ActualExecutions=\"100\" />"));
+            $"""<RunTimeCountersPerThread ActualRows="{output}" ActualRowsRead="{read}" ActualExecutions="100" />"""));
 
         var budget = CompositionPlanWorkBudget.ForPaths(100_001, 100, 95_050);
 
@@ -112,7 +119,9 @@ public sealed class CompositionSqlServerPlanWorkTests
     [InlineData("<RunTimeCountersPerThread ActualRows=\"1\" ActualExecutions=\"-1\" />")]
     [InlineData("<RunTimeCountersPerThread ActualRows=\"1\" ActualExecutions=\"1\" ActualRowsRead=\"NaN\" />")]
     [InlineData("<RunTimeCountersPerThread ActualRows=\"1e400\" ActualExecutions=\"1\" />")]
-    public void InvalidRuntimeEvidenceIsRejected(string counters)
+    public void InvalidRuntimeEvidenceIsRejected(
+        string counters
+    )
     {
         // Arrange
         var plan = Plan(counters);
@@ -130,7 +139,9 @@ public sealed class CompositionSqlServerPlanWorkTests
     [InlineData("")]
     [InlineData("<root />")]
     [InlineData("<!DOCTYPE root [<!ENTITY value SYSTEM 'file:///unread'>]><root>&value;</root>")]
-    public void InvalidXmlEvidenceIsRejected(string plan)
+    public void InvalidXmlEvidenceIsRejected(
+        string plan
+    )
     {
         // Arrange
         Action read = () =>
@@ -146,8 +157,11 @@ public sealed class CompositionSqlServerPlanWorkTests
     }
 
     /// <summary>Builds a minimal actual-plan envelope without retaining a production or hosted query.</summary>
-    private static string Plan(string counters) =>
+    private static string Plan(
+        string counters
+    ) =>
         "<ShowPlanXML xmlns=\"http://schemas.microsoft.com/sqlserver/2004/07/showplan\">"
-        + "<RelOp EstimateRows=\"1e20\"><RunTimeInformation>" + counters
+        + "<RelOp EstimateRows=\"1e20\"><RunTimeInformation>"
+        + counters
         + "</RunTimeInformation></RelOp></ShowPlanXML>";
 }

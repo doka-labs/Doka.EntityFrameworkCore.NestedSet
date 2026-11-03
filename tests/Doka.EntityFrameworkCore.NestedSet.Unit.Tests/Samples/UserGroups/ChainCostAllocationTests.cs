@@ -3,7 +3,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples;
 /// <summary>Guards retained frontier allocations without charging an extra transport array per unique cursor.</summary>
 /// <param name="output">Receives observed allocation totals outside the measured operation.</param>
 [Trait("Category", "Allocation")]
-public sealed class ChainCostAllocationTests(ITestOutputHelper output)
+public sealed class ChainCostAllocationTests(
+    ITestOutputHelper output
+)
 {
     /// <summary>A canonical unique occurrence creates only its retained hop and immutable path node.</summary>
     [Fact]
@@ -13,23 +15,44 @@ public sealed class ChainCostAllocationTests(ITestOutputHelper output)
         const int paths = 1_024;
         var request = new SupervisorChainRequest
         {
-            SourceUserId = 42, Steps = [], RoutingOrigin = RoutingOrigin.InitialSubject,
-            MaxFrontierStates = paths, MaxVisitedStates = paths, MaxResultRows = paths,
+            SourceUserId = 42,
+            Steps = [],
+            RoutingOrigin = RoutingOrigin.InitialSubject,
+            MaxFrontierStates = paths,
+            MaxVisitedStates = paths,
+            MaxResultRows = paths,
         };
 
         var candidate = new SupervisorCandidate
         {
-            SourceUserId = 42, StartGroupId = 7, FoundGroupId = 6, CandidateUserId = 21, Distance = 1,
+            SourceUserId = 42,
+            StartGroupId = 7,
+            FoundGroupId = 6,
+            CandidateUserId = 21,
+            Distance = 1,
         };
 
         var resolution = new SupervisorResolution(SupervisorResolutionStatus.Found, 7, [candidate], candidate);
         var warm = new SupervisorQueries.ChainBudget(request);
         var warmPaths = new List<SupervisorQueries.ChainPath>(4);
         var completed = new List<SupervisorChainBranch>();
+
+        // WHY: Warm real retained-path construction without charging its first-use costs to the measured interval.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var iteration = 0; iteration < 4; iteration++)
         {
-            _ = SupervisorQueries.AdvanceBranch(resolution, null, 42, 42, 7, Guid.Empty, 1,
-                SupervisorSelection.RequireUnique, warm, warmPaths, completed);
+            _ = SupervisorQueries.AdvanceBranch(resolution,
+                null,
+                42,
+                42,
+                7,
+                Guid.Empty,
+                1,
+                SupervisorSelection.RequireUnique,
+                warm,
+                warmPaths,
+                completed);
         }
 
         var budget = new SupervisorQueries.ChainBudget(request);
@@ -38,10 +61,22 @@ public sealed class ChainCostAllocationTests(ITestOutputHelper output)
         var before = GC.GetAllocatedBytesForCurrentThread();
 
         // Act
+        // WHY: Every admission contributes to the retained-path budget; a projection would add measured allocations.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < paths; index++)
         {
-            admitted &= SupervisorQueries.AdvanceBranch(resolution, null, 42, 42, 7, Guid.Empty, 1,
-                SupervisorSelection.RequireUnique, budget, next, completed);
+            admitted &= SupervisorQueries.AdvanceBranch(resolution,
+                null,
+                42,
+                42,
+                7,
+                Guid.Empty,
+                1,
+                SupervisorSelection.RequireUnique,
+                budget,
+                next,
+                completed);
         }
 
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;

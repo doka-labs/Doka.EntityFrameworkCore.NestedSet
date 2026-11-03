@@ -1,9 +1,10 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Execution;
 
-/// <summary>Validates library-owned insertion saves at Entity Framework Core's persistence boundary.</summary>
+/// <summary>Validates hierarchy saves at Entity Framework Core's persistence boundary.</summary>
 /// <remarks>
-///     EF passes the exact write set to <see cref="IDatabase" /> once per save, after every SavingChanges callback and
-///     the final change detection, and before the first command. Queries and ordinary saves add no interception work.
+///     For each persistence attempt, EF passes its exact write set to <see cref="IDatabase" /> after SavingChanges
+///     callbacks and optional final change detection, before the first command. Guards observe it without detecting
+///     additional changes or altering the prepared write set. Queries do not use this boundary.
 /// </remarks>
 internal sealed class NestedSetRelationalDatabase : RelationalDatabase
 {
@@ -28,9 +29,10 @@ internal sealed class NestedSetRelationalDatabase : RelationalDatabase
     )
     {
         NestedSetSaveChanges.ValidateManagedPersistence(_currentContext.Context, entries);
-        var completion = NestedSetSaveChanges.ManagedPersistenceCompletion(_currentContext.Context);
+        var completion = NestedSetSaveChanges.PersistenceCompletion(_currentContext.Context, entries);
         var result = base.SaveChanges(entries);
-        completion?.Invoke();
+        completion.Insertion?.Invoke();
+        completion.Save?.Invoke();
 
         return result;
     }
@@ -42,28 +44,29 @@ internal sealed class NestedSetRelationalDatabase : RelationalDatabase
     )
     {
         NestedSetSaveChanges.ValidateManagedPersistence(_currentContext.Context, entries);
-        var completion = NestedSetSaveChanges.ManagedPersistenceCompletion(_currentContext.Context);
+        var completion = NestedSetSaveChanges.PersistenceCompletion(_currentContext.Context, entries);
 
-        return completion is null
+        return completion is (null, null)
             ? base.SaveChangesAsync(entries, cancellationToken)
             : CompleteManagedAsync(entries, completion, cancellationToken);
     }
 
-    /// <summary>Captures native identities before EF accepts provider results and publishes SavedChanges.</summary>
+    /// <summary>Records persisted identities and relationships before EF acceptance and SavedChanges.</summary>
     /// <param name="entries">The exact validated provider write set.</param>
-    /// <param name="completion">The bounded insertion identity callback.</param>
+    /// <param name="completion">The active identity and relationship callbacks.</param>
     /// <param name="cancellationToken">The caller's provider-operation cancellation token.</param>
     /// <returns>The provider's unchanged affected-entry count.</returns>
     private async Task<int> CompleteManagedAsync(
         IList<IUpdateEntry> entries,
-        Action completion,
+        (Action? Insertion, Action? Save) completion,
         CancellationToken cancellationToken
     )
     {
         // WHY: Store-generated identities exist when the relational service returns; EF acceptance and
-        // SavedChanges happen afterward. Stabilize only managed insertion keys at this existing boundary.
+        // SavedChanges happen afterward. Record only identities and relationships proven at this boundary.
         var result = await base.SaveChangesAsync(entries, cancellationToken).ConfigureAwait(false);
-        completion();
+        completion.Insertion?.Invoke();
+        completion.Save?.Invoke();
 
         return result;
     }

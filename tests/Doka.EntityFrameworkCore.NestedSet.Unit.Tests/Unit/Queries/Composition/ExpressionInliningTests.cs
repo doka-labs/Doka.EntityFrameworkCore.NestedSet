@@ -5,7 +5,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Checks fixed-arity substitutions against the retained general expression-inlining contract.</summary>
 /// <param name="output">Records measured allocation observations from the companion tests.</param>
-public sealed partial class ExpressionInliningTests(ITestOutputHelper output)
+public sealed partial class ExpressionInliningTests(
+    ITestOutputHelper output
+)
 {
     /// <summary>Fixed bindings retain independent nested parameters even when their names match.</summary>
     /// <param name="arity">The number of outer bindings replaced together.</param>
@@ -22,15 +24,20 @@ public sealed partial class ExpressionInliningTests(ITestOutputHelper output)
         var nested = Expression.Parameter(typeof(int), "value");
         var sum = parameters.Aggregate<ParameterExpression, Expression>(nested, Expression.Add);
         var expression = Expression.Lambda(Expression.Lambda<Func<int, int>>(sum, nested), parameters);
-        var arguments = Enumerable.Range(1, arity).Select(value => Expression.Constant(value)).ToArray();
+        var arguments = Enumerable
+            .Range(1, arity)
+            .Select(value => Expression.Constant(value))
+            .ToArray();
 
         // Act
-        var actual = Assert.IsAssignableFrom<Expression<Func<int, int>>>(Inline(expression, arguments));
-        var value = actual.Compile()(10);
+        var actual = Inline(expression, arguments);
+        var value = ((Expression<Func<int, int>>)actual)
+            .Compile()(10);
 
         // Assert
+        var lambda = Assert.IsAssignableFrom<Expression<Func<int, int>>>(actual);
         Assert.Equal(10 + ((arity * (arity + 1)) / 2), value);
-        Assert.Same(nested, actual.Parameters[0]);
+        Assert.Same(nested, lambda.Parameters[0]);
     }
 
     /// <summary>Supplied bindings are inserted once without recursively replacing another supplied parameter.</summary>
@@ -46,7 +53,12 @@ public sealed partial class ExpressionInliningTests(ITestOutputHelper output)
         // Arrange
         var parameters = Parameters(arity);
         var external = Expression.Parameter(typeof(int), "value");
-        var arguments = parameters.Skip(1).Append(external).Cast<Expression>().ToArray();
+        var arguments = parameters
+            .Skip(1)
+            .Append(external)
+            .Cast<Expression>()
+            .ToArray();
+
         var expression = Expression.Lambda(parameters[0], parameters);
 
         // Act
@@ -76,21 +88,29 @@ public sealed partial class ExpressionInliningTests(ITestOutputHelper output)
             ? Projectors((int value) => new ProjectionRow { Value = value }, row => row.Value)
             : Projectors((int value) => new { Value = value }, row => row.Value);
 
-        var parameters = Enumerable.Range(0, arity)
-            .Select(_ => Expression.Parameter(projection.ReturnType, "row")).ToArray();
+        var parameters = Enumerable
+            .Range(0, arity)
+            .Select(_ => Expression.Parameter(projection.ReturnType, "row"))
+            .ToArray();
 
-        var arguments = Enumerable.Range(1, arity)
+        var arguments = Enumerable
+            .Range(1, arity)
             .Select(value => NestedSetQueryExpressions.Replace(
-                projection.Body, projection.Parameters[0], Expression.Constant(value))).ToArray();
+                projection.Body,
+                projection.Parameters[0],
+                Expression.Constant(value)))
+            .ToArray();
 
         var member = Assert.IsAssignableFrom<MemberExpression>(selector.Body).Member;
+
         var expression = Expression.Lambda(Expression.MakeMemberAccess(parameters[^1], member), parameters);
 
         // Act
         var actual = Inline(expression, arguments);
 
         // Assert
-        Assert.Equal(arity, Assert.IsType<ConstantExpression>(actual).Value);
+        Assert.Equal(arity,
+            Assert.IsType<ConstantExpression>(actual).Value);
     }
 
     /// <summary>Captured application members remain unevaluated expression nodes.</summary>
@@ -107,7 +127,10 @@ public sealed partial class ExpressionInliningTests(ITestOutputHelper output)
         var probe = new GetterProbe();
         var member = Expression.Property(Expression.Constant(probe), nameof(GetterProbe.Value));
         var expression = Expression.Lambda(member, Parameters(arity));
-        var arguments = Enumerable.Range(1, arity).Select(value => Expression.Constant(value)).ToArray();
+        var arguments = Enumerable
+            .Range(1, arity)
+            .Select(value => Expression.Constant(value))
+            .ToArray();
 
         // Act
         var actual = Inline(expression, arguments);
@@ -130,7 +153,10 @@ public sealed partial class ExpressionInliningTests(ITestOutputHelper output)
         // Arrange
         var parameters = Parameters(arity + 1);
         var expression = Expression.Lambda(parameters[0], parameters);
-        var arguments = Enumerable.Range(1, arity).Select(value => Expression.Constant(value)).ToArray();
+        var arguments = Enumerable
+            .Range(1, arity)
+            .Select(value => Expression.Constant(value))
+            .ToArray();
 
         // Act
         var actual = Inline(expression, arguments);
@@ -152,7 +178,10 @@ public sealed partial class ExpressionInliningTests(ITestOutputHelper output)
         // Arrange
         var parameters = Parameters(arity + 1);
         var expression = Expression.Lambda(parameters[^1], parameters);
-        var arguments = Enumerable.Range(1, arity).Select(value => Expression.Constant(value)).ToArray();
+        var arguments = Enumerable
+            .Range(1, arity)
+            .Select(value => Expression.Constant(value))
+            .ToArray();
 
         // Act
         var exception = Record.Exception(() => Inline(expression, arguments));
@@ -173,7 +202,10 @@ public sealed partial class ExpressionInliningTests(ITestOutputHelper output)
         // Arrange
         var parameters = Parameters(arity - 1);
         var expression = Expression.Lambda(parameters[0], parameters);
-        var arguments = Enumerable.Range(1, arity).Select(value => Expression.Constant(value)).ToArray();
+        var arguments = Enumerable
+            .Range(1, arity)
+            .Select(value => Expression.Constant(value))
+            .ToArray();
 
         // Act
         var actual = Inline(expression, arguments);
@@ -195,7 +227,10 @@ public sealed partial class ExpressionInliningTests(ITestOutputHelper output)
         // Arrange
         var parameters = Parameters(arity);
         var expression = Expression.Lambda(parameters[^1], parameters);
-        var arguments = Enumerable.Range(1, arity).Select(value => Expression.Constant(value)).ToArray();
+        var arguments = Enumerable
+            .Range(1, arity)
+            .Select(value => Expression.Constant(value))
+            .ToArray();
 
         // Act
         var actual = NestedSetQueryExpressions.Inline(expression, arguments);
@@ -219,7 +254,10 @@ public sealed partial class ExpressionInliningTests(ITestOutputHelper output)
     /// <summary>Creates distinct bindings with deliberately identical names.</summary>
     private static ParameterExpression[] Parameters(
         int arity
-    ) => Enumerable.Range(0, arity).Select(_ => Expression.Parameter(typeof(int), "value")).ToArray();
+    ) => Enumerable
+        .Range(0, arity)
+        .Select(_ => Expression.Parameter(typeof(int), "value"))
+        .ToArray();
 
     /// <summary>Preserves the anonymous projection type through generic inference.</summary>
     private static (LambdaExpression Projection, LambdaExpression Selector) Projectors<TProjection>(

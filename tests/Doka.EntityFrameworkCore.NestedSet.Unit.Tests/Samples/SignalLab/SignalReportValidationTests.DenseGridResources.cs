@@ -12,22 +12,35 @@ public sealed partial class SignalReportValidationTests
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request() with
         {
-            AnchorIds = Enumerable.Range(1, 64).Select(SignalReportDataset.Id).ToArray(),
-            ChannelIds = Enumerable.Range(101, 32).Select(SignalReportDataset.Id).ToArray(),
+            AnchorIds = Enumerable
+                .Range(1, 64)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
+            ChannelIds = Enumerable
+                .Range(101, 32)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
             Sources = [CapturePort.Sweep, CapturePort.Pulse, CapturePort.Burst],
         });
 
-        var totals = snapshot.AnchorIds.SelectMany(anchor => snapshot.ChannelIds.SelectMany(signal =>
-            snapshot.Sources.Select(source => Total(anchor, signal, source, source == CapturePort.Pulse ? 0 : 13))))
+        var totals = snapshot
+            .AnchorIds
+            .SelectMany(anchor => snapshot.ChannelIds.SelectMany(signal =>
+                snapshot.Sources.Select(source => Total(anchor, signal, source, source == CapturePort.Pulse ? 0 : 13))))
             .ToArray();
 
         // WHY: This fixed grain measured 858248 B on .NET 10. About 21 KiB of headroom permits
         // runtime variation while detecting excess temporary state during dense asynchronous materialization.
         const long maximumBytes = 880_000;
+
+        // WHY: Warm the complete asynchronous materializer before observing its temporary-state allocation.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var warmup = 0; warmup < 8; warmup++)
         {
             _ = await SignalReportValidation.CreateGridAsync(snapshot,
-                ReadRows(totals, new ReaderProbe(), CancellationToken.None), CancellationToken.None);
+                ReadRows(totals, new ReaderProbe(), CancellationToken.None),
+                CancellationToken.None);
         }
 
         var probe = new ReaderProbe();

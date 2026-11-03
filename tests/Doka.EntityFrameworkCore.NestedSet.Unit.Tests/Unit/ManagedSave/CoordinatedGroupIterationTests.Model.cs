@@ -30,17 +30,35 @@ public sealed partial class CoordinatedGroupIterationTests
         GroupContext context
     )
     {
-        var hierarchy = context.NestedSet<GroupNode<TOwner>>().ForScope(1);
+        var hierarchy = context
+            .NestedSet<GroupNode<TOwner>>()
+            .ForScope(1);
+
         await hierarchy.InsertRootAsync(
-            new GroupNode<TOwner> { Id = 1, Scope = 1, Name = "Root" },
+            new GroupNode<TOwner>
+            {
+                Id = 1,
+                Scope = 1,
+                Name = "Root",
+            },
             Guid.NewGuid(),
             CancellationToken.None);
         await hierarchy.InsertChildAsync(
-            new GroupNode<TOwner> { Id = 2, Scope = 1, Name = "Bravo" },
+            new GroupNode<TOwner>
+            {
+                Id = 2,
+                Scope = 1,
+                Name = "Bravo",
+            },
             1,
             CancellationToken.None);
         await hierarchy.InsertChildAsync(
-            new GroupNode<TOwner> { Id = 3, Scope = 1, Name = "Alpha" },
+            new GroupNode<TOwner>
+            {
+                Id = 3,
+                Scope = 1,
+                Name = "Alpha",
+            },
             1,
             CancellationToken.None);
     }
@@ -99,7 +117,9 @@ public sealed partial class CoordinatedGroupIterationTests
         {
             var entity = modelBuilder.Entity<GroupNode<TOwner>>();
             entity.ToTable(table);
-            entity.Property(node => node.Id).ValueGeneratedNever();
+            entity
+                .Property(node => node.Id)
+                .ValueGeneratedNever();
             entity.HasNestedSet(builder => builder
                 .HasScope(node => node.Scope)
                 .HasTreeId(node => node.TreeId)
