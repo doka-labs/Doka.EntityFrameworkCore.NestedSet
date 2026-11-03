@@ -9,10 +9,12 @@ public sealed partial class CoordinatedGroupIterationTests
     {
         // Arrange
         await using var context = await CreateContextAsync();
-        var first = await context.Set<GroupNode<FirstOwner>>()
+        var first = await context
+            .Set<GroupNode<FirstOwner>>()
             .SingleAsync(node => node.Id == 2, CancellationToken.None);
 
-        var second = await context.Set<GroupNode<SecondOwner>>()
+        var second = await context
+            .Set<GroupNode<SecondOwner>>()
             .SingleAsync(node => node.Id == 2, CancellationToken.None);
 
         first.ParentId = 3;
@@ -29,8 +31,10 @@ public sealed partial class CoordinatedGroupIterationTests
         Assert.Equal(3, second.ParentId);
         Assert.Equal(2, first.Depth);
         Assert.Equal(2, second.Depth);
-        Assert.Equal(EntityState.Unchanged, context.Entry(first).State);
-        Assert.Equal(EntityState.Unchanged, context.Entry(second).State);
+        Assert.Equal(EntityState.Unchanged,
+            context.Entry(first).State);
+        Assert.Equal(EntityState.Unchanged,
+            context.Entry(second).State);
         await AssertMovedTreeAsync<FirstOwner>(context, "Moved first");
         await AssertMovedTreeAsync<SecondOwner>(context, "Moved second");
     }
@@ -41,10 +45,12 @@ public sealed partial class CoordinatedGroupIterationTests
     {
         // Arrange
         await using var context = await CreateContextAsync();
-        var first = await context.Set<GroupNode<FirstOwner>>()
+        var first = await context
+            .Set<GroupNode<FirstOwner>>()
             .SingleAsync(node => node.Id == 2, CancellationToken.None);
 
-        var second = await context.Set<GroupNode<SecondOwner>>()
+        var second = await context
+            .Set<GroupNode<SecondOwner>>()
             .SingleAsync(node => node.Id == 2, CancellationToken.None);
 
         first.ParentId = 3;
@@ -62,12 +68,28 @@ public sealed partial class CoordinatedGroupIterationTests
         Assert.Equal(3, second.ParentId);
         Assert.Equal("Moved first", first.Name);
         Assert.Equal("Moved second", second.Name);
-        Assert.Equal(EntityState.Modified, context.Entry(first).State);
-        Assert.Equal(EntityState.Modified, context.Entry(second).State);
-        Assert.True(context.Entry(first).Property(node => node.ParentId).IsModified);
-        Assert.True(context.Entry(second).Property(node => node.ParentId).IsModified);
-        Assert.Equal(1, context.Entry(first).Property(node => node.ParentId).OriginalValue);
-        Assert.Equal(1, context.Entry(second).Property(node => node.ParentId).OriginalValue);
+        Assert.Equal(EntityState.Modified,
+            context.Entry(first).State);
+        Assert.Equal(EntityState.Modified,
+            context.Entry(second).State);
+        Assert.True(context
+            .Entry(first)
+            .Property(node => node.ParentId)
+            .IsModified);
+        Assert.True(context
+            .Entry(second)
+            .Property(node => node.ParentId)
+            .IsModified);
+        Assert.Equal(1,
+            context
+                .Entry(first)
+                .Property(node => node.ParentId)
+                .OriginalValue);
+        Assert.Equal(1,
+            context
+                .Entry(second)
+                .Property(node => node.ParentId)
+                .OriginalValue);
         Assert.Null(context.Database.CurrentTransaction);
         await AssertOriginalTreeAsync<FirstOwner>(context);
         await AssertOriginalTreeAsync<SecondOwner>(context);
@@ -79,7 +101,8 @@ public sealed partial class CoordinatedGroupIterationTests
         string expectedName
     )
     {
-        var nodes = await context.Set<GroupNode<TOwner>>()
+        var nodes = await context
+            .Set<GroupNode<TOwner>>()
             .AsNoTracking()
             .OrderBy(node => node.Left)
             .ToArrayAsync(CancellationToken.None);
@@ -93,7 +116,9 @@ public sealed partial class CoordinatedGroupIterationTests
         Assert.Equal(1, nodes[1].ParentId);
         Assert.Equal(3, nodes[2].ParentId);
         Assert.Equal(expectedName, nodes[2].Name);
-        Assert.Single(nodes.Select(node => node.TreeId).Distinct());
+        Assert.Single(nodes
+            .Select(node => node.TreeId)
+            .Distinct());
     }
 
     /// <summary>Reads the original sibling layout after the complete coordinated transaction rolls back.</summary>
@@ -101,7 +126,8 @@ public sealed partial class CoordinatedGroupIterationTests
         GroupContext context
     )
     {
-        var nodes = await context.Set<GroupNode<TOwner>>()
+        var nodes = await context
+            .Set<GroupNode<TOwner>>()
             .AsNoTracking()
             .OrderBy(node => node.Left)
             .ToArrayAsync(CancellationToken.None);

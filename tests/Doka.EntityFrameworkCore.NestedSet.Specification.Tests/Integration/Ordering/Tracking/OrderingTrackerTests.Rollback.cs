@@ -202,7 +202,9 @@ public abstract partial class OrderingTrackerTests
         Assert.Equal(EntityState.Unchanged, nodeBefore.State);
         Assert.Equal(0, probe.CompletedPayloadUpdates);
         Assert.Equal(0, probe.CompletedAdditionInserts);
-        Assert.Equal(EntityState.Modified, nodeAfter.State);
+        // WHY: The read-only guard rejects before EF's global detection, retaining the caller's unmarked CLR edit.
+        Assert.Equal(EntityState.Unchanged, nodeAfter.State);
+        Assert.False(Assert.Single(nodeAfter.Properties, value => value.Name == nameof(TrackerNode.Name)).IsModified);
         Assert.Equal("Zulu", node.Name);
         AssertSnapshot(additionBefore, additionAfter);
         Assert.Equal(0, addition.Id);

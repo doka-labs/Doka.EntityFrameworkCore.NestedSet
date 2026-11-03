@@ -33,4 +33,42 @@ internal sealed class NestedSetSaveGuardInterceptor : SaveChangesInterceptor
 
         return ValueTask.FromResult(result);
     }
+
+    /// <inheritdoc />
+    public override int SavedChanges(
+        SaveChangesCompletedEventData eventData,
+        int result
+    )
+    {
+        VerifyEmptySave(eventData.Context, result);
+
+        return result;
+    }
+
+    /// <inheritdoc />
+    public override ValueTask<int> SavedChangesAsync(
+        SaveChangesCompletedEventData eventData,
+        int result,
+        CancellationToken cancellationToken = default
+    )
+    {
+        VerifyEmptySave(eventData.Context, result);
+
+        return ValueTask.FromResult(result);
+    }
+
+    /// <summary>Checks late pre-save edits when EF's zero-write fast path never reaches the database service.</summary>
+    private static void VerifyEmptySave(
+        DbContext? context,
+        int result
+    )
+    {
+        if (result == 0
+            && context is not null)
+        {
+            // WHY: Injected completion interceptors run before application completion callbacks. Validate the
+            // finished no-write save here, without mistaking later SavedChanges edits for pre-save hierarchy work.
+            NestedSetSaveChanges.RequireSafeSave(context);
+        }
+    }
 }

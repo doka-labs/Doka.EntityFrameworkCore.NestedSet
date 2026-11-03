@@ -17,9 +17,10 @@ internal static class NestedSetStoreObject
             .Concat(descriptor.Order.Select(order => order.Property))
             .Select(property => entity.FindProperty(property.Name)
                 ?? throw new InvalidOperationException(
-                    $"Nested-set property '{property.Name}' on '{entity.Name}' is not mapped."))
-            .ToArray();
+                    $"Nested-set property '{property.Name}' on '{entity.Name}' is not mapped."));
 
+        // WHY: TryResolve immediately snapshots this sequence once for all candidate tables; another array here
+        // duplicates the same metadata without adding an independent lifetime or consistency boundary.
         return Resolve(entity, properties);
     }
 

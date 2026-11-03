@@ -220,7 +220,10 @@ internal sealed class NestedSetMutationExecutor<TEntity, TKey, TTreeId, TScope>
     /// <exception cref="NestedSetException">
     /// Application writes are already registered outside a coordinated save.
     /// </exception>
-    /// <remarks>The mutation boundary performs full detection after any asynchronous identity lookup.</remarks>
+    /// <remarks>
+    ///     The mutation boundary performs full detection after asynchronous identity lookup only when the caller
+    ///     enabled automatic detection. Read-only hierarchy guards remain active with detection disabled.
+    /// </remarks>
     internal static void RequireNoPendingWrites(
         DbContext context
     )

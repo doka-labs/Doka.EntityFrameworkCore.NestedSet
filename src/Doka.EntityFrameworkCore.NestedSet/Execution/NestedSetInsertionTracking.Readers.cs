@@ -83,7 +83,7 @@ internal static partial class NestedSetInsertionTracking
                     right)
                 .Compile();
 
-            _clr = property.IsShadowProperty() ? null : CreateClrGetter(property);
+            _clr = property.IsShadowProperty() ? null : NestedSetClrGetter<TValue>.For(property);
             _typedCurrent = property.IsShadowProperty()
                 || property.GetMemberInfo(false, false) switch
                 {
@@ -163,52 +163,6 @@ internal static partial class NestedSetInsertionTracking
             TValue current,
             object? expected
         ) => expected is null ? current is null : current is not null && _equals(current, (TValue)expected);
-
-        /// <summary>Uses public member selection for scalars and EF's exact getter for exceptional paths.</summary>
-        private static Func<object, TValue> CreateClrGetter(
-            IProperty property
-        )
-        {
-            var member = property.GetMemberInfo(forMaterialization: false, forSet: false);
-
-            if (property.DeclaringType is not IEntityType declaring
-                || !member.DeclaringType!.IsAssignableFrom(declaring.ClrType))
-            {
-                // WHY: EF's public CLR getter returns object. Complex containing paths, ordinals and proxy-only
-                // members retain that exact framework route rather than duplicating its access semantics. Boxing
-                // remains at this exceptional boundary; ordinary mapped fields, properties and indexers stay typed.
-                var getter = property.GetGetter();
-
-                return input => (TValue)getter.GetClrValueUsingContainingEntity(input)!;
-            }
-
-            var entity = Expression.Parameter(typeof(object), "entity");
-            var instance = Expression.Convert(entity, declaring.ClrType);
-            Expression read = member switch
-            {
-                FieldInfo field => Expression.Field(instance, field),
-                PropertyInfo { GetMethod: { } getter } when property.IsIndexerProperty() => Expression.Call(
-                    instance,
-                    getter,
-                    Expression.Constant(property.Name)),
-                PropertyInfo scalar => Expression.Property(instance, scalar),
-                _ => throw new InvalidOperationException("The mapped insertion scalar has no readable CLR member."),
-            };
-
-            if (read.Type != typeof(TValue))
-            {
-                // WHY: EF applies configured sentinel semantics before converting differing member/model types.
-                // A direct cast or null-only conversion would change custom sentinels. Preserve its public getter;
-                // boxing at this uncommon member-conversion boundary is separate from avoidable key-vector boxes.
-                var getter = property.GetGetter();
-
-                return input => (TValue)getter.GetClrValueUsingContainingEntity(input)!;
-            }
-
-            return Expression
-                .Lambda<Func<object, TValue>>(read, entity)
-                .Compile();
-        }
     }
 
     /// <summary>Compares exact key snapshots without allocating callbacks inside a row loop.</summary>

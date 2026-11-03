@@ -902,6 +902,278 @@ with one coordinated transaction: capture changes, lock affected source and
 target trees, save payload once, apply planned structural changes, refresh
 tracked structure and store-generated tokens, then accept changes.
 
+All save paths preserve EF's automatic detection setting, including coordinated
+Parent/order saves and library-owned single/bulk/forest insertion. With detection
+disabled, only explicitly recorded Parent/order edits request coordination;
+unrecorded hierarchy edits reject. The guard compares only hierarchy roles, configured
+order criteria, and relevant relationship snapshots without changing tracking
+flags. It uses cached typed scalar readers and EF value comparers; relevant
+navigation metadata is cached with the model. Per-entry `DetectChanges` would
+also visit tracked principals and is therefore unsuitable for this observation.
+Notification collections use EF's FK modification evidence rather than reading
+a relationship snapshot slot that those tracking strategies do not allocate.
+An inherited navigation shared with ordinary sibling types is restricted to
+the actual configured dependent mappings. Only mixed mappings need a cached
+dependent filter; unchanged collections retain direct snapshot comparison.
+Only changed collections need a temporary reference set. Removed detached
+members are ignored exactly as EF fixup ignores them; added untracked hierarchy
+members remain observable. Principal replacements compare their relevant FK
+effect with the principal-key comparer rather than CLR reference equality.
+The existing validated EF binding supplies an exact constant-time reference
+lookup, avoiding entry creation or a temporary index of the complete tracker.
+Tracked member additions compare the actual guarded FK effect. Removals use
+EF's minimal non-overlapping FK subset, resolved once from public metadata,
+including its fallback to the full FK and required-dependent deletion rules.
+This distinguishes an ordinary composite owner-id change from a Scope change
+or hierarchy deletion. Nulling a dependent navigation is checked independently
+of old-principal tracking; its own FK can still be severed after principal detach.
+Required cascading/key-only owner relationships also participate when their FK
+contains no structural scalar. Unique-principal reassignment inspects EF's
+existing dependent bucket for a hierarchy victim before accepting a payload-only
+replacement. This adds no tracker-wide scan or relationship mutation.
+
+The same read-only guard runs at the existing relational persistence boundary
+after callbacks and cascade processing. It never changes the write list already
+prepared by EF. Coordinated saves capture the original candidate set before
+Parent suppression, including Parent-only candidates whose Modified flag is
+temporarily cleared. Navigation effects use the authorized logical Parent target;
+the physical scalar guard is refreshed after suppression. The bounded plan snapshots all hierarchy roles, ordering
+values, and corresponding flags, rather than trusting Modified flags alone.
+Other tracked hierarchy entries and relevant navigation effects remain subject
+to the full read-only probe. Planned insertion rows retain their existing
+identity/geometry checks, while their relevant navigations remain guarded.
+Explicit ordinary payload writes can change a candidate between Unchanged and
+Modified without changing its hierarchy plan. No pass detects application
+payload merely to guard structure. Existing atomic transactions and exact
+tracker restoration remain in place.
+Rollback captures FK identities and endpoint navigation state for every entry
+owned by the snapshot, retaining CLR graph storage independently from installed
+EF snapshots. This includes initially unchanged FKs: callback fixup followed by
+a raw scalar reset must not hide a changed native dependent bucket.
+Changed Parent domains share one dependent-reference set and one read-only
+principal scan to preserve preexisting memberships outside the resolved endpoints.
+Endpoint copies are deduplicated; unrelated owners without a captured endpoint
+are not scanned merely to copy their collections. Cleanup gathers owners before applying
+notification-producing removals, so it does not mutate the live state iterator.
+Traversal is linear in tracked potential owners and relevant edges; retained
+navigation state is linear in the members of captured collections, including a
+wide source or destination collection, rather than only the changed dependents.
+Existing pending/lifecycle relationships retain full CLR/native preimage authority.
+Supplemental unchanged relationships select actual native identity differences
+or explicit marked writes at the captured identity before any rollback setter,
+then restore only those dependent references and
+original collection occurrences. Unselected raw members, removals, duplicates and
+relative order remain pending. Reference-index chains merge selected original
+occurrences around surviving anchors in linear work. An originally null
+supplemental collection retains a new container only when unrelated pending raw
+members still require it; otherwise it returns to null. Conflicting raw anchor
+order cannot reverse the original selected sequence or the unselected pending
+sequence. A marked FK round trip restores its original list position, while an
+explicitly unmarked round trip leaves its CLR reorder pending. An originally null
+collection's existing full-authority storage guarantee is unchanged. Private sidecar identity
+is not promised.
+Native collection membership is checked separately after saved-addition undo.
+An unmarked public FK round trip can leave the FK, dependent bucket and reference
+unchanged while losing an inverse native member beside a raw CLR duplicate.
+Only changed captured members extend native recovery; they do not grant CLR
+sequence authority. The FK-to-dependent reference index and original-membership
+sets are built on this exceptional path, once per FK/changed endpoint, avoiding
+a wide-owner scan for each dependent. Uncaptured native additions remain pending.
+Reference navigation capture does not inspect collection ordering interfaces.
+Required-FK conceptual nulls can remove a native dependent bucket without changing
+its scalar snapshot, and a scalar reset can hide the null flag too. Actual FK
+bucket membership is captured through EF's indexed native lookup, initializing
+its lazy cache when necessary. Selection also observes native reference changes.
+After shared FK vectors settle, recovery restores their exact indexed membership
+through the key-only read and mutable-set boundary from D-004. Independent raw
+CLR values and exact null/property flags follow afterward. No extra native update
+call is needed after normal setter traversal and explicit-vector restoration.
+Already divergent FKs additionally retain a sparse current-vector bucket receipt:
+lazy EF indexing can use that raw vector instead of the installed snapshot. After
+raw values return, exact-vector indexed-set restoration preserves that bucket
+without removing the installed one. Conceptual-null capture reads the underlying
+PropertyEntry value, since the update interface reports null instead. No second
+vector array or journal is created for an unchanged FK. Immutable or missing
+captured-present bucket storage rejects recovery instead of normalizing the graph.
+EF command preparation may promote Unchanged sharing peers to flagless Modified
+entries. Whole-entity Unchanged restoration is unsuitable here: it rejects
+complex originals and can replace pending lists/elements or dereference a raw
+null. After child-first element restoration, the originally-Unchanged path
+clears exceptional aggregate flags and uses a PK's explicit false modification
+flag to finish the state transition. A non-key scalar is not required. Originally
+Modified peers and Added/Deleted lifecycle restoration retain their distinct paths.
+Complex topology has its own journal only for entities with complex properties;
+ordinary entry snapshots do not allocate an empty complex-state list. It retains
+mapped CLR containers, captured ordinal paths and ordered element references
+separately from both native entry lanes. Container replay is parent-first and
+uses EF's mapped setter, including nested struct-reference copyback. Mutable
+lists recover in place; fixed-size runtime lists recover by index under a
+supported mutable collection mapping. Null, empty and repeated references remain
+distinct. EF's existing model validation still rejects struct collection elements.
+
+Native capture reads cached current/original slots without traversing a possibly
+shortened CLR list. It includes original-only Deleted entries, null slots and
+unregistered Detached raw additions. A callback can trim an Added entry out of
+its lane without changing that native object's state, so recovery verifies actual
+slot identity as well as state and both ordinals. Accepted owner lifecycle
+restoration must not create replacement Deleted entries with empty originals;
+the retained complex authorities are restored before that cascade.
+The captured native lane lengths and null holes are verified independently of
+element identity. Parent transitions cannot walk stale nested registrations,
+and temporary staging lengths must not survive into a subsequent save. Pending
+Added elements keep their captured current/original lane shapes, not a length
+inferred from the temporary graph or raw CLR list.
+
+Rebinding has two phases with separate temporary access graphs. Retirement
+addresses live native ordinals, because a callback can have shifted them; each
+slot holds that entry's own retained CLR instance. Reinstallation then addresses
+captured ordinals. EF reads nested entries through every containing ordinal, so a
+Deleted owner's minus-one sentinel borrows a free slot until its descendants have
+settled; EF does not validate ordinals of Deleted or Detached entries. EF creates
+Deleted children for empty original slots without an original buffer, and their
+nested reads recurse without end. Nested originals are therefore hidden during
+each element transition, and every nested frame reinstalls its own original and
+native children. An entity-level state transition cascades through all elements,
+so it runs with the access graph installed and the topology pass repeats after it.
+
+Only native complex occurrences absent from the captured preimage are cache
+additions to retire. A callback can create several native levels and then remove
+their CLR ancestor before failure. A recursive state detach would traverse a
+missing path; these uncaptured subtrees instead leave both native lanes through
+EF's normal capacity operation. The traversal refuses to clear a captured
+descendant beneath an uncaptured owner. Qualified EF complex owners are
+immutable, and their snapshot-only occurrences have no global entity identity
+map or entity notification registration to repair. No private state/flag writes,
+entity cloning or additional binding is used for that cache eviction.
+
+Captured handles/identities remain exact. Handles for native occurrences first
+created after capture are invalidated by rollback and must be reacquired; their
+detached-state representation is not a contract. A managed save captures callback writes at
+its existing later boundary, so entries already inside that snapshot remain
+retained authority even when a callback originally created them.
+
+Composed callback changes are one recovery boundary: repeated removals,
+addition/reordering and later nested edits can affect the same native parents.
+No-op replay checks membership and container identity before writing. This
+preserves valid read-only/immutable IList instances and avoids invoking a
+copying property setter merely because recovery ran. Struct-reference replay
+must defer scalar and primitive-collection contents to their mapped EF value
+comparers; restoring an earlier boxed container afterward cannot replace those
+independent snapshots with callback-mutated storage.
+
+Native children hidden by a raw-null or shortened current parent also retain
+their scalar originals, public modification flags and available old CLR
+instances. Those originals and flags remain observable even when the final
+current path cannot expose a scalar CurrentValue. Recovery restores their intent
+while temporary containers make the native path accessible, then checks the
+independent buffers, flags and captured CLR storage after hiding that path again.
+For hidden struct references, the declaring instance is re-resolved from the
+retained original collection element after mapped setters copy values back.
+Keeping an earlier box would compare stale storage. EF still rejects struct
+collection elements; no unsupported-model branch is retained for them.
+
+If native lanes and hidden scalar preimages are unchanged, replay restores only
+containers and independent original buffers. Otherwise, a temporary access graph
+from existing captured, original and live instances lets EF's state callbacks
+visit retained ordinals.
+Its collection storage comes from EF's mapped factory. Introduced and orphaned
+registrations are removed, both lanes are rebuilt through EF's capacity,
+ordinal and lifecycle operations, and independent aggregate flags are restored
+without recursive public flag replacement. Failure-only receipts undo old
+original/live container changes in reverse order before final raw-null replay
+makes those paths inaccessible. Successful cleanup clears the receipts, so
+repeated recovery does not retain that temporary graph. The captured CLR graph
+replaces it before final verification. No constructor-based entity cloning,
+graph-wide DetectChanges, private lane assignment or private state/flag
+write substitutes for that protocol.
+
+The validated complex adapter binds exact invariant infrastructure interfaces,
+read-only cached-slot fields, runtime metadata setters/factories and native
+transition signatures once for the loaded EF assembly. One original-buffer
+writer accepts IPropertyBase metadata for scalar and complex-collection
+originals. It shares the exact native-owner reader and validates the buffer,
+EnsureOriginalValues and SetValue signatures; no reflected PropertyEntry.Metadata
+getter or duplicate collection-original writer remains. The delegate bundle
+initializes when complex capture first needs its native readers; an incompatible
+signature in that bundle rejects capture before the first persistence command.
+The compiled native write operations are invoked only during rollback. Primary-source
+comparison covers EF 10.0.12 and 10.0.14; runtime qualification uses 10.0.14,
+not every permitted patch. D-004 records explicit re-evaluation triggers.
+
+A null complex leaf cannot receive its original through a CLR setter. Recovery
+temporarily aligns that one property's original with current while it is still
+Modified, clears the public flag, then restores its independent original through
+the native original buffer. The public original setter would detect the difference
+again even with automatic detection disabled. The lazy once-compiled binding is
+restricted to this exceptional path; it does not write native flags/state or
+construct arbitrary complex instances. An incompatibility first encountered by
+this rollback-only writer is a recovery failure after definite database
+rollback. It is distinct from the reader's capture-time rejection.
+[D-004](decisions/D-004-atomic-mutations-and-locks.md) owns the framework seam and
+re-evaluation triggers; the [recovery controls](regression-coverage.md#manual-detection-and-hierarchy-guards)
+cover exact topology, native authority and retry under that boundary.
+
+Managed callback capture additionally follows each original write's physical
+shared-table mappings to EF's tracked main row and referencing same-row peers.
+It reuses the public update adapter; exact table/entry references deduplicate
+traversal, and immutable table eligibility arrays are weakly model-cached.
+Only Unchanged non-JSON peers extend the private recovery list. Planned Added
+entries remain insertion-owned. Newly found peers do not seed their other table
+mappings; normal FKs, unrelated rows and base-type guesses do not expand capture.
+Actual command preparation in an independent context is the Unit test oracle.
+Before provider completion installs proven saved membership, the outer tracker
+snapshot records only the exact owner/navigation/member addition in a lazy list.
+It never copies a late owner's post-callback collection. Recovery undoes these
+additions before reinstating authoritative pre-save native snapshots: an original
+member removed by a callback and re-added by the library must survive. EF-driven
+changes to other members are not replayed from callback state. A current FK can
+already equal the desired value while its installed dependent bucket differs;
+recovery traverses the installed value through EF's existing setter to repair
+that bucket, then reinstates original values and modification flags. No new EF
+binding or tracker-wide collection copy is required. The hook uses the same
+written/readback proof for ordinary registered sync/async saves; only an outer
+coordinated save supplies the rollback owner.
+After every verification succeeds, inverse receipts are retired. A second
+Restore therefore cannot remove original membership that the first restored.
+During notification recovery, an exact native-handler scope pauses only EF's
+observation of the restored owner/navigation. Cached signature-validated handler
+methods create closed delegates for that native entry; successful saves do not
+execute this path. Current and captured collection instances are both considered,
+application listeners remain active, and literal null collections remain null.
+Resuming subscriptions must not attach an input that was detached at capture.
+
+An insertion-local inverse-membership journal spans all batches and forest plans.
+It baselines only proven saved references in external tracked owners and restores
+their original snapshot membership on failure. A separate operation-local import
+membership predicate permits exact validated detached future inputs in prepared
+owner collections. Its reference index is lazy; imports without this graph shape
+retain no additional whole-plan index. This is observation permission, never an
+extension of the active batch's EF write set.
+Candidate snapshots distinguish EF's current sidecar, available originals,
+and CLR member storage. Equal current/CLR provider representations share one
+independent snapshot; divergent storage keeps its own snapshot. Comparisons
+use cached typed getters selected from public metadata. The same weakly cached
+getter serves insertion identity checks, including their existing complex,
+indexer, member-conversion, and sentinel fallbacks. Ordinary probes read CLR
+storage only when a real temporary/store-generated sidecar can conceal a
+change. Normal unchanged scalar reads acquire no extra entry wrappers or boxes.
+The final write boundary and injected zero-write completion guard also cover
+late detection-event edits, so no additional DetectedAllChanges guard scans
+are installed. Scoped validation delegates and detection settings are restored
+on success, failure, and cancellation, including pooled context reuse.
+
+Insertion relationship completion finishes input navigation completion for the
+entire active wave before resolving its saved external relationships. It requires
+the guard's exact complete persisted native-entry set and corresponding CLR set;
+missing or suppressed persistence cannot authorize completion. Nested scopes
+restore the previous set. Callers retain validated sets across required
+single-insert reorder/readback, while the managed-save bypass ends before that
+work. Only relevant relationship candidates are buffered, and no-relationship
+waves allocate no batch copy. The
+[completion implementation](../src/Doka.EntityFrameworkCore.NestedSet/Features/BulkImport/NestedSetCallbackWrites.cs)
+and [resource controls](performance.md#saved-relationship-completion) retain this
+ordering and bounded lifetime.
+
 ## Bulk import, validation, and rebuild
 
 Bulk import validates detached input and topology before its first write. It

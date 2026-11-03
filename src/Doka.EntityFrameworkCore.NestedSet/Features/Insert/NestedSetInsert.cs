@@ -133,7 +133,7 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
             insertionRelationships,
             insertionValues);
 
-        NestedSetTrackerSnapshot? callbackWrites = null;
+        var callbackWrites = new NestedSetCallbackWrites();
 
         try
         {
@@ -236,8 +236,10 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
                             _store.Map.RightProperty,
                             checked(destination.Boundary + 1));
 
-                        TrackInsertionGraph(insertionEntries);
+                        TrackInsertionGraph(insertionEntries, callbackWrites);
                         var stagedIdentity = insertionEntries[0].Identity!;
+                        IReadOnlySet<IUpdateEntry> introducedEntries;
+                        IReadOnlySet<object> introducedEntities;
 
                         // WHY: This one insertion already owns its transaction, lock and structural assignment.
                         // The SaveChanges integration must not interpret it as an unauthorized direct tree addition.
@@ -277,10 +279,11 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
                             finally
                             {
                                 _store.Context.Database.AutoSavepointsEnabled = autoSavepoints;
-                                callbackWrites = managedSave.CallbackWrites;
+                                callbackWrites.Add(managedSave.CallbackWrites);
                             }
 
-                            managedSave.RequirePersisted();
+                            introducedEntries = managedSave.PersistedEntries;
+                            introducedEntities = managedSave.PersistedEntities;
                         }
 
                         RequireSavedStage(
@@ -337,6 +340,13 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
 
                         // WHY: Application state callbacks can reject detachment. Complete this lifecycle while
                         // the transaction or caller savepoint can still roll back the INSERT and generated values.
+                        callbackWrites.RecordSavedRelationships(
+                            insertionEntries
+                                .Where(candidate => candidate.Identity is not null)
+                                .Select(candidate => candidate.Identity!),
+                            introducedEntries,
+                            introducedEntities);
+
                         DetachInsertionGraph(insertionEntries);
                     },
                     placement is null ? NestedSetTreeLockMode.New : NestedSetTreeLockMode.Existing,
@@ -360,7 +370,7 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
             {
                 // WHY: EF accepted ordinary callback writes with the INSERT that the transaction rolled back.
                 // Their pending state must not claim that the database still contains those rows.
-                callbackWrites?.Restore();
+                callbackWrites.Restore();
             }
             catch (Exception restoreError)
             {

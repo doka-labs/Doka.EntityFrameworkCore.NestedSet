@@ -63,6 +63,19 @@ Every input entity must be detached. The import owns its temporary EF entry
 state and structural property assignments. Existing tracked nodes remain
 outside the import set.
 
+With `AutoDetectChangesEnabled = false`, a tracked external owner's CLR collection
+may already contain every detached input from the validated subtree or forest.
+Future batches remain detached; membership permission does not authorize early
+`Added` entries or additional writes. The exact mapping and bound Scope/TreeId
+must prove each relationship. Unknown inputs and wrong owners reject. Automatic
+detection still follows EF's normal behavior: if it registers these inputs before
+the facade begins, the existing pending-write preflight rejects them.
+
+Successful insertion baselines only proven saved inverse memberships, leaving
+that owner usable for a later ordinary save. A failed import restores prepared
+owner membership and clears operation-created input navigation links, including
+previously completed batches, so the original detached plan can be retried.
+
 Assigned keys keep their original database identity throughout the import.
 Callbacks cannot replace that identity or mutate a binary key in place. The
 library verifies keys both before and after each payload save; only genuinely
@@ -220,6 +233,13 @@ Each plan validates its entity references and assigned keys once. A forest with
 several trees also checks duplicates across plans before any database work;
 those temporary cross-tree indexes end with preparation. A single-tree import
 does not allocate a second pair of per-node identity indexes.
+Prepared external-owner collections may require one additional lazy reference
+index shared across all plans and batches. Ordinary imports without that graph
+shape do not allocate it. Owner recovery retains affected collection membership;
+input collection-reference recovery keeps only actual initialization or replacement
+differences after each completed wave. Introduced hierarchy/owned principals are
+excluded from the external-owner journal, so it does not retain their native
+entries across completed waves.
 
 Generated CLR values use the same sparse restoration strategy: conventional
 sentinel-valued inputs allocate no per-node generated-value snapshot. An input

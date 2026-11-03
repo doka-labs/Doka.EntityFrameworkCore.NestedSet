@@ -16,6 +16,10 @@ internal static partial class NestedSetSaveChanges
         if (!s_contexts.TryGetValue(context, out var state)
             || state is not { ManagedDepth: > 0, ManagedValidation: { } validation, ManagedEntities: { } planned })
         {
+            // WHY: Later interceptors and cascade fixup run after SavingChanges. Observe the final hierarchy
+            // state here without detecting changes: EF has already assembled the pending write set.
+            RequireSafeSave(context);
+
             return;
         }
 
@@ -24,8 +28,8 @@ internal static partial class NestedSetSaveChanges
 
         try
         {
-            // WHY: EF already detected this final write set. Validators that enumerate tracked entries must not
-            // start another tracker-wide detection inside the persistence step.
+            // WHY: EF already assembled this final write set. Validators that enumerate tracked entries must not
+            // start another tracker-wide detection inside the persistence step, including in manual mode.
             tracker.AutoDetectChangesEnabled = false;
             ValidateManagedWriteSet(context, state, validation, planned, entries);
         }
@@ -50,12 +54,12 @@ internal static partial class NestedSetSaveChanges
     )
     {
         validation();
-        var model = NestedSetModelMapping.For(context.Model);
         List<IUpdateEntry>? callbackWrites = null;
         var plannedCount = 0;
+        var plannedEntries = new HashSet<IUpdateEntry>(planned.Count, ReferenceEqualityComparer.Instance);
 
-        // WHY: EF passes only pending writes. Validating this list avoids a tracker-wide scan and cannot observe
-        // later SavedChanges or post-save detection, which run after EF has accepted the inserted entries.
+        // WHY: The native write set identifies staged entities and callback writes without inspecting application
+        // scalar state. A separate read-only hierarchy check also covers entries absent from that write set.
         foreach (var entry in entries)
         {
             var entity = entry.ToEntityEntry()
@@ -71,28 +75,9 @@ internal static partial class NestedSetSaveChanges
                 }
 
                 plannedCount++;
+                plannedEntries.Add(entry);
 
                 continue;
-            }
-
-            if (model.TryDescriptor(entry.EntityType, out _))
-            {
-                // WHY: An unaffected tracked node may carry application payload through the same EF save. Only
-                // hierarchy-owned or configured ordering properties need the insertion's structural lock plan.
-                var ordering = model.Ordering(entry.EntityType);
-                var changesHierarchy = entry.EntityState != EntityState.Modified
-                    || model
-                        .StructuralProperties(entry.EntityType)
-                        .Any(entry.IsModified)
-                    || (ordering is not null && ordering.Properties.Any(entry.IsModified));
-
-                if (changesHierarchy)
-                {
-                    throw new NestedSetException(
-                        NestedSetErrorCode.InvalidContext,
-                        "Save callbacks must not introduce hierarchy or ordering writes "
-                        + "outside the planned insertion.");
-                }
             }
 
             // WHY: Application payload, audit, and outbox writes persist atomically with the insertion. EF may
@@ -107,13 +92,30 @@ internal static partial class NestedSetSaveChanges
                 "Save callbacks must not detach planned hierarchy insertions.");
         }
 
+        // WHY: Unmarked CLR edits never enter EF's write set when detection is disabled. Observe all hierarchy
+        // roles and navigation effects anyway; only the existing staged scalar contract exempts planned roots.
+        if (HasHierarchyChanges(context, null, plannedEntries))
+        {
+            throw new NestedSetException(
+                NestedSetErrorCode.InvalidContext,
+                "Save callbacks must not introduce hierarchy or ordering changes outside the planned insertion.");
+        }
+
         // WHY: Every SavingChanges callback has completed before this boundary, so the snapshot holds their final
-        // pending values, including temporary keys that EF replaces during persistence.
+        // pending values, including temporary keys that EF replaces during persistence. EF can also promote
+        // unchanged peers when preparing a shared-row command; capture those peers before that transition.
+        if (callbackWrites is not null)
+        {
+            IncludeManagedSharingPeers(context, callbackWrites);
+        }
+
         state.ManagedCallbackWrites = callbackWrites is null
             ? null
             : NestedSetTrackerSnapshot.Capture(context, callbackWrites);
 
-        state.ManagedPersistenceReached = true;
+        // WHY: This exact native set has already passed the write-set and hierarchy guards. Retain it for
+        // relationship completion instead of constructing another batch array and native/reference sets.
+        state.ManagedPersistenceEntries = plannedEntries;
     }
 
     /// <summary>Guards a library-owned insertion against callback-created work before any SQL is sent.</summary>
@@ -150,24 +152,28 @@ internal static partial class NestedSetSaveChanges
         state.ManagedValidation = validation;
         state.ManagedPersistenceCompleted = persistenceCompleted;
         state.ManagedCallbackWrites = null;
-        state.ManagedPersistenceReached = false;
+        state.ManagedPersistenceEntries = null;
         state.ManagedDepth++;
-
-        // WHY: EF's final detection must observe CLR edits made by save callbacks even when the application
-        // normally detects changes manually; the persistence hook validates that detected write set.
-        context.ChangeTracker.AutoDetectChangesEnabled = true;
 
         return scope;
     }
 
-    /// <summary>Gets bounded insertion bookkeeping at the provider-result boundary, or no ordinary-save work.</summary>
+    /// <summary>Gets active identity and relationship bookkeeping at the existing provider-result boundary.</summary>
     /// <param name="context">The exact context whose database service is completing the save.</param>
-    /// <returns>The active callback, or null when this save does not own insertion identity snapshots.</returns>
-    internal static Action? ManagedPersistenceCompletion(
-        DbContext context
-    ) => s_contexts.TryGetValue(context, out var state) && state.ManagedDepth > 0
-        ? state.ManagedPersistenceCompleted
-        : null;
+    /// <param name="entries">The final validated write set, before the provider consumes its current values.</param>
+    /// <returns>Active insertion work and actual ordinary-FK write evidence, without another detection pass.</returns>
+    internal static (Action? Insertion, Action? Save) PersistenceCompletion(
+        DbContext context,
+        IList<IUpdateEntry> entries
+    )
+    {
+        s_contexts.TryGetValue(context, out var state);
+        var capture = state?.SavePersistenceCompleted ?? NestedSetCollectionBaseline.CapturePersisted;
+
+        // WHY: A persisted ordinary FK has the same collection semantics with or without an ordering candidate,
+        // and with either native save API. Only a coordinated save supplies an outer rollback owner.
+        return (state is { ManagedDepth: > 0 } ? state.ManagedPersistenceCompleted : null, capture(entries));
+    }
 
     /// <summary>Allows the coordinated save to reuse the exact-tree mutation engine after its payload save.</summary>
     /// <param name="context">The context whose outer save owns the complete transaction and lock plan.</param>

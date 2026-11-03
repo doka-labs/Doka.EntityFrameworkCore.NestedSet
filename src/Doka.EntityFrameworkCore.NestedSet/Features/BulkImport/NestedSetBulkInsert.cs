@@ -57,6 +57,9 @@ internal sealed class NestedSetBulkInsert<TEntity, TKey, TTreeId, TScope>
         var plan = Prepare(roots, cancellationToken);
 
         var callbackWrites = new NestedSetCallbackWrites();
+        var inputs = NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>.CreateImportInputs([plan]);
+        callbackWrites.CaptureInputOwners(_store.Context, inputs);
+        using var inputScope = NestedSetSaveChanges.EnterImportInputs(_store.Context, inputs);
 
         try
         {
@@ -70,6 +73,15 @@ internal sealed class NestedSetBulkInsert<TEntity, TKey, TTreeId, TScope>
         catch (Exception operationError)
         {
             List<Exception>? restoreErrors = null;
+
+            try
+            {
+                inputs.DetachUnexpected(_store.Context, plan.ActiveIdentities.Select(identity => identity.UpdateEntry));
+            }
+            catch (Exception restoreError)
+            {
+                (restoreErrors ??= []).Add(restoreError);
+            }
 
             // WHY: Transaction rollback cannot undo generated keys, trigger values or mapped CLR assignments.
             try
@@ -178,7 +190,9 @@ internal sealed class NestedSetBulkInsert<TEntity, TKey, TTreeId, TScope>
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var count = Math.Min(NestedSetBatch.MaximumRows, plan.Nodes.Count - offset);
-                plan.StageBatch(destination, offset, count, cancellationToken);
+                plan.StageBatch(destination, offset, count, callbackWrites, cancellationToken);
+                IReadOnlySet<IUpdateEntry> introducedEntries;
+                IReadOnlySet<object> introducedEntities;
 
                 using (var managedSave = NestedSetSaveChanges.EnterManagedSave(
                            _store.Context,
@@ -198,12 +212,14 @@ internal sealed class NestedSetBulkInsert<TEntity, TKey, TTreeId, TScope>
                         callbackWrites.Add(managedSave.CallbackWrites);
                     }
 
-                    managedSave.RequirePersisted();
+                    introducedEntries = managedSave.PersistedEntries;
+                    introducedEntities = managedSave.PersistedEntities;
                 }
 
                 plan.RequireSavedStage();
                 NestedSetTelemetry.RecordRowsAffected(count);
                 NestedSetTelemetry.RecordBatch();
+                callbackWrites.RecordSavedRelationships(plan.ActiveIdentities, introducedEntries, introducedEntities);
                 plan.CompleteBatch();
             }
         }

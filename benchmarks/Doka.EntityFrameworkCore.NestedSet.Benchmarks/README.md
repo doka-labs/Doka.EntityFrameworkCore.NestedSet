@@ -88,13 +88,68 @@ The project has one source owner and feature folders:
 | --- | --- |
 | `Core` | Pure containment and leaf calculations over immutable bounds |
 | `Queries` | Tree reads, generic query composition, actual signal/supervisor queries, and pure signal materialization |
-| `Insert` | Root, first/last child, and before/after sibling insertion |
+| `Insert` | Root, first/last child, before/after sibling insertion, and manual-detection single/subtree/forest saves |
 | `Move` | Leaf/branch movement within one tree and root transfer between trees |
 | `Delete` | Child promotion and subtree deletion |
 | `BulkImport` | Prepared forest import and subtree import sized at `max(10, Nodes / 10)` |
-| `Ordering` | `OrderingBenchmarks.SortedInsert` and `OrderingSaveBenchmarks.RenameAndSave` through `SaveChangesAsync` |
+| `Ordering` | Sorted insertion, ordinary rename/save, and manually marked Parent/order saves |
 | `Validation` | Quick and full validation of every selected tree |
 | `Rebuild` | Repair of damaged bounds, depth, and position with intact adjacency |
+
+`ManualDetectionSaveBenchmarks` measures explicitly marked Parent/order saves;
+`ManualDetectionInsertBenchmarks` measures single, ten-node subtree, and ten-node
+forest insertion with `AutoDetectChangesEnabled = false`. Fixture reset and
+validation are outside timing. The insert family avoids tracking affected
+hierarchy nodes, retaining the existing mutation policy; the save family loads
+its one candidate. Both retain the selected unrelated tracked entries.
+Before/after comparisons keep those entries unchanged so the database work is
+identical. Functional tests separately check unmarked payload and rejected raw
+hierarchy changes, rather than timing accidental additional writes.
+
+```sh
+dotnet run --project benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks \
+  -c Release -- --engine MariaDb --nodes 128 --shape Wide --trees 1 \
+  --tracked 1000 --filter '*ManualDetection*Benchmarks*' \
+  --warmupCount 3 --iterationCount 12 \
+  --artifacts artifacts/benchmarks/manual-detection-mariadb
+```
+
+The [performance guide](../../docs/performance.md#manual-detection-guard-budgets-2026-11-01)
+separates guard allocations from complete native save/insert work. For each new
+comparison, retain exact source/binary identity, raw outputs, confidence intervals
+and host conditions under ignored `artifacts/benchmarks/`. Observations apply to
+the matched fixture, not every later source or a release timing threshold.
+
+`PreparedOwnerImportBenchmarks` compares identical configured-size subtree and two-plan
+forest imports with an untracked owner, a loaded empty owner collection, or a
+collection containing the complete validated input. All run with manual detection.
+Verification checks exact adjacency/tree identities, full hierarchy validity,
+retained references, zero automatic detection and a following ordinary save.
+Functional contract cases also reject unexecuted or incomplete workloads and
+validate the existing `--nodes` selection, including 1,000/2,000/4,000/8,000 inputs.
+The prepared case is a new successful contract, so it has no equivalent successful
+historical baseline. Use the current owner modes to isolate its additional cost.
+Keep SQL-work equivalence separate from timing and one-operation allocation
+observations. The [import resource model](../../docs/bulk-import.md#resource-model)
+explains the retained plan, lazy membership index and bounded active wave.
+
+The 65/130-node cases exercise wave boundaries. They do not qualify asymptotic
+growth. Use the same harness with larger sizes for prepared-owner scaling, keeping
+native engines and before/after runs sequential. The guard-only allocation oracle
+is separate from these full imports, which include EF fixup and persistence.
+The [save and recovery costs](../../docs/performance.md#prepared-imports-and-recovery-costs)
+separate isolated guard scaling from complete native imports, live callback
+inspection and recovery authority. Record both favorable and adverse observations,
+GC/allocation data and actual background load. Use the existing small and
+8,000-node subtree/forest controls without introducing a timing gate.
+
+```sh
+dotnet run --project benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks \
+  -c Release -- --engine MariaDb --nodes 65,130 --shape Wide --trees 1 \
+  --tracked 0 --filter '*PreparedOwnerImportBenchmarks*' \
+  --warmupCount 3 --iterationCount 12 \
+  --artifacts artifacts/benchmarks/prepared-owner-mariadb
+```
 
 The composition families separate expression construction from prepared
 relational execution. `CompositionConstructionBenchmarks` and

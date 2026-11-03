@@ -85,6 +85,21 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
             (failures ??= []).Add(error);
         }
 
+        // WHY: PrepareDetachedInsertion completes graph validation before the operation's try/catch begins;
+        // malformed initial graphs use its separate initialization cleanup and never enter this restoration path.
+        foreach (var candidate in insertionEntries)
+        {
+            try
+            {
+                NestedSetInputNavigations.RestoreEmpty(
+                    candidate.Entry.Metadata, candidate.Entry.Entity, includeOwned: false);
+            }
+            catch (Exception error)
+            {
+                (failures ??= []).Add(error);
+            }
+        }
+
         try
         {
             // WHY: Repeated callback-owned mutable rekeys can corrupt native hash slots. A failed attempt

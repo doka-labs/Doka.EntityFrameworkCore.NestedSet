@@ -7,6 +7,101 @@ explicit one-time `10.1.0` exception for the provider-package/registration break
 below. The package major follows the .NET family; `11.x` is reserved for .NET 11.
 This exception does not authorize other breaking minor releases.
 
+## Unreleased
+
+### Fixed
+
+- Complete saved insertion relationships with one traversal of the identity
+  source, including single-use producers. Reuse the save guard's exact insertion
+  sets and retain only relationship candidates, without a batch buffer on the
+  no-relationship path. Remove a duplicate metadata snapshot and filtered
+  source/target identity arrays without changing rollback or error precedence.
+- Preserve disabled automatic change detection for ordinary saves, coordinated
+  Parent/order changes, and single/bulk/forest facade insertion. Explicitly
+  recorded hierarchy changes still coordinate atomically; unrecorded hierarchy
+  edits reject instead of triggering context-wide detection. Read-only guards
+  retain structural, ordering, navigation, locking, and rollback protection
+  without discovering unrelated unmarked snapshot-tracked payload.
+- Reject client-side cascading deletion of tracked hierarchy nodes through an
+  ordinary principal before payload SQL. Hierarchy deletion must use the facade.
+- Keep saves usable after a detached child is removed from a loaded collection,
+  and permit replacement principal instances whose relevant FK values remain
+  unchanged. Native reference lookups observe EF tracking without adding entries.
+- Accept matching Parent references and inverse collections for explicitly marked
+  Parent moves, including manual detection. Compare navigation effects with the
+  planned destination and restore pending CLR graphs and installed relationship
+  snapshots independently after failure.
+- Keep prepared external-owner collections usable after successful facade
+  insertion. Manual-detection imports may prepare the complete validated subtree
+  or forest collection across batches; only the active batch may persist, and
+  foreign or prematurely Added inputs remain rejected.
+- Avoid rebuilding complete prepared-owner reference sets on each import wave.
+  Reuse tracked-removal scratch and group saved-member collection scans per owner
+  within the bounded wave, preserving live callback and FK validation.
+- Baseline ordinary FK writes from independent pre-SQL values only
+  after provider success. Unmarked payload and command/completion callback edits
+  cannot authorize an unsaved relationship.
+- Restore callback-selected relationships after coordinated rollback and keep
+  actual persisted-FK semantics consistent across ordinary and coordinated saves.
+  Accept marked Parent moves to tracked targets when the old parent is detached,
+  retaining rejection of unplanned callback changes.
+- Undo only library-installed native collection additions during coordinated
+  rollback. Mixed raw and public FK writes in one callback no longer restore a
+  post-callback owner graph as pre-save state. Preserve original memberships,
+  installed dependent maps, original FK values and explicit modification flags.
+- Preserve initially unchanged FK relationships when callbacks move native
+  identities and raw-reset their scalars. Supplemental recovery keeps original
+  native presence/absence and selected list occurrences without erasing unrelated
+  pending CLR edits. Retire verified receipts for idempotent recovery and keep
+  unexpected-Parent cleanup active for supplemental captures.
+  Preserve exact native buckets across required-FK conceptual nulls and already
+  divergent raw current values, including first-use native index initialization.
+- Restore originally Unchanged table-sharing peers after EF promotes them to
+  Modified without property flags. Failed OwnsOne and ordinary table-split saves
+  retain their original exception and exact pending state, including identical
+  retry. Restore supplemental native collection membership independently from
+  an unmarked CLR reorder, even after undoing a saved-member receipt. Restrict
+  collection-order reflection to collection navigations and extend complete FK
+  capture and recovery resource controls to 20,000 members.
+- Preserve raw complex references, collection instances and element states when
+  recovering promoted table-sharing peers, including nullable complex-only
+  elements and provider-created native entries for raw additions. Managed insert
+  rollback also captures the unchanged same-row peers of callback writes before
+  EF promotes them. Keep EF's native JSON cardinality semantics with manual
+  detection; no context-wide detection or relaxed hierarchy guard is introduced.
+- Restore captured complex containers before ordinal/scalar recovery when a
+  save callback removes, clears, nulls, replaces or reorders them. Preserve caller
+  instances and independent native current/original slots, including accepted
+  lifecycle changes, pending additions/deletions and repeated failure. Keep
+  manual detection and structural guards intact; allocate the topology journal
+  only for entities with complex properties. Preserve scalar intent on native
+  children hidden by raw-null/shortened parents and undo temporary original/live
+  containers before restoring those absent paths.
+- Recover composed nested callback changes and pending Added children without
+  retaining temporary native lane lengths or holes. Preserve captured identities,
+  original errors and later detection/retry; retire only post-capture cache
+  occurrences when their CLR ancestor has disappeared.
+- Prevent a process-terminating stack overflow when a failed save restores a
+  pending Deleted complex element below which a callback changed the collection.
+  Retire and reinstall native entries through separate live and captured access
+  graphs, including pending Added children of a removed owner and whole-entity
+  state transitions.
+- Capture Deleted entities whose complex collection elements contain struct
+  references. Restore mutable primitive values inside nullable struct references,
+  and replay struct containers without consulting their caller-defined `Equals`.
+  Staging field-mapped collections no longer calls caller collection code.
+- Recover Deleted elements retained by a resurrected entity, scalars of raw CLR
+  elements EF never registered, read-only views with changed backing lists,
+  collections replaced behind copying setters and pending writes after a callback
+  cleared the change tracker.
+- Avoid unnecessary writes to unchanged read-only/immutable collections and
+  copying property setters. Restore struct primitive collections through their
+  EF comparer snapshots, including nested and hidden original elements, without
+  replaying stale boxes over restored scalar values.
+- Avoid transient identity maps for proven aligned complex lanes and skip
+  recursion for empty nested metadata. Preserve the general divergent-lane
+  protocol and unchanged complete capture/recovery allocation ceilings.
+
 ## 10.1.0 (2026-10-29)
 
 Stable contract for all six NestedSet packages on .NET 10 and EF Core 10.

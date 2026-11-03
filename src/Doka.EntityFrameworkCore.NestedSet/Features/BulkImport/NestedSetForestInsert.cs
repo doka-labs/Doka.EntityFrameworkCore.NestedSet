@@ -84,6 +84,11 @@ internal sealed class NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>
         // WHY: Callback writes from all trees share one persistence order; restoring them as one log keeps an
         // entry changed by several tree saves at its earliest pending database-relative state.
         var callbackWrites = new NestedSetCallbackWrites();
+        var inputs = NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
+            .CreateImportInputs(prepared.Select(tree => tree.Plan));
+
+        callbackWrites.CaptureInputOwners(_context, inputs);
+        using var inputScope = NestedSetSaveChanges.EnterImportInputs(_context, inputs);
 
         try
         {
@@ -106,7 +111,39 @@ internal sealed class NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>
         }
         catch (Exception operationError)
         {
-            Restore(prepared, callbackWrites, operationError);
+            Exception? cleanupError = null;
+
+            try
+            {
+                inputs.DetachUnexpected(
+                    _context,
+                    prepared
+                        .SelectMany(tree => tree.Plan.ActiveIdentities)
+                        .Select(identity => identity.UpdateEntry));
+            }
+            catch (Exception error)
+            {
+                cleanupError = error;
+            }
+
+            Restore(
+                prepared,
+                callbackWrites,
+                cleanupError is null
+                    ? operationError
+                    : new AggregateException(
+                        "Import input cleanup failed. Discard the context.",
+                        operationError,
+                        cleanupError));
+
+            if (cleanupError is not null)
+            {
+                throw new AggregateException(
+                    "Import input cleanup failed. Discard the context.",
+                    operationError,
+                    cleanupError);
+            }
+
             throw;
         }
 
@@ -214,7 +251,7 @@ internal sealed class NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>
                 {
                     var tree = prepared[treeIndex];
                     var count = Math.Min(remaining, tree.Plan.Nodes.Count - treeOffset);
-                    tree.Plan.StageBatch(tree.Destination, treeOffset, count, cancellationToken);
+                    tree.Plan.StageBatch(tree.Destination, treeOffset, count, callbackWrites, cancellationToken);
                     active.Add(tree);
 
                     // WHY: Authorize exactly the staged slice of the current tree in the shared payload wave.
@@ -237,6 +274,9 @@ internal sealed class NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>
 
                 // WHY: Independent one-node trees must share payload saves too. The wave guard authorizes the
                 // exact union of staged roots while each plan still verifies its own typed tree coordinates.
+                IReadOnlySet<IUpdateEntry> introducedEntries;
+                IReadOnlySet<object> introducedEntities;
+
                 using (var managedSave = NestedSetSaveChanges.EnterManagedSave(
                            _context,
                            active.SelectMany(tree => tree.Plan.ManagedEntities),
@@ -260,12 +300,15 @@ internal sealed class NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>
                         callbackWrites.Add(managedSave.CallbackWrites);
                     }
 
-                    managedSave.RequirePersisted();
+                    introducedEntries = managedSave.PersistedEntries;
+                    introducedEntities = managedSave.PersistedEntities;
                 }
 
                 RequireSavedWave(active, knownTracked, expected);
                 NestedSetTelemetry.RecordRowsAffected(NestedSetBatch.MaximumRows - remaining);
                 NestedSetTelemetry.RecordBatch();
+                callbackWrites.RecordSavedRelationships(
+                    active.SelectMany(tree => tree.Plan.ActiveIdentities), introducedEntries, introducedEntities);
 
                 foreach (var tree in active)
                 {

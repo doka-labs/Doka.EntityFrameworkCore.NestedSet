@@ -22,8 +22,25 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     {
         var errors = DetachActiveBatch(failed: true);
 
-        foreach (var node in Nodes)
+        // WHY: Only the validated prefix may have owned navigation links populated by this operation's fixup.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var index = 0; index < Nodes.Count; index++)
         {
+            var node = Nodes[index];
+            var type = _store.Map.EntityType.HasSharedClrType
+                ? _store.Map.EntityType
+                : _store.Context.Model.FindRuntimeEntityType(node.Entity.GetType())!;
+
+            try
+            {
+                NestedSetInputNavigations.RestoreEmpty(type, node.Entity, includeOwned: index < _validatedThrough);
+            }
+            catch (Exception error)
+            {
+                (errors ??= []).Add(error);
+            }
+
             var original = node.Original;
             var originalKey = node.HasAssignedKey ? node.CurrentKey : _store.Map.KeyProperty.Sentinel;
             RestoreValue(node, _store.Map.KeyProperty,
@@ -341,9 +358,7 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
 
             if (value is not null
                 && (value is not IEnumerable sequence
-                    || sequence
-                        .Cast<object>()
-                        .Any())
+                    || sequence.Cast<object>().Any())
                 && !navigation.TargetEntityType.IsOwned())
             {
                 throw new NestedSetException(

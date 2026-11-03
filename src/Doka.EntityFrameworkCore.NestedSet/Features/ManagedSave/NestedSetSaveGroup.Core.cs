@@ -91,8 +91,8 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
                 return new ParentChange(
                     entry,
                     NestedSetTypedValue<TKey>.Read(values, _map.KeyProperty),
-                    entry.Property(_map.Parent).OriginalValue,
-                    parent.Value,
+                    NestedSetStructuralValue.Snapshot(_map.ParentProperty, entry.Property(_map.Parent).OriginalValue),
+                    NestedSetTypedValue<TKey>.Snapshot(_map.ParentProperty, parent.Value),
                     _map.ScopeProperty is not { } scopeProperty
                         ? default!
                         : NestedSetTypedValue<TScope>.Read(values, scopeProperty));

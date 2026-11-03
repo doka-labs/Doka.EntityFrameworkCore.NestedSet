@@ -5,31 +5,27 @@ internal static partial class NestedSetSaveChanges
     /// <summary>Rejects callback-created hierarchy work after EF detection and before persistence begins.</summary>
     /// <param name="context">The context whose ordinary base save remains responsible for persistence.</param>
     /// <param name="saveChanges">The base save delegate, always called with acceptance disabled.</param>
-    /// <param name="planned">The exact trigger-property plan, or null when no hierarchy coordination is needed.</param>
+    /// <param name="planned">The exact scalar plan, or null when no hierarchy coordination is needed.</param>
+    /// <param name="snapshot">The outer rollback owner, absent for an ordinary EF save.</param>
     /// <param name="cancellationToken">The token forwarded unchanged to EF Core.</param>
     /// <returns>The saved-entry count reported by the underlying provider.</returns>
     private static async Task<int> SaveGuardedAsync(
         DbContext context,
         Func<CancellationToken, Task<int>> saveChanges,
-        Dictionary<object, CandidatePlan>? planned,
+        Dictionary<IUpdateEntry, CandidatePlan>? planned,
+        NestedSetTrackerSnapshot? snapshot,
         CancellationToken cancellationToken
     )
     {
         var tracker = context.ChangeTracker;
         var autoDetectChanges = tracker.AutoDetectChangesEnabled;
+        var state = s_contexts.GetValue(context, static _ => new SaveState());
+        var previousValidation = state.SaveValidation;
+        var previousCompletion = state.SavePersistenceCompleted;
 
-        void VerifyCandidates(
-            object? sender,
-            DetectedChangesEventArgs arguments
-        )
+        void VerifyCandidates()
         {
-            var candidates = FindCandidates(context);
-            var changed = candidates.Count != (planned?.Count ?? 0)
-                || candidates.Any(entry => planned is null
-                    || !planned.TryGetValue(entry.Entity, out var candidate)
-                    || !candidate.Matches(entry));
-
-            if (changed)
+            if (HasHierarchyChanges(context, planned))
             {
                 throw new NestedSetException(
                     NestedSetErrorCode.InvalidContext,
@@ -37,10 +33,10 @@ internal static partial class NestedSetSaveChanges
             }
         }
 
-        // WHY: EF runs detection after SavingChanges events and interceptors, before any SQL. Enabling it for
-        // this boundary preserves that safety check when the caller normally performs manual change detection.
-        tracker.DetectedAllChanges += VerifyCandidates;
-        tracker.AutoDetectChangesEnabled = true;
+        // WHY: Raw hierarchy values are checked independently of EF's flags. Enabling automatic detection here
+        // would also discover unrelated application payload that the caller deliberately left unmarked.
+        state.SaveValidation = VerifyCandidates;
+        state.SavePersistenceCompleted = snapshot is null ? null : snapshot.CapturePersistedRelationships;
 
         try
         {
@@ -50,33 +46,26 @@ internal static partial class NestedSetSaveChanges
         finally
         {
             // WHY: Pooled contexts must never retain a previous lease's guard or altered detection setting.
-            tracker.DetectedAllChanges -= VerifyCandidates;
             tracker.AutoDetectChangesEnabled = autoDetectChanges;
+            state.SaveValidation = previousValidation;
+            state.SavePersistenceCompleted = previousCompletion;
         }
     }
 
-    /// <summary>Captures exact modified trigger properties and values after Parent suppression.</summary>
-    /// <param name="context">The context whose detected hierarchy plan is already locked.</param>
+    /// <summary>Captures intended guarded scalars before Parent suppression for the original candidates.</summary>
+    /// <param name="candidates">Candidates whose physical Parent is captured again after suppression.</param>
     /// <returns>A reference-identity map used only through the one underlying save callback boundary.</returns>
-    private static Dictionary<object, CandidatePlan> CaptureGuardPlan(
-        DbContext context
+    private static Dictionary<IUpdateEntry, CandidatePlan> CaptureGuardPlan(
+        List<EntityEntry> candidates
     )
     {
-        var result = new Dictionary<object, CandidatePlan>(ReferenceEqualityComparer.Instance);
-        var model = NestedSetModelMapping.For(context.Model);
+        var result = new Dictionary<IUpdateEntry, CandidatePlan>(candidates.Count, ReferenceEqualityComparer.Instance);
 
-        foreach (var entry in FindCandidates(context))
+        foreach (var entry in candidates)
         {
-            var descriptor = model.Descriptor(entry.Metadata);
-            var parent = descriptor.Parent.Resolve(entry.Metadata);
-            var ordering = model.Ordering(entry.Metadata);
-            var triggers = ordering is null
-                ? [parent]
-                : new[] { parent }
-                    .Concat(ordering.Properties)
-                    .ToArray();
+            var update = NestedSetInsertionContract.Instance.Entry(entry);
 
-            result.Add(entry.Entity, CandidatePlan.Capture(entry, triggers));
+            result.Add(update, CandidatePlan.Capture(update, entry.Entity));
         }
 
         return result;
@@ -108,6 +97,8 @@ internal static partial class NestedSetSaveChanges
         if (s_contexts.TryGetValue(context, out var state)
             && state.Active)
         {
+            state.SaveValidation?.Invoke();
+
             return;
         }
 
@@ -124,18 +115,19 @@ internal static partial class NestedSetSaveChanges
             return;
         }
 
-        context.ChangeTracker.DetectChanges();
-
-        if (FindCandidates(context).Count > 0)
+        // WHY: Guarding hierarchy roles must not mark unrelated CLR payload as modified when the application
+        // disabled automatic detection. Local EntityEntry.DetectChanges also walks tracked FK principals.
+        if (HasHierarchyChanges(context))
         {
             throw new NestedSetException(
                 NestedSetErrorCode.InvalidContext,
-                "Tracked hierarchy changes require the SaveNestedSetChangesAsync wrapper.");
+                "Use nested-set facade operations to insert/delete nodes or change hierarchy-owned structure. "
+                + "Tracked Parent/order edits require the SaveNestedSetChangesAsync wrapper.");
         }
     }
 
     /// <summary>Validates managed structure and finds saved domain properties that change sibling order.</summary>
-    /// <param name="context">The context whose change detection has already run.</param>
+    /// <param name="context">The context whose writes were explicitly marked or automatically detected.</param>
     /// <returns>Modified entries with at least one configured ordering property marked modified.</returns>
     private static List<EntityEntry> FindCandidates(
         DbContext context
@@ -148,7 +140,7 @@ internal static partial class NestedSetSaveChanges
             .GetService<IUpdateAdapterFactory>()
             .Create();
 
-        // WHY: Planning already detected changes. The adapter exposes flags without another detection pass,
+        // WHY: Planning uses only known writes. The adapter exposes flags without another detection pass,
         // an array of every tracked entity, or PropertyEntry wrappers for unrelated application payload.
         foreach (var entry in updates.Entries)
         {
@@ -186,74 +178,5 @@ internal static partial class NestedSetSaveChanges
         }
 
         return result;
-    }
-
-    /// <summary>Freezes modified trigger metadata and provider-aware snapshots across save callbacks.</summary>
-    private sealed class CandidatePlan
-    {
-        private readonly IReadOnlyDictionary<IProperty, object?> _values;
-
-        /// <summary>Creates one immutable trigger plan.</summary>
-        /// <param name="values">Modified properties and their safely snapshotted current values.</param>
-        private CandidatePlan(
-            IReadOnlyDictionary<IProperty, object?> values
-        )
-        {
-            _values = values;
-        }
-
-        /// <summary>Captures only trigger properties that are currently marked modified.</summary>
-        internal static CandidatePlan Capture(
-            EntityEntry entry,
-            IReadOnlyList<IProperty> triggers
-        )
-        {
-            var values = new Dictionary<IProperty, object?>();
-
-            foreach (var property in triggers)
-            {
-                var candidate = entry.Property(property);
-
-                if (candidate.IsModified)
-                {
-                    values.Add(
-                        property,
-                        property
-                            .GetValueComparer()
-                            .Snapshot(candidate.CurrentValue));
-                }
-            }
-
-            return new CandidatePlan(values);
-        }
-
-        /// <summary>Checks that callbacks retained the same modified triggers and exact provider values.</summary>
-        internal bool Matches(
-            EntityEntry entry
-        )
-        {
-            var model = NestedSetModelMapping.For(entry.Context.Model);
-            var descriptor = model.Descriptor(entry.Metadata);
-            var parent = descriptor.Parent.Resolve(entry.Metadata);
-            var ordering = model.Ordering(entry.Metadata);
-            var triggers = ordering is null ? new[] { parent } : new[] { parent }.Concat(ordering.Properties);
-
-            foreach (var property in triggers)
-            {
-                var candidate = entry.Property(property);
-                var planned = _values.TryGetValue(property, out var value);
-
-                if (candidate.IsModified != planned
-                    || (planned
-                        && !property
-                            .GetValueComparer()
-                            .Equals(candidate.CurrentValue, value)))
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
     }
 }

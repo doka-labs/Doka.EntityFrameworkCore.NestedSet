@@ -149,7 +149,54 @@ are recorded in D-004. Forest and subtree insertion both register the same
 provider-result callback; generated subtree keys must not be mistaken for
 unauthorized callback edits.
 
+With manual detection, an external tracked owner may expose the complete validated
+detached input in its collection before the first wave. Operation-local reference
+membership is separate from persistence permission: only the active wave can
+write, and mapping/FK proofs still reject unknown references, wrong owners and
+early Added future inputs. One lazy input index is shared across forest plans;
+ordinary imports without matching owner collections do not retain it.
+
+One external-owner journal spans all waves. It records affected CLR collection
+storage and native membership before fixup, baselines proven saved references,
+and restores after all input detachment on failure. It excludes ownership and
+introduced principals, which must not become retained native-entry receipts.
+Validated input navigation emptiness is restored by streaming existing plan
+nodes, including earlier completed waves. Only actual collection initialization
+or replacement differences survive each completed wave in a sparse CLR journal.
+Malformed unvalidated owned graphs keep their caller-owned foreign references.
+
+Prepared collection observation streams current members and retains only relevant
+still-tracked snapshot members as possible removals. Operation-local reference
+scratch is reused and cleared after each probe, including rejection. It never
+retains future or completed inputs merely to compare collection sets. The ordinary
+unchanged-collection path keeps its separately qualified native comparison.
+
+Saved collection membership is grouped by exact tracked principal and navigation
+within one active wave. Each group scans its current collection once, matching
+only independently captured persisted FK vectors. It cannot baseline another
+wave's inputs or arbitrary foreign members. A callback-selected owner's first
+journal capture excludes the active introduced references before recording its
+original CLR order and native snapshot.
+
+This removes repeated complete-collection helper allocations, not the need to
+observe mutable collections. Callbacks may replace members without changing the
+count or alter a future input's ordinary FK. For N prepared members and W waves,
+repeated live inspection can still require O(N * W) work. No frozen-input contract,
+collection-version shortcut or universal linear-time claim is introduced.
+
+Future-input proofs cache immutable getter `MemberInfo` per exact property, not
+principal values, input values or FK decisions. The isolated integer-scope fixture
+identified 336 bytes per repeated member-resolution call; every live value and
+configured comparer is still evaluated on each probe.
+
 ### Re-evaluation Triggers
+
+- EF changes prepared inverse collection fixup, notification removal or native membership snapshots. Requalify
+  65/130-node and cross-plan imports, unknown/wrong-owner/early-Added rejection, late failure and identical retry.
+- Prepared-owner indexing or journal retention exceeds the measured resource envelope. Requalify plain imports
+  separately; no new full-plan native-entry retention is permitted.
+- A prepared import allocates proportional to complete collection size on each wave. Re-run the isolated
+  1,000/2,000/4,000/8,000-member guard controls and native subtree/forest comparisons; 65/130 alone is insufficient.
 
 - A measured ingestion workload requires streaming beyond the complete-input memory contract.
 - A provider-native path can preserve the same generated-value and rollback behavior with independently qualified evidence.
@@ -165,7 +212,6 @@ unauthorized callback edits.
 
 - 2026-09-19: Decision recorded with status proposed.
 - 2026-09-19: Existing implementation documented retrospectively; no historical approval or consultation is inferred.
-
 - 2026-09-28: Status changed from proposed to accepted.
 - 2026-09-28: The maintainer accepted the current decision and designated the core-maintainers audience.
 - 2026-09-28: Status changed from accepted to implemented.
@@ -176,14 +222,21 @@ unauthorized callback edits.
 - 2026-10-03: Guarded assigned-key callback edits, preserved never-staged generated inputs, and completed throwing CLR access before entry creation. Added exact restoration and weak-reference regressions for early failures.
 - 2026-10-04: Shared exact insertion identity and partial tracking recovery with single insertion. Both forest and subtree saves capture generated results before acceptance; mutable root and owned identities retain bounded independent cleanup handles.
 - 2026-10-04: Removed unchanged scalar identity-refresh vectors and repeated FK LINQ allocation while preserving all lifecycle observations and mutable-key protection. Moved insertion/setter framework compatibility checks to registration.
+- 2026-11-01: Authorized full validated future-input membership in prepared external-owner collections while preserving bounded active writes, operation-wide rollback and sparse CLR-only recovery across completed waves.
+- 2026-11-01: Replaced repeated full-owner sets with tracked-removal scratch and grouped saved-member scans. Kept live callback/FK inspection and added malformed-owned, replaced-collection and late-owner rollback controls.
+- 2026-11-02: Qualified cached getter metadata and complete 1,000-8,000-node comparisons on MariaDB/MySQL. Allocation observations decrease for prepared imports; timing remains mixed under recorded background load.
+- 2026-11-03: Consolidated prepared-import cost and measurement guidance in the performance guide while retaining this decision, its implementation references and unchanged import/recovery contracts.
 
 ### Implementation References
 
+- [Prepared-import resource model and scoped observations](../performance.md#prepared-imports-and-recovery-costs)
+- [Guard scaling and adversarial collection controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/ManagedSave/HierarchyChangeDetectionTests.ImportAllocations.cs)
 - [Shared insertion-owned CLR snapshots](../../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetInsertionValues.cs)
 - [Bulk coordinator](../../src/Doka.EntityFrameworkCore.NestedSet/Features/BulkImport/NestedSetBulkInsert.cs)
 - [Bulk plan](../../src/Doka.EntityFrameworkCore.NestedSet/Features/BulkImport/NestedSetBulkPlan.cs)
 - [Mapped storage batches](../../src/Doka.EntityFrameworkCore.NestedSet/Storage)
 - [Bulk contract tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/BulkImport)
+- [Prepared-owner boundary contracts](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/SaveChanges/SaveChangesTests.PreparedOwnerImports.cs)
 - [Detached CLR setter](../../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetDetachedValueSetter.cs)
 - [Shared insertion lifecycle](../../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetInsertionTracking.cs)
 - [Insertion framework binding contract](../../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetInsertionContract.cs)

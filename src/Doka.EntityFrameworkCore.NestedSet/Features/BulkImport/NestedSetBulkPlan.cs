@@ -26,6 +26,7 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     private List<NestedSetInsertionValues.Snapshot>? _ownedValues;
     private EntityEntry<TEntity>[]? _activeRoots;
     private int _activeOffset;
+    private int _validatedThrough;
 
     /// <summary>Validates the complete topology before the executor can open a database write boundary.</summary>
     /// <param name="store">The exact-tree metadata and context used to inspect detached entries.</param>
@@ -102,7 +103,7 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // WHY: Repeated entity references describe cycles or multiple parents; neither has a tree meaning.
+            // WHY: Repeated entity references to describe cycles or multiple parents; neither has a tree meaning.
             if (!seen.Add(item.Branch.Entity))
             {
                 throw new NestedSetException(
@@ -110,7 +111,11 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
                     "Each imported entity must occur exactly once in the forest.");
             }
 
-            RequireDetached(item.Branch.Entity, knownTracked, store.Map.EntityType);
+            var inputType = store.Map.EntityType.HasSharedClrType
+                ? store.Map.EntityType
+                : store.Context.Model.FindRuntimeEntityType(item.Branch.Entity.GetType()) ?? store.Map.EntityType;
+
+            RequireDetached(item.Branch.Entity, knownTracked, inputType);
             var key = NestedSetTypedValue<TKey>.Read(item.Branch.Entity, keyProperty);
 
             var assignedKey = NestedSetInsertionValues.HasAssignedKey(keyProperty, item.Branch.Entity, key);
@@ -217,5 +222,8 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     {
         _ = checked(destination.Position + Roots.Count);
         _ = checked(destination.Depth + Nodes.Max(node => node.RelativeDepth));
+        _destinationParent = destination.Parent.Snapshot(_store.Map.ParentProperty);
+        _destinationDepth = destination.Depth;
+        _hasDestination = true;
     }
 }

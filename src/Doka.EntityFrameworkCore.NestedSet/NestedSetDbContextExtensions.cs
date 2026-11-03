@@ -11,6 +11,12 @@ public static class NestedSetDbContextExtensions
     /// </param>
     /// <param name="cancellationToken">The token used for locking, persistence, and structural updates.</param>
     /// <returns>The saved-entry count reported by Entity Framework Core, excluding structural set updates.</returns>
+    /// <remarks>
+    ///     Preserves <see cref="ChangeTracker.AutoDetectChangesEnabled"/> for payload and coordinated hierarchy saves.
+    ///     With automatic detection disabled, explicitly record Parent and configured-order changes through EF entry
+    ///     APIs, notifications, or an application detection pass. Unrecorded hierarchy changes are rejected by
+    ///     read-only guards; unrelated unmarked snapshot-tracked payload is not discovered by this method.
+    /// </remarks>
     /// <exception cref="ArgumentNullException">The context or save delegate is null.</exception>
     /// <exception cref="NestedSetException">The save boundary is recursive or hierarchy work is invalid.</exception>
     public static Task<int> SaveNestedSetChangesAsync(
@@ -25,6 +31,10 @@ public static class NestedSetDbContextExtensions
     /// <param name="acceptAllChangesOnSuccess">Whether to accept tracked changes after the save succeeds.</param>
     /// <param name="saveChanges">A delegate that invokes the application's base <c>SaveChanges(false)</c>.</param>
     /// <returns>The saved-entry count reported by Entity Framework Core.</returns>
+    /// <remarks>
+    ///     The caller's automatic detection setting is preserved. Read-only guards reject hierarchy work without
+    ///     detecting unrelated application payload.
+    /// </remarks>
     /// <exception cref="ArgumentNullException">The context or save delegate is null.</exception>
     /// <exception cref="NestedSetException">Tracked hierarchy work requires asynchronous coordination.</exception>
     public static int SaveNestedSetChanges(

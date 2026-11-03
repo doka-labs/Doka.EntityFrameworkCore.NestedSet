@@ -18,6 +18,30 @@ internal static partial class NestedSetInsertionTracking
         private List<ICollection<IUpdateEntry>>? _buckets;
         private List<(IKey Key, object?[] Values)>? _additionalKeys;
 
+        /// <summary>Gets the exact active native entry for one bounded insertion wave.</summary>
+        internal IUpdateEntry UpdateEntry => _update;
+
+        /// <summary>Gets whether this entry can participate in an external principal collection baseline.</summary>
+        internal bool HasCollectionRelationships =>
+            _foreignKeys.Any(key => key is { IsOwnership: false, PrincipalToDependent.IsCollection: true });
+
+        /// <summary>Adds persisted relationship vectors to the current bounded wave's shared collection scan.</summary>
+        internal void CollectSavedRelationships(
+            NestedSetCollectionBaseline.SavedRelationships saved
+        )
+        {
+            // WHY: Match each persisted FK vector to its exact metadata without retaining another per-row receipt.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            for (var index = 0; index < _foreignKeys.Length; index++)
+            {
+                if (_foreignKeyValues[index] is { } values)
+                {
+                    saved.Add(_update, _entry.Entity, _foreignKeys[index], values);
+                }
+            }
+        }
+
         /// <summary>Captures only the introduced entry and its exact native identity maps.</summary>
         internal Identity(
             EntityEntry entry
@@ -480,12 +504,13 @@ internal static partial class NestedSetInsertionTracking
                 var foreignKey = _foreignKeys[index];
                 var dependentMap = operations.Dependents(map, foreignKey);
 
-                if (dependentMap is null)
+                if (dependentMap is null
+                    && (foreignKey.IsOwnership || foreignKey.PrincipalToDependent is not { IsCollection: true }))
                 {
                     continue;
                 }
 
-                // WHY: The outer array starts with absent vectors; allocate each only for an existing dependent map.
+                // WHY: Allocate vectors only for existing native buckets or a collection's saved-reference proof.
                 var values = _foreignKeyValues[index] ??= new object?[foreignKey.Properties.Count];
 
                 var absent = false;
@@ -502,7 +527,9 @@ internal static partial class NestedSetInsertionTracking
                     {
                         // WHY: EF's native dependent lookup accepts object vectors. Only initial or changed
                         // scalar FK components cross that boundary; unchanged components reuse their boxes.
-                        values[propertyIndex] = _update.GetCurrentValue(property);
+                        values[propertyIndex] = NestedSetStructuralValue.Snapshot(
+                            property,
+                            _update.GetCurrentValue(property));
                     }
 
                     absent |= values[propertyIndex] is null || _update.IsConceptualNull(property);
@@ -512,6 +539,13 @@ internal static partial class NestedSetInsertionTracking
                 {
                     // WHY: Native dependent factories omit absent optional links. Their direct key-values
                     // lookup requires a complete non-null key, so an absent parent owns no bucket to capture.
+                    continue;
+                }
+
+                if (dependentMap is null)
+                {
+                    // WHY: A prepared collection can skip EF's AddToCollection and never create a dependent
+                    // bucket. Its persisted FK vector is still needed to baseline that exact saved reference.
                     continue;
                 }
 

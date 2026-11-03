@@ -103,25 +103,51 @@ internal sealed partial class
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var sourceRows = rows
-            .Where(row => row.Ordinal == 0)
-            .ToArray();
+        return ResolveTreeIds(rows);
+    }
 
-        var targetRows = rows
-            .Where(row => row.Ordinal == 1)
-            .ToArray();
+    /// <summary>Resolves the two requested ordinals without allocating filtered copies of materialized rows.</summary>
+    /// <param name="rows">The provider's already materialized anchor projections.</param>
+    /// <returns>The persisted source and target identities in requested-anchor order.</returns>
+    /// <exception cref="NestedSetException">
+    /// An anchor is missing or resolves to more than one hierarchy row.
+    /// </exception>
+    private static (TTreeId Source, TTreeId Target) ResolveTreeIds(
+        List<TreeIdentity> rows
+    )
+    {
+        var sourceCount = 0;
+        var targetCount = 0;
+        var source = default(TTreeId)!;
+        var target = default(TTreeId)!;
 
-        if (sourceRows.Length != 1
-            || targetRows.Length != 1)
+        // WHY: Both full cardinalities are needed before classifying failure: a missing anchor takes precedence
+        // over ambiguity in the other ordinal. Iterating the existing list needs no per-anchor arrays or iterator.
+        foreach (var row in rows)
+        {
+            if (row.Ordinal == 0)
+            {
+                source = row.TreeId;
+                sourceCount++;
+            }
+            else if (row.Ordinal == 1)
+            {
+                target = row.TreeId;
+                targetCount++;
+            }
+        }
+
+        if (sourceCount != 1
+            || targetCount != 1)
         {
             throw new NestedSetException(
-                sourceRows.Length == 0 || targetRows.Length == 0
+                sourceCount == 0 || targetCount == 0
                     ? NestedSetErrorCode.NodeNotFound
                     : NestedSetErrorCode.InvalidStructure,
                 "Source and destination must each resolve to exactly one hierarchy row in the selected Scope.");
         }
 
-        return (sourceRows[0].TreeId, targetRows[0].TreeId);
+        return (source, target);
     }
 
     /// <summary>Compares one materialized identity to an anchor under native database equality.</summary>
