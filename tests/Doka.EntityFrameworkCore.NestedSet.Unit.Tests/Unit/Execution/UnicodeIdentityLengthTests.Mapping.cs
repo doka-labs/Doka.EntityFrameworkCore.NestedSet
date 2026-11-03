@@ -27,7 +27,9 @@ public sealed partial class UnicodeIdentityLengthTests
         var clone = original.WithStoreTypeAndSize(original.StoreType, original.Size);
 
         // Act
-        var scalarLength = NestedSetProviderCapabilities.Resolve(context).UsesUnicodeScalarLength(clone);
+        var scalarLength = NestedSetProviderCapabilities
+            .Resolve(context)
+            .UsesUnicodeScalarLength(clone);
 
         // Assert
         Assert.True(scalarLength);
@@ -54,7 +56,9 @@ public sealed partial class UnicodeIdentityLengthTests
         var clone = original.WithStoreTypeAndSize("text", 8);
 
         // Act
-        var scalarLength = NestedSetProviderCapabilities.Resolve(context).UsesUnicodeScalarLength(clone);
+        var scalarLength = NestedSetProviderCapabilities
+            .Resolve(context)
+            .UsesUnicodeScalarLength(clone);
 
         // Assert
         Assert.False(scalarLength);
@@ -90,7 +94,8 @@ public sealed partial class UnicodeIdentityLengthTests
             NestedSetTreeLockMode.Existing));
 
         // Assert
-        Assert.Equal(scopeRole ? "Scope" : "TreeId", Assert.IsType<ArgumentException>(error).ParamName);
+        Assert.Equal(scopeRole ? "Scope" : "TreeId",
+            Assert.IsType<ArgumentException>(error).ParamName);
         Assert.IsType<StringTypeMapping>(entityType.FindProperty(scopeRole ? "Scope" : "TreeId")!
             .GetRelationalTypeMapping());
         Assert.False(NestedSetTreeRegistryMapping.For(entityType).ScopeUsesUnicodeScalarLength);
@@ -157,18 +162,27 @@ public sealed partial class UnicodeIdentityLengthTests
         generator.Emit(OpCodes.Ldc_I4_1);
         generator.Emit(OpCodes.Ldc_I4_8);
         generator.Emit(OpCodes.Newobj, typeof(int?).GetConstructor([typeof(int)])!);
-        generator.Emit(OpCodes.Call, typeof(StringTypeMapping).GetConstructor(
-            [typeof(string), typeof(DbType?), typeof(bool), typeof(int?)])!);
+        generator.Emit(OpCodes.Call,
+            typeof(StringTypeMapping).GetConstructor(
+                [typeof(string), typeof(DbType?), typeof(bool), typeof(int?)])!);
         generator.Emit(OpCodes.Ret);
         var mapping = (RelationalTypeMapping)Activator.CreateInstance(type.CreateType()!)!;
 
         // Act
-        var scalarLength = NestedSetProviderCapabilities.Resolve(context).UsesUnicodeScalarLength(mapping);
+        var scalarLength = NestedSetProviderCapabilities
+            .Resolve(context)
+            .UsesUnicodeScalarLength(mapping);
 
         // Assert
         Assert.False(scalarLength);
-        Assert.Equal("Doka.EntityFrameworkCore.MySql.MySqlStringTypeMapping", mapping.GetType().FullName);
-        Assert.Equal("NestedSet.UnicodeMappingProbe", mapping.GetType().Assembly.GetName().Name);
+        Assert.Equal("Doka.EntityFrameworkCore.MySql.MySqlStringTypeMapping",
+            mapping.GetType().FullName);
+        Assert.Equal("NestedSet.UnicodeMappingProbe",
+            mapping
+                .GetType()
+                .Assembly
+                .GetName()
+                .Name);
     }
 
     /// <summary>Counts fixed-width supplementary characters without changing their contents.</summary>
@@ -208,7 +222,8 @@ public sealed partial class UnicodeIdentityLengthTests
         // Assert
         if (overflow)
         {
-            Assert.Equal(scopeRole ? "Scope" : "TreeId", Assert.IsType<ArgumentException>(error).ParamName);
+            Assert.Equal(scopeRole ? "Scope" : "TreeId",
+                Assert.IsType<ArgumentException>(error).ParamName);
         }
         else
         {

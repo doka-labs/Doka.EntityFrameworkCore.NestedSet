@@ -231,6 +231,9 @@ public sealed partial class ProviderTestContractTests
         var module = assembly.DefineDynamicModule(name.Name!);
         var type = module.DefineType("LocalOwnershipProbe", TypeAttributes.Public);
 
+        // WHY: Keep each emitted method name aligned with the corresponding attribute-array slot.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < methods.Length; index++)
         {
             var method = type.DefineMethod(
@@ -319,19 +322,19 @@ public sealed partial class ProviderTestContractTests
             new EngineTheoryDataRow(
                 [17],
                 ["PostgreSql", "SqlServer", "Sqlite"],
-                "The probe requires a MySQL-family backend capability.")
+                "The probe requires a MySQL-family backend capability."),
         ];
 
         /// <summary>Supplies one explained, valid conditional shared row.</summary>
         public static IEnumerable<ITheoryDataRow> ValidConditionalRows =>
         [
-            new EngineTheoryDataRow([17], ["Sqlite"], "The assertion requires a server execution plan.")
+            new EngineTheoryDataRow([17], ["Sqlite"], "The assertion requires a server execution plan."),
         ];
 
         /// <summary>Supplies a conditional row with an unknown excluded engine.</summary>
         public static IEnumerable<ITheoryDataRow> UnknownConditionalRows =>
         [
-            new EngineTheoryDataRow([17], ["Postgres"], "The assertion requires a server execution plan.")
+            new EngineTheoryDataRow([17], ["Postgres"], "The assertion requires a server execution plan."),
         ];
 
         /// <summary>Supplies an unexplained exclusion to exercise the nonempty reason requirement.</summary>

@@ -24,10 +24,16 @@ public sealed partial class EngineTestDiscoveryTests
 
         // Assert
         Assert.Equal(expectedCount, rows.Count);
-        Assert.Contains(rows, row => Equals(row.GetData()[0], 43));
+        Assert.Contains(rows,
+            row => Equals(row.GetData()[0],
+                43));
         Assert.Equal(method.Method.ReflectedType, attribute.MemberType);
-        Assert.Equal(engine != "Sqlite", rows.Any(row => Equals(row.GetData()[0], 17)));
-        Assert.Equal(engine != "PostgreSql", rows.Any(row => Equals(row.GetData()[0], 29)));
+        Assert.Equal(engine != "Sqlite",
+            rows.Any(row => Equals(row.GetData()[0],
+                17)));
+        Assert.Equal(engine != "PostgreSql",
+            rows.Any(row => Equals(row.GetData()[0],
+                29)));
     }
 
     /// <summary>An explicit member source remains authoritative over the inherited suite's default source.</summary>
@@ -48,7 +54,10 @@ public sealed partial class EngineTestDiscoveryTests
 
         // Assert
         Assert.Equal(typeof(ExplicitDataSource), attribute.MemberType);
-        Assert.Equal<object?>([53], Assert.Single(rows).GetData());
+        Assert.Equal<object?>([53],
+            Assert
+                .Single(rows)
+                .GetData());
     }
 
     /// <summary>Raw member rows retain their engine exclusions for the provider contract guard.</summary>

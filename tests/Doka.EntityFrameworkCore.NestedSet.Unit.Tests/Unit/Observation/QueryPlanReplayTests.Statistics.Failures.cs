@@ -12,8 +12,8 @@ public sealed partial class QueryPlanReplayTests
         await using var context = CreateStatisticsContext(connection);
 
         // Act
-        var error = await Record.ExceptionAsync(
-            () => QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer"));
+        var error = await Record.ExceptionAsync(() =>
+            QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer"));
 
         // Assert
         Assert.Same(failure, error);
@@ -28,18 +28,19 @@ public sealed partial class QueryPlanReplayTests
     {
         // Arrange
         await using var connection = new PlanReplayConnection(() =>
-        {
-            var reader = Results(Statistics("unread statistic"));
-            reader.Close();
+            {
+                var reader = Results(Statistics("unread statistic"));
+                reader.Close();
 
-            return reader;
-        }, () => 0);
+                return reader;
+            },
+            () => 0);
 
         await using var context = CreateStatisticsContext(connection);
 
         // Act
-        var error = await Record.ExceptionAsync(
-            () => QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer"));
+        var error = await Record.ExceptionAsync(() =>
+            QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer"));
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);
@@ -57,8 +58,8 @@ public sealed partial class QueryPlanReplayTests
         await using var context = CreateStatisticsContext(connection);
 
         // Act
-        var error = await Record.ExceptionAsync(
-            () => QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer"));
+        var error = await Record.ExceptionAsync(() =>
+            QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer"));
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);
@@ -67,7 +68,9 @@ public sealed partial class QueryPlanReplayTests
         Assert.Equal(0, command.NonQueryExecutions);
     }
 
-    /// <summary>A failed statistic update remains the original failure and prevents later statistics from running.</summary>
+    /// <summary>
+    /// A failed statistic update remains the original failure and prevents later statistics from running.
+    /// </summary>
     [Fact]
     public async Task StatisticsUpdateFailureStopsBeforeLaterStatistics()
     {
@@ -81,8 +84,8 @@ public sealed partial class QueryPlanReplayTests
         await using var context = CreateStatisticsContext(connection);
 
         // Act
-        var error = await Record.ExceptionAsync(
-            () => QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer"));
+        var error = await Record.ExceptionAsync(() =>
+            QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer"));
 
         // Assert
         Assert.Same(failure, error);
@@ -91,6 +94,7 @@ public sealed partial class QueryPlanReplayTests
         Assert.Equal("UPDATE STATISTICS [fixture]]scope].[Owned]]Statistics] [failing] WITH FULLSCAN",
             connection.Commands[2].CommandText);
 
-        Assert.DoesNotContain(connection.Commands, command => command.CommandText.Contains("unreached", StringComparison.Ordinal));
+        Assert.DoesNotContain(connection.Commands,
+            command => command.CommandText.Contains("unreached", StringComparison.Ordinal));
     }
 }

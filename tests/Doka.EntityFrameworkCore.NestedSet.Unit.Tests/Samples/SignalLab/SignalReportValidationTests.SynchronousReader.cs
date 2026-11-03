@@ -24,7 +24,9 @@ public sealed partial class SignalReportValidationTests
     }
 
     /// <summary>Distinguishes the first duplicate from a later non-database enumeration failure.</summary>
-    private sealed class FailingTotals(SignalReportTotal total) : IReadOnlyCollection<SignalReportTotal>
+    private sealed class FailingTotals(
+        SignalReportTotal total
+    ) : IReadOnlyCollection<SignalReportTotal>
     {
         /// <summary>Gets the advertised row count, including a row that fails during enumeration.</summary>
         public int Count => 3;

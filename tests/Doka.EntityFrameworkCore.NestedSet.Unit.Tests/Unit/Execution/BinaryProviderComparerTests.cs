@@ -58,7 +58,10 @@ public sealed class BinaryProviderComparerTests
         // Arrange
         using var context = new BinaryContext();
         var operations = Operations(context, shape);
-        var firstBytes = Enumerable.Repeat((byte)7, 32).ToArray();
+        var firstBytes = Enumerable
+            .Repeat((byte)7, 32)
+            .ToArray();
+
         var secondBytes = firstBytes.ToArray();
 
         switch (change)
@@ -141,7 +144,11 @@ public sealed class BinaryProviderComparerTests
         var native = Operations(context, "native");
         var erased = Operations(context, "erased");
         var converted = Operations(context, "converted");
-        var bytes = Enumerable.Range(0, length).Select(index => (byte)(index % 251)).ToArray();
+        var bytes = Enumerable
+            .Range(0, length)
+            .Select(index => (byte)(index % 251))
+            .ToArray();
+
         var model = converted.Model(bytes, 10)!;
         var expected = StructuralComparisons.StructuralEqualityComparer.GetHashCode(bytes);
 
@@ -152,7 +159,9 @@ public sealed class BinaryProviderComparerTests
         Assert.All(hashes, hash => Assert.Equal(expected, hash));
     }
 
-    /// <summary>Converters producing null keep the framework fallback instead of treating null as an empty array.</summary>
+    /// <summary>
+    /// Converters producing null keep the framework fallback instead of treating null as an empty array.
+    /// </summary>
     [Fact]
     public void NullProviderOutputsRetainFrameworkEqualityAndHash()
     {
@@ -178,7 +187,9 @@ public sealed class BinaryProviderComparerTests
         Assert.Equal(framework.GetHashCode(null!), hash);
     }
 
-    /// <summary>An object provider must not acquire binary structural semantics from its runtime input values.</summary>
+    /// <summary>
+    /// An object provider must not acquire binary structural semantics from its runtime input values.
+    /// </summary>
     [Fact]
     public void ObjectProviderRetainsReferenceEqualityForBinaryInputs()
     {
@@ -230,11 +241,22 @@ public sealed class BinaryProviderComparerTests
         // Arrange
         using var context = new BinaryContext();
         var operations = Operations(context, shape);
-        var first = operations.Model(Enumerable.Repeat((byte)7, 32).ToArray(), 10)!;
-        var second = operations.Model(Enumerable.Repeat((byte)7, 32).ToArray(), 20)!;
+        var first = operations.Model(Enumerable
+                .Repeat((byte)7, 32)
+                .ToArray(),
+            10)!;
+
+        var second = operations.Model(Enumerable
+                .Repeat((byte)7, 32)
+                .ToArray(),
+            20)!;
+
         const int repetitions = 1000;
         var expectedHash = operations.Hash(first);
 
+        // WHY: Warm both prepared comparer operations before counting allocations on unchanged binary identities.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < repetitions; index++)
         {
             _ = operations.Compare(first, second);
@@ -246,6 +268,9 @@ public sealed class BinaryProviderComparerTests
         var before = GC.GetAllocatedBytesForCurrentThread();
 
         // Act
+        // WHY: Accumulate equality and hash observations over the same fixed allocation window.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < repetitions; index++)
         {
             correct &= operations.Compare(first, second);
@@ -260,7 +285,8 @@ public sealed class BinaryProviderComparerTests
 
         // WHY: A fixed allowance tolerates runtime setup but excludes even one boxed byte per operation.
         Assert.InRange(allocated, 0, 4096);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>Builds delegates once so measurements include the real comparer but no new model wrappers.</summary>
@@ -308,7 +334,8 @@ public sealed class BinaryProviderComparerTests
     private sealed record ComparerOperations(
         Func<object?, object?, bool> Compare,
         Func<object, int> Hash,
-        Func<byte[]?, int, object?> Model);
+        Func<byte[]?, int, object?> Model
+    );
 
     /// <summary>Provides native and converted binary property metadata without opening SQLite.</summary>
     private sealed class BinaryContext : DbContext
@@ -325,10 +352,13 @@ public sealed class BinaryProviderComparerTests
         )
         {
             var node = modelBuilder.Entity<BinaryNode>();
-            node.Property(value => value.Id).ValueGeneratedNever();
+            node
+                .Property(value => value.Id)
+                .ValueGeneratedNever();
 
             // WHY: Different tags retain different model identities but do not affect the provider bytes.
-            node.Property(value => value.Converted)
+            node
+                .Property(value => value.Converted)
                 .HasConversion(value => value.Bytes, bytes => new BinaryIdentity(bytes, 0));
         }
     }
@@ -349,5 +379,8 @@ public sealed class BinaryProviderComparerTests
     /// <summary>Separates model equality from the binary provider representation.</summary>
     /// <param name="Bytes">The provider value, including the null-output fallback control.</param>
     /// <param name="Tag">Model-only identity data omitted by the configured converter.</param>
-    private sealed record BinaryIdentity(byte[]? Bytes, int Tag);
+    private sealed record BinaryIdentity(
+        byte[]? Bytes,
+        int Tag
+    );
 }

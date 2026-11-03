@@ -35,14 +35,26 @@ public sealed class CompositionSqlServerTranslationTests
         // add a process-global singleton graph or depend on which other test collections ran first.
         using var provider = services.BuildServiceProvider();
         using var context = new CompositionGuardContext(
-            new DbContextOptionsBuilder<CompositionGuardContext>(options).UseInternalServiceProvider(provider).Options);
+            new DbContextOptionsBuilder<CompositionGuardContext>(options)
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var hierarchy = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
         var down = hierarchy.SelectSubtrees(node => node.Id == 1,
-            (upper, lower, distance) => new CompositionGuardRow { Upper = upper, Lower = lower, Distance = distance });
+            (upper, lower, distance) => new CompositionGuardRow
+            {
+                Upper = upper,
+                Lower = lower,
+                Distance = distance,
+            });
 
         var query = shape == "mixed" ? Mixed(hierarchy, down) : CompositionEndpointTests.Filter(hierarchy, down, shape);
-        var scalar = query.Select(row => new { AnchorId = row.Upper.Id, NodeId = row.Lower.Id, row.Distance });
+        var scalar = query.Select(row => new
+        {
+            AnchorId = row.Upper.Id,
+            NodeId = row.Lower.Id,
+            row.Distance,
+        });
 
         // Act
         var sql = scalar.ToQueryString();
@@ -79,9 +91,16 @@ public sealed class CompositionSqlServerTranslationTests
     )
     {
         var up = hierarchy.SelectAncestors(node => node.Id == 3,
-            (lower, upper, distance) => new CompositionGuardRow { Upper = upper, Lower = lower, Distance = distance });
+            (lower, upper, distance) => new CompositionGuardRow
+            {
+                Upper = upper,
+                Lower = lower,
+                Distance = distance,
+            });
 
-        var mixed = up.Join(down, ancestor => ancestor.Upper.Id, descendant => descendant.Upper.Id,
+        var mixed = up.Join(down,
+            ancestor => ancestor.Upper.Id,
+            descendant => descendant.Upper.Id,
             (ancestor, descendant) => new CompositionGuardRow
             {
                 Upper = ancestor.Upper,
@@ -90,7 +109,9 @@ public sealed class CompositionSqlServerTranslationTests
                 Distance = descendant.Distance,
             });
 
-        return hierarchy.WherePathEdges(mixed, row => row.Upper, row => row.Lower,
+        return hierarchy.WherePathEdges(mixed,
+            row => row.Upper,
+            row => row.Lower,
             (row, parent, child) => row.Payload != null && child.Id != row.Payload.Id);
     }
 }

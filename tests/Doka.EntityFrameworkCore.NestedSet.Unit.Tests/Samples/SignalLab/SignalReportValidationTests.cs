@@ -3,7 +3,9 @@ using Doka.EntityFrameworkCore.NestedSet.Samples.SignalLab;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples.SignalLab;
 
 /// <summary>Guards sample-owned request, calendar and result-grid rules once, independently of SQL providers.</summary>
-public sealed partial class SignalReportValidationTests(ITestOutputHelper output)
+public sealed partial class SignalReportValidationTests(
+    ITestOutputHelper output
+)
 {
     /// <summary>Inclusive boundaries, open ends and the maximum date require no AddDays conversion.</summary>
     [Theory]
@@ -11,7 +13,10 @@ public sealed partial class SignalReportValidationTests(ITestOutputHelper output
     [InlineData(0, true)]
     [InlineData(1, true)]
     [InlineData(2, false)]
-    public void PeriodUsesInclusiveDays(int day, bool expected)
+    public void PeriodUsesInclusiveDays(
+        int day,
+        bool expected
+    )
     {
         // Arrange
         var from = SignalReportDataset.FirstDay;
@@ -28,7 +33,9 @@ public sealed partial class SignalReportValidationTests(ITestOutputHelper output
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void MaximumDayDoesNotOverflow(bool openEnd)
+    public void MaximumDayDoesNotOverflow(
+        bool openEnd
+    )
     {
         // Arrange
         var from = DateOnly.MinValue;
@@ -103,8 +110,14 @@ public sealed partial class SignalReportValidationTests(ITestOutputHelper output
     {
         // Arrange
         var request = Request();
-        request = request with { Criteria = [request.Criteria[0],
-            request.Criteria[0] with { OwnerMode = TagOwnerMode.Nearest }] };
+        request = request with
+        {
+            Criteria =
+            [
+                request.Criteria[0],
+                request.Criteria[0] with { OwnerMode = TagOwnerMode.Nearest },
+            ],
+        };
 
         // Act
         var error = Record.Exception(() => SignalReportValidation.Snapshot(request));
@@ -118,7 +131,9 @@ public sealed partial class SignalReportValidationTests(ITestOutputHelper output
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void UnknownOperatorOrGrainIsRejected(bool invalidOperator)
+    public void UnknownOperatorOrGrainIsRejected(
+        bool invalidOperator
+    )
     {
         // Arrange
         var request = Request();
@@ -156,7 +171,9 @@ public sealed partial class SignalReportValidationTests(ITestOutputHelper output
     [InlineData("wrong-type")]
     [InlineData("unknown-choice")]
     [InlineData("case")]
-    public void InvalidCatalogBindingIsRejected(string shape)
+    public void InvalidCatalogBindingIsRejected(
+        string shape
+    )
     {
         // Arrange
         var request = Request();
@@ -164,13 +181,16 @@ public sealed partial class SignalReportValidationTests(ITestOutputHelper output
         var criterion = request.Criteria[0];
         request = request with
         {
-            Criteria = [shape switch
-            {
-                "missing-field" => criterion with { FieldCode = "Missing" },
-                "wrong-type" => criterion with { TypeId = SignalReportDataset.SensorKind },
-                "unknown-choice" => criterion with { Value = "XX" },
-                _ => criterion with { Value = "narrow" },
-            }],
+            Criteria =
+            [
+                shape switch
+                {
+                    "missing-field" => criterion with { FieldCode = "Missing" },
+                    "wrong-type" => criterion with { TypeId = SignalReportDataset.SensorKind },
+                    "unknown-choice" => criterion with { Value = "XX" },
+                    _ => criterion with { Value = "narrow" },
+                },
+            ],
         };
 
         var snapshot = SignalReportValidation.Snapshot(request);
@@ -186,17 +206,25 @@ public sealed partial class SignalReportValidationTests(ITestOutputHelper output
     [Theory]
     [InlineData("")]
     [InlineData("currency")]
-    public void IncompatibleMetricUnitsAreRejected(string unit)
+    public void IncompatibleMetricUnitsAreRejected(
+        string unit
+    )
     {
         // Arrange
-        var request = Request() with { ChannelIds = [SignalReportDataset.PulseChannel, SignalReportDataset.SweepChannel] };
-        var snapshot = SignalReportValidation.Snapshot(request);
-        var catalog = Catalog(snapshot).Append(new SignalCatalogRow
+        var request = Request() with
         {
-            Kind = 1,
-            Id = SignalReportDataset.SweepChannel,
-            UnitCode = unit,
-        }).ToArray();
+            ChannelIds = [SignalReportDataset.PulseChannel, SignalReportDataset.SweepChannel],
+        };
+
+        var snapshot = SignalReportValidation.Snapshot(request);
+        var catalog = Catalog(snapshot)
+            .Append(new SignalCatalogRow
+            {
+                Kind = 1,
+                Id = SignalReportDataset.SweepChannel,
+                UnitCode = unit,
+            })
+            .ToArray();
 
         // Act
         var error = Record.Exception(() => SignalReportValidation.RequireCatalog(snapshot, catalog));
@@ -209,11 +237,15 @@ public sealed partial class SignalReportValidationTests(ITestOutputHelper output
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
-    public void MissingAnchorOrMetricIsRejected(int kind)
+    public void MissingAnchorOrMetricIsRejected(
+        int kind
+    )
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request());
-        var catalog = Catalog(snapshot).Where(row => row.Kind != kind).ToArray();
+        var catalog = Catalog(snapshot)
+            .Where(row => row.Kind != kind)
+            .ToArray();
 
         // Act
         var error = Record.Exception(() => SignalReportValidation.RequireCatalog(snapshot, catalog));
@@ -227,8 +259,10 @@ public sealed partial class SignalReportValidationTests(ITestOutputHelper output
     public void GridPreservesMissingVersusMeasuredZero()
     {
         // Arrange
-        var snapshot = SignalReportValidation.Snapshot(Request() with { Sources = [CapturePort.Pulse,
-            CapturePort.Sweep] });
+        var snapshot = SignalReportValidation.Snapshot(Request() with
+        {
+            Sources = [CapturePort.Pulse, CapturePort.Sweep],
+        });
 
         SignalReportTotal[] totals =
         [
@@ -259,16 +293,44 @@ public sealed partial class SignalReportValidationTests(ITestOutputHelper output
     }
 
     /// <summary>Creates the smallest valid sample request for pure validation.</summary>
-    private static SignalReportRequest Request() => new(Guid.NewGuid(), Guid.NewGuid(), [SignalReportDataset.Id(1)],
-        [SignalReportDataset.PulseChannel], [CapturePort.Pulse], SignalReportDataset.FirstDay, SignalReportDataset.FirstDay.AddDays(2),
-        MeasurementGranularity.Daily, [new TagCriterion(SignalReportDataset.ArrayKind, "Band", "Narrow")]);
+    private static SignalReportRequest Request() => new(Guid.NewGuid(),
+        Guid.NewGuid(),
+        [SignalReportDataset.Id(1)],
+        [SignalReportDataset.PulseChannel],
+        [CapturePort.Pulse],
+        SignalReportDataset.FirstDay,
+        SignalReportDataset.FirstDay.AddDays(2),
+        MeasurementGranularity.Daily,
+        [new TagCriterion(SignalReportDataset.ArrayKind, "Band", "Narrow")]);
 
     /// <summary>Provides independent scalar catalog evidence, without invoking the production catalog query.</summary>
-    private static SignalCatalogRow[] Catalog(ValidatedSignalReport request) =>
+    private static SignalCatalogRow[] Catalog(
+        ValidatedSignalReport request
+    ) =>
     [
-        new() { Kind = 0, Id = request.AnchorIds[0] },
-        new() { Kind = 1, Id = SignalReportDataset.PulseChannel, UnitCode = "count" },
-        new() { Kind = 2, TypeId = SignalReportDataset.ArrayKind, FieldCode = "Band" },
-        new() { Kind = 3, TypeId = SignalReportDataset.ArrayKind, FieldCode = "Band", Value = "Narrow" },
+        new()
+        {
+            Kind = 0,
+            Id = request.AnchorIds[0],
+        },
+        new()
+        {
+            Kind = 1,
+            Id = SignalReportDataset.PulseChannel,
+            UnitCode = "count",
+        },
+        new()
+        {
+            Kind = 2,
+            TypeId = SignalReportDataset.ArrayKind,
+            FieldCode = "Band",
+        },
+        new()
+        {
+            Kind = 3,
+            TypeId = SignalReportDataset.ArrayKind,
+            FieldCode = "Band",
+            Value = "Narrow",
+        },
     ];
 }

@@ -1,5 +1,4 @@
 extern alias UserGroupsSample;
-
 using Microsoft.EntityFrameworkCore.Storage;
 using SampleReadSnapshot = UserGroupsSample::Doka.EntityFrameworkCore.NestedSet.Samples.SampleReadSnapshot;
 
@@ -13,7 +12,9 @@ public sealed partial class SampleReadSnapshotTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task OwnedSnapshotCommitsAndDisposesWithoutSavingTrackedChanges(bool alreadyOpen)
+    public async Task OwnedSnapshotCommitsAndDisposesWithoutSavingTrackedChanges(
+        bool alreadyOpen
+    )
     {
         // Arrange
         await using var directory = new SampleLifecycleDirectory();
@@ -36,14 +37,20 @@ public sealed partial class SampleReadSnapshotTests
         var reads = 0;
 
         // Act
-        var result = await SampleReadSnapshot.RunAsync(context, async token =>
-        {
-            reads++;
-            readToken = token;
-            actualIsolation = context.Database.CurrentTransaction?.GetDbTransaction().IsolationLevel;
+        var result = await SampleReadSnapshot.RunAsync(context,
+            async token =>
+            {
+                reads++;
+                readToken = token;
+                actualIsolation = context.Database.CurrentTransaction?.GetDbTransaction().IsolationLevel;
 
-            return await context.Sentinels.AsNoTracking().Select(row => row.Value).SingleAsync(token);
-        }, stop.Token);
+                return await context
+                    .Sentinels
+                    .AsNoTracking()
+                    .Select(row => row.Value)
+                    .SingleAsync(token);
+            },
+            stop.Token);
 
         var connectionState = context.Database.GetDbConnection().State;
 
@@ -62,8 +69,10 @@ public sealed partial class SampleReadSnapshotTests
         Assert.Equal(1, observer.Committed);
         Assert.Null(context.Database.CurrentTransaction);
         Assert.Equal(alreadyOpen ? ConnectionState.Open : ConnectionState.Closed, connectionState);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
-        Assert.Equal(EntityState.Modified, context.Entry(pending).State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
+        Assert.Equal(EntityState.Modified,
+            context.Entry(pending).State);
         Assert.Equal("unsaved", pending.Value);
     }
 
@@ -99,22 +108,29 @@ public sealed partial class SampleReadSnapshotTests
         SqliteTransaction? native = null;
 
         // Act
-        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync<int>(context, async token =>
-        {
-            native = (SqliteTransaction)context.Database.CurrentTransaction!.GetDbTransaction();
-            _ = await context.Sentinels.AsNoTracking().Select(row => row.Id).SingleAsync(token);
-            reads++;
-
-            if (cancel)
+        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync<int>(context,
+            async token =>
             {
-                await stop.CancelAsync();
-                token.ThrowIfCancellationRequested();
-            }
+                native = (SqliteTransaction)context.Database.CurrentTransaction!.GetDbTransaction();
+                _ = await context
+                    .Sentinels
+                    .AsNoTracking()
+                    .Select(row => row.Id)
+                    .SingleAsync(token);
+                reads++;
 
-            throw failure;
-        }, stop.Token));
+                if (cancel)
+                {
+                    await stop.CancelAsync();
+                    token.ThrowIfCancellationRequested();
+                }
+
+                throw failure;
+            },
+            stop.Token));
 
         var connectionState = context.Database.GetDbConnection().State;
+
         var remainingNativeConnection = native?.Connection;
 
         if (alreadyOpen)
@@ -125,7 +141,8 @@ public sealed partial class SampleReadSnapshotTests
         // Assert
         if (cancel)
         {
-            Assert.Equal(stop.Token, Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
+            Assert.Equal(stop.Token,
+                Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
         }
         else
         {
@@ -140,7 +157,8 @@ public sealed partial class SampleReadSnapshotTests
         Assert.Null(remainingNativeConnection);
         Assert.Null(context.Database.CurrentTransaction);
         Assert.Equal(alreadyOpen ? ConnectionState.Open : ConnectionState.Closed, connectionState);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>Every read outcome preserves the caller's live transaction and preceding application writes.</summary>
@@ -160,10 +178,12 @@ public sealed partial class SampleReadSnapshotTests
         await using var context = ObservedContext(directory, observer);
         await SampleLifecycleDirectory.SeedAsync(context, "persisted", CancellationToken.None);
         await using var caller = await context.Database.BeginTransactionAsync(
-            IsolationLevel.Serializable, CancellationToken.None);
+            IsolationLevel.Serializable,
+            CancellationToken.None);
 
         await context.Database.ExecuteSqlRawAsync(
-            "UPDATE SampleSentinels SET Value = 'caller-change' WHERE Id = 1", CancellationToken.None);
+            "UPDATE SampleSentinels SET Value = 'caller-change' WHERE Id = 1",
+            CancellationToken.None);
 
         observer.Reset();
         using var stop = new CancellationTokenSource();
@@ -176,25 +196,31 @@ public sealed partial class SampleReadSnapshotTests
         // Act
         var error = await Record.ExceptionAsync(async () =>
         {
-            result = await SampleReadSnapshot.RunAsync(context, async token =>
-            {
-                readToken = token;
-                valueRead = await context.Sentinels.AsNoTracking().Select(row => row.Value).SingleAsync(token);
-                reads++;
-
-                if (completion == "failure")
+            result = await SampleReadSnapshot.RunAsync(context,
+                async token =>
                 {
-                    throw failure;
-                }
+                    readToken = token;
+                    valueRead = await context
+                        .Sentinels
+                        .AsNoTracking()
+                        .Select(row => row.Value)
+                        .SingleAsync(token);
+                    reads++;
 
-                if (completion == "cancellation")
-                {
-                    await stop.CancelAsync();
-                    token.ThrowIfCancellationRequested();
-                }
+                    if (completion == "failure")
+                    {
+                        throw failure;
+                    }
 
-                return valueRead;
-            }, stop.Token);
+                    if (completion == "cancellation")
+                    {
+                        await stop.CancelAsync();
+                        token.ThrowIfCancellationRequested();
+                    }
+
+                    return valueRead;
+                },
+                stop.Token);
         });
 
         // Assert
@@ -208,7 +234,8 @@ public sealed partial class SampleReadSnapshotTests
                 Assert.Same(failure, error);
                 break;
             case "cancellation":
-                Assert.Equal(stop.Token, Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
+                Assert.Equal(stop.Token,
+                    Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
                 break;
         }
 
@@ -219,8 +246,11 @@ public sealed partial class SampleReadSnapshotTests
         Assert.Equal(0, observer.Attached);
         Assert.Equal(0, observer.Committed);
         Assert.Same(caller, context.Database.CurrentTransaction);
-        Assert.Same(context.Database.GetDbConnection(), caller.GetDbTransaction().Connection);
-        Assert.Equal(IsolationLevel.Serializable, caller.GetDbTransaction().IsolationLevel);
-        Assert.Equal(ConnectionState.Open, context.Database.GetDbConnection().State);
+        Assert.Same(context.Database.GetDbConnection(),
+            caller.GetDbTransaction().Connection);
+        Assert.Equal(IsolationLevel.Serializable,
+            caller.GetDbTransaction().IsolationLevel);
+        Assert.Equal(ConnectionState.Open,
+            context.Database.GetDbConnection().State);
     }
 }

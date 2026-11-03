@@ -37,6 +37,9 @@ public sealed partial class InsertionRefreshAllocationTests
         var identity = NestedSetInsertionTracking.Capture(entry);
         const int refreshes = 10_000;
 
+        // WHY: JIT and snapshot-cache initialization must finish before the fixed allocation interval starts.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < refreshes; index++)
         {
             identity.Refresh();
@@ -45,6 +48,9 @@ public sealed partial class InsertionRefreshAllocationTests
         var before = GC.GetAllocatedBytesForCurrentThread();
 
         // Act
+        // WHY: Repeating the same identity measures refresh allocation without adding per-iteration inputs.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < refreshes; index++)
         {
             identity.Refresh();
@@ -108,7 +114,8 @@ public sealed partial class InsertionRefreshAllocationTests
 
         // Assert
         Assert.True(identity.Matches(property));
-        Assert.Equal(37, entry.Property(property).CurrentValue);
+        Assert.Equal(37,
+            entry.Property(property).CurrentValue);
         Assert.Equal(0, entry.Entity.Id);
     }
 
@@ -131,6 +138,9 @@ public sealed partial class InsertionRefreshAllocationTests
 
         input["Id"] = 37;
 
+        // WHY: Warm the changed indexer getter and refresh cache outside the measured interval.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < 1000; index++)
         {
             identity.Refresh();
@@ -139,6 +149,9 @@ public sealed partial class InsertionRefreshAllocationTests
         var before = GC.GetAllocatedBytesForCurrentThread();
 
         // Act
+        // WHY: The repeated refresh isolates the framework's member-conversion allocation for one indexer.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < 1000; index++)
         {
             identity.Refresh();
@@ -166,8 +179,7 @@ public sealed partial class InsertionRefreshAllocationTests
         if (shape == "shadow")
         {
             var entry = context.Entry(new ShadowNode());
-            entry.Property("Id")
-                .CurrentValue = 1;
+            entry.Property("Id").CurrentValue = 1;
             entry.State = EntityState.Added;
 
             return entry;
@@ -336,7 +348,9 @@ public sealed partial class InsertionRefreshAllocationTests
         public string? Id { get; set; } = string.Empty;
     }
 
-    private sealed class FieldNode(int id)
+    private sealed class FieldNode(
+        int id
+    )
     {
         private readonly int _id = id;
 

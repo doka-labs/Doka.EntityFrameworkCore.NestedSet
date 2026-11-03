@@ -15,26 +15,43 @@ public sealed partial class SignalReportValidationTests
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request() with
         {
-            AnchorIds = Enumerable.Range(1, 64).Select(SignalReportDataset.Id).ToArray(),
-            ChannelIds = Enumerable.Range(101, 32).Select(SignalReportDataset.Id).ToArray(),
+            AnchorIds = Enumerable
+                .Range(1, 64)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
+            ChannelIds = Enumerable
+                .Range(101, 32)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
             Sources = [CapturePort.Sweep, CapturePort.Pulse, CapturePort.Burst],
         });
 
-        var grain = snapshot.AnchorIds.SelectMany(anchor => snapshot.ChannelIds.SelectMany(signal =>
-            snapshot.Sources.Select(source => (Anchor: anchor, Channel: signal, Source: source)))).ToArray();
+        var grain = snapshot
+            .AnchorIds
+            .SelectMany(anchor => snapshot.ChannelIds.SelectMany(signal =>
+                snapshot.Sources.Select(source => (Anchor: anchor, Channel: signal, Source: source))))
+            .ToArray();
 
-        var rows = grain.Where((_, index) => !sparse || index == 0 || index == grain.Length - 1)
-            .Select(key => Total(key.Anchor, key.Channel, key.Source, key == grain[0] ? 0 : 13)).Reverse().ToArray();
+        var rows = grain
+            .Where((_, index) => !sparse || index == 0 || index == grain.Length - 1)
+            .Select(key => Total(key.Anchor, key.Channel, key.Source, key == grain[0] ? 0 : 13))
+            .Reverse()
+            .ToArray();
 
-        var expected = grain.Select((key, index) => new SignalReportCell(key.Anchor, key.Channel, key.Source,
-            !sparse || index == 0 || index == grain.Length - 1,
-            index == 0 || (sparse && index != grain.Length - 1) ? 0 : 13)).ToArray();
+        var expected = grain
+            .Select((key, index) => new SignalReportCell(key.Anchor,
+                key.Channel,
+                key.Source,
+                !sparse || index == 0 || index == grain.Length - 1,
+                index == 0 || (sparse && index != grain.Length - 1) ? 0 : 13))
+            .ToArray();
 
         var probe = new ReaderProbe();
 
         // Act
         var actual = await SignalReportValidation.CreateGridAsync(snapshot,
-            ReadRows(rows, probe, CancellationToken.None), CancellationToken.None);
+            ReadRows(rows, probe, CancellationToken.None),
+            CancellationToken.None);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -58,21 +75,30 @@ public sealed partial class SignalReportValidationTests
         var source = (CapturePort)99;
         snapshot = snapshot with
         {
-            AnchorIds = Enumerable.Repeat(anchor, repetitions).ToArray(),
-            ChannelIds = Enumerable.Repeat(signal, repetitions).ToArray(),
-            Sources = Enumerable.Repeat(source, repetitions).ToArray(),
+            AnchorIds = Enumerable
+                .Repeat(anchor, repetitions)
+                .ToArray(),
+            ChannelIds = Enumerable
+                .Repeat(signal, repetitions)
+                .ToArray(),
+            Sources = Enumerable
+                .Repeat(source, repetitions)
+                .ToArray(),
         };
 
         SignalReportTotal[] rows = [Total(anchor, signal, source, 7)];
-        var expected = Enumerable.Repeat(new SignalReportCell(anchor, signal, source, true, 7),
-            repetitions * repetitions * repetitions).ToArray();
+        var expected = Enumerable
+            .Repeat(new SignalReportCell(anchor, signal, source, true, 7),
+                repetitions * repetitions * repetitions)
+            .ToArray();
 
         var probe = new ReaderProbe();
 
         // Act
         var synchronous = SignalReportValidation.CreateGrid(snapshot, rows);
         var asynchronous = await SignalReportValidation.CreateGridAsync(snapshot,
-            ReadRows(rows, probe, CancellationToken.None), CancellationToken.None);
+            ReadRows(rows, probe, CancellationToken.None),
+            CancellationToken.None);
 
         // Assert
         Assert.Equal(expected, synchronous);
@@ -99,7 +125,8 @@ public sealed partial class SignalReportValidationTests
 
         // Act
         var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(snapshot,
-            ReadRows(rows, probe, CancellationToken.None), CancellationToken.None));
+            ReadRows(rows, probe, CancellationToken.None),
+            CancellationToken.None));
 
         // Assert
         Assert.IsType<ArgumentException>(error);
@@ -127,7 +154,8 @@ public sealed partial class SignalReportValidationTests
 
         // Act
         var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(snapshot,
-            ReadRows(rows, probe, CancellationToken.None), CancellationToken.None));
+            ReadRows(rows, probe, CancellationToken.None),
+            CancellationToken.None));
 
         // Assert
         var argument = Assert.IsType<ArgumentException>(error);
@@ -149,8 +177,14 @@ public sealed partial class SignalReportValidationTests
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request()) with
         {
-            AnchorIds = Enumerable.Range(1, 46_341).Select(SignalReportDataset.Id).ToArray(),
-            ChannelIds = Enumerable.Range(1, 46_341).Select(SignalReportDataset.Id).ToArray(),
+            AnchorIds = Enumerable
+                .Range(1, 46_341)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
+            ChannelIds = Enumerable
+                .Range(1, 46_341)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
         };
 
         var failure = new InvalidOperationException("late sparse aggregate failure");
@@ -162,7 +196,8 @@ public sealed partial class SignalReportValidationTests
 
         // Act
         var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(snapshot,
-            ReadRows(Array.Empty<SignalReportTotal>(), probe, CancellationToken.None), CancellationToken.None));
+            ReadRows(Array.Empty<SignalReportTotal>(), probe, CancellationToken.None),
+            CancellationToken.None));
 
         // Assert
         Assert.True(probe.Disposed);

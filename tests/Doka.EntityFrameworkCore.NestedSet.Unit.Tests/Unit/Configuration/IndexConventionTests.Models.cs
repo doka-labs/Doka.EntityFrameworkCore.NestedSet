@@ -41,27 +41,40 @@ public sealed partial class IndexConventionTests
             switch (engine)
             {
                 case "Sqlite":
-                    options.UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets().UseNestedSets());
+                    options.UseSqlite("Data Source=:memory:",
+                        provider => provider
+                            .UseNestedSets()
+                            .UseNestedSets());
                     break;
                 case "MySql":
                     options.UseMySql(
                         "Server=127.0.0.1;Database=Conventions;User ID=unused",
-                        DatabaseTestTargets.MySql, provider => provider.UseNestedSets().UseNestedSets());
+                        DatabaseTestTargets.MySql,
+                        provider => provider
+                            .UseNestedSets()
+                            .UseNestedSets());
                     break;
                 case "MariaDb":
                     options.UseMySql(
                         "Server=127.0.0.1;Database=Conventions;User ID=unused",
-                        DatabaseTestTargets.MariaDb, provider => provider.UseNestedSets().UseNestedSets());
+                        DatabaseTestTargets.MariaDb,
+                        provider => provider
+                            .UseNestedSets()
+                            .UseNestedSets());
                     break;
                 case "SqlServer":
                     options.UseSqlServer(
                         "Server=127.0.0.1;Database=Conventions;User ID=unused;Password=unused",
-                        provider => provider.UseNestedSets().UseNestedSets());
+                        provider => provider
+                            .UseNestedSets()
+                            .UseNestedSets());
                     break;
                 case "PostgreSql":
                     options.UseNpgsql(
                         "Host=127.0.0.1;Database=Conventions;Username=unused",
-                        provider => provider.UseNestedSets().UseNestedSets());
+                        provider => provider
+                            .UseNestedSets()
+                            .UseNestedSets());
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(engine));
@@ -70,5 +83,4 @@ public sealed partial class IndexConventionTests
             return options.Options;
         }
     }
-
 }

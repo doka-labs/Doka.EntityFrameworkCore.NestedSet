@@ -64,14 +64,16 @@ public sealed partial class ProviderCapabilitiesTests
         var boundary = new CompositionIoBoundary();
         using var owner = OwnedModelTestServices<CompositionGuardContext>.Create(
             CollationOptions("SqlServer", boundary));
+
         using var context = new CompositionGuardContext(owner.Options);
         var sql = context.GetService<ISqlGenerationHelper>();
         var adapter = NestedSetTestAdapters.ForEngine("SqlServer");
 
         // Act
-        var error = Assert.Throws<InvalidOperationException>(() => adapter.CollationSql(sql, collation));
+        var error = Record.Exception(() => adapter.CollationSql(sql, collation));
 
         // Assert
+        Assert.IsType<InvalidOperationException>(error);
         Assert.Contains("ASCII letters, digits, and underscores", error.Message, StringComparison.Ordinal);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);

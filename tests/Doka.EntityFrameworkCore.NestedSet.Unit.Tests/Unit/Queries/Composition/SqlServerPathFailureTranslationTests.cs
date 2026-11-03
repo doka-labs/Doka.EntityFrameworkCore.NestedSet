@@ -4,14 +4,18 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Guards the SQL Server completed long-path proof and its exact row-dependent fallback.</summary>
 /// <param name="output">The sink retaining actual generated SQL for native qualification.</param>
-public sealed partial class SqlServerPathFailureTranslationTests(ITestOutputHelper output)
+public sealed partial class SqlServerPathFailureTranslationTests(
+    ITestOutputHelper output
+)
 {
     /// <summary>Independent paths complete failure points once; row-dependent rules keep their own count.</summary>
     /// <param name="rowAware">Whether the edge rule depends on the original occurrence.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task PathProofCompletesOnlyRowIndependentFailures(bool rowAware)
+    public async Task PathProofCompletesOnlyRowIndependentFailures(
+        bool rowAware
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -20,19 +24,37 @@ public sealed partial class SqlServerPathFailureTranslationTests(ITestOutputHelp
             .AddInterceptors(boundary);
 
         await using var services = NestedSetTestAdapters.BuildServices(options.Options);
-        await using var context = new CompositionContext(options.UseInternalServiceProvider(services).Options);
-        var tree = context.NestedSet<CompositionNode>().ForScope(Guid.Empty).InTree(Guid.Empty);
+        await using var context = new CompositionContext(options
+            .UseInternalServiceProvider(services)
+            .Options);
+
+        var tree = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty)
+            .InTree(Guid.Empty);
+
         var rows = tree.SelectSubtrees(node => node.Id == 1,
-            (upper, lower, distance) => new { Upper = upper, Lower = lower });
+            (upper, lower, distance) => new
+            {
+                Upper = upper,
+                Lower = lower,
+            });
 
         var query = rowAware
-            ? tree.WherePathEdges(rows, row => row.Upper, row => row.Lower,
+            ? tree.WherePathEdges(rows,
+                row => row.Upper,
+                row => row.Lower,
                 (row, parent, child) => child.EdgeOpen && child.Id <= row.Upper.Id + 100)
-            : tree.WherePathEdges(rows, row => row.Upper, row => row.Lower,
+            : tree.WherePathEdges(rows,
+                row => row.Upper,
+                row => row.Lower,
                 (row, parent, child) => child.EdgeOpen);
 
         // Act
-        var sql = query.Select(row => row.Lower.Id).ToQueryString();
+        var sql = query
+            .Select(row => row.Lower.Id)
+            .ToQueryString();
+
         var fenced = FencedRelations(sql);
         output.WriteLine(sql);
 
@@ -52,7 +74,9 @@ public sealed partial class SqlServerPathFailureTranslationTests(ITestOutputHelp
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task CompletedFailurePointsKeepOuterFiltersOutsideTheFence(bool nearest)
+    public async Task CompletedFailurePointsKeepOuterFiltersOutsideTheFence(
+        bool nearest
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -61,18 +85,37 @@ public sealed partial class SqlServerPathFailureTranslationTests(ITestOutputHelp
             .AddInterceptors(boundary);
 
         await using var services = NestedSetTestAdapters.BuildServices(options.Options);
-        await using var context = new CompositionContext(options.UseInternalServiceProvider(services).Options);
-        var tree = context.NestedSet<CompositionNode>().ForScope(Guid.Empty).InTree(Guid.Empty);
+        await using var context = new CompositionContext(options
+            .UseInternalServiceProvider(services)
+            .Options);
+
+        var tree = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty)
+            .InTree(Guid.Empty);
+
         var rows = tree.SelectSubtrees(node => node.Id == 1,
-            (upper, lower, distance) => new { Upper = upper, Lower = lower });
+            (upper, lower, distance) => new
+            {
+                Upper = upper,
+                Lower = lower,
+            });
 
         var query = nearest
-            ? tree.WhereNearestAncestorOrSelf(rows, row => row.Lower,
-                (row, owner) => owner.Candidate && owner.Id != row.Lower.Id, (row, owner) => owner.Matches)
-            : tree.WherePathEdges(rows, row => row.Upper, row => row.Lower, (_, parent, child) => child.EdgeOpen);
+            ? tree.WhereNearestAncestorOrSelf(rows,
+                row => row.Lower,
+                (row, owner) => owner.Candidate && owner.Id != row.Lower.Id,
+                (row, owner) => owner.Matches)
+            : tree.WherePathEdges(rows,
+                row => row.Upper,
+                row => row.Lower,
+                (_, parent, child) => child.EdgeOpen);
 
         // Act
-        var sql = query.Select(row => row.Lower.Id).ToQueryString();
+        var sql = query
+            .Select(row => row.Lower.Id)
+            .ToQueryString();
+
         output.WriteLine(sql);
 
         // Assert
@@ -102,7 +145,9 @@ public sealed partial class SqlServerPathFailureTranslationTests(ITestOutputHelp
     }
 
     /// <summary>Reads each derived table closed by the completion fence, respecting nested parentheses.</summary>
-    private static string[] FencedRelations(string sql)
+    private static string[] FencedRelations(
+        string sql
+    )
     {
         var result = new List<string>();
 
@@ -138,9 +183,12 @@ public sealed partial class SqlServerPathFailureTranslationTests(ITestOutputHelp
     }
 
     /// <summary>Requires every column reference inside a fenced relation to use an alias declared there.</summary>
-    private static void AssertUncorrelated(string relation)
+    private static void AssertUncorrelated(
+        string relation
+    )
     {
-        var declared = Regex.Matches(relation, @"\bAS \[(?<alias>\w+)\]")
+        var declared = Regex
+            .Matches(relation, @"\bAS \[(?<alias>\w+)\]")
             .Select(match => match.Groups["alias"].Value)
             .ToHashSet(StringComparer.Ordinal);
 

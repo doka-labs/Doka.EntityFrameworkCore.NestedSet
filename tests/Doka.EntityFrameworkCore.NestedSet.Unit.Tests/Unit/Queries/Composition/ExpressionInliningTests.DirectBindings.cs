@@ -24,14 +24,22 @@ public sealed partial class ExpressionInliningTests
         // Arrange
         var probe = new GetterProbe();
         var member = staticMember
-            ? Expression.Property(null, typeof(ExpressionInliningTests).GetProperty(
-                nameof(UnreadStaticValue), BindingFlags.NonPublic | BindingFlags.Static)!)
+            ? Expression.Property(null,
+                typeof(ExpressionInliningTests).GetProperty(
+                    nameof(UnreadStaticValue),
+                    BindingFlags.NonPublic | BindingFlags.Static)!)
             : Expression.Property(Expression.Constant(probe), nameof(GetterProbe.Value));
 
         var expression = Expression.Lambda(member, Parameters(arity));
-        var arguments = Enumerable.Repeat<Expression>(Expression.Constant(7), arity).ToArray();
+        var arguments = Enumerable
+            .Repeat<Expression>(Expression.Constant(7), arity)
+            .ToArray();
+
         const int repetitions = 1000;
 
+        // WHY: Warm the selected overload before counting allocations over the unchanged expression and arguments.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < repetitions; index++)
         {
             GC.KeepAlive(Inline(expression, arguments));
@@ -42,6 +50,9 @@ public sealed partial class ExpressionInliningTests
         // Act
         var actual = Inline(expression, arguments);
 
+        // WHY: Repeat the same binding within this allocation window to expose a per-call regression.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < repetitions; index++)
         {
             GC.KeepAlive(Inline(expression, arguments));
@@ -56,9 +67,12 @@ public sealed partial class ExpressionInliningTests
     }
 
     /// <summary>Provides a static getter that expression composition must never invoke.</summary>
-    private static int UnreadStaticValue => throw new InvalidOperationException("Static getters must remain unevaluated.");
+    private static int UnreadStaticValue =>
+        throw new InvalidOperationException("Static getters must remain unevaluated.");
 
-    /// <summary>Every fixed binding slot returns the exact supplied expression without revisiting its parameters.</summary>
+    /// <summary>
+    /// Every fixed binding slot returns the exact supplied expression without revisiting its parameters.
+    /// </summary>
     /// <param name="arity">The fixed overload's binding count.</param>
     /// <param name="selected">The independently selected parameter slot.</param>
     [Theory]
@@ -77,7 +91,11 @@ public sealed partial class ExpressionInliningTests
         var parameters = Parameters(arity);
         var expression = Expression.Lambda(parameters[selected], parameters);
         var external = Expression.Parameter(typeof(int), "value");
-        var arguments = parameters.Skip(1).Append(external).Cast<Expression>().ToArray();
+        var arguments = parameters
+            .Skip(1)
+            .Append(external)
+            .Cast<Expression>()
+            .ToArray();
 
         // Act
         var actual = Inline(expression, arguments);
@@ -110,7 +128,8 @@ public sealed partial class ExpressionInliningTests
             Last = 29,
         };
 
-        var parameters = Enumerable.Range(0, arity)
+        var parameters = Enumerable
+            .Range(0, arity)
             .Select(_ => Expression.Parameter(typeof(ProjectionMembers), "row"))
             .ToArray();
 
@@ -120,7 +139,10 @@ public sealed partial class ExpressionInliningTests
 
         var initializer = Assert.IsType<MemberInitExpression>(projection.Body);
         var expected = Assert.IsType<MemberAssignment>(initializer.Bindings[2]).Expression;
-        var arguments = Enumerable.Repeat<Expression>(initializer, arity).ToArray();
+
+        var arguments = Enumerable
+            .Repeat<Expression>(initializer, arity)
+            .ToArray();
 
         // Act
         var actual = Inline(expression, arguments);
@@ -141,21 +163,25 @@ public sealed partial class ExpressionInliningTests
     )
     {
         // Arrange
-        var parameters = Enumerable.Range(0, arity)
+        var parameters = Enumerable
+            .Range(0, arity)
             .Select(_ => Expression.Parameter(typeof(ProjectionMembers), "row"))
             .ToArray();
 
         var foreign = Expression.Parameter(typeof(ProjectionMembers), "row");
         var member = Expression.Property(foreign, nameof(ProjectionMembers.Last));
         var expression = Expression.Lambda(member, parameters);
-        var arguments = Enumerable.Repeat<Expression>(Expression.New(typeof(ProjectionMembers)), arity).ToArray();
+        var arguments = Enumerable
+            .Repeat<Expression>(Expression.New(typeof(ProjectionMembers)), arity)
+            .ToArray();
 
         // Act
         var actual = Inline(expression, arguments);
 
         // Assert
         Assert.Same(member, actual);
-        Assert.Same(foreign, Assert.IsAssignableFrom<MemberExpression>(actual).Expression);
+        Assert.Same(foreign,
+            Assert.IsAssignableFrom<MemberExpression>(actual).Expression);
     }
 
     /// <summary>Selected projection assignments retain any other lambda parameter they contain.</summary>
@@ -170,7 +196,10 @@ public sealed partial class ExpressionInliningTests
         // Arrange
         var first = Expression.Parameter(typeof(ProjectionMembers), "row");
         var remaining = Parameters(arity - 1);
-        var parameters = new[] { first }.Concat(remaining).ToArray();
+        var parameters = new[] { first }
+            .Concat(remaining)
+            .ToArray();
+
         var property = typeof(ProjectionMembers).GetProperty(nameof(ProjectionMembers.First))!;
         var initializer = Expression.MemberInit(
             Expression.New(typeof(ProjectionMembers)),
@@ -178,7 +207,9 @@ public sealed partial class ExpressionInliningTests
 
         var expression = Expression.Lambda(Expression.Property(first, property), parameters);
         var arguments = new Expression[] { initializer }
-            .Concat(Enumerable.Range(1, arity - 1).Select(value => Expression.Constant(value)))
+            .Concat(Enumerable
+                .Range(1, arity - 1)
+                .Select(value => Expression.Constant(value)))
             .ToArray();
 
         // Act
@@ -199,7 +230,8 @@ public sealed partial class ExpressionInliningTests
     )
     {
         // Arrange
-        var parameters = Enumerable.Range(0, arity)
+        var parameters = Enumerable
+            .Range(0, arity)
             .Select(_ => Expression.Parameter(typeof(ProjectionMembers), "row"))
             .ToArray();
 
@@ -207,7 +239,9 @@ public sealed partial class ExpressionInliningTests
             Expression.Property(parameters[^1], nameof(ProjectionMembers.Last)),
             parameters);
 
-        var arguments = Enumerable.Repeat<Expression>(Expression.Constant("wrong target"), arity).ToArray();
+        var arguments = Enumerable
+            .Repeat<Expression>(Expression.Constant("wrong target"), arity)
+            .ToArray();
 
         // Act
         var expected = Record.Exception(() => NestedSetQueryExpressions.Inline(expression, arguments));
@@ -236,7 +270,8 @@ public sealed partial class ExpressionInliningTests
     )
     {
         // Arrange
-        var parameters = Enumerable.Range(0, arity)
+        var parameters = Enumerable
+            .Range(0, arity)
             .Select(_ => Expression.Parameter(member ? typeof(ProjectionMembers) : typeof(int), "row"))
             .ToArray();
 
@@ -252,9 +287,15 @@ public sealed partial class ExpressionInliningTests
                 Expression.Bind(typeof(ProjectionMembers).GetProperty(nameof(ProjectionMembers.Last))!, value))
             : value;
 
-        var arguments = Enumerable.Repeat(argument, arity).ToArray();
+        var arguments = Enumerable
+            .Repeat(argument, arity)
+            .ToArray();
+
         const int repetitions = 1000;
 
+        // WHY: Warm the selected direct-binding path before opening its allocation window.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < repetitions; index++)
         {
             GC.KeepAlive(Inline(expression, arguments));
@@ -263,6 +304,9 @@ public sealed partial class ExpressionInliningTests
         var before = GC.GetAllocatedBytesForCurrentThread();
 
         // Act
+        // WHY: Keep the fixed call count in one allocation window over the same prepared binding.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < repetitions; index++)
         {
             GC.KeepAlive(Inline(expression, arguments));

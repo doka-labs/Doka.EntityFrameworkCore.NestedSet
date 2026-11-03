@@ -11,7 +11,9 @@ public sealed partial class SupervisorEvidenceJoinTests
     [InlineData("unique")]
     [InlineData("priority")]
     [InlineData("person")]
-    public async Task SqlServerEvidenceAdmissionIsIndependentOfMissingOriginMarkers(string mode)
+    public async Task SqlServerEvidenceAdmissionIsIndependentOfMissingOriginMarkers(
+        string mode
+    )
     {
         // Arrange
         await using var context = new UserGroupContext(
@@ -39,7 +41,8 @@ public sealed partial class SupervisorEvidenceJoinTests
         Assert.Equal(nameof(Queryable.Join), evidence.Method.Name);
         Assert.Contains("UNION ALL", sql, StringComparison.Ordinal);
         Assert.Contains("INNER JOIN", sql, StringComparison.Ordinal);
-        Assert.NotEqual(ConnectionState.Open, context.Database.GetDbConnection().State);
+        Assert.NotEqual(ConnectionState.Open,
+            context.Database.GetDbConnection().State);
         Assert.Empty(context.ChangeTracker.Entries());
         TestContext.Current.TestOutputHelper?.WriteLine(sql);
     }
@@ -56,7 +59,10 @@ public sealed partial class SupervisorEvidenceJoinTests
     [InlineData("unique", true)]
     [InlineData("priority", true)]
     [InlineData("person", true)]
-    public async Task MixedOriginsKeepExactStatusesOccurrencesAndPhysicalRows(string mode, bool closed)
+    public async Task MixedOriginsKeepExactStatusesOccurrencesAndPhysicalRows(
+        string mode,
+        bool closed
+    )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
@@ -78,7 +84,8 @@ public sealed partial class SupervisorEvidenceJoinTests
         probe.Enabled = true;
 
         // Act
-        var rows = await SupervisorQueries.ResolutionRows(context, data.TenantId, request, selection)
+        var rows = await SupervisorQueries
+            .ResolutionRows(context, data.TenantId, request, selection)
             .ToArrayAsync(CancellationToken.None);
 
         var result = SupervisorQueries.ReadResolution(data.TenantId, rows, selection);
@@ -91,14 +98,19 @@ public sealed partial class SupervisorEvidenceJoinTests
         var unique = Assert.Single(result.Origins, origin => origin.StartGroupId == data.Groups[5]);
         Assert.Equal(SupervisorResolutionStatus.Found, unique.Status);
         Assert.Equal(closed ? 1 : 2, unique.Evidence.Count);
-        Assert.All(unique.Evidence, row =>
-        {
-            Assert.Equal(data.Users[1], row.CandidateUserId);
-            Assert.Equal(data.TreeId, row.StartTreeId);
-        });
+        Assert.All(unique.Evidence,
+            row =>
+            {
+                Assert.Equal(data.Users[1], row.CandidateUserId);
+                Assert.Equal(data.TreeId, row.StartTreeId);
+            });
 
         Assert.Equal(closed ? new[] { data.Groups[4] } : new[] { data.Groups[2], data.Groups[4] },
-            unique.Evidence.Select(row => row.FoundGroupId).Order().ToArray());
+            unique
+                .Evidence
+                .Select(row => row.FoundGroupId)
+                .Order()
+                .ToArray());
         Assert.Equal(mode == "priority" && !closed ? data.Groups[2] : data.Groups[4],
             unique.Continuation!.FoundGroupId);
         var ambiguous = Assert.Single(result.Origins, origin => origin.StartGroupId == data.Groups[6]);
@@ -138,7 +150,10 @@ public sealed partial class SupervisorEvidenceJoinTests
         probe.Enabled = true;
 
         // Act
-        var rows = await SupervisorQueries.ResolutionRows(context, data.TenantId, request,
+        var rows = await SupervisorQueries
+            .ResolutionRows(context,
+                data.TenantId,
+                request,
                 SupervisorSelection.RequireUnique)
             .ToArrayAsync(CancellationToken.None);
 
@@ -165,7 +180,9 @@ public sealed partial class SupervisorEvidenceJoinTests
     }
 
     /// <summary>Resolves only the three rules that server-reduce evidence to a unique person.</summary>
-    private static SupervisorSelection Selection(string mode) => mode switch
+    private static SupervisorSelection Selection(
+        string mode
+    ) => mode switch
     {
         "unique" => SupervisorSelection.RequireUnique,
         "priority" => SupervisorSelection.HighestBusinessPriority,

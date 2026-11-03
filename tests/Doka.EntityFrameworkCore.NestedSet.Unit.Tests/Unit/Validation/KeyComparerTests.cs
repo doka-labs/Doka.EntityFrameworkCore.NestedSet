@@ -21,6 +21,9 @@ public sealed class KeyComparerTests
         var found = 0;
 
         // Act
+        // WHY: Repeating one populated lookup isolates comparer boxing from dictionary growth or input allocation.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < 100_000; index++)
         {
             found += dictionary.ContainsKey(42) ? 1 : 0;

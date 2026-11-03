@@ -57,6 +57,9 @@ public sealed class HistogramAdviceTests
         Assert.Equal(expected, boundaries);
         Assert.All(boundaries, boundary => Assert.True(double.IsFinite(boundary) && boundary > 0));
 
+        // WHY: Adjacent bucket positions establish strict ordering without constructing paired sequences.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 1; index < boundaries.Count; index++)
         {
             Assert.True(boundaries[index - 1] < boundaries[index]);

@@ -16,7 +16,11 @@ public sealed class SqlServerAncestorCollectionTests
     [InlineData(true, false, true)]
     [InlineData(true, true, false)]
     [InlineData(true, true, true)]
-    public async Task RealNavigationModelsTranslateCollectionsWithoutIo(bool indexed, bool includeSelf, bool dto)
+    public async Task RealNavigationModelsTranslateCollectionsWithoutIo(
+        bool indexed,
+        bool includeSelf,
+        bool dto
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -26,21 +30,45 @@ public sealed class SqlServerAncestorCollectionTests
 
         var configured = indexed
             ? (DbContextOptions)new DbContextOptionsBuilder<AncestorIndexQueryContext>(
-                (DbContextOptions<AncestorIndexQueryContext>)options).AddInterceptors(boundary).Options
+                    (DbContextOptions<AncestorIndexQueryContext>)options)
+                .AddInterceptors(boundary)
+                .Options
             : new DbContextOptionsBuilder<CompositionNavigationContext>(
-                (DbContextOptions<CompositionNavigationContext>)options).AddInterceptors(boundary).Options;
+                    (DbContextOptions<CompositionNavigationContext>)options)
+                .AddInterceptors(boundary)
+                .Options;
 
         await using var services = NestedSetTestAdapters.BuildServices(configured);
         await using var context = CreateContext(configured, services, indexed);
-        var tree = context.NestedSet<CompositionNavigationNode>().ForScope(Guid.Empty).InTree(Guid.Empty);
+        var tree = context
+            .NestedSet<CompositionNavigationNode>()
+            .ForScope(Guid.Empty)
+            .InTree(Guid.Empty);
+
         var pairs = includeSelf
             ? tree.SelectAncestorsOrSelf(node => node.Id >= 2,
-                (source, owner, distance) => new NavigationPair { Source = source, Owner = owner, Distance = distance })
+                (source, owner, distance) => new NavigationPair
+                {
+                    Source = source,
+                    Owner = owner,
+                    Distance = distance,
+                })
             : tree.SelectAncestors(node => node.Id >= 2,
-                (source, owner, distance) => new NavigationPair { Source = source, Owner = owner, Distance = distance });
+                (source, owner, distance) => new NavigationPair
+                {
+                    Source = source,
+                    Owner = owner,
+                    Distance = distance,
+                });
 
         // Act
-        var sql = dto ? CollectionDtos(pairs).AsSingleQuery().ToQueryString() : pairs.AsSingleQuery().ToQueryString();
+        var sql = dto
+            ? CollectionDtos(pairs)
+                .AsSingleQuery()
+                .ToQueryString()
+            : pairs
+                .AsSingleQuery()
+                .ToQueryString();
 
         // Assert
         Assert.Contains("LEFT JOIN", sql, StringComparison.Ordinal);
@@ -52,25 +80,56 @@ public sealed class SqlServerAncestorCollectionTests
     }
 
     /// <summary>Owns each real model's provider graph without process-global service-provider caching.</summary>
-    private static DbContext CreateContext(DbContextOptions options, ServiceProvider services, bool indexed)
+    private static DbContext CreateContext(
+        DbContextOptions options,
+        ServiceProvider services,
+        bool indexed
+    )
         => indexed
             ? new AncestorIndexQueryContext(new DbContextOptionsBuilder<AncestorIndexQueryContext>(
                     (DbContextOptions<AncestorIndexQueryContext>)options)
-                .UseInternalServiceProvider(services).Options)
+                .UseInternalServiceProvider(services)
+                .Options)
             : new CompositionNavigationContext(new DbContextOptionsBuilder<CompositionNavigationContext>(
                     (DbContextOptions<CompositionNavigationContext>)options)
-                .UseInternalServiceProvider(services).Options);
+                .UseInternalServiceProvider(services)
+                .Options);
 
     /// <summary>Projects both actual aliases without materializing mapped principals or their dependents.</summary>
-    private static IQueryable<NavigationDto> CollectionDtos(IQueryable<NavigationPair> pairs)
+    private static IQueryable<NavigationDto> CollectionDtos(
+        IQueryable<NavigationPair> pairs
+    )
         => pairs.Select(row => new NavigationDto
         {
-            Source = row.Source.Id, Owner = row.Owner.Id, Distance = row.Distance,
-            SourceCaption = row.Source.Details.Caption, OwnerCaption = row.Owner.Details.Caption,
-            SourceTags = row.Source.Tags.OrderBy(tag => tag.Id).Select(tag => tag.Value).ToArray(),
-            OwnerTags = row.Owner.Tags.OrderBy(tag => tag.Id).Select(tag => tag.Value).ToArray(),
-            SourceItems = row.Source.Items.OrderBy(item => item.Id).Select(item => item.Label).ToArray(),
-            OwnerItems = row.Owner.Items.OrderBy(item => item.Id).Select(item => item.Label).ToArray(),
+            Source = row.Source.Id,
+            Owner = row.Owner.Id,
+            Distance = row.Distance,
+            SourceCaption = row.Source.Details.Caption,
+            OwnerCaption = row.Owner.Details.Caption,
+            SourceTags = row
+                .Source
+                .Tags
+                .OrderBy(tag => tag.Id)
+                .Select(tag => tag.Value)
+                .ToArray(),
+            OwnerTags = row
+                .Owner
+                .Tags
+                .OrderBy(tag => tag.Id)
+                .Select(tag => tag.Value)
+                .ToArray(),
+            SourceItems = row
+                .Source
+                .Items
+                .OrderBy(item => item.Id)
+                .Select(item => item.Label)
+                .ToArray(),
+            OwnerItems = row
+                .Owner
+                .Items
+                .OrderBy(item => item.Id)
+                .Select(item => item.Label)
+                .ToArray(),
         });
 
     /// <summary>Retains the actual mapped aliases so EF must preserve collection identifiers.</summary>
@@ -78,8 +137,10 @@ public sealed class SqlServerAncestorCollectionTests
     {
         /// <summary>Gets the selected mapped source.</summary>
         public required CompositionNavigationNode Source { get; init; }
+
         /// <summary>Gets its actual mapped ancestor.</summary>
         public required CompositionNavigationNode Owner { get; init; }
+
         /// <summary>Gets their structural distance.</summary>
         public int Distance { get; init; }
     }
@@ -89,20 +150,28 @@ public sealed class SqlServerAncestorCollectionTests
     {
         /// <summary>Gets the source identity.</summary>
         public int Source { get; init; }
+
         /// <summary>Gets the ancestor identity.</summary>
         public int Owner { get; init; }
+
         /// <summary>Gets the structural distance.</summary>
         public int Distance { get; init; }
+
         /// <summary>Gets the source's owned reference value.</summary>
         public string SourceCaption { get; init; } = string.Empty;
+
         /// <summary>Gets the ancestor's owned reference value.</summary>
         public string OwnerCaption { get; init; } = string.Empty;
+
         /// <summary>Gets the source's owned collection.</summary>
         public string[] SourceTags { get; init; } = [];
+
         /// <summary>Gets the ancestor's owned collection.</summary>
         public string[] OwnerTags { get; init; } = [];
+
         /// <summary>Gets the source's ordinary collection.</summary>
         public string[] SourceItems { get; init; } = [];
+
         /// <summary>Gets the ancestor's ordinary collection.</summary>
         public string[] OwnerItems { get; init; } = [];
     }

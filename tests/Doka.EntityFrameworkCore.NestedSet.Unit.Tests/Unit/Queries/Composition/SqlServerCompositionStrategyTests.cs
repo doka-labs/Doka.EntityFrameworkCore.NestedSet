@@ -11,7 +11,9 @@ public sealed partial class SqlServerCompositionStrategyTests
 
     /// <summary>Retains generated SQL as translation evidence without database execution.</summary>
     /// <param name="output">The test-owned diagnostic sink.</param>
-    public SqlServerCompositionStrategyTests(ITestOutputHelper output)
+    public SqlServerCompositionStrategyTests(
+        ITestOutputHelper output
+    )
     {
         _output = output;
     }
@@ -21,7 +23,9 @@ public sealed partial class SqlServerCompositionStrategyTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task StrictAncestorsDriveVisibleOwnersIntoFencedSourceRanges(bool treeBound)
+    public async Task StrictAncestorsDriveVisibleOwnersIntoFencedSourceRanges(
+        bool treeBound
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -30,18 +34,37 @@ public sealed partial class SqlServerCompositionStrategyTests
             .AddInterceptors(boundary);
 
         await using var services = NestedSetTestAdapters.BuildServices(options.Options);
-        await using var context = new CompositionContext(options.UseInternalServiceProvider(services).Options);
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(Guid.Empty);
+        await using var context = new CompositionContext(options
+            .UseInternalServiceProvider(services)
+            .Options);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty);
+
         var query = treeBound
-            ? hierarchy.InTree(Guid.Empty).SelectAncestors(node => node.Id >= 3,
-                (source, owner, distance) => new { Source = source.Id, Owner = owner.Id, Distance = distance })
+            ? hierarchy
+                .InTree(Guid.Empty)
+                .SelectAncestors(node => node.Id >= 3,
+                    (source, owner, distance) => new
+                    {
+                        Source = source.Id,
+                        Owner = owner.Id,
+                        Distance = distance,
+                    })
             : hierarchy.SelectAncestors(node => node.Id >= 3,
-                (source, owner, distance) => new { Source = source.Id, Owner = owner.Id, Distance = distance });
+                (source, owner, distance) => new
+                {
+                    Source = source.Id,
+                    Owner = owner.Id,
+                    Distance = distance,
+                });
 
         // Act
         var sql = query.ToQueryString();
         _output.WriteLine(sql);
         var owner = Regex.Match(sql, @"FROM \[\w+\] AS (?<owner>\[\w+\])\s+CROSS APPLY \(").Groups["owner"].Value;
+
         var apply = ApplyBlock(sql);
 
         // Assert
@@ -68,21 +91,36 @@ public sealed partial class SqlServerCompositionStrategyTests
     [InlineData("Sqlite", false)]
     [InlineData("MySql", false)]
     [InlineData("MariaDb", false)]
-    public async Task SelectedAdapterKeepsItsAncestorOwnerShape(string engine, bool fenced)
+    public async Task SelectedAdapterKeepsItsAncestorOwnerShape(
+        string engine,
+        bool fenced
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
         var native = engine == "Sqlite"
             ? new DbContextOptionsBuilder<CompositionContext>()
-                .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets()).Options
+                .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
+                .Options
             : ModelCompatibilityDatabase.Options<CompositionContext>(engine);
 
         var options = new DbContextOptionsBuilder<CompositionContext>(native).AddInterceptors(boundary);
         await using var services = NestedSetTestAdapters.BuildServices(options.Options);
-        await using var context = new CompositionContext(options.UseInternalServiceProvider(services).Options);
-        var query = context.NestedSet<CompositionNode>().ForScope(Guid.Empty).InTree(Guid.Empty)
+        await using var context = new CompositionContext(options
+            .UseInternalServiceProvider(services)
+            .Options);
+
+        var query = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty)
+            .InTree(Guid.Empty)
             .SelectAncestors(node => node.Id >= 3,
-                (source, owner, distance) => new { Source = source.Id, Owner = owner.Id, Distance = distance });
+                (source, owner, distance) => new
+                {
+                    Source = source.Id,
+                    Owner = owner.Id,
+                    Distance = distance,
+                });
 
         // Act
         var sql = query.ToQueryString();
@@ -105,11 +143,19 @@ public sealed partial class SqlServerCompositionStrategyTests
         var options = ModelCompatibilityDatabase.Options<CompositionContext>("SqlServer");
         await using var services = NestedSetTestAdapters.BuildServices(options);
         await using var context = new CompositionContext(new DbContextOptionsBuilder<CompositionContext>(options)
-            .UseInternalServiceProvider(services).Options);
+            .UseInternalServiceProvider(services)
+            .Options);
 
-        var query = context.NestedSet<CompositionNode>().ForScope(Guid.Empty).InTree(Guid.Empty)
+        var query = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty)
+            .InTree(Guid.Empty)
             .SelectAncestors(node => node.Id >= 3,
-                (source, owner, distance) => new { Source = source.Id, Owner = owner.Id });
+                (source, owner, distance) => new
+                {
+                    Source = source.Id,
+                    Owner = owner.Id,
+                });
 
         // Act
         var sql = query.ToQueryString();
@@ -130,22 +176,32 @@ public sealed partial class SqlServerCompositionStrategyTests
         var events = new List<EventData>();
         var options = new DbContextOptionsBuilder<IndexedOwnerContext>(
                 ModelCompatibilityDatabase.Options<IndexedOwnerContext>("SqlServer"))
-            .LogTo((eventId, _) => eventId.Id == 70_004, events.Add);
+            .LogTo((eventId, _) => eventId.Id == 70_004,
+                events.Add);
 
         await using var services = NestedSetTestAdapters.BuildServices(options.Options);
-        await using var context = new IndexedOwnerContext(options.UseInternalServiceProvider(services).Options);
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(Guid.Empty);
+        await using var context = new IndexedOwnerContext(options
+            .UseInternalServiceProvider(services)
+            .Options);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty);
 
         // Act
-        _ = hierarchy.SelectAncestors(node => node.Id == 3, (source, owner, distance) => owner.Id);
+        _ = hierarchy.SelectAncestors(node => node.Id == 3,
+            (source, owner, distance) => owner.Id);
 
         // Assert
         Assert.True(NestedSetProviderCapabilities.Resolve(context).UsesIndependentAncestorOwners);
-        Assert.Equal(70_004, Assert.Single(events).EventId.Id);
+        Assert.Equal(70_004,
+            Assert.Single(events).EventId.Id);
     }
 
     /// <summary>Reads the first CROSS APPLY body, respecting nested query parentheses.</summary>
-    private static string ApplyBlock(string sql)
+    private static string ApplyBlock(
+        string sql
+    )
     {
         var start = sql.IndexOf("CROSS APPLY (", StringComparison.Ordinal) + "CROSS APPLY (".Length;
         var end = start;
@@ -170,13 +226,21 @@ public sealed partial class SqlServerCompositionStrategyTests
     private sealed class IndexedOwnerContext : DbContext
     {
         /// <summary>Creates the metadata-only context in its owned provider graph.</summary>
-        internal IndexedOwnerContext(DbContextOptions<IndexedOwnerContext> options) : base(options) { }
+        internal IndexedOwnerContext(
+            DbContextOptions<IndexedOwnerContext> options
+        ) : base(options) { }
 
         /// <inheritdoc />
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        protected override void OnModelCreating(
+            ModelBuilder modelBuilder
+        )
         {
             var node = modelBuilder.Entity<CompositionNode>();
-            node.HasKey(entity => new { entity.Scope, entity.Id });
+            node.HasKey(entity => new
+            {
+                entity.Scope,
+                entity.Id,
+            });
             node.HasNestedSet(hierarchy => hierarchy
                 .HasNodeKey(entity => entity.Id)
                 .HasScope(entity => entity.Scope)

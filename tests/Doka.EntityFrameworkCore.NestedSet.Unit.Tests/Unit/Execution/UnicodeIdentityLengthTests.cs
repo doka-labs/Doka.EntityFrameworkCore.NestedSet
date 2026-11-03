@@ -111,7 +111,8 @@ public sealed partial class UnicodeIdentityLengthTests
             NestedSetTreeLockMode.Existing));
 
         // Assert
-        Assert.Equal(scopeRole ? "Scope" : "TreeId", Assert.IsType<ArgumentException>(error).ParamName);
+        Assert.Equal(scopeRole ? "Scope" : "TreeId",
+            Assert.IsType<ArgumentException>(error).ParamName);
         AssertNoDatabaseAccess(context);
     }
 
@@ -126,8 +127,14 @@ public sealed partial class UnicodeIdentityLengthTests
             {
                 foreach (var shape in new[]
                          {
-                             "high", "low", "high-ascii", "high-high",
-                             "low-high", "ascii-high", "valid-high", "valid-low",
+                             "high",
+                             "low",
+                             "high-ascii",
+                             "high-high",
+                             "low-high",
+                             "ascii-high",
+                             "valid-high",
+                             "valid-low",
                          })
                 {
                     data.Add(engine, scope, shape);
@@ -177,7 +184,8 @@ public sealed partial class UnicodeIdentityLengthTests
         // Assert
         if (overflow)
         {
-            Assert.Equal(scopeRole ? "Scope" : "TreeId", Assert.IsType<ArgumentException>(error).ParamName);
+            Assert.Equal(scopeRole ? "Scope" : "TreeId",
+                Assert.IsType<ArgumentException>(error).ParamName);
         }
         else
         {
@@ -214,7 +222,8 @@ public sealed partial class UnicodeIdentityLengthTests
         // Assert
         if (overflow)
         {
-            Assert.Equal(scopeRole ? "Scope" : "TreeId", Assert.IsType<ArgumentException>(error).ParamName);
+            Assert.Equal(scopeRole ? "Scope" : "TreeId",
+                Assert.IsType<ArgumentException>(error).ParamName);
         }
         else
         {
@@ -229,7 +238,14 @@ public sealed partial class UnicodeIdentityLengthTests
     {
         var data = new TheoryData<string, bool, bool>();
 
-        foreach (var engine in new[] { "MySql", "MariaDb", "PostgreSql", "SqlServer", "Sqlite" })
+        foreach (var engine in new[]
+                 {
+                     "MySql",
+                     "MariaDb",
+                     "PostgreSql",
+                     "SqlServer",
+                     "Sqlite",
+                 })
         {
             foreach (var scope in new[] { false, true })
             {
@@ -269,7 +285,8 @@ public sealed partial class UnicodeIdentityLengthTests
             NestedSetTreeLockMode.Existing));
 
         // Assert
-        Assert.Equal(scopeRole ? "Scope" : "TreeId", Assert.IsType<ArgumentException>(error).ParamName);
+        Assert.Equal(scopeRole ? "Scope" : "TreeId",
+            Assert.IsType<ArgumentException>(error).ParamName);
         AssertNoDatabaseAccess(context);
     }
 
@@ -307,7 +324,8 @@ public sealed partial class UnicodeIdentityLengthTests
         // Assert
         if (overflow)
         {
-            Assert.Equal(scopeRole ? "Scope" : "TreeId", Assert.IsType<ArgumentException>(error).ParamName);
+            Assert.Equal(scopeRole ? "Scope" : "TreeId",
+                Assert.IsType<ArgumentException>(error).ParamName);
         }
         else
         {
@@ -350,7 +368,8 @@ public sealed partial class UnicodeIdentityLengthTests
         // Assert
         if (overflow)
         {
-            Assert.Equal("TreeId", Assert.IsType<ArgumentException>(error).ParamName);
+            Assert.Equal("TreeId",
+                Assert.IsType<ArgumentException>(error).ParamName);
             Assert.Null(request);
         }
         else
@@ -387,7 +406,8 @@ public sealed partial class UnicodeIdentityLengthTests
             NestedSetTreeLockMode.New));
 
         // Assert
-        Assert.Equal("TreeId", Assert.IsType<ArgumentException>(error).ParamName);
+        Assert.Equal("TreeId",
+            Assert.IsType<ArgumentException>(error).ParamName);
         AssertNoDatabaseAccess(context);
     }
 
@@ -396,7 +416,8 @@ public sealed partial class UnicodeIdentityLengthTests
         DbContext context
     )
     {
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
         Assert.Null(context.Database.CurrentTransaction);
         Assert.Empty(context.ChangeTracker.Entries());
     }

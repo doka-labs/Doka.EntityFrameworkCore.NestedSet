@@ -31,18 +31,24 @@ public sealed partial class CompositionAncestorIndexTests
         var options = ModelCompatibilityDatabase.Options<IndexCompositionContext>(engine, connection);
         await using var provider = SelectionServices(options);
         await using var context = new IndexCompositionContext(
-            new DbContextOptionsBuilder<IndexCompositionContext>(options).UseInternalServiceProvider(provider).Options);
+            new DbContextOptionsBuilder<IndexCompositionContext>(options)
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var facts = context.Set<SelectionFact>();
         var nodes = context.Set<CompositionNode>();
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(Guid.Empty);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty);
+
         var query = shape switch
         {
             "facts" => hierarchy.SelectAncestorsOrSelf(node => facts.Any(fact => fact.NodeId == node.Id),
                 (node, owner, distance) => owner.Id),
             "hierarchy" => hierarchy.SelectAncestorsOrSelf(node => nodes.Any(other => other.Id == node.Id + 1),
                 (node, owner, distance) => owner.Id),
-            _ => hierarchy.SelectAncestorsOrSelf(node => node.Id > 0, (node, owner, distance) => owner.Id),
+            _ => hierarchy.SelectAncestorsOrSelf(node => node.Id > 0,
+                (node, owner, distance) => owner.Id),
         };
 
         // Act

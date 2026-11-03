@@ -14,7 +14,9 @@ public sealed partial class SignalReportValidationTests
         var first = SignalReportDataset.Id(2);
         var second = SignalReportDataset.Id(1);
         var band = new TagCriterion(SignalReportDataset.ArrayKind, "Band", "Narrow");
-        var rackCode = new TagCriterion(SignalReportDataset.SensorKind, "RackCode", "R9",
+        var rackCode = new TagCriterion(SignalReportDataset.SensorKind,
+            "RackCode",
+            "R9",
             TagOwnerMode.Nearest);
 
         var carrier = band with
@@ -32,7 +34,8 @@ public sealed partial class SignalReportValidationTests
         var request = Request() with
         {
             AnchorIds = [first, second, first],
-            ChannelIds = [SignalReportDataset.SweepChannel, SignalReportDataset.PulseChannel, SignalReportDataset.SweepChannel],
+            ChannelIds =
+            [SignalReportDataset.SweepChannel, SignalReportDataset.PulseChannel, SignalReportDataset.SweepChannel],
             Sources = [CapturePort.Sweep, CapturePort.Pulse, CapturePort.Sweep, CapturePort.Burst],
             Criteria = [rackCode, band, cooling, carrier, rackCode, band],
         };
@@ -84,7 +87,8 @@ public sealed partial class SignalReportValidationTests
         Assert.Equal(SignalReportDataset.Id(1), Assert.Single(snapshot.AnchorIds));
         Assert.Equal(SignalReportDataset.PulseChannel, Assert.Single(snapshot.ChannelIds));
         Assert.Equal(CapturePort.Pulse, Assert.Single(snapshot.Sources));
-        Assert.Same(criterion, Assert.Single(Assert.Single(snapshot.Groups).Criteria));
+        Assert.Same(criterion,
+            Assert.Single(Assert.Single(snapshot.Groups).Criteria));
         Assert.NotSame(anchors, snapshot.AnchorIds);
         Assert.NotSame(signals, snapshot.ChannelIds);
         Assert.NotSame(sources, snapshot.Sources);
@@ -99,6 +103,7 @@ public sealed partial class SignalReportValidationTests
     {
         // Arrange
         var criterion = Request().Criteria[0];
+
         var criteria = new[]
         {
             criterion,
@@ -120,7 +125,8 @@ public sealed partial class SignalReportValidationTests
         var snapshot = SignalReportValidation.Snapshot(request);
 
         // Assert
-        Assert.Equal(criteria, Assert.Single(snapshot.Groups).Criteria);
+        Assert.Equal(criteria,
+            Assert.Single(snapshot.Groups).Criteria);
     }
 
     /// <summary>
@@ -131,6 +137,7 @@ public sealed partial class SignalReportValidationTests
     {
         // Arrange
         var first = Request().Criteria[0];
+
         var duplicate = first with { Value = new string(first.Value.AsSpan()) };
         var request = Request() with { Criteria = [first, duplicate] };
 
@@ -138,7 +145,8 @@ public sealed partial class SignalReportValidationTests
         var snapshot = SignalReportValidation.Snapshot(request);
 
         // Assert
-        Assert.Same(first, Assert.Single(Assert.Single(snapshot.Groups).Criteria));
+        Assert.Same(first,
+            Assert.Single(Assert.Single(snapshot.Groups).Criteria));
     }
 
     /// <summary>Null criteria and unsupported owner/classification/scalar forms fail before any catalog read.</summary>
@@ -148,20 +156,26 @@ public sealed partial class SignalReportValidationTests
     [InlineData("mode")]
     [InlineData("field")]
     [InlineData("value")]
-    public void SnapshotRejectsMalformedCriteria(string shape)
+    public void SnapshotRejectsMalformedCriteria(
+        string shape
+    )
     {
         // Arrange
         var criterion = Request().Criteria[0];
+
         var request = Request() with
         {
-            Criteria = [shape switch
-            {
-                "null" => null!,
-                "type" => criterion with { TypeId = Guid.Empty },
-                "mode" => criterion with { OwnerMode = (TagOwnerMode)17 },
-                "field" => criterion with { FieldCode = string.Empty },
-                _ => criterion with { Value = null! },
-            }],
+            Criteria =
+            [
+                shape switch
+                {
+                    "null" => null!,
+                    "type" => criterion with { TypeId = Guid.Empty },
+                    "mode" => criterion with { OwnerMode = (TagOwnerMode)17 },
+                    "field" => criterion with { FieldCode = string.Empty },
+                    _ => criterion with { Value = null! },
+                },
+            ],
         };
 
         // Act
@@ -171,5 +185,4 @@ public sealed partial class SignalReportValidationTests
         var argument = Assert.IsType<ArgumentException>(error);
         Assert.Equal("request", argument.ParamName);
     }
-
 }

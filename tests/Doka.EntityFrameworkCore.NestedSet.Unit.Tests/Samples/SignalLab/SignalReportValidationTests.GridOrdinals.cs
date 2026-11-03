@@ -20,32 +20,50 @@ public sealed partial class SignalReportValidationTests
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request()) with
         {
-            AnchorIds = Enumerable.Range(1, axisSize).Select(SignalReportDataset.Id).ToArray(),
-            ChannelIds = Enumerable.Range(101, axisSize).Select(SignalReportDataset.Id).ToArray(),
+            AnchorIds = Enumerable
+                .Range(1, axisSize)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
+            ChannelIds = Enumerable
+                .Range(101, axisSize)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
             Sources = [CapturePort.Burst, (CapturePort)(-1), CapturePort.Pulse],
         };
 
-        var identities = snapshot.AnchorIds.SelectMany(anchor => snapshot.ChannelIds.SelectMany(signal =>
-            snapshot.Sources.Select(source => (Anchor: anchor, Channel: signal, Source: source)))).ToArray();
+        var identities = snapshot
+            .AnchorIds
+            .SelectMany(anchor => snapshot.ChannelIds.SelectMany(signal =>
+                snapshot.Sources.Select(source => (Anchor: anchor, Channel: signal, Source: source))))
+            .ToArray();
 
-        var totals = identities.Select((key, index) => Total(key.Anchor, key.Channel, key.Source, index)).ToArray();
+        var totals = identities
+            .Select((key, index) => Total(key.Anchor, key.Channel, key.Source, index))
+            .ToArray();
+
         totals = ordering switch
         {
-            "reverse" => totals.Reverse().ToArray(),
-            "interleaved" => totals.Where((_, index) => index % 2 == 0)
-                .Concat(totals.Where((_, index) => index % 2 != 0)).ToArray(),
+            "reverse" => totals
+                .Reverse()
+                .ToArray(),
+            "interleaved" => totals
+                .Where((_, index) => index % 2 == 0)
+                .Concat(totals.Where((_, index) => index % 2 != 0))
+                .ToArray(),
             _ => totals,
         };
 
-        var expected = identities.Select((key, index) =>
-            new SignalReportCell(key.Anchor, key.Channel, key.Source, true, index)).ToArray();
+        var expected = identities
+            .Select((key, index) => new SignalReportCell(key.Anchor, key.Channel, key.Source, true, index))
+            .ToArray();
 
         var probe = new ReaderProbe();
 
         // Act
         var synchronous = SignalReportValidation.CreateGrid(snapshot, totals);
         var asynchronous = await SignalReportValidation.CreateGridAsync(snapshot,
-            ReadRows(totals, probe, CancellationToken.None), CancellationToken.None);
+            ReadRows(totals, probe, CancellationToken.None),
+            CancellationToken.None);
 
         // Assert
         Assert.Equal(expected, synchronous);
@@ -66,19 +84,41 @@ public sealed partial class SignalReportValidationTests
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request()) with
         {
-            AnchorIds = Enumerable.Range(0, axisSize).Select(index => SignalReportDataset.Id(index % 3 + 1)).ToArray(),
-            ChannelIds = [SignalReportDataset.SweepChannel, SignalReportDataset.PulseChannel, SignalReportDataset.SweepChannel],
+            AnchorIds = Enumerable
+                .Range(0, axisSize)
+                .Select(index => SignalReportDataset.Id(index % 3 + 1))
+                .ToArray(),
+            ChannelIds =
+            [SignalReportDataset.SweepChannel, SignalReportDataset.PulseChannel, SignalReportDataset.SweepChannel],
             Sources = [(CapturePort)99, CapturePort.Pulse, (CapturePort)99],
         };
 
-        var totals = snapshot.AnchorIds.Distinct().SelectMany(anchor => snapshot.ChannelIds.Distinct().SelectMany(signal =>
-            snapshot.Sources.Distinct().Select(source => Total(anchor, signal, source,
-                (anchor == snapshot.AnchorIds[0] ? 0 : 13) + (source == CapturePort.Pulse ? 7 : 0)))))
-            .Reverse().ToArray();
+        var totals = snapshot
+            .AnchorIds
+            .Distinct()
+            .SelectMany(anchor => snapshot
+                .ChannelIds
+                .Distinct()
+                .SelectMany(signal =>
+                    snapshot
+                        .Sources
+                        .Distinct()
+                        .Select(source => Total(anchor,
+                            signal,
+                            source,
+                            (anchor == snapshot.AnchorIds[0] ? 0 : 13) + (source == CapturePort.Pulse ? 7 : 0)))))
+            .Reverse()
+            .ToArray();
 
-        var expected = snapshot.AnchorIds.SelectMany(anchor => snapshot.ChannelIds.SelectMany(signal =>
-            snapshot.Sources.Select(source => new SignalReportCell(anchor, signal, source, true,
-                totals.Single(total => total.AnchorId == anchor && total.ChannelId == signal && total.Source == source).Value))))
+        var expected = snapshot
+            .AnchorIds
+            .SelectMany(anchor => snapshot.ChannelIds.SelectMany(signal =>
+                snapshot.Sources.Select(source => new SignalReportCell(anchor,
+                    signal,
+                    source,
+                    true,
+                    totals.Single(total =>
+                            total.AnchorId == anchor && total.ChannelId == signal && total.Source == source).Value))))
             .ToArray();
 
         var probe = new ReaderProbe();
@@ -86,7 +126,8 @@ public sealed partial class SignalReportValidationTests
         // Act
         var synchronous = SignalReportValidation.CreateGrid(snapshot, totals);
         var asynchronous = await SignalReportValidation.CreateGridAsync(snapshot,
-            ReadRows(totals, probe, CancellationToken.None), CancellationToken.None);
+            ReadRows(totals, probe, CancellationToken.None),
+            CancellationToken.None);
 
         // Assert
         Assert.Equal(expected, synchronous);
@@ -102,7 +143,9 @@ public sealed partial class SignalReportValidationTests
     [InlineData("anchor")]
     [InlineData("signal")]
     [InlineData("source")]
-    public async Task GridAdaptersPreserveRepeatedHeapAxisPositions(string axis)
+    public async Task GridAdaptersPreserveRepeatedHeapAxisPositions(
+        string axis
+    )
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request());
@@ -110,25 +153,51 @@ public sealed partial class SignalReportValidationTests
         {
             "anchor" => snapshot with
             {
-                AnchorIds = Enumerable.Range(0, 65).Select(index => SignalReportDataset.Id(index % 3 + 1)).ToArray(),
+                AnchorIds = Enumerable
+                    .Range(0, 65)
+                    .Select(index => SignalReportDataset.Id(index % 3 + 1))
+                    .ToArray(),
             },
             "signal" => snapshot with
             {
-                ChannelIds = Enumerable.Range(0, 65).Select(index => SignalReportDataset.Id(index % 3 + 101)).ToArray(),
+                ChannelIds = Enumerable
+                    .Range(0, 65)
+                    .Select(index => SignalReportDataset.Id(index % 3 + 101))
+                    .ToArray(),
             },
             _ => snapshot with
             {
-                Sources = Enumerable.Range(0, 65).Select(index => (CapturePort)(index % 3 + 97)).ToArray(),
+                Sources = Enumerable
+                    .Range(0, 65)
+                    .Select(index => (CapturePort)(index % 3 + 97))
+                    .ToArray(),
             },
         };
 
-        var totals = snapshot.AnchorIds.Distinct().SelectMany(anchor => snapshot.ChannelIds.Distinct().SelectMany(signal =>
-            snapshot.Sources.Distinct().Select(source => (Anchor: anchor, Channel: signal, Source: source))))
-            .Select((key, index) => Total(key.Anchor, key.Channel, key.Source, index)).Reverse().ToArray();
+        var totals = snapshot
+            .AnchorIds
+            .Distinct()
+            .SelectMany(anchor => snapshot
+                .ChannelIds
+                .Distinct()
+                .SelectMany(signal =>
+                    snapshot
+                        .Sources
+                        .Distinct()
+                        .Select(source => (Anchor: anchor, Channel: signal, Source: source))))
+            .Select((key, index) => Total(key.Anchor, key.Channel, key.Source, index))
+            .Reverse()
+            .ToArray();
 
-        var expected = snapshot.AnchorIds.SelectMany(anchor => snapshot.ChannelIds.SelectMany(signal =>
-            snapshot.Sources.Select(source => new SignalReportCell(anchor, signal, source, true,
-                totals.Single(total => total.AnchorId == anchor && total.ChannelId == signal && total.Source == source).Value))))
+        var expected = snapshot
+            .AnchorIds
+            .SelectMany(anchor => snapshot.ChannelIds.SelectMany(signal =>
+                snapshot.Sources.Select(source => new SignalReportCell(anchor,
+                    signal,
+                    source,
+                    true,
+                    totals.Single(total =>
+                            total.AnchorId == anchor && total.ChannelId == signal && total.Source == source).Value))))
             .ToArray();
 
         var probe = new ReaderProbe();
@@ -136,7 +205,8 @@ public sealed partial class SignalReportValidationTests
         // Act
         var synchronous = SignalReportValidation.CreateGrid(snapshot, totals);
         var asynchronous = await SignalReportValidation.CreateGridAsync(snapshot,
-            ReadRows(totals, probe, CancellationToken.None), CancellationToken.None);
+            ReadRows(totals, probe, CancellationToken.None),
+            CancellationToken.None);
 
         // Assert
         Assert.Equal(expected, synchronous);
@@ -165,20 +235,33 @@ public sealed partial class SignalReportValidationTests
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request()) with
         {
-            AnchorIds = Enumerable.Range(1, selected).Select(SignalReportDataset.Id).ToArray(),
+            AnchorIds = Enumerable
+                .Range(1, selected)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
         };
 
-        var totals = snapshot.AnchorIds.Take(measured)
-            .Select((anchor, index) => Total(anchor, snapshot.ChannelIds[0], CapturePort.Pulse, index)).ToArray();
+        var totals = snapshot
+            .AnchorIds
+            .Take(measured)
+            .Select((anchor, index) => Total(anchor, snapshot.ChannelIds[0], CapturePort.Pulse, index))
+            .ToArray();
 
-        var expected = snapshot.AnchorIds.Select((anchor, index) => new SignalReportCell(anchor,
-            snapshot.ChannelIds[0], CapturePort.Pulse, index < measured, index < measured ? index : 0)).ToArray();
+        var expected = snapshot
+            .AnchorIds
+            .Select((anchor, index) => new SignalReportCell(anchor,
+                snapshot.ChannelIds[0],
+                CapturePort.Pulse,
+                index < measured,
+                index < measured ? index : 0))
+            .ToArray();
 
         var probe = new ReaderProbe();
 
         // Act
         var actual = await SignalReportValidation.CreateGridAsync(snapshot,
-            ReadRows(totals, probe, CancellationToken.None), CancellationToken.None);
+            ReadRows(totals, probe, CancellationToken.None),
+            CancellationToken.None);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -194,23 +277,37 @@ public sealed partial class SignalReportValidationTests
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request()) with
         {
-            AnchorIds = Enumerable.Range(1, 24).Select(SignalReportDataset.Id).ToArray(),
+            AnchorIds = Enumerable
+                .Range(1, 24)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
         };
 
-        var selected = snapshot.AnchorIds.Take(17)
-            .Select((anchor, index) => Total(anchor, snapshot.ChannelIds[0], CapturePort.Pulse, index)).ToArray();
+        var selected = snapshot
+            .AnchorIds
+            .Take(17)
+            .Select((anchor, index) => Total(anchor, snapshot.ChannelIds[0], CapturePort.Pulse, index))
+            .ToArray();
 
         var foreign = Total(SignalReportDataset.Id(99), snapshot.ChannelIds[0], CapturePort.Pulse, 7);
-        var rows = selected.Append(selected[0]).Append(foreign).Append(foreign).ToArray();
+        var rows = selected
+            .Append(selected[0])
+            .Append(foreign)
+            .Append(foreign)
+            .ToArray();
+
         var probe = new ReaderProbe();
 
         // Act
         var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(snapshot,
-            ReadRows(rows, probe, CancellationToken.None), CancellationToken.None));
+            ReadRows(rows, probe, CancellationToken.None),
+            CancellationToken.None));
 
         // Assert
         var argument = Assert.IsType<ArgumentException>(error);
-        Assert.Contains(selected[0].AnchorId.ToString(), argument.Message, StringComparison.Ordinal);
+        Assert.Contains(selected[0].AnchorId.ToString(),
+            argument.Message,
+            StringComparison.Ordinal);
         Assert.True(probe.EndReached);
         Assert.True(probe.Disposed);
         Assert.Equal(rows.Length, probe.ReadCount);

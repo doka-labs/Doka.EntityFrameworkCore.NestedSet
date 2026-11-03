@@ -2,7 +2,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public sealed partial class QueryPlanReplayTests
 {
-    /// <summary>Failure evidence selects the actual query after setup and preserves diagnostic failure separately.</summary>
+    /// <summary>
+    /// Failure evidence selects the actual query after setup and preserves diagnostic failure separately.
+    /// </summary>
     /// <param name="diagnosticFails">Whether estimated-plan execution itself fails.</param>
     [Theory]
     [InlineData(false)]
@@ -21,7 +23,11 @@ public sealed partial class QueryPlanReplayTests
         probe.Commands.Add("SELECT 2");
         probe.ParameterBindings.Add([]);
         var original = new TimeoutException("Original target read timed out.");
-        var profile = "unit-" + Guid.NewGuid().ToString("N");
+        var profile = "unit-"
+            + Guid
+                .NewGuid()
+                .ToString("N");
+
         var directory = Environment.GetEnvironmentVariable("DOKA_NESTEDSET_QUERY_PLAN_DIR")
             ?? Path.Combine(Path.GetTempPath(), "doka-nestedset-query-plans");
 
@@ -40,7 +46,8 @@ public sealed partial class QueryPlanReplayTests
             Assert.Contains("SELECT 2", evidence, StringComparison.Ordinal);
             Assert.DoesNotContain("SELECT 1", evidence, StringComparison.Ordinal);
             Assert.Contains(diagnosticFails ? "Estimated-plan capture also failed:" : "estimated target plan",
-                evidence, StringComparison.Ordinal);
+                evidence,
+                StringComparison.Ordinal);
         }
         finally
         {

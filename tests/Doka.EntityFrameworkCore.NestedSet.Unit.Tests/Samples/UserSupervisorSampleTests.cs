@@ -3,7 +3,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples;
 /// <summary>Guards the UserGroups sample's independent supervisor tree and tenant-owned memberships.</summary>
 public sealed class UserSupervisorSampleTests
 {
-    /// <summary>Distinguishes the public business Position from the tree identity and coordinates in shadow state.</summary>
+    /// <summary>
+    /// Distinguishes the public business Position from the tree identity and coordinates in shadow state.
+    /// </summary>
     [Fact]
     public void StructuralCoordinatesRemainShadowProperties()
     {
@@ -38,7 +40,7 @@ public sealed class UserSupervisorSampleTests
             [
                 nameof(UserGroupMembership.TenantId),
                 nameof(UserGroupMembership.UserId),
-                nameof(UserGroupMembership.UserGroupId)
+                nameof(UserGroupMembership.UserGroupId),
             ],
             membership.FindPrimaryKey()!.Properties.Select(property => property.Name));
 
@@ -48,11 +50,11 @@ public sealed class UserSupervisorSampleTests
                 .Properties
                 .Select(property => property.Name)
                 .SequenceEqual(
-                [
-                    nameof(UserGroupMembership.TenantId),
-                    nameof(UserGroupMembership.UserGroupId),
-                    nameof(UserGroupMembership.UserId)
-                ]));
+                    [
+                        nameof(UserGroupMembership.TenantId),
+                        nameof(UserGroupMembership.UserGroupId),
+                        nameof(UserGroupMembership.UserId),
+                    ]));
 
         Assert.Contains(
             membership.GetForeignKeys(),
@@ -68,12 +70,12 @@ public sealed class UserSupervisorSampleTests
                 .Properties
                 .Select(property => property.Name)
                 .SequenceEqual(
-                [
-                    nameof(User.TenantId),
-                    UserHierarchyProperties.TreeId,
-                    nameof(User.SupervisorId),
-                    UserHierarchyProperties.NestedSetPosition,
-                ]));
+                    [
+                        nameof(User.TenantId),
+                        UserHierarchyProperties.TreeId,
+                        nameof(User.SupervisorId),
+                        UserHierarchyProperties.NestedSetPosition,
+                    ]));
     }
 
     /// <summary>A moved employee is found through scoped ancestors and retains its group membership.</summary>
@@ -305,7 +307,9 @@ public sealed class UserSupervisorSampleTests
         Assert.Equal(0, persistedCount);
     }
 
-    /// <summary>The database FK rejects an out-of-tenant supervisor even when the hierarchy facade is bypassed.</summary>
+    /// <summary>
+    /// The database FK rejects an out-of-tenant supervisor even when the hierarchy facade is bypassed.
+    /// </summary>
     [Fact]
     public async Task ForeignTenantSupervisorFailsAtDatabaseBoundaryAsync()
     {

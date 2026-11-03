@@ -15,6 +15,39 @@
   </ItemGroup>
 
   <ItemGroup Label="IDE file nesting">
+    <Compile Update="Samples/UserGroups/SupervisorEvidenceJoinTests.*.cs">
+      <DependentUpon>SupervisorEvidenceJoinTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Configuration/OptionsExtensionTests.*.cs">
+      <DependentUpon>OptionsExtensionTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/ManagedSave/CollectionBaselineOwnershipTests.*.cs">
+      <DependentUpon>CollectionBaselineOwnershipTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/ManagedSave/ComplexCollectionStorageRecoveryTests.*.cs">
+      <DependentUpon>ComplexCollectionStorageRecoveryTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/ManagedSave/ComplexDeletedElementRecoveryTests.*.cs">
+      <DependentUpon>ComplexDeletedElementRecoveryTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/ManagedSave/ComplexRecoveryCompositionTests.*.cs">
+      <DependentUpon>ComplexRecoveryCompositionTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/ManagedSave/ComplexTopologyRollbackAllocationTests.*.cs">
+      <DependentUpon>ComplexTopologyRollbackAllocationTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/ManagedSave/ComplexTopologyRollbackTests.*.cs">
+      <DependentUpon>ComplexTopologyRollbackTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Observation/QueryPlanReplayTests.*.cs">
+      <DependentUpon>QueryPlanReplayTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Queries/Composition/SqlServerCompositionStrategyTests.*.cs">
+      <DependentUpon>SqlServerCompositionStrategyTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Queries/Composition/SqlServerPathFailureTranslationTests.*.cs">
+      <DependentUpon>SqlServerPathFailureTranslationTests.cs</DependentUpon>
+    </Compile>
     <Compile Update="Unit/Providers/ProviderCapabilitiesTests.*.cs">
       <DependentUpon>ProviderCapabilitiesTests.cs</DependentUpon>
     </Compile>
@@ -38,6 +71,27 @@
     </Compile>
     <Compile Update="Unit/ManagedSave/CoordinatedGroupIterationTests.*.cs">
       <DependentUpon>CoordinatedGroupIterationTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/ManagedSave/HierarchyChangeDetectionTests.*.cs">
+      <DependentUpon>HierarchyChangeDetectionTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/ManagedSave/UnchangedForeignKeyRollbackTests.*.cs">
+      <DependentUpon>UnchangedForeignKeyRollbackTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/ManagedSave/TableSharingRollbackTests.*.cs">
+      <DependentUpon>TableSharingRollbackTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/ManagedSave/ComplexPeerRollbackTests.*.cs">
+      <DependentUpon>ComplexPeerRollbackTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/ManagedSave/ManagedSharingCaptureTests.*.cs">
+      <DependentUpon>ManagedSharingCaptureTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/ManagedSave/InputNavigationRollbackTests.*.cs">
+      <DependentUpon>InputNavigationRollbackTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/ManagedSave/PersistedRelationshipProofTests.*.cs">
+      <DependentUpon>PersistedRelationshipProofTests.cs</DependentUpon>
     </Compile>
     <Compile Update="Unit/Providers/DokaQueryFeaturesTests.*.cs">
       <DependentUpon>DokaQueryFeaturesTests.cs</DependentUpon>

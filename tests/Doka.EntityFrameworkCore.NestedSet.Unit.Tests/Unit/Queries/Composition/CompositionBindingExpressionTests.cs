@@ -5,7 +5,9 @@ using Doka.EntityFrameworkCore.NestedSet.Features.Queries;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Protects compact owned bindings without merging caller filters or replacing earlier identities.</summary>
-public sealed partial class CompositionBindingExpressionTests(ITestOutputHelper output)
+public sealed partial class CompositionBindingExpressionTests(
+    ITestOutputHelper output
+)
 {
     /// <summary>A scoped tree has one owned predicate rather than repeated EF-visible Where calls.</summary>
     [Fact]
@@ -13,9 +15,14 @@ public sealed partial class CompositionBindingExpressionTests(ITestOutputHelper 
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
-        var options = Options().AddInterceptors(boundary, boundary.Commands);
+        var options = Options()
+            .AddInterceptors(boundary, boundary.Commands);
+
         using var services = Services(options.Options);
-        using var context = new CompositionGuardContext(options.UseInternalServiceProvider(services).Options);
+        using var context = new CompositionGuardContext(options
+            .UseInternalServiceProvider(services)
+            .Options);
+
         var root = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping);
         var scoped = root.ForScope(11);
 
@@ -31,13 +38,24 @@ public sealed partial class CompositionBindingExpressionTests(ITestOutputHelper 
     }
 
     /// <summary>Unbound, scope-only and unscoped tree roots retain only the constraints they own.</summary>
-    [Fact]
-    public void RootsWithoutBothBindingsDoNotAddRedundantPredicates()
+    /// <param name="binding">The independently selected root binding.</param>
+    /// <param name="expectedCalls">The number of owned predicates required by that binding.</param>
+    [Theory]
+    [InlineData("unbound", 0)]
+    [InlineData("scope", 1)]
+    [InlineData("tree", 1)]
+    public void RootsWithoutBothBindingsDoNotAddRedundantPredicates(
+        string binding,
+        int expectedCalls
+    )
     {
         // Arrange
         var options = Options();
         using var services = Services(options.Options);
-        using var context = new CompositionGuardContext(options.UseInternalServiceProvider(services).Options);
+        using var context = new CompositionGuardContext(options
+            .UseInternalServiceProvider(services)
+            .Options);
+
         var scopedEntity = context.Model.FindEntityType(CompositionGuardContext.ScopedMapping)!;
         var unscopedEntity = context.Model.FindEntityType(CompositionGuardContext.FirstMapping)!;
         var scoped = new NestedSetQuery<CompositionGuardNode>(context, scopedEntity);
@@ -45,14 +63,18 @@ public sealed partial class CompositionBindingExpressionTests(ITestOutputHelper 
         var operations = new NestedSetMutationBinding<CompositionGuardNode>(context, unscopedEntity);
 
         // Act
-        var rootCalls = WhereCalls(unscoped.OrderedNodes.Expression);
-        var scopeCalls = WhereCalls(scoped.ForScope(11).OrderedNodes.Expression);
-        var treeCalls = WhereCalls(unscoped.InTree(Guid.Empty, operations).Nodes.Expression);
+        var expression = binding switch
+        {
+            "unbound" => unscoped.OrderedNodes.Expression,
+            "scope" => scoped.ForScope(11).OrderedNodes.Expression,
+            "tree" => unscoped.InTree(Guid.Empty, operations).Nodes.Expression,
+            _ => throw new ArgumentOutOfRangeException(nameof(binding)),
+        };
+
+        var calls = WhereCalls(expression);
 
         // Assert
-        Assert.Equal(0, rootCalls);
-        Assert.Equal(1, scopeCalls);
-        Assert.Equal(1, treeCalls);
+        Assert.Equal(expectedCalls, calls);
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -62,11 +84,18 @@ public sealed partial class CompositionBindingExpressionTests(ITestOutputHelper 
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
-        var options = Options().AddInterceptors(boundary, boundary.Commands);
+        var options = Options()
+            .AddInterceptors(boundary, boundary.Commands);
+
         using var services = Services(options.Options);
-        using var context = new CompositionGuardContext(options.UseInternalServiceProvider(services).Options);
-        var tree = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
-            .ForScope(11).InTree(Guid.Empty);
+        using var context = new CompositionGuardContext(options
+            .UseInternalServiceProvider(services)
+            .Options);
+
+        var tree = context
+            .NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
+            .ForScope(11)
+            .InTree(Guid.Empty);
 
         var first = tree.Nodes.Where(node => DeferredRule(node.Id));
 
@@ -87,32 +116,48 @@ public sealed partial class CompositionBindingExpressionTests(ITestOutputHelper 
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ReboundScopeRetainsEarlierScopeAndTree(bool sameScope)
+    public async Task ReboundScopeRetainsEarlierScopeAndTree(
+        bool sameScope
+    )
     {
         // Arrange
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync(CancellationToken.None);
         var options = Options(connection);
         await using var services = Services(options.Options);
-        await using var context = new CompositionGuardContext(options.UseInternalServiceProvider(services).Options);
+        await using var context = new CompositionGuardContext(options
+            .UseInternalServiceProvider(services)
+            .Options);
+
         await SeedBindingsAsync(context);
         var entity = context.Model.FindEntityType(CompositionGuardContext.ScopedMapping)!;
         var mutations = new NestedSetMutationBinding<CompositionGuardNode>(context, entity);
-        var original = new NestedSetQuery<CompositionGuardNode>(context, entity).ForScope(11)
+        var original = new NestedSetQuery<CompositionGuardNode>(context, entity)
+            .ForScope(11)
             .InTree(Guid.Empty, mutations);
 
-        var rebound = Query(original).ForScope(sameScope ? 11 : 22);
+        var rebound = Query(original)
+            .ForScope(sameScope ? 11 : 22);
 
         // Act
-        var originalRows = await original.Nodes.Select(node => node.Id).ToArrayAsync(CancellationToken.None);
-        var reboundRows = await rebound.OrderedNodes.Select(node => node.Id).ToArrayAsync(CancellationToken.None);
+        var originalRows = await original
+            .Nodes
+            .Select(node => node.Id)
+            .ToArrayAsync(CancellationToken.None);
+
+        var reboundRows = await rebound
+            .OrderedNodes
+            .Select(node => node.Id)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal([1], originalRows);
         Assert.Equal(sameScope ? [1] : Array.Empty<int>(), reboundRows);
-        Assert.Equal(1, WhereCalls(BoundRoot(original).Expression));
-        Assert.Equal(1, WhereCalls(Assert.IsAssignableFrom<MethodCallExpression>(
-            rebound.OrderedNodes.Expression).Arguments[0]));
+        Assert.Equal(1,
+            WhereCalls(BoundRoot(original).Expression));
+        Assert.Equal(1,
+            WhereCalls(Assert.IsAssignableFrom<MethodCallExpression>(
+                    rebound.OrderedNodes.Expression).Arguments[0]));
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -121,30 +166,45 @@ public sealed partial class CompositionBindingExpressionTests(ITestOutputHelper 
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ReboundTreeRetainsEarlierScopeAndTree(bool sameTree)
+    public async Task ReboundTreeRetainsEarlierScopeAndTree(
+        bool sameTree
+    )
     {
         // Arrange
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync(CancellationToken.None);
         var options = Options(connection);
         await using var services = Services(options.Options);
-        await using var context = new CompositionGuardContext(options.UseInternalServiceProvider(services).Options);
+        await using var context = new CompositionGuardContext(options
+            .UseInternalServiceProvider(services)
+            .Options);
+
         await SeedBindingsAsync(context);
         var entity = context.Model.FindEntityType(CompositionGuardContext.ScopedMapping)!;
         var mutations = new NestedSetMutationBinding<CompositionGuardNode>(context, entity);
-        var original = new NestedSetQuery<CompositionGuardNode>(context, entity).ForScope(11)
+        var original = new NestedSetQuery<CompositionGuardNode>(context, entity)
+            .ForScope(11)
             .InTree(Guid.Empty, mutations);
 
-        var rebound = Query(original).InTree(sameTree ? Guid.Empty : OtherTree, mutations);
+        var rebound = Query(original)
+            .InTree(sameTree ? Guid.Empty : OtherTree, mutations);
 
         // Act
-        var originalRows = await original.Nodes.Select(node => node.Id).ToArrayAsync(CancellationToken.None);
-        var reboundRows = await rebound.Nodes.Select(node => node.Id).ToArrayAsync(CancellationToken.None);
+        var originalRows = await original
+            .Nodes
+            .Select(node => node.Id)
+            .ToArrayAsync(CancellationToken.None);
+
+        var reboundRows = await rebound
+            .Nodes
+            .Select(node => node.Id)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal([1], originalRows);
         Assert.Equal(sameTree ? [1] : Array.Empty<int>(), reboundRows);
-        Assert.Equal(1, WhereCalls(BoundRoot(rebound).Expression));
+        Assert.Equal(1,
+            WhereCalls(BoundRoot(rebound).Expression));
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -155,19 +215,35 @@ public sealed partial class CompositionBindingExpressionTests(ITestOutputHelper 
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
-        var options = Options().AddInterceptors(boundary, boundary.Commands);
+        var options = Options()
+            .AddInterceptors(boundary, boundary.Commands);
+
         using var services = Services(options.Options);
-        using var context = new CompositionGuardContext(options.UseInternalServiceProvider(services).Options);
+        using var context = new CompositionGuardContext(options
+            .UseInternalServiceProvider(services)
+            .Options);
+
         var entity = context.Model.FindEntityType(CompositionGuardContext.ScopedMapping)!;
-        var source = context.Set<CompositionGuardNode>(CompositionGuardContext.ScopedMapping).AsNoTracking();
+        var source = context
+            .Set<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
+            .AsNoTracking();
+
         var scope = NestedSetKeyFilter<CompositionGuardNode>.Equal(entity.FindProperty("Scope")!, 11);
         var treeId = NestedSetKeyFilter<CompositionGuardNode>.Equal(entity.FindProperty("TreeId")!, Guid.Empty);
-        var baseline = source.Where(scope).Where(treeId);
-        var tree = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
-            .ForScope(11).InTree(Guid.Empty);
+        var baseline = source
+            .Where(scope)
+            .Where(treeId);
+
+        var tree = context
+            .NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
+            .ForScope(11)
+            .InTree(Guid.Empty);
 
         var current = BoundRoot(tree);
 
+        // WHY: Warm both prepared SQL shapes equally before the paired allocation measurement.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < 100; index++)
         {
             GC.KeepAlive(baseline.ToQueryString());
@@ -176,11 +252,15 @@ public sealed partial class CompositionBindingExpressionTests(ITestOutputHelper 
 
         // Act
         var allocated = QueryConstructionAllocation.MeasurePaired(
-            () => baseline.ToQueryString(), () => current.ToQueryString());
+            () => baseline.ToQueryString(),
+            () => current.ToQueryString());
+
+        var baselineSql = baseline.ToQueryString();
+        var currentSql = current.ToQueryString();
 
         // Assert
         output.WriteLine($"Warm SQL work: separate={allocated.Baseline} B/op; fused={allocated.Expanded} B/op.");
-        Assert.Equal(baseline.ToQueryString(), current.ToQueryString());
+        Assert.Equal(baselineSql, currentSql);
         Assert.Equal(MethodCalls(baseline.Expression) - 1, MethodCalls(current.Expression));
         Assert.InRange(allocated.Expanded, 0, allocated.Baseline - 24);
         Assert.Equal(0, boundary.ConnectionStarts);
@@ -192,7 +272,9 @@ public sealed partial class CompositionBindingExpressionTests(ITestOutputHelper 
     private static Guid OtherTree => new("d74a68e0-0000-4000-8000-000000000002");
 
     /// <summary>Extracts the exact current binding below its presentation ordering.</summary>
-    private static IQueryable<CompositionGuardNode> BoundRoot(NestedSetTree<CompositionGuardNode, Guid> tree)
+    private static IQueryable<CompositionGuardNode> BoundRoot(
+        NestedSetTree<CompositionGuardNode, Guid> tree
+    )
     {
         var ordered = Assert.IsAssignableFrom<MethodCallExpression>(tree.Nodes.Expression);
 
@@ -200,24 +282,29 @@ public sealed partial class CompositionBindingExpressionTests(ITestOutputHelper 
     }
 
     /// <summary>Accesses the internal immutable query solely to guard existing cumulative rebind behavior.</summary>
-    private static NestedSetQuery<CompositionGuardNode> Query(NestedSetTree<CompositionGuardNode, Guid> tree)
-        => Assert.IsType<NestedSetQuery<CompositionGuardNode>>(tree.GetType()
+    private static NestedSetQuery<CompositionGuardNode> Query(
+        NestedSetTree<CompositionGuardNode, Guid> tree
+    )
+        => Assert.IsType<NestedSetQuery<CompositionGuardNode>>(tree
+            .GetType()
             .GetField("_query", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(tree));
 
     /// <summary>Creates owned SQLite options for construction or actual in-memory reads.</summary>
-    private static DbContextOptionsBuilder<CompositionGuardContext> Options(SqliteConnection? connection = null)
+    private static DbContextOptionsBuilder<CompositionGuardContext> Options(
+        SqliteConnection? connection = null
+    )
         => connection is null
-            ? new DbContextOptionsBuilder<CompositionGuardContext>()
-                .UseSqlite(
+            ? new DbContextOptionsBuilder<CompositionGuardContext>().UseSqlite(
                     "Data Source=:memory:",
                     provider => provider.UseNestedSets())
-            : new DbContextOptionsBuilder<CompositionGuardContext>()
-                .UseSqlite(
+            : new DbContextOptionsBuilder<CompositionGuardContext>().UseSqlite(
                     connection,
                     provider => provider.UseNestedSets());
 
     /// <summary>Keeps new model variants outside EF's process-global service cache.</summary>
-    private static ServiceProvider Services(DbContextOptions options)
+    private static ServiceProvider Services(
+        DbContextOptions options
+    )
     {
         var services = new ServiceCollection();
 
@@ -230,24 +317,44 @@ public sealed partial class CompositionBindingExpressionTests(ITestOutputHelper 
     }
 
     /// <summary>Seeds identical coordinates in independent scopes and trees without hierarchy mutations.</summary>
-    private static async Task SeedBindingsAsync(CompositionGuardContext context)
+    private static async Task SeedBindingsAsync(
+        CompositionGuardContext context
+    )
     {
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
-        await context.Set<CompositionGuardNode>(CompositionGuardContext.ScopedMapping).AddRangeAsync(
-            [Node(1, 11, Guid.Empty), Node(2, 22, Guid.Empty), Node(3, 11, OtherTree)], CancellationToken.None);
+        await context
+            .Set<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
+            .AddRangeAsync(
+                [Node(1, 11, Guid.Empty), Node(2, 22, Guid.Empty), Node(3, 11, OtherTree)],
+                CancellationToken.None);
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
     }
 
     /// <summary>Creates one leaf while keeping its partition and tree independent of reused bounds.</summary>
-    private static CompositionGuardNode Node(int id, int scope, Guid tree)
-        => new() { Id = id, Scope = scope, TreeId = tree, Left = 1, Right = 2 };
+    private static CompositionGuardNode Node(
+        int id,
+        int scope,
+        Guid tree
+    )
+        => new()
+        {
+            Id = id,
+            Scope = scope,
+            TreeId = tree,
+            Left = 1,
+            Right = 2,
+        };
 
     /// <summary>Rejects accidental execution of a caller filter during binding construction.</summary>
-    private static bool DeferredRule(int id) => throw new InvalidOperationException($"Unexpected caller read: {id}.");
+    private static bool DeferredRule(
+        int id
+    ) => throw new InvalidOperationException($"Unexpected caller read: {id}.");
 
     /// <summary>Counts actual occurrences rather than unique expression object references.</summary>
-    private static int WhereCalls(Expression expression)
+    private static int WhereCalls(
+        Expression expression
+    )
     {
         var calls = new BindingCallCounter();
         calls.Visit(expression);
@@ -256,7 +363,9 @@ public sealed partial class CompositionBindingExpressionTests(ITestOutputHelper 
     }
 
     /// <summary>Counts every visited method occurrence, including repeated references to the same expression.</summary>
-    private static int MethodCalls(Expression expression)
+    private static int MethodCalls(
+        Expression expression
+    )
     {
         var calls = new BindingCallCounter();
         calls.Visit(expression);
@@ -274,11 +383,14 @@ public sealed partial class CompositionBindingExpressionTests(ITestOutputHelper 
         internal int MethodCalls { get; private set; }
 
         /// <inheritdoc />
-        protected override Expression VisitMethodCall(MethodCallExpression node)
+        protected override Expression VisitMethodCall(
+            MethodCallExpression node
+        )
         {
             MethodCalls++;
 
-            if (node.Method.DeclaringType == typeof(Queryable) && node.Method.Name == nameof(Queryable.Where))
+            if (node.Method.DeclaringType == typeof(Queryable)
+                && node.Method.Name == nameof(Queryable.Where))
             {
                 WhereCalls++;
             }

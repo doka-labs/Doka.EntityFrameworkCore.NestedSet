@@ -51,6 +51,7 @@ public sealed partial class IndexConventionTests
 
         // Act
         var model = context.GetService<IDesignTimeModel>().Model;
+
         var entity = model.FindEntityType(typeof(IndexNode))!;
         var indexes = entity
             .GetIndexes()
@@ -138,10 +139,14 @@ public sealed partial class IndexConventionTests
                         })
                         .OnDelete(DeleteBehavior.Restrict);
                     ((IConventionIndex)entity.Metadata.FindIndex(
-                    [
-                        entity.Property(node => node.Scope).Metadata,
-                        entity.Property(node => node.Parent).Metadata,
-                    ])!).SetFilter(null, true);
+                        [
+                            entity
+                                .Property(node => node.Scope)
+                                .Metadata,
+                            entity
+                                .Property(node => node.Parent)
+                                .Metadata,
+                        ])!).SetFilter(null, true);
 
                     return;
                 }
@@ -204,8 +209,7 @@ public sealed partial class IndexConventionTests
         Assert.Equal(4, indexes.Length);
         Assert.DoesNotContain(
             indexes,
-            index => index
-                    .GetFilter()
+            index => index.GetFilter()
                     ?.EndsWith("IS NULL", StringComparison.Ordinal)
                 == true);
 
@@ -278,7 +282,10 @@ public sealed partial class IndexConventionTests
             .FindEntityType(typeof(IndexNode))!;
 
         // Assert
-        Assert.Equal(4, entity.GetIndexes().Count());
+        Assert.Equal(4,
+            entity
+                .GetIndexes()
+                .Count());
         Assert.All(entity.GetIndexes(), index => Assert.Null(index.GetFilter()));
     }
 
@@ -430,7 +437,10 @@ public sealed partial class IndexConventionTests
         Assert.Equal(originalName, application.GetDatabaseName());
         Assert.Null(application.GetFilter());
         Assert.Equal(originalName + "_1", rootName);
-        Assert.Equal(6, entity.GetIndexes().Count());
+        Assert.Equal(6,
+            entity
+                .GetIndexes()
+                .Count());
     }
 
     /// <summary>Gets the root companion's physical name from the completed provider model.</summary>
@@ -442,7 +452,9 @@ public sealed partial class IndexConventionTests
         .Model
         .FindEntityType(type)!
         .GetIndexes()
-        .Single(index => index.GetFilter()?.EndsWith("IS NULL", StringComparison.Ordinal) == true)
+        .Single(index => index.GetFilter()
+                ?.EndsWith("IS NULL", StringComparison.Ordinal)
+            == true)
         .GetDatabaseName()!;
 
     /// <summary>Uses the same physical structure through an independently named CLR entity.</summary>

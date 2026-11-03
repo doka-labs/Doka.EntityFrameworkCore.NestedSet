@@ -2,14 +2,18 @@ using System.Text.RegularExpressions;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-/// <summary>Protects SQL Server's coordinate-ordered projected nearest selection at the default compatibility level.</summary>
+/// <summary>
+/// Protects SQL Server's coordinate-ordered projected nearest selection at the default compatibility level.
+/// </summary>
 public sealed class SqlServerNearestDecisionTests
 {
     private readonly ITestOutputHelper _output;
 
     /// <summary>Retains the default-level SQL Server translation for native qualification.</summary>
     /// <param name="output">The test-owned diagnostic sink.</param>
-    public SqlServerNearestDecisionTests(ITestOutputHelper output)
+    public SqlServerNearestDecisionTests(
+        ITestOutputHelper output
+    )
     {
         _output = output;
     }
@@ -19,7 +23,9 @@ public sealed class SqlServerNearestDecisionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task NearestDecisionSelectsCoordinateOnceWithoutIo(bool rowAware)
+    public async Task NearestDecisionSelectsCoordinateOnceWithoutIo(
+        bool rowAware
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -28,18 +34,31 @@ public sealed class SqlServerNearestDecisionTests
             .AddInterceptors(boundary);
 
         await using var services = NestedSetTestAdapters.BuildServices(options.Options);
-        await using var context = new CompositionContext(options.UseInternalServiceProvider(services).Options);
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(Guid.Empty).InTree(Guid.Empty);
+        await using var context = new CompositionContext(options
+            .UseInternalServiceProvider(services)
+            .Options);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty)
+            .InTree(Guid.Empty);
+
         var rows = hierarchy.Nodes.Select(node => new { Node = node });
         var nearest = rowAware
-            ? hierarchy.WhereNearestAncestorOrSelf(rows, row => row.Node,
+            ? hierarchy.WhereNearestAncestorOrSelf(rows,
+                row => row.Node,
                 (row, owner) => owner.Candidate && owner.Id < row.Node.Id + 100,
                 (row, owner) => owner.Matches)
-            : hierarchy.WhereNearestAncestorOrSelf(rows, row => row.Node,
-                (row, owner) => owner.Candidate, (row, owner) => owner.Matches);
+            : hierarchy.WhereNearestAncestorOrSelf(rows,
+                row => row.Node,
+                (row, owner) => owner.Candidate,
+                (row, owner) => owner.Matches);
 
         // Act
-        var sql = nearest.Select(row => row.Node.Id).ToQueryString();
+        var sql = nearest
+            .Select(row => row.Node.Id)
+            .ToQueryString();
+
         _output.WriteLine(sql);
         var selections = Regex.Matches(sql, "ORDER BY [^\\r\\n]*\\[Left\\] DESC");
 

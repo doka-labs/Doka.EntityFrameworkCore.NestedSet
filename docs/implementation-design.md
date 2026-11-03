@@ -1548,3 +1548,15 @@ contract is scoped to the repository's ordinary reflection-based xUnit runner.
 [D-013](decisions/D-013-provider-owned-integration-test-projects.md) records the
 referenced specification strategy, the previous linked-source option, and its
 discovery and fixture confirmation procedures.
+
+### Provider test discovery in Rider
+
+For Rider, select **Settings/Preferences > Build, Execution, Deployment > Unit
+Testing > xUnit.net > Test discovery > Test runner** when checking the provider
+test list. Engine exclusions run during xUnit discovery. Rider's default
+**Metadata** mode scans the compiled assembly without launching xUnit, so its
+list does not establish eligibility of an inherited method for that provider.
+Running a whole provider project also refreshes the list from the runner.
+See [xUnit discovery modes](https://www.jetbrains.com/help/rider/Reference_Options_Tools_Unit_Testing_xUnit.html).
+An IDE entry or shared-base stack frame alone does not identify the provider
+that executed a failing case; retain its concrete suite or assembly name.

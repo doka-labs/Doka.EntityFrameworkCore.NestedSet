@@ -46,6 +46,9 @@ public sealed class TypedProviderComparerTests
         var before = GC.GetAllocatedBytesForCurrentThread();
 
         // Act
+        // WHY: Accumulate every comparison result within one allocation window over the prepared scalar identities.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < 20000; index++)
         {
             correct &= compare();
@@ -87,6 +90,9 @@ public sealed class TypedProviderComparerTests
         // Act
         var baselineBefore = GC.GetAllocatedBytesForCurrentThread();
 
+        // WHY: Measure the erased comparison baseline for the same fixed pair count as the typed path.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < iterations; index++)
         {
             baselineCorrect &= comparer.Matches(first, equalProvider) && !comparer.Matches(first, differentProvider);
@@ -95,6 +101,9 @@ public sealed class TypedProviderComparerTests
         var baselineAllocated = GC.GetAllocatedBytesForCurrentThread() - baselineBefore;
         var typedBefore = GC.GetAllocatedBytesForCurrentThread();
 
+        // WHY: Measure the typed path for the identical fixed pair count after the baseline window closes.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < iterations; index++)
         {
             typedCorrect &= comparer.Equals(first, equalProvider) && !comparer.Equals(first, differentProvider);
@@ -160,5 +169,7 @@ public sealed class TypedProviderComparerTests
 
     /// <summary>Separates model equality from the explicitly configured normalized integer representation.</summary>
     /// <param name="Value">The original model identity.</param>
-    private readonly record struct ConvertedIdentity(int Value);
+    private readonly record struct ConvertedIdentity(
+        int Value
+    );
 }

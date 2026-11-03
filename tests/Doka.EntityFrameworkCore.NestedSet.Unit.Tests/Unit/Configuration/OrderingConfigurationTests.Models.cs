@@ -194,7 +194,9 @@ public sealed partial class OrderingConfigurationTests
         }
 
         /// <summary>Installs SQLite conventions and a model cache keyed by the explicit test identity.</summary>
-        private static DbContextOptions<ConfigurationContext> Options(IServiceProvider? services)
+        private static DbContextOptions<ConfigurationContext> Options(
+            IServiceProvider? services
+        )
         {
             var options = CreateOptions();
 

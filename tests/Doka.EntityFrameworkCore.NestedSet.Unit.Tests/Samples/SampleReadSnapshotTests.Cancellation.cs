@@ -1,5 +1,4 @@
 extern alias UserGroupsSample;
-
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using SampleReadSnapshot = UserGroupsSample::Doka.EntityFrameworkCore.NestedSet.Samples.SampleReadSnapshot;
@@ -18,20 +17,25 @@ public sealed partial class SampleReadSnapshotTests
         await using var connection = new CancelingSnapshotConnection(stop);
         var observer = new CancelAfterSnapshotOpen(stop);
         await using var context = new SampleLifecycleContext(new DbContextOptionsBuilder<SampleLifecycleContext>()
-            .UseSqlite(connection).AddInterceptors(observer).Options);
+            .UseSqlite(connection)
+            .AddInterceptors(observer)
+            .Options);
 
         var readInvoked = false;
 
         // Act
-        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context, _ =>
-        {
-            readInvoked = true;
+        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context,
+            _ =>
+            {
+                readInvoked = true;
 
-            return Task.FromResult(1);
-        }, stop.Token));
+                return Task.FromResult(1);
+            },
+            stop.Token));
 
         // Assert
-        Assert.Equal(stop.Token, Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
+        Assert.Equal(stop.Token,
+            Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
         Assert.False(readInvoked);
         Assert.Equal(1, observer.Opened);
         Assert.Null(connection.Begun);
@@ -45,13 +49,16 @@ public sealed partial class SampleReadSnapshotTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task CancellationAfterNativeBeginRestoresConnectionOwnership(bool alreadyOpen)
+    public async Task CancellationAfterNativeBeginRestoresConnectionOwnership(
+        bool alreadyOpen
+    )
     {
         // Arrange
         using var stop = new CancellationTokenSource();
         await using var connection = new CancelingSnapshotConnection(stop);
         await using var context = new SampleLifecycleContext(new DbContextOptionsBuilder<SampleLifecycleContext>()
-            .UseSqlite(connection).Options);
+            .UseSqlite(connection)
+            .Options);
 
         if (alreadyOpen)
         {
@@ -61,12 +68,14 @@ public sealed partial class SampleReadSnapshotTests
         var readInvoked = false;
 
         // Act
-        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context, _ =>
-        {
-            readInvoked = true;
+        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context,
+            _ =>
+            {
+                readInvoked = true;
 
-            return Task.FromResult(1);
-        }, stop.Token));
+                return Task.FromResult(1);
+            },
+            stop.Token));
 
         var connectionState = connection.State;
         var remainingNativeConnection = connection.Begun?.Connection;
@@ -77,7 +86,8 @@ public sealed partial class SampleReadSnapshotTests
         }
 
         // Assert
-        Assert.Equal(stop.Token, Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
+        Assert.Equal(stop.Token,
+            Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
         Assert.False(readInvoked);
         Assert.NotNull(connection.Begun);
         Assert.Null(remainingNativeConnection);
@@ -87,14 +97,19 @@ public sealed partial class SampleReadSnapshotTests
     }
 
     /// <summary>Injects cancellation immediately after the real synchronous driver begin has completed.</summary>
-    private sealed class CancelingSnapshotConnection(CancellationTokenSource stop)
+    private sealed class CancelingSnapshotConnection(
+        CancellationTokenSource stop
+    )
         : SqliteConnection("Data Source=:memory:")
     {
         /// <summary>Gets the native transaction whose disposal must precede returning the cancellation.</summary>
         internal SqliteTransaction? Begun { get; private set; }
 
         /// <inheritdoc />
-        public override SqliteTransaction BeginTransaction(IsolationLevel isolationLevel, bool deferred)
+        public override SqliteTransaction BeginTransaction(
+            IsolationLevel isolationLevel,
+            bool deferred
+        )
         {
             Begun = base.BeginTransaction(isolationLevel, deferred);
 
@@ -108,7 +123,9 @@ public sealed partial class SampleReadSnapshotTests
     }
 
     /// <summary>Cancels after the physical open, before control returns to the snapshot helper.</summary>
-    private sealed class CancelAfterSnapshotOpen(CancellationTokenSource stop) : DbConnectionInterceptor
+    private sealed class CancelAfterSnapshotOpen(
+        CancellationTokenSource stop
+    ) : DbConnectionInterceptor
     {
         /// <summary>Gets the number of completed physical opens observed by the test.</summary>
         internal int Opened { get; private set; }

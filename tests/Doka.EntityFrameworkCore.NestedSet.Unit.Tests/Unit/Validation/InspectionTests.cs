@@ -50,6 +50,9 @@ public sealed class InspectionTests
     {
         // Arrange
         var (nodes, parents) = CreateForest(LargeNodeCount, deep);
+        // WHY: Replace existing dense slots in place so corruption setup does not retain a second million-row array.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < nodes.Length; index++)
         {
             nodes[index] = nodes[index] with
@@ -128,6 +131,9 @@ public sealed class InspectionTests
         // Arrange
         const int count = 20_000;
         var (nodes, parents) = CreateForest(count, false);
+        // WHY: Corrupt every existing slot while preserving the independent parent inventory and row count.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < nodes.Length; index++)
         {
             nodes[index] = nodes[index] with
@@ -173,7 +179,8 @@ public sealed class InspectionTests
         // Assert
         Assert.False(result.CanRebuild);
         Assert.Empty(result.Issues);
-        Assert.Equal(NestedSetValidationCode.InvalidRootCount, Assert.Single(result.TreeIssues).Code);
+        Assert.Equal(NestedSetValidationCode.InvalidRootCount,
+            Assert.Single(result.TreeIssues).Code);
         Assert.Equal(1, result.TotalIssueCount);
     }
 
@@ -192,6 +199,9 @@ public sealed class InspectionTests
 
         var root = new NestedSetParent<int>(true, 1);
 
+        // WHY: Position-derived coordinates create wide or deep fixtures without recursive traversal or extra buffers.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 1; index < count; index++)
         {
             var parent = deep ? index : 1;

@@ -2,7 +2,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public sealed partial class EngineTestDiscoveryTests
 {
-    /// <summary>Database applicability reads the concrete engine and requires an explicit metadata-only marker.</summary>
+    /// <summary>
+    /// Database applicability reads the concrete engine and requires an explicit metadata-only marker.
+    /// </summary>
     [Theory]
     [InlineData("MySql", false)]
     [InlineData("MariaDb", false)]
@@ -20,7 +22,9 @@ public sealed partial class EngineTestDiscoveryTests
     )
     {
         // Arrange
-        var method = CreateTestMethod(engine, nameof(DiscoveryProbe.Ordinary), databaseIndependent: databaseIndependent);
+        var method = CreateTestMethod(engine,
+            nameof(DiscoveryProbe.Ordinary),
+            databaseIndependent: databaseIndependent);
 
         // Act
         var resolved = ProviderDatabasePlatformAttribute.ResolveDatabaseEngine(method.TestClass.Class, method.Method);
@@ -34,7 +38,8 @@ public sealed partial class EngineTestDiscoveryTests
     public void ProviderResourcesDoesNotBypassSqlServerPlatformCheck()
     {
         // Arrange
-        var method = CreateTestMethod("SqlServer", nameof(DiscoveryProbe.Ordinary),
+        var method = CreateTestMethod("SqlServer",
+            nameof(DiscoveryProbe.Ordinary),
             [typeof(ProviderFixture<ProviderResources, SqlServerEngine>)]);
 
         // Act
@@ -44,7 +49,9 @@ public sealed partial class EngineTestDiscoveryTests
         Assert.Equal("SqlServer", resolved);
     }
 
-    /// <summary>The shared root registers xUnit's normal execution hook and metadata guards explicitly opt out.</summary>
+    /// <summary>
+    /// The shared root registers xUnit's normal execution hook and metadata guards explicitly opt out.
+    /// </summary>
     [Fact]
     public void SharedRootOwnsPlatformHookAndMetadataMarker()
     {
@@ -62,7 +69,9 @@ public sealed partial class EngineTestDiscoveryTests
         Assert.IsAssignableFrom<BeforeAfterTestAttribute>(hook);
     }
 
-    /// <summary>Database-free lifecycle methods run while the neighboring database isolation case stays guarded.</summary>
+    /// <summary>
+    /// Database-free lifecycle methods run while the neighboring database isolation case stays guarded.
+    /// </summary>
     [Theory]
     [InlineData(nameof(DatabaseLifecycleTests.SharedLibraryResolvesExecutingAssemblyFixture), true)]
     [InlineData(nameof(DatabaseLifecycleTests.AssemblyFixtureRejectsForeignServer), true)]
@@ -73,8 +82,9 @@ public sealed partial class EngineTestDiscoveryTests
     )
     {
         // Arrange
-        var suite = CreateTestMethod("SqlServer", nameof(DiscoveryProbe.Ordinary),
-            [typeof(ProviderFixture<ProviderResources, SqlServerEngine>)]).TestClass.Class;
+        var suite = CreateTestMethod("SqlServer",
+                nameof(DiscoveryProbe.Ordinary),
+                [typeof(ProviderFixture<ProviderResources, SqlServerEngine>)]).TestClass.Class;
 
         var method = typeof(DatabaseLifecycleTests).GetMethod(methodName)!;
 
@@ -96,6 +106,7 @@ public sealed partial class EngineTestDiscoveryTests
     {
         // Arrange
         var suite = CreateTestMethod("SqlServer", nameof(DiscoveryProbe.Ordinary)).TestClass.Class;
+
         var method = typeof(CompiledModelTests).GetMethod(methodName)!;
 
         // Act
@@ -118,13 +129,15 @@ public sealed partial class EngineTestDiscoveryTests
     [InlineData(typeof(NestedSetFacadeTests), nameof(NestedSetFacadeTests.MutationNodeKeyTypeMustMatchFinalizedModel))]
     [InlineData(typeof(BulkInputTests), nameof(BulkInputTests.BranchCopiesItsChildCollection))]
     [InlineData(typeof(TableMappingTests), nameof(TableMappingTests.EntitySplittingPlacesIndexesOnStructureFragment))]
-    [InlineData(typeof(TpcSharedCollationTests), nameof(TpcSharedCollationTests.ScopedConcreteParentKeyBelongsToInheritanceRoot))]
+    [InlineData(typeof(TpcSharedCollationTests),
+        nameof(TpcSharedCollationTests.ScopedConcreteParentKeyBelongsToInheritanceRoot))]
     [InlineData(typeof(TpcTests), nameof(TpcTests.PolymorphicTpcHierarchyIsRejected))]
     [InlineData(typeof(SharedTypeTests), nameof(SharedTypeTests.SharedTypeWithoutEntityNameIsRejected))]
     [InlineData(typeof(BroadScopeTests), nameof(BroadScopeTests.ProviderComparerSeparatesReferenceAliases))]
     [InlineData(typeof(BroadNodeKeyTests), nameof(BroadNodeKeyTests.ProviderComparerSeparatesKeyAliases))]
     [InlineData(typeof(BroadTreeIdTests), nameof(BroadTreeIdTests.ProviderComparerSeparatesTreeAliases))]
-    [InlineData(typeof(ConvertedTextCollationTests), nameof(ConvertedTextCollationTests.ImplicitIdentityCaptureMatchesRegistryAndSuppliedModel))]
+    [InlineData(typeof(ConvertedTextCollationTests),
+        nameof(ConvertedTextCollationTests.ImplicitIdentityCaptureMatchesRegistryAndSuppliedModel))]
     public void ConnectionFreeMethodsBypassOnlyTheDatabaseHostCheck(
         Type declaringSuite,
         string methodName
@@ -132,6 +145,7 @@ public sealed partial class EngineTestDiscoveryTests
     {
         // Arrange
         var suite = CreateTestMethod("SqlServer", nameof(DiscoveryProbe.Ordinary)).TestClass.Class;
+
         var method = declaringSuite.GetMethod(methodName)!;
 
         // Act

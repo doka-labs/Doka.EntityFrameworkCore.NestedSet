@@ -102,6 +102,7 @@ public sealed class SupervisorPayloadValidationTests
             Assert.Null(error);
         }
 
-        Assert.NotEqual(ConnectionState.Open, context.Database.GetDbConnection().State);
+        Assert.NotEqual(ConnectionState.Open,
+            context.Database.GetDbConnection().State);
     }
 }

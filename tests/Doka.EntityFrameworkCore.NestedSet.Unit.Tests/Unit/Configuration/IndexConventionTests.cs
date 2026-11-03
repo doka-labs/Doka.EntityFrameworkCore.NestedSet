@@ -34,7 +34,8 @@ public sealed partial class IndexConventionTests
         var model = new ModelBuilder();
         var entity = model.Entity<IndexNode>();
         entity.HasKey(node => node.Key);
-        var existing = entity.HasIndex(
+        var existing = entity
+            .HasIndex(
                 node => new
                 {
                     node.Scope,
@@ -106,7 +107,7 @@ public sealed partial class IndexConventionTests
         {
             node.Scope,
             node.TreeId,
-            node.Left
+            node.Left,
         });
 
         Customize(customized, facet);
@@ -151,7 +152,7 @@ public sealed partial class IndexConventionTests
                     {
                         node.Scope,
                         node.TreeId,
-                        node.Left
+                        node.Left,
                     },
                     "UserLeft");
             });
@@ -183,7 +184,15 @@ public sealed partial class IndexConventionTests
         var model = new ModelBuilder();
         var entity = model.Entity<IndexNode>();
         entity.HasKey(node => node.Key);
-        var existing = entity.HasIndex(node => new{node.Scope, node.TreeId, node.Left}).Metadata;
+        var existing = entity
+            .HasIndex(node => new
+            {
+                node.Scope,
+                node.TreeId,
+                node.Left,
+            })
+            .Metadata;
+
         Configure(entity);
 
         // Act
@@ -236,7 +245,9 @@ public sealed partial class IndexConventionTests
             entity
                 .GetIndexes()
                 .Where(index => index.Properties.Count > 2
-                    && index.GetFilter()?.EndsWith(" IS NULL", StringComparison.Ordinal) != true),
+                    && index.GetFilter()
+                        ?.EndsWith(" IS NULL", StringComparison.Ordinal)
+                    != true),
             index => Assert.Contains(index.Properties, property => property.Name == nameof(IndexNode.TreeId)));
         Assert.All(entity.GetIndexes(), index => Assert.False(index.IsUnique));
     }
@@ -309,7 +320,7 @@ public sealed partial class IndexConventionTests
                 entity.HasKey(node => new
                 {
                     node.Scope,
-                    node.Key
+                    node.Key,
                 });
             });
 
@@ -350,7 +361,7 @@ public sealed partial class IndexConventionTests
                 {
                     node.Scope,
                     node.TreeId,
-                    node.Left
+                    node.Left,
                 });
 
                 Customize(special, facet);

@@ -15,7 +15,9 @@ internal class CollectionMembershipProbe : ExpressionVisitor
     internal int QueryableMemberships { get; private set; }
 
     /// <inheritdoc />
-    protected override Expression VisitMethodCall(MethodCallExpression node)
+    protected override Expression VisitMethodCall(
+        MethodCallExpression node
+    )
     {
         if (node.Method.Name == nameof(Enumerable.Contains)
             && (node.Method.DeclaringType == typeof(Enumerable)
@@ -24,12 +26,14 @@ internal class CollectionMembershipProbe : ExpressionVisitor
             Memberships.Add(node);
         }
 
-        if (node.Method.DeclaringType == typeof(EF) && node.Method.Name == nameof(EF.Parameter))
+        if (node.Method.DeclaringType == typeof(EF)
+            && node.Method.Name == nameof(EF.Parameter))
         {
             ParameterMarkers++;
         }
 
-        if (node.Method.DeclaringType == typeof(Queryable) && node.Method.Name == nameof(Queryable.Contains))
+        if (node.Method.DeclaringType == typeof(Queryable)
+            && node.Method.Name == nameof(Queryable.Contains))
         {
             QueryableMemberships++;
         }

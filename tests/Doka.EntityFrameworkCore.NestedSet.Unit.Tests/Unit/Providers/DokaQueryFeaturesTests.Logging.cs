@@ -68,23 +68,36 @@ public sealed partial class DokaQueryFeaturesTests
     private sealed class FallbackLoggerProvider : ILoggerProvider
     {
         /// <summary>Gets the fixed diagnostic metadata and message without application state.</summary>
-        internal List<(string Category, LogLevel Level, EventId Event, string Message, string? Template)> Events { get; }
+        internal List<(string Category, LogLevel Level, EventId Event, string Message, string? Template)> Events
+        {
+            get;
+        }
             = [];
 
         /// <inheritdoc />
-        public ILogger CreateLogger(string categoryName) => new FallbackLogger(this, categoryName);
+        public ILogger CreateLogger(
+            string categoryName
+        ) => new FallbackLogger(this, categoryName);
 
         /// <inheritdoc />
         public void Dispose() { }
 
         /// <summary>Observes ordinary ILogger dispatch without replacing EF services or warning behavior.</summary>
-        private sealed class FallbackLogger(FallbackLoggerProvider owner, string category) : ILogger
+        private sealed class FallbackLogger(
+            FallbackLoggerProvider owner,
+            string category
+        ) : ILogger
         {
             /// <inheritdoc />
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+            public IDisposable? BeginScope<TState>(
+                TState state
+            )
+                where TState : notnull => null;
 
             /// <inheritdoc />
-            public bool IsEnabled(LogLevel logLevel) => true;
+            public bool IsEnabled(
+                LogLevel logLevel
+            ) => true;
 
             /// <inheritdoc />
             public void Log<TState>(

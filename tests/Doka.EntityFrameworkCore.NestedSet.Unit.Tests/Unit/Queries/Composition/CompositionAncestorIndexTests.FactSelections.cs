@@ -40,21 +40,27 @@ public sealed partial class CompositionAncestorIndexTests
 
         await using var provider = SelectionServices(options);
         await using var context = new IndexCompositionContext(
-            new DbContextOptionsBuilder<IndexCompositionContext>(options).UseInternalServiceProvider(provider).Options);
+            new DbContextOptionsBuilder<IndexCompositionContext>(options)
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var holder = new QueryHolder(context.Set<SelectionFact>());
         var opaqueRoot = new OpaqueFactRoot(context.Model.FindEntityType(typeof(SelectionFact))!);
         var selection = shape switch
         {
             "plain" => (Expression<Func<CompositionNode, bool>>)(node => node.Id > 0),
-            "facts" => FactSelection(context.Set<SelectionFact>(), (node, fact) => fact.NodeId == node.Id),
+            "facts" => FactSelection(context.Set<SelectionFact>(),
+                (node, fact) => fact.NodeId == node.Id),
             "inherited-facts" => FactSelection(context.Set<DerivedSelectionFact>(),
                 (node, fact) => fact.NodeId == node.Id),
-            "tracking-marker" => FactSelection(context.Set<SelectionFact>().AsNoTracking(),
+            "tracking-marker" => FactSelection(context
+                    .Set<SelectionFact>()
+                    .AsNoTracking(),
                 (node, fact) => fact.NodeId == node.Id),
             "scalar-property" => FactSelection(context.Set<SelectionFact>(),
                 (node, fact) => EF.Property<int>(fact, nameof(SelectionFact.NodeId)) == node.Id),
-            "hierarchy" => FactSelection(context.Set<CompositionNode>(), (node, other) => other.Id == node.Id),
+            "hierarchy" => FactSelection(context.Set<CompositionNode>(),
+                (node, other) => other.Id == node.Id),
             "navigation" => FactSelection(context.Set<SelectionFact>(),
                 (node, fact) => fact.Node!.Id == node.Id),
             "navigation-property" => FactSelection(context.Set<SelectionFact>(),
@@ -66,18 +72,27 @@ public sealed partial class CompositionAncestorIndexTests
             "opaque-query" => node => holder.Field.Any(fact => fact.NodeId == node.Id),
             "query-getter" => node => holder.ThrowingQuery.Any(fact => fact.NodeId == node.Id),
             "query-object" => node => ((IQueryable<SelectionFact>)holder.Untyped).Any(fact => fact.NodeId == node.Id),
-            "unknown-operator" => FactSelection(context.Set<SelectionFact>().IgnoreQueryFilters(),
+            "unknown-operator" => FactSelection(context
+                    .Set<SelectionFact>()
+                    .IgnoreQueryFilters(),
                 (node, fact) => fact.NodeId == node.Id),
-            "raw-sql" => FactSelection(context.Set<SelectionFact>().FromSqlRaw("SELECT * FROM SelectionFacts"),
+            "raw-sql" => FactSelection(context
+                    .Set<SelectionFact>()
+                    .FromSqlRaw("SELECT * FROM SelectionFacts"),
                 (node, fact) => fact.NodeId == node.Id),
-            "custom-root" => FactSelection(context.Set<SelectionFact>().AsQueryable().Provider
-                    .CreateQuery<SelectionFact>(opaqueRoot), (node, fact) => fact.NodeId == node.Id),
+            "custom-root" => FactSelection(context
+                    .Set<SelectionFact>()
+                    .AsQueryable()
+                    .Provider
+                    .CreateQuery<SelectionFact>(opaqueRoot),
+                (node, fact) => fact.NodeId == node.Id),
             "enumerable-custom-root" => OpaqueEnumerableSelection(opaqueRoot),
             _ => throw new ArgumentOutOfRangeException(nameof(shape)),
         };
 
         // Act
-        var actual = NestedSetQuerySelection.RequiresAncestorDecorrelation(selection, context.Model,
+        var actual = NestedSetQuerySelection.RequiresAncestorDecorrelation(selection,
+            context.Model,
             out var factSelection);
 
         // Assert
@@ -106,23 +121,41 @@ public sealed partial class CompositionAncestorIndexTests
         var options = new DbContextOptionsBuilder<IndexCompositionContext>(
                 ModelCompatibilityDatabase.Options<IndexCompositionContext>(engine,
                     "Server=127.0.0.1;Database=fact_selection;User ID=unused;Pooling=false"))
-            .AddInterceptors(io).Options;
+            .AddInterceptors(io)
+            .Options;
 
         await using var provider = SelectionServices(options);
         await using var context = new IndexCompositionContext(
-            new DbContextOptionsBuilder<IndexCompositionContext>(options).UseInternalServiceProvider(provider).Options);
+            new DbContextOptionsBuilder<IndexCompositionContext>(options)
+                .UseInternalServiceProvider(provider)
+                .Options);
 
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(Guid.Empty).InTree(Guid.Empty);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty)
+            .InTree(Guid.Empty);
+
         var selected = FactSelection(context.Set<SelectionFact>(),
             (node, fact) => fact.Scope == node.Scope && fact.NodeId == node.Id);
 
         var enabled = NestedSetProviderCapabilities.Resolve(context).CompletedSourceMethod is not null
-            && (!includeSelf || NestedSetProviderCapabilities.Resolve(context).OrderedJoinMethod is not null);
+            && (!includeSelf
+                || NestedSetProviderCapabilities.Resolve(context).OrderedJoinMethod is not null);
 
         // Act
         var query = includeSelf
-            ? hierarchy.SelectAncestorsOrSelf(selected, (node, owner, distance) => new { node.Id, Distance = distance })
-            : hierarchy.SelectAncestors(selected, (node, owner, distance) => new { node.Id, Distance = distance });
+            ? hierarchy.SelectAncestorsOrSelf(selected,
+                (node, owner, distance) => new
+                {
+                    node.Id,
+                    Distance = distance,
+                })
+            : hierarchy.SelectAncestors(selected,
+                (node, owner, distance) => new
+                {
+                    node.Id,
+                    Distance = distance,
+                });
 
         var sql = query.ToQueryString();
 
@@ -148,24 +181,36 @@ public sealed partial class CompositionAncestorIndexTests
         Expression<Func<CompositionNode, TFact, bool>> match
     )
     {
-        var exists = Expression.Call(typeof(Queryable), nameof(Queryable.Any), [typeof(TFact)], facts.Expression,
+        var exists = Expression.Call(typeof(Queryable),
+            nameof(Queryable.Any),
+            [typeof(TFact)],
+            facts.Expression,
             Expression.Quote(Expression.Lambda<Func<TFact, bool>>(match.Body, match.Parameters[1])));
 
         return Expression.Lambda<Func<CompositionNode, bool>>(exists, match.Parameters[0]);
     }
 
     /// <summary>Places an opaque child inside the pre-pass's separate row-reference traversal.</summary>
-    private static Expression<Func<CompositionNode, bool>> OpaqueEnumerableSelection(Expression root)
+    private static Expression<Func<CompositionNode, bool>> OpaqueEnumerableSelection(
+        Expression root
+    )
     {
         Expression<Func<CompositionNode, SelectionFact, bool>> match = (node, fact) => fact.NodeId == node.Id;
-        var exists = Expression.Call(typeof(Enumerable), nameof(Enumerable.Any), [typeof(SelectionFact)], root,
+
+        var exists = Expression.Call(typeof(Enumerable),
+            nameof(Enumerable.Any),
+            [typeof(SelectionFact)],
+            root,
             Expression.Lambda<Func<SelectionFact, bool>>(match.Body, match.Parameters[1]));
 
         return Expression.Lambda<Func<CompositionNode, bool>>(exists, match.Parameters[0]);
     }
 
     /// <summary>Owns each test's provider services instead of growing EF's process-wide singleton cache.</summary>
-    private static ServiceProvider SelectionServices(DbContextOptions options, params IInterceptor[] interceptors)
+    private static ServiceProvider SelectionServices(
+        DbContextOptions options,
+        params IInterceptor[] interceptors
+    )
     {
         var services = new ServiceCollection();
 
@@ -223,7 +268,9 @@ public sealed partial class CompositionAncestorIndexTests
     private sealed class DerivedHierarchyFilteredFact : HierarchyFilteredFact;
 
     /// <summary>Proves conservative inspection never calls application query getters.</summary>
-    private sealed class QueryHolder(IQueryable<SelectionFact> query)
+    private sealed class QueryHolder(
+        IQueryable<SelectionFact> query
+    )
     {
         /// <summary>Retains an opaque captured query without exposing its expression as owned syntax.</summary>
         public readonly IQueryable<SelectionFact> Field = query;
@@ -248,13 +295,17 @@ public sealed partial class CompositionAncestorIndexTests
 
     /// <summary>A derived EF root must not obtain trust or execute its application visitor callback.</summary>
     /// <param name="entityType">The otherwise valid fact metadata hidden behind the opaque root.</param>
-    private sealed class OpaqueFactRoot(IEntityType entityType) : EntityQueryRootExpression(entityType)
+    private sealed class OpaqueFactRoot(
+        IEntityType entityType
+    ) : EntityQueryRootExpression(entityType)
     {
         /// <summary>Gets the number of application-controlled child dispatches.</summary>
         public int Visits { get; private set; }
 
         /// <inheritdoc />
-        protected override Expression VisitChildren(ExpressionVisitor visitor)
+        protected override Expression VisitChildren(
+            ExpressionVisitor visitor
+        )
         {
             Visits++;
 

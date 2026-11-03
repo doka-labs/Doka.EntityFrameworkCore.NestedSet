@@ -10,7 +10,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 internal static class NestedSetTestAdapters
 {
     /// <summary>Gets the concrete adapter whose behavior is asserted by an explicitly named test engine.</summary>
-    internal static NestedSetProviderCapabilities ForEngine(string engine) => engine switch
+    internal static NestedSetProviderCapabilities ForEngine(
+        string engine
+    ) => engine switch
     {
         "MySql" or "MariaDb" => MySqlAdapter.Instance,
         "PostgreSql" => PostgresAdapter.Instance,
@@ -20,7 +22,10 @@ internal static class NestedSetTestAdapters
     };
 
     /// <summary>Builds an owned graph from the actual configured provider and adapter options.</summary>
-    internal static ServiceProvider BuildServices(DbContextOptions options, Action<IServiceCollection>? configure = null)
+    internal static ServiceProvider BuildServices(
+        DbContextOptions options,
+        Action<IServiceCollection>? configure = null
+    )
     {
         var services = new ServiceCollection();
 

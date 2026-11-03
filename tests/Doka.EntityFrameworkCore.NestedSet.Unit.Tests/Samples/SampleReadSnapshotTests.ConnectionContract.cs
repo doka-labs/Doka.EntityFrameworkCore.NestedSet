@@ -1,5 +1,4 @@
 extern alias UserGroupsSample;
-
 using Microsoft.EntityFrameworkCore.Storage;
 using SampleReadSnapshot = UserGroupsSample::Doka.EntityFrameworkCore.NestedSet.Samples.SampleReadSnapshot;
 
@@ -7,13 +6,19 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples;
 
 public sealed partial class SampleReadSnapshotTests
 {
-    /// <summary>A connection without EF's separate enlistment contract is rejected before acquiring resources.</summary>
+    /// <summary>
+    /// A connection without EF's separate enlistment contract is rejected before acquiring resources.
+    /// </summary>
     /// <param name="alreadyOpen">Whether the application already owns the physical SQLite connection.</param>
-    /// <returns>A task completing after proving the unsupported seam performs no reads, opens, or native begins.</returns>
+    /// <returns>
+    /// A task completing after proving the unsupported seam performs no reads, opens, or native begins.
+    /// </returns>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task MissingEnlistmentContractRejectsBeforeOpeningConnection(bool alreadyOpen)
+    public async Task MissingEnlistmentContractRejectsBeforeOpeningConnection(
+        bool alreadyOpen
+    )
     {
         // Arrange
         await using var connection = new SqliteConnection("Data Source=:memory:");
@@ -37,16 +42,21 @@ public sealed partial class SampleReadSnapshotTests
 
         services.AddScoped(_ => replacement);
         await using var provider = services.BuildServiceProvider();
-        await using var context = new SampleLifecycleContext(options.UseInternalServiceProvider(provider).Options);
+        await using var context = new SampleLifecycleContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
         var reads = 0;
 
         // Act
-        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context, _ =>
-        {
-            reads++;
+        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context,
+            _ =>
+            {
+                reads++;
 
-            return Task.FromResult(42);
-        }, CancellationToken.None));
+                return Task.FromResult(42);
+            },
+            CancellationToken.None));
 
         var state = connection.State;
 
@@ -66,7 +76,9 @@ public sealed partial class SampleReadSnapshotTests
     // inheritance boundary explicitly, as with the existing metadata probes; this test assembly is not shipped.
     public class SnapshotInterfaceConnection : DispatchProxy
     {
-        /// <summary>Allows DispatchProxy to create the interface-only test service before its connection is assigned.</summary>
+        /// <summary>
+        /// Allows DispatchProxy to create the interface-only test service before its connection is assigned.
+        /// </summary>
         public SnapshotInterfaceConnection() { }
 
         /// <summary>Gets or sets the application-owned connection exposed by the metadata-only service.</summary>
@@ -76,7 +88,10 @@ public sealed partial class SampleReadSnapshotTests
         internal int ResourceCalls { get; private set; }
 
         /// <inheritdoc />
-        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        protected override object? Invoke(
+            MethodInfo? targetMethod,
+            object?[]? args
+        )
         {
             switch (targetMethod?.Name)
             {

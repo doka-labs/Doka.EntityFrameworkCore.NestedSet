@@ -23,7 +23,13 @@ public sealed class CapacityPayloadSeedingTests
         await using (var setup = database.CreateContext())
         {
             await CapacitySeed.SeedAsync(setup, nodes);
-            setup.Set<UnrelatedRow>().Add(new UnrelatedRow { Id = -1, Value = "previous fixture" });
+            setup
+                .Set<UnrelatedRow>()
+                .Add(new UnrelatedRow
+                {
+                    Id = -1,
+                    Value = "previous fixture",
+                });
             await setup.SaveChangesAsync(CancellationToken.None);
         }
 
@@ -32,7 +38,8 @@ public sealed class CapacityPayloadSeedingTests
 
         // Act
         await CompositionCapacityProfiles.SeedPayloadAsync(context, nodes, facts);
-        var totals = await context.Set<UnrelatedRow>()
+        var totals = await context
+            .Set<UnrelatedRow>()
             .GroupBy(row => 1)
             .Select(group => new
             {
@@ -44,8 +51,8 @@ public sealed class CapacityPayloadSeedingTests
             .SingleOrDefaultAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(expectedBatches, commands.Commands.Count(command =>
-            command.StartsWith("INSERT INTO", StringComparison.Ordinal)));
+        Assert.Equal(expectedBatches,
+            commands.Commands.Count(command => command.StartsWith("INSERT INTO", StringComparison.Ordinal)));
         Assert.Empty(context.ChangeTracker.Entries());
 
         if (facts == 0)

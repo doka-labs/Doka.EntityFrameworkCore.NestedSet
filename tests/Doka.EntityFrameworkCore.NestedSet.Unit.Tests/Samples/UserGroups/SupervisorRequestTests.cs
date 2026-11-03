@@ -12,7 +12,9 @@ public sealed class SupervisorRequestTests
     [InlineData("membership")]
     [InlineData("global")]
     [InlineData("either")]
-    public void ExplicitRoleAlternativeIsAccepted(string role)
+    public void ExplicitRoleAlternativeIsAccepted(
+        string role
+    )
     {
         // Arrange
         var request = ValidRequest() with
@@ -35,7 +37,9 @@ public sealed class SupervisorRequestTests
     [InlineData("either")]
     [InlineData("unknown")]
     [InlineData("null")]
-    public void InvalidRoleAlternativeIsRejected(string role)
+    public void InvalidRoleAlternativeIsRejected(
+        string role
+    )
     {
         // Arrange
         var request = ValidRequest() with { Roles = Role(role, Guid.Empty) };
@@ -53,7 +57,9 @@ public sealed class SupervisorRequestTests
     [InlineData("all")]
     [InlineData("eligible")]
     [InlineData("type")]
-    public void ExplicitGroupAlternativeIsAccepted(string group)
+    public void ExplicitGroupAlternativeIsAccepted(
+        string group
+    )
     {
         // Arrange
         var request = ValidRequest() with { Groups = Groups(group, 1) };
@@ -162,7 +168,9 @@ public sealed class SupervisorRequestTests
     [InlineData("source-field")]
     [InlineData("candidate-field")]
     [InlineData("null-condition")]
-    public void InvalidRoutingConditionIsRejected(string invalid)
+    public void InvalidRoutingConditionIsRejected(
+        string invalid
+    )
     {
         // Arrange
         var match = new MetadataMatch(MetadataOwner.SourceUser, "Route", MetadataOwner.CandidateGroup, "Route");

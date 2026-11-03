@@ -1,6 +1,8 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-/// <summary>Checks real capacity-fixture updates against provider translation and independent endpoint values.</summary>
+/// <summary>
+/// Checks real capacity-fixture updates against provider translation and independent endpoint values.
+/// </summary>
 public sealed class CapacityFixtureTranslationTests
 {
     /// <summary>The actual batched topology update translates before reaching the intentional I/O boundary.</summary>
@@ -12,8 +14,9 @@ public sealed class CapacityFixtureTranslationTests
         await using var context = new TreeContext(SqlServerOptions(boundary));
 
         // Act
-        var failure = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => CompositionCapacityProfiles.BalanceAsync(context, 100_001));
+        var failure =
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                CompositionCapacityProfiles.BalanceAsync(context, 100_001));
 
         // Assert
         Assert.Equal("Query construction attempted asynchronous database I/O.", failure.Message);
@@ -30,7 +33,8 @@ public sealed class CapacityFixtureTranslationTests
         const int nodes = 100_001;
 
         // Act
-        var failure = await Assert.ThrowsAsync<InvalidOperationException>(() => context.Set<TreeNode>()
+        var failure = await Assert.ThrowsAsync<InvalidOperationException>(() => context
+            .Set<TreeNode>()
             .Where(node => node.NodeId > 1)
             .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.End,
                     node => Math.Min((2L * nodes) - 1,
@@ -45,7 +49,9 @@ public sealed class CapacityFixtureTranslationTests
     /// <summary>Completed and truncated branches retain exact endpoints while the tree root stays unchanged.</summary>
     /// <param name="nodes">The independent wide-fixture population.</param>
     /// <param name="branch">The branch-root key whose right boundary is checked.</param>
-    /// <param name="expectedRight">The right boundary derived from that branch's complete or partial population.</param>
+    /// <param name="expectedRight">
+    /// The right boundary derived from that branch's complete or partial population.
+    /// </param>
     [Theory]
     [InlineData(2, 2, 3L)]
     [InlineData(1_001, 2, 2_001L)]
@@ -65,11 +71,20 @@ public sealed class CapacityFixtureTranslationTests
 
         // Act
         var changed = await CompositionCapacityProfiles.BalanceAsync(context, nodes);
-        var rows = await context.Set<TreeNode>()
+        var rows = await context
+            .Set<TreeNode>()
             .AsNoTracking()
             .Where(node => node.NodeId == 1 || node.NodeId == branch)
             .OrderBy(node => node.NodeId)
-            .Select(node => new { node.NodeId, node.Parent, node.Start, node.End, node.Depth, node.TreeId })
+            .Select(node => new
+            {
+                node.NodeId,
+                node.Parent,
+                node.Start,
+                node.End,
+                node.Depth,
+                node.TreeId,
+            })
             .ToArrayAsync(CancellationToken.None);
 
         // Assert

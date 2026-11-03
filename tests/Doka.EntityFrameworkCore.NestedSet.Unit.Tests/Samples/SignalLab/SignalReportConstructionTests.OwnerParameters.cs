@@ -20,7 +20,10 @@ public sealed partial class SignalReportConstructionTests
     [InlineData("SqlServer", true)]
     [InlineData("Sqlite", false)]
     [InlineData("Sqlite", true)]
-    public async Task OwnerPredicatesKeepWarmShapeForEqualAndDistinctScalars(string engine, bool nearest)
+    public async Task OwnerPredicatesKeepWarmShapeForEqualAndDistinctScalars(
+        string engine,
+        bool nearest
+    )
     {
         // Arrange
         var compilations = new List<string>();
@@ -29,17 +32,27 @@ public sealed partial class SignalReportConstructionTests
             .LogTo(compilations.Add, [CoreEventId.QueryCompilationStarting], LogLevel.Debug);
 
         await using var provider = CreateServiceProvider(options.Options);
-        await using var context = new SignalLabContext(options.UseInternalServiceProvider(provider).Options);
+        await using var context = new SignalLabContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
         var (first, second) = ParameterRequests(nearest);
 
         // WHY: This warms the actual hierarchy, owner, temporal path and aggregate shape, rather than a
         // standalone equality. Changing one scalar must not merge parameter slots or recompile that shape.
-        _ = SignalReportBuilder.Build(context, first).ToQueryString();
+        _ = SignalReportBuilder
+            .Build(context, first)
+            .ToQueryString();
         compilations.Clear();
 
         // Act
-        var secondSql = SignalReportBuilder.Build(context, second).ToQueryString();
-        var firstSql = SignalReportBuilder.Build(context, first).ToQueryString();
+        var secondSql = SignalReportBuilder
+            .Build(context, second)
+            .ToQueryString();
+
+        var firstSql = SignalReportBuilder
+            .Build(context, first)
+            .ToQueryString();
 
         // Assert
         Assert.Contains("Shared", firstSql, StringComparison.Ordinal);

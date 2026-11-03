@@ -25,8 +25,13 @@ public sealed partial class CompositionCoordinateProjectionTests
         // Arrange
         var options = CoordinateOptions();
         await using var provider = CoordinateServices(options);
-        await using var first = new CoordinateContext(options.UseInternalServiceProvider(provider).Options);
-        await using var second = new CoordinateContext(options.UseInternalServiceProvider(provider).Options);
+        await using var first = new CoordinateContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
+        await using var second = new CoordinateContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
 
         // Act
         var original = Coordinates(first, mapping, includeNonLeaf);
@@ -49,14 +54,22 @@ public sealed partial class CompositionCoordinateProjectionTests
     [InlineData("named-mapping")]
     [InlineData("model")]
     [InlineData("nonleaf-mode")]
-    public async Task IndependentCoordinateIdentitiesNeverShareSelectors(string boundary)
+    public async Task IndependentCoordinateIdentitiesNeverShareSelectors(
+        string boundary
+    )
     {
         // Arrange
         var options = CoordinateOptions();
         await using var firstProvider = CoordinateServices(options);
         await using var secondProvider = CoordinateServices(options);
-        await using var first = new CoordinateContext(options.UseInternalServiceProvider(firstProvider).Options);
-        await using var second = new CoordinateContext(options.UseInternalServiceProvider(secondProvider).Options);
+        await using var first = new CoordinateContext(options
+            .UseInternalServiceProvider(firstProvider)
+            .Options);
+
+        await using var second = new CoordinateContext(options
+            .UseInternalServiceProvider(secondProvider)
+            .Options);
+
         var original = Coordinates(first, CoordinateContext.Scoped, includeNonLeaf: false);
 
         // Act
@@ -89,33 +102,50 @@ public sealed partial class CompositionCoordinateProjectionTests
         // Arrange
         var options = CoordinateOptions();
         await using var provider = CoordinateServices(options);
-        await using var context = new CoordinateContext(options.UseInternalServiceProvider(provider).Options);
+        await using var context = new CoordinateContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
         var scoped = mapping == CoordinateContext.Scoped;
         var names = scoped
-            ? new[] { "NodeId", "TreeId", "TenantId", "Start", "End", "HasChildren" }
+            ? new[]
+            {
+                "NodeId",
+                "TreeId",
+                "TenantId",
+                "Start",
+                "End",
+                "HasChildren",
+            }
             : ["Key", "Tree", "Left", "Right", "Branches"];
 
         // Act
         var selected = Coordinates(context, mapping, includeNonLeaf);
-        var body = Assert.IsType<MemberInitExpression>(selected.Selector.Body);
-        var calls = body.Bindings.Cast<MemberAssignment>()
-            .Select(binding => Assert.IsAssignableFrom<MethodCallExpression>(binding.Expression)).ToArray();
+        var sql = selected.Query.ToQueryString();
 
         // Assert
-        Assert.Equal(includeNonLeaf ? names : names[..^1], calls.Select(call =>
-            Assert.IsType<ConstantExpression>(call.Arguments[1]).Value));
-        Assert.All(calls, call =>
-        {
-            Assert.Equal(typeof(EF), call.Method.DeclaringType);
-            Assert.Equal(nameof(EF.Property), call.Method.Name);
-            Assert.Same(selected.Selector.Parameters[0], call.Arguments[0]);
-        });
+        var body = Assert.IsType<MemberInitExpression>(selected.Selector.Body);
+        var calls = body
+            .Bindings
+            .Cast<MemberAssignment>()
+            .Select(binding => Assert.IsAssignableFrom<MethodCallExpression>(binding.Expression))
+            .ToArray();
+
+        Assert.Equal(includeNonLeaf ? names : names[..^1],
+            calls.Select(call => Assert.IsType<ConstantExpression>(call.Arguments[1]).Value));
+        Assert.All(calls,
+            call =>
+            {
+                Assert.Equal(typeof(EF), call.Method.DeclaringType);
+                Assert.Equal(nameof(EF.Property), call.Method.Name);
+                Assert.Same(selected.Selector.Parameters[0], call.Arguments[0]);
+            });
 
         Assert.Equal(scoped, body.Bindings.Any(binding => binding.Member.Name == "Scope"));
         Assert.Equal(includeNonLeaf, body.Bindings.Any(binding => binding.Member.Name == "NonLeaf"));
         Assert.Equal(typeof(object), calls[0].Type);
         Assert.Equal(typeof(object), calls[1].Type);
-        Assert.Contains("SELECT", selected.Query.ToQueryString(), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("SELECT", sql, StringComparison.OrdinalIgnoreCase);
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -157,16 +187,24 @@ public sealed partial class CompositionCoordinateProjectionTests
         // Arrange
         var options = CoordinateOptions();
         await using var provider = CoordinateServices(options);
-        await using var context = new CoordinateContext(options.UseInternalServiceProvider(provider).Options);
-        var mapping = context.Model.FindEntityType(CoordinateContext.Scoped)!;
-        var roots = Enumerable.Range(0, 16).Select(_ =>
-            new NestedSetQuery<Dictionary<string, object>>(context, mapping)).ToArray();
+        await using var context = new CoordinateContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
 
-        var source = context.Set<Dictionary<string, object>>(CoordinateContext.Scoped).AsQueryable();
+        var mapping = context.Model.FindEntityType(CoordinateContext.Scoped)!;
+        var roots = Enumerable
+            .Range(0, 16)
+            .Select(_ => new NestedSetQuery<Dictionary<string, object>>(context, mapping))
+            .ToArray();
+
+        var source = context
+            .Set<Dictionary<string, object>>(CoordinateContext.Scoped)
+            .AsQueryable();
 
         // Act
         var selectors = await Task.WhenAll(roots.Select(root => Task.Run(
-            () => CoordinateSelection(root, source, includeNonLeaf: true).Selector, CancellationToken.None)));
+            () => CoordinateSelection(root, source, includeNonLeaf: true).Selector,
+            CancellationToken.None)));
 
         // Assert
         Assert.All(selectors, selector => Assert.Same(selectors[0], selector));
@@ -180,26 +218,33 @@ public sealed partial class CompositionCoordinateProjectionTests
         // Arrange
         var options = CoordinateOptions();
         await using var provider = CoordinateServices(options);
-        await using var context = new CoordinateContext(options.UseInternalServiceProvider(provider).Options);
+        await using var context = new CoordinateContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
         var entity = context.Model.FindEntityType(CoordinateContext.Scoped)!;
         var root = new NestedSetQuery<Dictionary<string, object>>(context, entity);
         var firstValue = 3;
         var secondValue = 9;
-        var first = context.Set<Dictionary<string, object>>(CoordinateContext.Scoped)
+        var first = context
+            .Set<Dictionary<string, object>>(CoordinateContext.Scoped)
             .Where(node => EF.Property<int>(node, "NodeId") == firstValue);
 
-        var second = context.Set<Dictionary<string, object>>(CoordinateContext.Scoped)
+        var second = context
+            .Set<Dictionary<string, object>>(CoordinateContext.Scoped)
             .Where(node => EF.Property<int>(node, "NodeId") == secondValue);
 
         // Act
         var original = CoordinateSelection(root, first, includeNonLeaf: false);
         var independent = CoordinateSelection(root, second, includeNonLeaf: false);
+        var originalSql = original.Query.ToQueryString();
+        var independentSql = independent.Query.ToQueryString();
 
         // Assert
         Assert.Same(original.Selector, independent.Selector);
         Assert.Same(first.Expression, ((MethodCallExpression)original.Query.Expression).Arguments[0]);
         Assert.Same(second.Expression, ((MethodCallExpression)independent.Query.Expression).Arguments[0]);
-        Assert.NotEqual(original.Query.ToQueryString(), independent.Query.ToQueryString());
+        Assert.NotEqual(originalSql, independentSql);
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -208,16 +253,25 @@ public sealed partial class CompositionCoordinateProjectionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ShadowCoordinateSelectorsRemainServerSide(bool includeNonLeaf)
+    public async Task ShadowCoordinateSelectorsRemainServerSide(
+        bool includeNonLeaf
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
-        var options = CoordinateOptions().AddInterceptors(boundary);
+        var options = CoordinateOptions()
+            .AddInterceptors(boundary);
+
         await using var provider = CoordinateServices(options);
-        await using var context = new CoordinateContext(options.UseInternalServiceProvider(provider).Options);
+        await using var context = new CoordinateContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
         var entity = context.Model.FindEntityType(typeof(CoordinateNode))!;
         var root = new NestedSetQuery<CoordinateNode>(context, entity);
-        var nodes = context.Set<CoordinateNode>().AsQueryable();
+        var nodes = context
+            .Set<CoordinateNode>()
+            .AsQueryable();
 
         // Act
         var selected = CoordinateSelection(root, nodes, includeNonLeaf);
@@ -227,7 +281,8 @@ public sealed partial class CompositionCoordinateProjectionTests
         Assert.Contains("\"TreeId\"", sql, StringComparison.Ordinal);
         Assert.Contains("\"Left\"", sql, StringComparison.Ordinal);
         Assert.Contains("\"Right\"", sql, StringComparison.Ordinal);
-        Assert.Equal(typeof(string), entity.FindProperty("TreeId")!.GetTypeMapping().Converter!.ProviderClrType);
+        Assert.Equal(typeof(string),
+            entity.FindProperty("TreeId")!.GetTypeMapping().Converter!.ProviderClrType);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
         Assert.Empty(context.ChangeTracker.Entries());

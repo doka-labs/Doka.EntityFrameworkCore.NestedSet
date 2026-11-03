@@ -34,7 +34,8 @@ public sealed class DatabaseImageManifestTests
     {
         // Arrange
         var reference = $"registry.example:5000/mysql:8.4.11@sha256:{new string('a', 64)}";
-        var manifest = CompleteManifest().Replace(DatabaseTestTargets.MySqlImage, reference, StringComparison.Ordinal);
+        var manifest = CompleteManifest()
+            .Replace(DatabaseTestTargets.MySqlImage, reference, StringComparison.Ordinal);
 
         // Act
         var images = DatabaseTestTargets.ParseImages(manifest);
@@ -113,7 +114,9 @@ public sealed class DatabaseImageManifestTests
         Assert.IsType<ArgumentNullException>(error);
     }
 
-    /// <summary>Builds test input from the actual pins so normal dependency updates do not require duplicate versions.</summary>
+    /// <summary>
+    /// Builds test input from the actual pins so normal dependency updates do not require duplicate versions.
+    /// </summary>
     private static string CompleteManifest() => $"""
                                                FROM {DatabaseTestTargets.MySqlImage} AS mysql
                                                FROM {DatabaseTestTargets.MariaDbImage} AS mariadb

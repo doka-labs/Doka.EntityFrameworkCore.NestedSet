@@ -39,18 +39,35 @@ public sealed partial class CompositionAncestorIndexTests
         var options = new DbContextOptionsBuilder<IndexCompositionContext>(
                 ModelCompatibilityDatabase.Options<IndexCompositionContext>(engine,
                     "Server=127.0.0.1;Database=captured_facts;User ID=unused;Pooling=false"))
-            .AddInterceptors(io, io.Commands).Options;
+            .AddInterceptors(io, io.Commands)
+            .Options;
 
         await using var provider = SelectionServices(options, capture);
         await using var context = new IndexCompositionContext(
-            new DbContextOptionsBuilder<IndexCompositionContext>(options).UseInternalServiceProvider(provider).Options);
+            new DbContextOptionsBuilder<IndexCompositionContext>(options)
+                .UseInternalServiceProvider(provider)
+                .Options);
 
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(Guid.Empty).InTree(Guid.Empty);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty)
+            .InTree(Guid.Empty);
+
         var selected = CapturedSelection(context, shape);
         var enabled = HasIndexedFactCapabilities(context, includeSelf);
         var query = includeSelf
-            ? hierarchy.SelectAncestorsOrSelf(selected, (node, owner, distance) => new { node.Id, Distance = distance })
-            : hierarchy.SelectAncestors(selected, (node, owner, distance) => new { node.Id, Distance = distance });
+            ? hierarchy.SelectAncestorsOrSelf(selected,
+                (node, owner, distance) => new
+                {
+                    node.Id,
+                    Distance = distance,
+                })
+            : hierarchy.SelectAncestors(selected,
+                (node, owner, distance) => new
+                {
+                    node.Id,
+                    Distance = distance,
+                });
 
         var getterCallsAfterConstruction = context.FactGetterCalls;
         var commandsAfterConstruction = io.Commands.Created;
@@ -76,7 +93,9 @@ public sealed partial class CompositionAncestorIndexTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task CapturedFactRebindingRetainsDeferredValuesAndStrategy(bool includeSelf)
+    public async Task CapturedFactRebindingRetainsDeferredValuesAndStrategy(
+        bool includeSelf
+    )
     {
         // Arrange
         var options = ModelCompatibilityDatabase.Options<IndexCompositionContext>("MySql",
@@ -84,10 +103,19 @@ public sealed partial class CompositionAncestorIndexTests
 
         await using var provider = SelectionServices(options);
         await using var context = new IndexCompositionContext(
-            new DbContextOptionsBuilder<IndexCompositionContext>(options).UseInternalServiceProvider(provider).Options);
+            new DbContextOptionsBuilder<IndexCompositionContext>(options)
+                .UseInternalServiceProvider(provider)
+                .Options);
 
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(Guid.Empty).InTree(Guid.Empty);
-        var facts = context.Set<SelectionFact>().Where(fact => fact.Id == 111);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty)
+            .InTree(Guid.Empty);
+
+        var facts = context
+            .Set<SelectionFact>()
+            .Where(fact => fact.Id == 111);
+
         var query = includeSelf
             ? hierarchy.SelectAncestorsOrSelf(node => facts.Any(fact => fact.NodeId == node.Id),
                 (node, owner, distance) => owner.Id)
@@ -97,12 +125,19 @@ public sealed partial class CompositionAncestorIndexTests
         var enabled = HasIndexedFactCapabilities(context, includeSelf);
 
         // Act
-        facts = context.Set<SelectionFact>().Where(fact => fact.Id == 222);
+        facts = context
+            .Set<SelectionFact>()
+            .Where(fact => fact.Id == 222);
         var first = query.ToQueryString();
-        facts = context.Set<SelectionFact>().Where(fact => fact.Id == 333);
+        facts = context
+            .Set<SelectionFact>()
+            .Where(fact => fact.Id == 333);
         var second = query.ToQueryString();
-        facts = context.Set<SelectionFact>().Where(fact => context.Set<CompositionNode>()
-            .Any(hiddenHierarchy => hiddenHierarchy.Id == fact.NodeId));
+        facts = context
+            .Set<SelectionFact>()
+            .Where(fact => context
+                .Set<CompositionNode>()
+                .Any(hiddenHierarchy => hiddenHierarchy.Id == fact.NodeId));
 
         var hierarchyBearing = query.ToQueryString();
 
@@ -117,7 +152,9 @@ public sealed partial class CompositionAncestorIndexTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>Deferred fact composition preserves both endpoint aliases for every public path and owner filter.</summary>
+    /// <summary>
+    /// Deferred fact composition preserves both endpoint aliases for every public path and owner filter.
+    /// </summary>
     /// <param name="includeSelf">Whether the first ancestor relation includes self.</param>
     /// <param name="filter">The subsequent generic hierarchy operation.</param>
     [Theory]
@@ -127,7 +164,10 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData(true, "any")]
     [InlineData(false, "nearest")]
     [InlineData(true, "nearest")]
-    public async Task CapturedFactEndpointsRemainComposable(bool includeSelf, string filter)
+    public async Task CapturedFactEndpointsRemainComposable(
+        bool includeSelf,
+        string filter
+    )
     {
         // Arrange
         var options = ModelCompatibilityDatabase.Options<IndexCompositionContext>("MariaDb",
@@ -135,24 +175,45 @@ public sealed partial class CompositionAncestorIndexTests
 
         await using var provider = SelectionServices(options);
         await using var context = new IndexCompositionContext(
-            new DbContextOptionsBuilder<IndexCompositionContext>(options).UseInternalServiceProvider(provider).Options);
+            new DbContextOptionsBuilder<IndexCompositionContext>(options)
+                .UseInternalServiceProvider(provider)
+                .Options);
 
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(Guid.Empty).InTree(Guid.Empty);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty)
+            .InTree(Guid.Empty);
+
         var facts = context.Set<SelectionFact>();
         var pairs = includeSelf
             ? hierarchy.SelectAncestorsOrSelf(node => facts.Any(fact => fact.NodeId == node.Id),
-                (node, owner, distance) => new { Node = node, Owner = owner, Distance = distance })
+                (node, owner, distance) => new
+                {
+                    Node = node,
+                    Owner = owner,
+                    Distance = distance,
+                })
             : hierarchy.SelectAncestors(node => facts.Any(fact => fact.NodeId == node.Id),
-                (node, owner, distance) => new { Node = node, Owner = owner, Distance = distance });
+                (node, owner, distance) => new
+                {
+                    Node = node,
+                    Owner = owner,
+                    Distance = distance,
+                });
 
         var filtered = filter switch
         {
-            "path" => hierarchy.WherePathEdges(pairs, row => row.Owner, row => row.Node,
+            "path" => hierarchy.WherePathEdges(pairs,
+                row => row.Owner,
+                row => row.Node,
                 (row, parent, child) => child.Id > 0),
-            "any" => hierarchy.WhereAnyAncestorOrSelf(pairs, row => row.Node,
+            "any" => hierarchy.WhereAnyAncestorOrSelf(pairs,
+                row => row.Node,
                 (row, owner) => owner.Id > 0),
-            "nearest" => hierarchy.WhereNearestAncestorOrSelf(pairs, row => row.Node,
-                (row, owner) => owner.Id > 0, (row, owner) => owner.Visible),
+            "nearest" => hierarchy.WhereNearestAncestorOrSelf(pairs,
+                row => row.Node,
+                (row, owner) => owner.Id > 0,
+                (row, owner) => owner.Visible),
             _ => throw new ArgumentOutOfRangeException(nameof(filter)),
         };
 
@@ -177,10 +238,16 @@ public sealed partial class CompositionAncestorIndexTests
 
         await using var provider = SelectionServices(options);
         await using var context = new IndexCompositionContext(
-            new DbContextOptionsBuilder<IndexCompositionContext>(options).UseInternalServiceProvider(provider).Options);
+            new DbContextOptionsBuilder<IndexCompositionContext>(options)
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         context.ThrowFactGetter = true;
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(Guid.Empty).InTree(Guid.Empty);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty)
+            .InTree(Guid.Empty);
+
         var query = hierarchy.SelectAncestorsOrSelf(node => context.Facts.Any(fact => fact.NodeId == node.Id),
             (node, owner, distance) => owner.Id);
 
@@ -206,12 +273,16 @@ public sealed partial class CompositionAncestorIndexTests
 
         await using var provider = SelectionServices(options);
         var ownedOptions = new DbContextOptionsBuilder<IndexCompositionContext>(options)
-            .UseInternalServiceProvider(provider).Options;
+            .UseInternalServiceProvider(provider)
+            .Options;
 
         await using var context = new IndexCompositionContext(ownedOptions);
         await using var foreign = new IndexCompositionContext(ownedOptions);
         IQueryable<SelectionFact> facts = context.Set<SelectionFact>();
-        var query = context.NestedSet<CompositionNode>().ForScope(Guid.Empty).InTree(Guid.Empty)
+        var query = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty)
+            .InTree(Guid.Empty)
             .SelectAncestorsOrSelf(node => facts.Any(fact => fact.NodeId == node.Id),
                 (node, owner, distance) => owner.Id);
 
@@ -244,7 +315,9 @@ public sealed partial class CompositionAncestorIndexTests
 
         await using var provider = SelectionServices(options);
         await using var context = new CompositionGuardContext(
-            new DbContextOptionsBuilder<CompositionGuardContext>(options).UseInternalServiceProvider(provider).Options);
+            new DbContextOptionsBuilder<CompositionGuardContext>(options)
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var facts = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
 
@@ -265,7 +338,9 @@ public sealed partial class CompositionAncestorIndexTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>Fact-filter shape and scalar values remain deferred while hierarchy-backed sources stay conservative.</summary>
+    /// <summary>
+    /// Fact-filter shape and scalar values remain deferred while hierarchy-backed sources stay conservative.
+    /// </summary>
     /// <param name="shape">The captured source hiding a hierarchy dependency or an opaque provider root.</param>
     [Theory]
     [InlineData("navigation")]
@@ -273,7 +348,9 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData("inherited-filter")]
     [InlineData("raw-sql")]
     [InlineData("ignore-filters")]
-    public async Task NormalizedDependentFactSourcesRetainFallback(string shape)
+    public async Task NormalizedDependentFactSourcesRetainFallback(
+        string shape
+    )
     {
         // Arrange
         var options = ModelCompatibilityDatabase.Options<IndexCompositionContext>("MySql",
@@ -281,13 +358,21 @@ public sealed partial class CompositionAncestorIndexTests
 
         await using var provider = SelectionServices(options);
         await using var context = new IndexCompositionContext(
-            new DbContextOptionsBuilder<IndexCompositionContext>(options).UseInternalServiceProvider(provider).Options);
+            new DbContextOptionsBuilder<IndexCompositionContext>(options)
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var ordinary = shape switch
         {
-            "raw-sql" => context.Set<SelectionFact>().FromSqlRaw("SELECT * FROM SelectionFact"),
-            "ignore-filters" => context.Set<SelectionFact>().IgnoreQueryFilters(),
-            _ => context.Set<SelectionFact>().AsQueryable(),
+            "raw-sql" => context
+                .Set<SelectionFact>()
+                .FromSqlRaw("SELECT * FROM SelectionFact"),
+            "ignore-filters" => context
+                .Set<SelectionFact>()
+                .IgnoreQueryFilters(),
+            _ => context
+                .Set<SelectionFact>()
+                .AsQueryable(),
         };
 
         var named = context.Set<HierarchyFilteredFact>();
@@ -300,8 +385,12 @@ public sealed partial class CompositionAncestorIndexTests
             _ => node => ordinary.Any(fact => fact.NodeId == node.Id),
         };
 
-        var query = context.NestedSet<CompositionNode>().ForScope(Guid.Empty).InTree(Guid.Empty)
-            .SelectAncestorsOrSelf(selected, (node, owner, distance) => owner.Id);
+        var query = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty)
+            .InTree(Guid.Empty)
+            .SelectAncestorsOrSelf(selected,
+                (node, owner, distance) => owner.Id);
 
         // Act
         var sql = query.ToQueryString();
@@ -319,7 +408,9 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData("path")]
     [InlineData("any")]
     [InlineData("nearest")]
-    public async Task NormalizedFactScalarChangesReuseOneCompilation(string operation)
+    public async Task NormalizedFactScalarChangesReuseOneCompilation(
+        string operation
+    )
     {
         // Arrange
         var probe = new DeferredCompilationProbe();
@@ -328,24 +419,40 @@ public sealed partial class CompositionAncestorIndexTests
 
         await using var provider = SelectionServices(options, probe);
         await using var context = new IndexCompositionContext(
-            new DbContextOptionsBuilder<IndexCompositionContext>(options).UseInternalServiceProvider(provider).Options);
+            new DbContextOptionsBuilder<IndexCompositionContext>(options)
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var minimum = 711;
         var facts = context.Set<SelectionFact>();
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(Guid.Empty).InTree(Guid.Empty);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty)
+            .InTree(Guid.Empty);
+
         var pairs = hierarchy
             .SelectAncestorsOrSelf(node => facts.Any(fact => fact.NodeId == node.Id && fact.Id > minimum),
-                (node, owner, distance) => new { Node = node, Owner = owner, Distance = distance });
+                (node, owner, distance) => new
+                {
+                    Node = node,
+                    Owner = owner,
+                    Distance = distance,
+                });
 
         var filtered = operation switch
         {
             "ancestors" => pairs,
-            "path" => hierarchy.WherePathEdges(pairs, row => row.Owner, row => row.Node,
+            "path" => hierarchy.WherePathEdges(pairs,
+                row => row.Owner,
+                row => row.Node,
                 (row, parent, child) => child.Id < minimum),
-            "any" => hierarchy.WhereAnyAncestorOrSelf(pairs, row => row.Node,
+            "any" => hierarchy.WhereAnyAncestorOrSelf(pairs,
+                row => row.Node,
                 (row, owner) => owner.Id < minimum),
-            "nearest" => hierarchy.WhereNearestAncestorOrSelf(pairs, row => row.Node,
-                (row, owner) => owner.Id > 0, (row, owner) => owner.Id < minimum),
+            "nearest" => hierarchy.WhereNearestAncestorOrSelf(pairs,
+                row => row.Node,
+                (row, owner) => owner.Id > 0,
+                (row, owner) => owner.Id < minimum),
             _ => throw new ArgumentOutOfRangeException(nameof(operation)),
         };
 
@@ -367,7 +474,10 @@ public sealed partial class CompositionAncestorIndexTests
     }
 
     /// <summary>Produces only ordinary compiler-generated LINQ, without embedding IQueryable.Expression.</summary>
-    private static Expression<Func<CompositionNode, bool>> CapturedSelection(IndexCompositionContext context, string shape)
+    private static Expression<Func<CompositionNode, bool>> CapturedSelection(
+        IndexCompositionContext context,
+        string shape
+    )
     {
         var set = context.Set<SelectionFact>();
         var query = set.Where(fact => fact.Id > 0);
@@ -377,15 +487,21 @@ public sealed partial class CompositionAncestorIndexTests
             "query" => node => query.Any(fact => fact.NodeId == node.Id),
             "dbset" => node => set.Any(fact => fact.NodeId == node.Id),
             "property" => node => context.Facts.Any(fact => fact.NodeId == node.Id),
-            "set" => node => context.Set<SelectionFact>().Any(fact => fact.NodeId == node.Id),
+            "set" => node => context
+                .Set<SelectionFact>()
+                .Any(fact => fact.NodeId == node.Id),
             _ => throw new ArgumentOutOfRangeException(nameof(shape)),
         };
     }
 
     /// <summary>Retains the existing optional-provider boundary without inventing a server dialect.</summary>
-    private static bool HasIndexedFactCapabilities(DbContext context, bool includeSelf)
+    private static bool HasIndexedFactCapabilities(
+        DbContext context,
+        bool includeSelf
+    )
         => NestedSetProviderCapabilities.Resolve(context).CompletedSourceMethod is not null
-            && (!includeSelf || NestedSetProviderCapabilities.Resolve(context).OrderedJoinMethod is not null);
+            && (!includeSelf
+                || NestedSetProviderCapabilities.Resolve(context).OrderedJoinMethod is not null);
 
     /// <summary>Checks the completed compile expression without retaining that expression or its context.</summary>
     private sealed class DeferredCompilationProbe : IQueryExpressionInterceptor
@@ -397,7 +513,10 @@ public sealed partial class CompositionAncestorIndexTests
         internal int RetainedContextOrQueryConstants { get; private set; }
 
         /// <inheritdoc />
-        public Expression QueryCompilationStarting(Expression queryExpression, QueryExpressionEventData eventData)
+        public Expression QueryCompilationStarting(
+            Expression queryExpression,
+            QueryExpressionEventData eventData
+        )
         {
             Compilations++;
             var visitor = new QueryConstantProbe();
@@ -414,7 +533,9 @@ public sealed partial class CompositionAncestorIndexTests
             internal int Retained { get; private set; }
 
             /// <inheritdoc />
-            protected override Expression VisitConstant(ConstantExpression node)
+            protected override Expression VisitConstant(
+                ConstantExpression node
+            )
             {
                 if (node.Value is DbContext or IQueryable)
                 {
@@ -425,7 +546,9 @@ public sealed partial class CompositionAncestorIndexTests
             }
 
             /// <inheritdoc />
-            protected override Expression VisitExtension(Expression node) => node;
+            protected override Expression VisitExtension(
+                Expression node
+            ) => node;
         }
     }
 }

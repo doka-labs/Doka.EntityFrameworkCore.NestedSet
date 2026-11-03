@@ -45,7 +45,10 @@ public sealed partial class EngineTestDiscoveryTests
         // Assert
         if (expected)
         {
-            Assert.Equal<object?>([17], Assert.Single(rows).GetData());
+            Assert.Equal<object?>([17],
+                Assert
+                    .Single(rows)
+                    .GetData());
         }
         else
         {

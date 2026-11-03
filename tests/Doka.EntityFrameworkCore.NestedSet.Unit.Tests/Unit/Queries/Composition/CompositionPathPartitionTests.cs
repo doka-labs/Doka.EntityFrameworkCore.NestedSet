@@ -31,7 +31,9 @@ public sealed class CompositionPathPartitionTests
     [InlineData(9_223_372_030_926_249_001L)]
     [InlineData(9_223_372_030_926_249_002L)]
     [InlineData(long.MaxValue)]
-    public void WidthEstimateRemainsPositiveAtCoordinateBoundaries(long maximumRight)
+    public void WidthEstimateRemainsPositiveAtCoordinateBoundaries(
+        long maximumRight
+    )
     {
         // Arrange
         // WHY: Floating-point square-root rounding can change this cost estimate by one at huge
@@ -58,7 +60,10 @@ public sealed class CompositionPathPartitionTests
     [InlineData(9_007_199_254_740_993L, 9_007_199_254_740_993L)]
     [InlineData(long.MaxValue - 1, long.MaxValue)]
     [InlineData(long.MaxValue, long.MaxValue)]
-    public void PartitionsKeepTheirCompleteIntegerWindow(long left, long maximumRight)
+    public void PartitionsKeepTheirCompleteIntegerWindow(
+        long left,
+        long maximumRight
+    )
     {
         // Arrange
         var width = s_width(maximumRight);
@@ -82,8 +87,11 @@ public sealed class CompositionPathPartitionTests
     {
         var maximum = Expression.Parameter(typeof(long), "maximum");
 
-        return Expression.Lambda<Func<long, long>>(
-            NestedSetQuery<CompositionNode>.CoordinateBlockWidth(maximum), maximum).Compile();
+        return Expression
+            .Lambda<Func<long, long>>(
+                NestedSetQuery<CompositionNode>.CoordinateBlockWidth(maximum),
+                maximum)
+            .Compile();
     }
 
     /// <summary>Compiles the same integer partition expression used by real endpoint joins.</summary>
@@ -92,7 +100,11 @@ public sealed class CompositionPathPartitionTests
         var left = Expression.Parameter(typeof(long), "left");
         var width = Expression.Parameter(typeof(long), "width");
 
-        return Expression.Lambda<Func<long, long, long>>(
-            NestedSetQuery<CompositionNode>.CoordinateBlockStart(left, width), left, width).Compile();
+        return Expression
+            .Lambda<Func<long, long, long>>(
+                NestedSetQuery<CompositionNode>.CoordinateBlockStart(left, width),
+                left,
+                width)
+            .Compile();
     }
 }

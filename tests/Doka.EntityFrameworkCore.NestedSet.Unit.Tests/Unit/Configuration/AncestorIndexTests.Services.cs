@@ -7,21 +7,28 @@ public sealed partial class AncestorIndexTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task VariantModelsOwnServicesAndReleaseThemWithContext(bool asynchronous)
+    public async Task VariantModelsOwnServicesAndReleaseThemWithContext(
+        bool asynchronous
+    )
     {
         // Arrange
-        await using var first = new AncestorContext("Sqlite", model =>
-            Configure(model).HasNestedSet(builder => builder.HasAncestorIndex("FirstFlag")));
+        await using var first = new AncestorContext("Sqlite",
+            model =>
+                Configure(model)
+                    .HasNestedSet(builder => builder.HasAncestorIndex("FirstFlag")));
 
-        await using var second = new AncestorContext("Sqlite", model =>
-            Configure(model).HasNestedSet(builder => builder.HasAncestorIndex("SecondFlag")));
+        await using var second = new AncestorContext("Sqlite",
+            model =>
+                Configure(model)
+                    .HasNestedSet(builder => builder.HasAncestorIndex("SecondFlag")));
 
         var firstModel = first.Model;
         var secondModel = second.Model;
         var firstFactory = first.GetService<IModelCacheKeyFactory>();
         var secondFactory = second.GetService<IModelCacheKeyFactory>();
-        var firstOwner = first.GetService<IDbContextOptions>().FindExtension<CoreOptionsExtension>()!
-            .InternalServiceProvider;
+        var firstOwner = first
+            .GetService<IDbContextOptions>()
+            .FindExtension<CoreOptionsExtension>()!.InternalServiceProvider;
 
         // Act
         if (asynchronous)
@@ -31,6 +38,7 @@ public sealed partial class AncestorIndexTests
         else
         {
             // WHY: The synchronous context contract must release its external provider too.
+            // ReSharper disable once MethodHasAsyncOverload
             first.Dispose();
         }
 
@@ -47,6 +55,7 @@ public sealed partial class AncestorIndexTests
         Assert.NotNull(second.Model.FindEntityType(typeof(AncestorNode))!.FindProperty("SecondFlag"));
         Assert.Null(second.Model.FindEntityType(typeof(AncestorNode))!.FindProperty("FirstFlag"));
         Assert.IsType<ObjectDisposedException>(disposed);
-        Assert.Equal(ConnectionState.Closed, second.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            second.Database.GetDbConnection().State);
     }
 }

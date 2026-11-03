@@ -4,7 +4,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public sealed partial class CompositionAncestorIndexTests
 {
-    /// <summary>The real EF compiled cache retains no originating context or IQueryable through a deferred marker.</summary>
+    /// <summary>
+    /// The real EF compiled cache retains no originating context or IQueryable through a deferred marker.
+    /// </summary>
     /// <param name="retainContext">Whether a deliberate strong context witness proves the lifetime check.</param>
     /// <param name="operation">The deferred ancestor operation or a chained filter.</param>
     [Theory]
@@ -16,7 +18,10 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData(true, "any")]
     [InlineData(false, "nearest")]
     [InlineData(true, "nearest")]
-    public async Task DeferredCompilationCacheDoesNotRetainContextOrQueryable(bool retainContext, string operation)
+    public async Task DeferredCompilationCacheDoesNotRetainContextOrQueryable(
+        bool retainContext,
+        string operation
+    )
     {
         // Arrange
         var options = ModelCompatibilityDatabase.Options<IndexCompositionContext>("MariaDb",
@@ -24,7 +29,8 @@ public sealed partial class CompositionAncestorIndexTests
 
         await using var provider = SelectionServices(options);
         var ownedOptions = new DbContextOptionsBuilder<IndexCompositionContext>(options)
-            .UseInternalServiceProvider(provider).Options;
+            .UseInternalServiceProvider(provider)
+            .Options;
 
         var witnesses = PopulateDeferredCompilationCache(ownedOptions, retainContext, operation, out var retained);
 
@@ -40,7 +46,9 @@ public sealed partial class CompositionAncestorIndexTests
         GC.KeepAlive(retained);
     }
 
-    /// <summary>Compiles and disposes in a separate JIT frame so setup locals cannot become accidental strong roots.</summary>
+    /// <summary>
+    /// Compiles and disposes in a separate JIT frame so setup locals cannot become accidental strong roots.
+    /// </summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static WeakReference[] PopulateDeferredCompilationCache(
         DbContextOptions<IndexCompositionContext> options,
@@ -54,19 +62,33 @@ public sealed partial class CompositionAncestorIndexTests
         // ReSharper disable once MethodHasAsyncOverload
         using var context = new IndexCompositionContext(options);
         var facts = context.Set<SelectionFact>();
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(Guid.Empty).InTree(Guid.Empty);
-        var pairs = hierarchy
-            .SelectAncestorsOrSelf(node => facts.Any(fact => fact.NodeId == node.Id),
-                (node, owner, distance) => new { Node = node, Owner = owner, Distance = distance });
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty)
+            .InTree(Guid.Empty);
+
+        var pairs = hierarchy.SelectAncestorsOrSelf(node => facts.Any(fact => fact.NodeId == node.Id),
+            (node, owner, distance) => new
+            {
+                Node = node,
+                Owner = owner,
+                Distance = distance,
+            });
 
         var filtered = operation switch
         {
             "ancestors" => pairs,
-            "path" => hierarchy.WherePathEdges(pairs, row => row.Owner, row => row.Node,
+            "path" => hierarchy.WherePathEdges(pairs,
+                row => row.Owner,
+                row => row.Node,
                 (row, parent, child) => child.Id > 0),
-            "any" => hierarchy.WhereAnyAncestorOrSelf(pairs, row => row.Node, (row, owner) => owner.Id > 0),
-            "nearest" => hierarchy.WhereNearestAncestorOrSelf(pairs, row => row.Node,
-                (row, owner) => owner.Id > 0, (row, owner) => owner.Visible),
+            "any" => hierarchy.WhereAnyAncestorOrSelf(pairs,
+                row => row.Node,
+                (row, owner) => owner.Id > 0),
+            "nearest" => hierarchy.WhereNearestAncestorOrSelf(pairs,
+                row => row.Node,
+                (row, owner) => owner.Id > 0,
+                (row, owner) => owner.Visible),
             _ => throw new ArgumentOutOfRangeException(nameof(operation)),
         };
 
@@ -78,10 +100,15 @@ public sealed partial class CompositionAncestorIndexTests
         return [new WeakReference(context), new WeakReference(query)];
     }
 
-    /// <summary>Observes only complete collections and never reads a witness target inside the collecting frame.</summary>
+    /// <summary>
+    /// Observes only complete collections and never reads a witness target inside the collecting frame.
+    /// </summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void CollectDeferredCompilationWitnesses()
     {
+        // WHY: Run repeated collection/finalizer passes before checking deferred-query lifetime witnesses.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var attempt = 0; attempt < 5; attempt++)
         {
             GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);

@@ -12,7 +12,9 @@ public sealed partial class SignalReportValidationTests
     [InlineData("anchor")]
     [InlineData("signal")]
     [InlineData("source")]
-    public async Task EmptySelectedTotalsPreserveRepeatedOrderedGrain(string foreign)
+    public async Task EmptySelectedTotalsPreserveRepeatedOrderedGrain(
+        string foreign
+    )
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request()) with
@@ -22,22 +24,29 @@ public sealed partial class SignalReportValidationTests
             Sources = [(CapturePort)99, CapturePort.Pulse, (CapturePort)99],
         };
 
-        SignalReportTotal[] totals = foreign == "none" ? [] :
-        [
-            Total(foreign == "anchor" ? SignalReportDataset.Id(99) : snapshot.AnchorIds[0],
-                foreign == "signal" ? SignalReportDataset.Id(199) : snapshot.ChannelIds[0],
-                foreign == "source" ? CapturePort.Sweep : snapshot.Sources[0], 13),
-        ];
+        SignalReportTotal[] totals = foreign == "none"
+            ? []
+            :
+            [
+                Total(foreign == "anchor" ? SignalReportDataset.Id(99) : snapshot.AnchorIds[0],
+                    foreign == "signal" ? SignalReportDataset.Id(199) : snapshot.ChannelIds[0],
+                    foreign == "source" ? CapturePort.Sweep : snapshot.Sources[0],
+                    13),
+            ];
 
-        var expected = snapshot.AnchorIds.SelectMany(anchor => snapshot.ChannelIds.SelectMany(signal =>
-            snapshot.Sources.Select(source => new SignalReportCell(anchor, signal, source, false, 0)))).ToArray();
+        var expected = snapshot
+            .AnchorIds
+            .SelectMany(anchor => snapshot.ChannelIds.SelectMany(signal =>
+                snapshot.Sources.Select(source => new SignalReportCell(anchor, signal, source, false, 0))))
+            .ToArray();
 
         var probe = new ReaderProbe();
 
         // Act
         var synchronous = SignalReportValidation.CreateGrid(snapshot, totals);
         var asynchronous = await SignalReportValidation.CreateGridAsync(snapshot,
-            ReadRows(totals, probe, CancellationToken.None), CancellationToken.None);
+            ReadRows(totals, probe, CancellationToken.None),
+            CancellationToken.None);
 
         // Assert
         Assert.Equal(expected, synchronous);
@@ -55,7 +64,9 @@ public sealed partial class SignalReportValidationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ForeignOnlyGridPreservesLateFailureWithoutPartialCells(bool disposal)
+    public async Task ForeignOnlyGridPreservesLateFailureWithoutPartialCells(
+        bool disposal
+    )
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request());
@@ -75,7 +86,9 @@ public sealed partial class SignalReportValidationTests
 
         // Act
         var error = await Record.ExceptionAsync(async () => cells = await SignalReportValidation.CreateGridAsync(
-            snapshot, ReadRows(totals, probe, CancellationToken.None), CancellationToken.None));
+            snapshot,
+            ReadRows(totals, probe, CancellationToken.None),
+            CancellationToken.None));
 
         // Assert
         Assert.Same(failure, error);

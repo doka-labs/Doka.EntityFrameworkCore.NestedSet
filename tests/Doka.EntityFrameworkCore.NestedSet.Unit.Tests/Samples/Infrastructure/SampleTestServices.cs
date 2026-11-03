@@ -6,7 +6,9 @@ internal static class SampleTestServices
     /// <summary>Registers the sample's public extensions without using EF's global cache.</summary>
     /// <param name="options">The real sample provider and NestedSet registrations under test.</param>
     /// <returns>Services the caller disposes after its explicitly constructed context.</returns>
-    internal static ServiceProvider Create(DbContextOptions options)
+    internal static ServiceProvider Create(
+        DbContextOptions options
+    )
     {
         var services = new ServiceCollection();
 

@@ -16,16 +16,28 @@ public sealed class HierarchyOwnerTests
 
         // Act
         var mapping = NestedSetModelMapping.For(model);
+        var repeated = NestedSetModelMapping.For(model);
+        var ownerMapping = mapping.Owner(owner);
+        var folderOwner = mapping.Owner(folder);
+        var metricOwner = mapping.Owner(metric);
+        var ownerDescriptor = mapping.Descriptor(owner);
+        var folderDescriptor = mapping.Descriptor(folder);
+        var repeatedOwnerDescriptor = mapping.Descriptor(owner);
+        var metricDescriptor = mapping.Descriptor(metric);
+        var ownerOrdering = mapping.Ordering(owner);
+        var folderOrdering = mapping.Ordering(folder);
+        var repeatedOwnerOrdering = mapping.Ordering(owner);
+        var metricOrdering = mapping.Ordering(metric);
 
         // Assert
-        Assert.Same(mapping, NestedSetModelMapping.For(model));
-        Assert.Same(owner, mapping.Owner(owner));
-        Assert.Same(owner, mapping.Owner(folder));
-        Assert.Same(owner, mapping.Owner(metric));
-        Assert.Same(mapping.Descriptor(owner), mapping.Descriptor(folder));
-        Assert.Same(mapping.Descriptor(owner), mapping.Descriptor(metric));
-        Assert.Same(mapping.Ordering(owner), mapping.Ordering(folder));
-        Assert.Same(mapping.Ordering(owner), mapping.Ordering(metric));
+        Assert.Same(mapping, repeated);
+        Assert.Same(owner, ownerMapping);
+        Assert.Same(owner, folderOwner);
+        Assert.Same(owner, metricOwner);
+        Assert.Same(ownerDescriptor, folderDescriptor);
+        Assert.Same(repeatedOwnerDescriptor, metricDescriptor);
+        Assert.Same(ownerOrdering, folderOrdering);
+        Assert.Same(repeatedOwnerOrdering, metricOrdering);
     }
 
     /// <summary>Retains independently configured concrete TPC owners despite their shared CLR base.</summary>
@@ -41,13 +53,19 @@ public sealed class HierarchyOwnerTests
 
         // Act
         var mapping = NestedSetModelMapping.For(model);
+        var binaryOwner = mapping.Owner(binary);
+        var insensitiveOwner = mapping.Owner(insensitive);
+        var repeatedBinaryOwner = mapping.Owner(binary);
+        var repeatedInsensitiveOwner = mapping.Owner(insensitive);
+        var hasUnconfiguredDescriptor = mapping.TryDescriptor(unconfigured, out _);
+        var error = Record.Exception(() => mapping.Owner(unconfigured));
 
         // Assert
-        Assert.Same(binary, mapping.Owner(binary));
-        Assert.Same(insensitive, mapping.Owner(insensitive));
-        Assert.NotSame(mapping.Owner(binary), mapping.Owner(insensitive));
-        Assert.False(mapping.TryDescriptor(unconfigured, out _));
-        Assert.Throws<InvalidOperationException>(() => mapping.Owner(unconfigured));
+        Assert.Same(binary, binaryOwner);
+        Assert.Same(insensitive, insensitiveOwner);
+        Assert.NotSame(repeatedBinaryOwner, repeatedInsensitiveOwner);
+        Assert.False(hasUnconfiguredDescriptor);
+        Assert.IsType<InvalidOperationException>(error);
     }
 
     /// <summary>Retains the configured EF name when unrelated shared entities use the same CLR type.</summary>
@@ -62,11 +80,14 @@ public sealed class HierarchyOwnerTests
 
         // Act
         var mapping = NestedSetModelMapping.For(model);
+        var configuredOwner = mapping.Owner(configured);
+        var hasUnrelatedDescriptor = mapping.TryDescriptor(unrelated, out _);
+        var error = Record.Exception(() => mapping.Owner(unrelated));
 
         // Assert
         Assert.Equal(configured.ClrType, unrelated.ClrType);
-        Assert.Same(configured, mapping.Owner(configured));
-        Assert.False(mapping.TryDescriptor(unrelated, out _));
-        Assert.Throws<InvalidOperationException>(() => mapping.Owner(unrelated));
+        Assert.Same(configured, configuredOwner);
+        Assert.False(hasUnrelatedDescriptor);
+        Assert.IsType<InvalidOperationException>(error);
     }
 }

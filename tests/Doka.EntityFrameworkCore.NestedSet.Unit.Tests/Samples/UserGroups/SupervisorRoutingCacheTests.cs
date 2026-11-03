@@ -22,7 +22,8 @@ public sealed class SupervisorRoutingCacheTests
         // Act
         foreach (var template in templates)
         {
-            var expression = (LambdaExpression)template!.GetType()
+            var expression = (LambdaExpression)template!
+                .GetType()
                 .GetField("_expression", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .GetValue(template)!;
 
@@ -53,11 +54,15 @@ public sealed class SupervisorRoutingCacheTests
         internal int QueryExtensions { get; private set; }
 
         /// <inheritdoc />
-        protected override Expression VisitConstant(ConstantExpression node)
+        protected override Expression VisitConstant(
+            ConstantExpression node
+        )
         {
             if (node.Value is not null and not string and not bool and not int and not long)
             {
-                var fields = node.Value.GetType()
+                var fields = node
+                    .Value
+                    .GetType()
                     .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
                 if (fields.Length == 0
@@ -75,7 +80,9 @@ public sealed class SupervisorRoutingCacheTests
         }
 
         /// <inheritdoc />
-        protected override Expression VisitExtension(Expression node)
+        protected override Expression VisitExtension(
+            Expression node
+        )
         {
             QueryExtensions++;
 

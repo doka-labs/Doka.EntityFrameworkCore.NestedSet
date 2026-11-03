@@ -9,7 +9,9 @@ internal static class UnitTestProgram
     /// <summary>Routes only the exact private calibration command outside the normal test runner.</summary>
     /// <param name="args">The calibration arguments or unchanged xUnit command-line arguments.</param>
     /// <returns>The calibration or xUnit process exit code.</returns>
-    public static async Task<int> Main(string[] args)
+    public static async Task<int> Main(
+        string[] args
+    )
     {
         if (args is [ManagedHeapProbe.Command, var shape])
         {

@@ -61,7 +61,11 @@ public sealed partial class SqlServerCompositionStrategyTests
 
         await using var services = NestedSetTestAdapters.BuildServices(options.Options);
         await using var context = new CoordinateBoundsContext(
-            options.UseInternalServiceProvider(services).Options, scoped);
+            options
+                .UseInternalServiceProvider(services)
+                .Options,
+            scoped);
+
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
 
         if (mode is "missing" or "off-path" or "cross-scope")
@@ -71,8 +75,14 @@ public sealed partial class SqlServerCompositionStrategyTests
             await context.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys = OFF", CancellationToken.None);
         }
 
-        var nodes = Enumerable.Range(0, 13).Select(index => BoundsNode(index, index + 1, 26 - index,
-            parent: index == 0 ? null : index - 1, depth: index)).ToList();
+        var nodes = Enumerable
+            .Range(0, 13)
+            .Select(index => BoundsNode(index,
+                index + 1,
+                26 - index,
+                parent: index == 0 ? null : index - 1,
+                depth: index))
+            .ToList();
 
         switch (mode)
         {
@@ -110,7 +120,6 @@ public sealed partial class SqlServerCompositionStrategyTests
                 break;
         }
 
-
         await context.AddRangeAsync(nodes, CancellationToken.None);
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
@@ -122,7 +131,10 @@ public sealed partial class SqlServerCompositionStrategyTests
             root = root.ForScope(7);
         }
 
-        var visible = context.Set<CoordinateBoundsNode>().AsNoTracking().Where(node => node.TreeId == "a");
+        var visible = context
+            .Set<CoordinateBoundsNode>()
+            .AsNoTracking()
+            .Where(node => node.TreeId == "a");
 
         if (scoped)
         {
@@ -130,21 +142,31 @@ public sealed partial class SqlServerCompositionStrategyTests
         }
 
         var upperDepth = mode == "hidden-above" ? 1 : 0;
-        var rows = visible.Where(node => node.Depth == upperDepth)
+        var rows = visible
+            .Where(node => node.Depth == upperDepth)
             .SelectMany(_ => visible.Where(node => node.Depth == 12),
-                (upper, lower) => new { Upper = upper, Lower = lower });
+                (upper, lower) => new
+                {
+                    Upper = upper,
+                    Lower = lower,
+                });
 
         Expression<Func<object, CoordinateBoundsNode, CoordinateBoundsNode, bool>> allowed =
-            (_, parent, child) => child.Position != 99;
+        (_, parent, child) => child.Position != 99;
 
         var occurrences = rows.Concat(rows);
         var filtered = mode.StartsWith("row-aware", StringComparison.Ordinal)
-            ? root.WherePathEdges(occurrences, row => row.Upper, row => row.Lower,
-                (row, parent, child) => child.Position != row.Upper.Position + 99, normalized: true)
+            ? root.WherePathEdges(occurrences,
+                row => row.Upper,
+                row => row.Lower,
+                (row, parent, child) => child.Position != row.Upper.Position + 99,
+                normalized: true)
             : FilterCompletedFailures(root, occurrences, row => row.Upper, row => row.Lower, allowed);
 
         // Act
-        var actual = await filtered.Select(row => row.Lower.Id).ToArrayAsync(CancellationToken.None);
+        var actual = await filtered
+            .Select(row => row.Lower.Id)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(expectedCount, actual.Length);
@@ -178,9 +200,11 @@ public sealed partial class SqlServerCompositionStrategyTests
             type.GetField("s_edgeProjection", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
 
         var edges = NestedSetParentExpressions<CoordinateBoundsNode, NestedSetQueryEdge<CoordinateBoundsNode>>.Join(
-            nodes, entity.FindProperty(nameof(CoordinateBoundsNode.Id))!,
+            nodes,
+            entity.FindProperty(nameof(CoordinateBoundsNode.Id))!,
             entity.FindProperty(nameof(CoordinateBoundsNode.ParentId))!,
-            null, projection);
+            null,
+            projection);
 
         var failures = (IQueryable<CoordinateBoundsNode>)type
             .GetMethod("InvalidPathChildSource", BindingFlags.NonPublic | BindingFlags.Instance)!
@@ -189,11 +213,12 @@ public sealed partial class SqlServerCompositionStrategyTests
         var row = Expression.Parameter(typeof(TRow), "row");
         var violation = (Expression)type
             .GetMethod("InvalidCompletedPathChildren", BindingFlags.NonPublic | BindingFlags.Instance)!
-            .Invoke(root, [
-                NestedSetQueryExpressions.Inline(upper, row),
-                NestedSetQueryExpressions.Inline(lower, row),
-                failures,
-            ])!;
+            .Invoke(root,
+                [
+                    NestedSetQueryExpressions.Inline(upper, row),
+                    NestedSetQueryExpressions.Inline(lower, row),
+                    failures,
+                ])!;
 
         return rows.Where(Expression.Lambda<Func<TRow, bool>>(Expression.Not(violation), row));
     }

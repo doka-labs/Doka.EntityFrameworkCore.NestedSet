@@ -23,6 +23,9 @@ public sealed class BulkPlanDepthTests
 
         var branch = new NestedSetBranch<TreeNode>(new TreeNode { NodeId = NodeCount });
 
+        // WHY: Build from the leaf upward so fixture construction does not consume the stack being tested.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var id = NodeCount - 1; id >= 1; id--)
         {
             branch = new NestedSetBranch<TreeNode>(new TreeNode { NodeId = id }, [branch]);

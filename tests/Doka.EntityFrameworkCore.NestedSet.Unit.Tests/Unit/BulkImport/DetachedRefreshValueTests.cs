@@ -182,7 +182,9 @@ public sealed class DetachedRefreshValueTests
     /// <summary>Creates a provider-backed finalized model without opening a database connection.</summary>
     private static RefreshContext CreateContext()
     {
-        var options = new DbContextOptionsBuilder<RefreshContext>().UseSqlite("Data Source=:memory:").Options;
+        var options = new DbContextOptionsBuilder<RefreshContext>()
+            .UseSqlite("Data Source=:memory:")
+            .Options;
 
         return new RefreshContext(options);
     }
@@ -212,10 +214,7 @@ public sealed class DetachedRefreshValueTests
                 .Metadata
                 .SetValueComparer(
                     new ValueComparer<byte[]>(
-                        (
-                            first,
-                            second
-                        ) => true,
+                        (first, second) => true,
                         value => 0,
                         value => value.ToArray()));
 
@@ -282,7 +281,9 @@ public sealed class DetachedRefreshValueTests
 
     /// <summary>Provides a value-complex parent requiring copyback after its child changes.</summary>
     /// <param name="Details">The nested value-complex container.</param>
-    private readonly record struct RefreshBody(RefreshDetails Details)
+    private readonly record struct RefreshBody(
+        RefreshDetails Details
+    )
     {
         /// <summary>Allows EF to materialize the container before assigning its complex child.</summary>
         public RefreshBody() : this(default) { }
@@ -290,5 +291,7 @@ public sealed class DetachedRefreshValueTests
 
     /// <summary>Provides the generated scalar inside a nested value-complex leaf.</summary>
     /// <param name="Revision">The final database-generated value.</param>
-    private readonly record struct RefreshDetails(int Revision);
+    private readonly record struct RefreshDetails(
+        int Revision
+    );
 }

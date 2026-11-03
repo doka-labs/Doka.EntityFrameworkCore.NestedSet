@@ -3,7 +3,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Verifies the opt-in generated ancestor access path without opening a database connection.</summary>
 public sealed partial class AncestorIndexTests
 {
-    /// <summary>Derives one additive index and provider-correct generated Boolean from final physical columns.</summary>
+    /// <summary>
+    /// Derives one additive index and provider-correct generated Boolean from final physical columns.
+    /// </summary>
     /// <param name="engine">The provider whose real conventions build the model.</param>
     /// <param name="scoped">Whether scope participates in the index prefix.</param>
     [Theory]
@@ -18,16 +20,25 @@ public sealed partial class AncestorIndexTests
     )
     {
         // Arrange
-        using var context = new AncestorContext(engine, model =>
-        {
-            var entity = Configure(model, scoped);
-            entity.HasNestedSet(builder => builder.HasAncestorIndex());
-            entity.Property(node => node.Left).HasColumnName("left coordinate");
-            entity.Property(node => node.Right).HasColumnName("right coordinate");
-        });
+        using var context = new AncestorContext(engine,
+            model =>
+            {
+                var entity = Configure(model, scoped);
+                entity.HasNestedSet(builder => builder.HasAncestorIndex());
+                entity
+                    .Property(node => node.Left)
+                    .HasColumnName("left coordinate");
+                entity
+                    .Property(node => node.Right)
+                    .HasColumnName("right coordinate");
+            });
 
         // Act
-        var entity = context.GetService<IDesignTimeModel>().Model.FindEntityType(typeof(AncestorNode))!;
+        var entity = context
+            .GetService<IDesignTimeModel>()
+            .Model
+            .FindEntityType(typeof(AncestorNode))!;
+
         var flag = entity.FindProperty("NestedSetIsNonLeaf")!;
         var descriptor = NestedSetModelDescriptor.FromFinalized(entity);
 
@@ -47,15 +58,26 @@ public sealed partial class AncestorIndexTests
         Assert.Equal("NestedSetIsNonLeaf", descriptor.AncestorIndexProperty?.Name);
         Assert.DoesNotContain(descriptor.StructuralProperties, property => property.Name == flag.Name);
         var expected = scoped
-            ? new[] { "Scope", "NestedSetIsNonLeaf", "TreeId", "Right", "Left", "Id" }
+            ? new[]
+            {
+                "Scope",
+                "NestedSetIsNonLeaf",
+                "TreeId",
+                "Right",
+                "Left",
+                "Id",
+            }
             : ["NestedSetIsNonLeaf", "TreeId", "Right", "Left", "Id"];
 
         var index = Assert.Single(entity.GetIndexes(), index => index.Properties.Any(property => property == flag));
         Assert.Equal(expected, index.Properties.Select(property => property.Name));
         Assert.False(index.IsUnique);
         Assert.Equal(engine == "PostgreSql" ? "\"TreeId\" IS NOT NULL" : null, index.GetFilter());
-        Assert.Equal(3, entity.GetIndexes().Count(index => index.Properties.Any(property => property.Name == "TreeId")
-            && !index.Properties.Contains(flag)));
+        Assert.Equal(3,
+            entity
+                .GetIndexes()
+                .Count(index => index.Properties.Any(property => property.Name == "TreeId")
+                    && !index.Properties.Contains(flag)));
     }
 
     /// <summary>Ordinary models receive neither the extra property nor its write and storage cost.</summary>
@@ -78,16 +100,20 @@ public sealed partial class AncestorIndexTests
     public void RenamingOwnedFlagRemovesObsoletePropertyAndIndex()
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite", model =>
-        {
-            var entity = Configure(model);
-            entity.HasNestedSet(builder => builder.HasAncestorIndex("OldFlag"));
-            entity.HasNestedSet(builder => builder.HasAncestorIndex("CurrentFlag"));
-            entity.HasNestedSet(builder => builder.HasAncestorIndex("CurrentFlag"));
-        });
+        using var context = new AncestorContext("Sqlite",
+            model =>
+            {
+                var entity = Configure(model);
+                entity.HasNestedSet(builder => builder.HasAncestorIndex("OldFlag"));
+                entity.HasNestedSet(builder => builder.HasAncestorIndex("CurrentFlag"));
+                entity.HasNestedSet(builder => builder.HasAncestorIndex("CurrentFlag"));
+            });
 
         // Act
-        var entity = context.GetService<IDesignTimeModel>().Model.FindEntityType(typeof(AncestorNode))!;
+        var entity = context
+            .GetService<IDesignTimeModel>()
+            .Model
+            .FindEntityType(typeof(AncestorNode))!;
 
         // Assert
         Assert.Null(entity.FindProperty("OldFlag"));
@@ -95,7 +121,9 @@ public sealed partial class AncestorIndexTests
         Assert.Single(entity.GetIndexes(), index => index.Properties.Any(property => property.Name == "CurrentFlag"));
     }
 
-    /// <summary>Adopting a library flag through explicit application configuration preserves its old access path.</summary>
+    /// <summary>
+    /// Adopting a library flag through explicit application configuration preserves its old access path.
+    /// </summary>
     [Fact]
     public void ApplicationAdoptionPreservesObsoleteFlagAndIndex()
     {
@@ -104,7 +132,9 @@ public sealed partial class AncestorIndexTests
         var entity = Configure(model);
         entity.HasNestedSet(builder => builder.HasAncestorIndex("OldFlag"));
         entity.Property<bool>("OldFlag");
-        var userIndex = entity.HasIndex("Scope", "OldFlag", "TreeId", "Right", "Left", "Id").Metadata;
+        var userIndex = entity
+            .HasIndex("Scope", "OldFlag", "TreeId", "Right", "Left", "Id")
+            .Metadata;
 
         // Act
         entity.HasNestedSet(builder => builder.HasAncestorIndex("CurrentFlag"));
@@ -112,7 +142,11 @@ public sealed partial class AncestorIndexTests
         // Assert
         Assert.NotNull(entity.Metadata.FindProperty("OldFlag"));
         Assert.Contains(userIndex, entity.Metadata.GetIndexes());
-        Assert.Equal(4, entity.Metadata.GetIndexes().Count());
+        Assert.Equal(4,
+            entity
+                .Metadata
+                .GetIndexes()
+                .Count());
     }
 
     /// <summary>An already mapped required Boolean can supply the flag while retaining its CLR member.</summary>
@@ -120,15 +154,19 @@ public sealed partial class AncestorIndexTests
     public void ExistingRequiredBooleanIsAdoptedWithoutReplacement()
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite", model =>
-        {
-            var entity = Configure(model);
-            entity.Property(node => node.NonLeaf);
-            entity.HasNestedSet(builder => builder.HasAncestorIndex(nameof(AncestorNode.NonLeaf)));
-        });
+        using var context = new AncestorContext("Sqlite",
+            model =>
+            {
+                var entity = Configure(model);
+                entity.Property(node => node.NonLeaf);
+                entity.HasNestedSet(builder => builder.HasAncestorIndex(nameof(AncestorNode.NonLeaf)));
+            });
 
         // Act
-        var flag = context.GetService<IDesignTimeModel>().Model.FindEntityType(typeof(AncestorNode))!
+        var flag = context
+            .GetService<IDesignTimeModel>()
+            .Model
+            .FindEntityType(typeof(AncestorNode))!
             .FindProperty(nameof(AncestorNode.NonLeaf))!;
 
         // Assert
@@ -161,67 +199,72 @@ public sealed partial class AncestorIndexTests
     {
         // Arrange
         var flagName = facet == "order" ? nameof(AncestorNode.NonLeaf) : "Flag";
-        using var context = new AncestorContext("Sqlite", model =>
-        {
-            var entity = Configure(model);
-            if (facet == "type")
+        using var context = new AncestorContext("Sqlite",
+            model =>
             {
-                entity.Property<int>("Flag");
-            }
-            else if (facet == "nullable")
-            {
-                entity.Property<bool?>("Flag");
-            }
-            else
-            {
-                var property = entity.Property<bool>(flagName);
-                switch (facet)
+                var entity = Configure(model);
+                if (facet == "type")
                 {
-                    case "converter":
-                        property.HasConversion<int>();
-                        break;
-                    case "concurrency":
-                        property.IsConcurrencyToken();
-                        break;
-                    case "computed":
-                        property.HasComputedColumnSql("1", false);
-                        break;
-                    case "stored":
-                        property.HasComputedColumnSql(
-                            "\"Right\" > CASE WHEN \"Left\" = 9223372036854775807 THEN \"Left\""
-                            + " ELSE \"Left\" + 1 END", true);
-                        break;
-                    case "default":
-                        property.HasDefaultValue(false);
-                        break;
-                    case "default-sql":
-                        property.HasDefaultValueSql("0");
-                        break;
-                    case "never-generated":
-                        property.ValueGeneratedNever();
-                        break;
-                    case "save":
-                        property.Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Save);
-                        break;
-                    case "after-save":
-                        property.Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Save);
-                        break;
-                    case "key":
-                        entity.HasAlternateKey("Flag");
-                        break;
-                    case "foreign-key":
-                        entity.HasOne<BooleanPrincipal>().WithMany().HasForeignKey("Flag");
-                        break;
-                    case "order":
-                        entity.HasNestedSet(builder => builder.OrderBy(node => node.NonLeaf));
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(facet));
+                    entity.Property<int>("Flag");
                 }
-            }
+                else if (facet == "nullable")
+                {
+                    entity.Property<bool?>("Flag");
+                }
+                else
+                {
+                    var property = entity.Property<bool>(flagName);
+                    switch (facet)
+                    {
+                        case "converter":
+                            property.HasConversion<int>();
+                            break;
+                        case "concurrency":
+                            property.IsConcurrencyToken();
+                            break;
+                        case "computed":
+                            property.HasComputedColumnSql("1", false);
+                            break;
+                        case "stored":
+                            property.HasComputedColumnSql(
+                                "\"Right\" > CASE WHEN \"Left\" = 9223372036854775807 THEN \"Left\""
+                                + " ELSE \"Left\" + 1 END",
+                                true);
+                            break;
+                        case "default":
+                            property.HasDefaultValue(false);
+                            break;
+                        case "default-sql":
+                            property.HasDefaultValueSql("0");
+                            break;
+                        case "never-generated":
+                            property.ValueGeneratedNever();
+                            break;
+                        case "save":
+                            property.Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Save);
+                            break;
+                        case "after-save":
+                            property.Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Save);
+                            break;
+                        case "key":
+                            entity.HasAlternateKey("Flag");
+                            break;
+                        case "foreign-key":
+                            entity
+                                .HasOne<BooleanPrincipal>()
+                                .WithMany()
+                                .HasForeignKey("Flag");
+                            break;
+                        case "order":
+                            entity.HasNestedSet(builder => builder.OrderBy(node => node.NonLeaf));
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException(nameof(facet));
+                    }
+                }
 
-            entity.HasNestedSet(builder => builder.HasAncestorIndex(flagName));
-        });
+                entity.HasNestedSet(builder => builder.HasAncestorIndex(flagName));
+            });
 
         // Act
         var error = Record.Exception(() => _ = context.Model);
@@ -243,7 +286,10 @@ public sealed partial class AncestorIndexTests
         // Arrange
         var model = new ModelBuilder();
         var entity = Configure(model);
-        var original = entity.Metadata.GetProperties().ToArray();
+        var original = entity
+            .Metadata
+            .GetProperties()
+            .ToArray();
 
         // Act
         var error = Record.Exception(() => entity.HasNestedSet(builder => builder.HasAncestorIndex(name)));
@@ -253,17 +299,20 @@ public sealed partial class AncestorIndexTests
         Assert.Equal(original, entity.Metadata.GetProperties());
     }
 
-    /// <summary>Removing an opted-in property cannot silently publish a model without its promised access path.</summary>
+    /// <summary>
+    /// Removing an opted-in property cannot silently publish a model without its promised access path.
+    /// </summary>
     [Fact]
     public void RemovedFlagIsRejectedAtFinalization()
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite", model =>
-        {
-            var entity = Configure(model);
-            entity.HasNestedSet(builder => builder.HasAncestorIndex("Branch"));
-            entity.Ignore("Branch");
-        });
+        using var context = new AncestorContext("Sqlite",
+            model =>
+            {
+                var entity = Configure(model);
+                entity.HasNestedSet(builder => builder.HasAncestorIndex("Branch"));
+                entity.Ignore("Branch");
+            });
 
         // Act
         var error = Record.Exception(() => _ = context.Model);
@@ -274,17 +323,22 @@ public sealed partial class AncestorIndexTests
         Assert.Contains("not mapped", invalid.Message, StringComparison.Ordinal);
     }
 
-    /// <summary>Implicit provider conversion selected by a store type cannot redefine Boolean predicate values.</summary>
+    /// <summary>
+    /// Implicit provider conversion selected by a store type cannot redefine Boolean predicate values.
+    /// </summary>
     [Fact]
     public void ProviderSelectedBooleanConversionIsRejected()
     {
         // Arrange
-        using var context = new AncestorContext("SqlServer", model =>
-        {
-            var entity = Configure(model);
-            entity.Property<bool>("Branch").HasColumnType("varchar(1)");
-            entity.HasNestedSet(builder => builder.HasAncestorIndex("Branch"));
-        });
+        using var context = new AncestorContext("SqlServer",
+            model =>
+            {
+                var entity = Configure(model);
+                entity
+                    .Property<bool>("Branch")
+                    .HasColumnType("varchar(1)");
+                entity.HasNestedSet(builder => builder.HasAncestorIndex("Branch"));
+            });
 
         // Act
         var error = Record.Exception(() => _ = context.Model);
@@ -330,7 +384,10 @@ public sealed partial class AncestorIndexTests
         }
 
         var metadata = customized.Metadata;
-        var annotations = metadata.GetAnnotations().ToArray();
+        var annotations = metadata
+            .GetAnnotations()
+            .ToArray();
+
         var descending = metadata.IsDescending?.ToArray();
         var unique = metadata.IsUnique;
 
@@ -343,7 +400,9 @@ public sealed partial class AncestorIndexTests
         Assert.Equal(annotations, metadata.GetAnnotations());
         Assert.Equal(descending, metadata.IsDescending);
         Assert.Equal(unique, metadata.IsUnique);
-        Assert.Equal("NewFlag", entity.Metadata.FindAnnotation(NestedSetAnnotationNames.AncestorIndexProperty)?.Value);
+        Assert.Equal("NewFlag",
+            entity.Metadata.FindAnnotation(NestedSetAnnotationNames.AncestorIndexProperty)
+                ?.Value);
     }
 
     /// <summary>Malformed imported optional metadata cannot silently downgrade to an unindexed hierarchy.</summary>
@@ -357,8 +416,11 @@ public sealed partial class AncestorIndexTests
     )
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite", model =>
-            Configure(model).Metadata.SetAnnotation(NestedSetAnnotationNames.AncestorIndexProperty, value));
+        using var context = new AncestorContext("Sqlite",
+            model =>
+                Configure(model)
+                    .Metadata
+                    .SetAnnotation(NestedSetAnnotationNames.AncestorIndexProperty, value));
 
         // Act
         var error = Record.Exception(() => _ = context.Model);

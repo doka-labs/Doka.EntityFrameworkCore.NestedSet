@@ -49,29 +49,30 @@ internal sealed class CompositionGuardContext : DbContext
         bool scoped
     )
     {
-        modelBuilder.SharedTypeEntity<CompositionGuardNode>(mapping, entity =>
-        {
-            entity.ToTable(mapping);
-            entity.HasKey(node => node.Id);
-            entity
-                .Property(node => node.Id)
-                .ValueGeneratedNever();
-            entity.HasNestedSet(hierarchy =>
+        modelBuilder.SharedTypeEntity<CompositionGuardNode>(mapping,
+            entity =>
             {
-                hierarchy
-                    .HasNodeKey(node => node.Id)
-                    .HasTreeId(node => node.TreeId)
-                    .HasParent(node => node.ParentId)
-                    .HasBounds(node => node.Left, node => node.Right)
-                    .HasDepth(node => node.Depth)
-                    .HasPosition(node => node.Position);
-
-                if (scoped)
+                entity.ToTable(mapping);
+                entity.HasKey(node => node.Id);
+                entity
+                    .Property(node => node.Id)
+                    .ValueGeneratedNever();
+                entity.HasNestedSet(hierarchy =>
                 {
-                    hierarchy.HasScope(node => node.Scope);
-                }
+                    hierarchy
+                        .HasNodeKey(node => node.Id)
+                        .HasTreeId(node => node.TreeId)
+                        .HasParent(node => node.ParentId)
+                        .HasBounds(node => node.Left, node => node.Right)
+                        .HasDepth(node => node.Depth)
+                        .HasPosition(node => node.Position);
+
+                    if (scoped)
+                    {
+                        hierarchy.HasScope(node => node.Scope);
+                    }
+                });
             });
-        });
     }
 }
 

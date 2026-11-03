@@ -147,7 +147,8 @@ public sealed class ManagedHeapObservationTests
         var firstRequired = completed.HeapSizeBytes - completed.FragmentedBytes + uncollected;
         var firstIndex = completed.Index;
         var first = observation.Sample();
-        var firstStable = GC.GetGCMemoryInfo().Index == firstIndex;
+        var firstStable = GC.GetGCMemoryInfo().Index
+            == firstIndex;
 
         if (collectBetween)
         {
@@ -163,7 +164,8 @@ public sealed class ManagedHeapObservationTests
         var secondRequired = completed.HeapSizeBytes - completed.FragmentedBytes + uncollected;
         var secondIndex = completed.Index;
         var second = observation.Sample();
-        var secondStable = GC.GetGCMemoryInfo().Index == secondIndex;
+        var secondStable = GC.GetGCMemoryInfo().Index
+            == secondIndex;
 
         // Assert
         Assert.True(first >= firstAllocated);
@@ -200,6 +202,9 @@ public sealed class ManagedHeapObservationTests
         {
             var allocated = 0L;
 
+            // WHY: Each wave owns disjoint retained slots, and every allocation needs its own GC-epoch check.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var index = firstIndex; index < firstIndex + (held.Length / 2); index++)
             {
                 var before = GC.GetAllocatedBytesForCurrentThread();
@@ -236,12 +241,16 @@ public sealed class ManagedHeapObservationTests
         return (() => noise = null, released);
     }
 
-    /// <summary>The collected-heap helper agrees with independent live-allocation counters outside runner state.</summary>
+    /// <summary>
+    /// The collected-heap helper agrees with independent live-allocation counters outside runner state.
+    /// </summary>
     /// <param name="shape">The independently counted small-object or small-array survivor shape.</param>
     [Theory]
     [InlineData("objects")]
     [InlineData("arrays")]
-    public async Task CollectedObservationMatchesIndependentlyHeldAllocations(string shape)
+    public async Task CollectedObservationMatchesIndependentlyHeldAllocations(
+        string shape
+    )
     {
         // Arrange
         const int expectedObjects = 100_000;

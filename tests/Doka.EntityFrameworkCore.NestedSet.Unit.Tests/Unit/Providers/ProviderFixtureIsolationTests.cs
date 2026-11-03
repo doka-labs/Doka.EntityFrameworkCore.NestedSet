@@ -11,7 +11,10 @@ public sealed class ProviderFixtureIsolationTests
     {
         // Arrange
         var firstClass = CreateTestMethod("MySql", nameof(FixtureContextProbe.ContextAssemblyHasAnOwner)).TestClass;
-        var secondClass = CreateTestMethod("PostgreSql", nameof(FixtureContextProbe.ContextAssemblyHasAnOwner)).TestClass;
+
+        var secondClass = CreateTestMethod("PostgreSql", nameof(FixtureContextProbe.ContextAssemblyHasAnOwner))
+            .TestClass;
+
         await using var firstAssembly = new FixtureMappingManager("Assembly");
         await using var secondAssembly = new FixtureMappingManager("Assembly");
         var fixtureTypes = new[] { typeof(TestDatabaseServers), typeof(FixtureDisposalProbe) };
@@ -57,7 +60,8 @@ public sealed class ProviderFixtureIsolationTests
                 }
                 finally
                 {
-                    // WHY: Release the peer if lookup or cleanup fails so an isolation regression cannot hang the suite.
+                    // WHY: Release the peer if lookup or cleanup fails so an isolation regression cannot hang
+        // the suite.
                     firstReady.TrySetResult();
                     firstDisposed.TrySetResult();
                 }
@@ -212,12 +216,16 @@ public sealed class ProviderFixtureIsolationTests
             && categories.Contains("Allocation", StringComparer.Ordinal));
     }
 
-    /// <summary>GC lifetime controls retain their assertions in the required uninstrumented measurement partition.</summary>
+    /// <summary>
+    /// GC lifetime controls retain their assertions in the required uninstrumented measurement partition.
+    /// </summary>
     /// <param name="methodName">The released-root or intentionally live-root registration control.</param>
     [Theory]
     [InlineData(nameof(OptionsExtensionTests.RegistrationDoesNotRetainACollectibleAdapter))]
     [InlineData(nameof(OptionsExtensionTests.LiveRegistrationRetainsItsCollectibleAdapter))]
-    public void RegistrationLifetimeControlsRunWithoutCoverage(string methodName)
+    public void RegistrationLifetimeControlsRunWithoutCoverage(
+        string methodName
+    )
     {
         // Arrange
         var assembly = typeof(ProviderFixtureIsolationTests).Assembly;

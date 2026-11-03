@@ -29,12 +29,33 @@ public sealed partial class CompositionCoordinateProjectionTests
             .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets());
 
         using var provider = CoordinateServices(options.Options);
-        using var context = new CompositionGuardContext(options.UseInternalServiceProvider(provider).Options);
+        using var context = new CompositionGuardContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
         var entity = context.Model.FindEntityType(CompositionGuardContext.FirstMapping)!;
         var root = new NestedSetQuery<CompositionGuardNode>(context, entity);
-        var upper = new CompositionGuardNode { Id = 20, Depth = 2 };
-        var lower = new CompositionGuardNode { Id = 70, Depth = 7 };
-        var pairs = new[] { new CoordinatePair { Upper = upper, Lower = lower } }.AsQueryable();
+        var upper = new CompositionGuardNode
+        {
+            Id = 20,
+            Depth = 2,
+        };
+
+        var lower = new CompositionGuardNode
+        {
+            Id = 70,
+            Depth = 7,
+        };
+
+        var pairs = new[]
+        {
+            new CoordinatePair
+            {
+                Upper = upper,
+                Lower = lower,
+            },
+        }.AsQueryable();
+
         var source = Expression.Parameter(typeof(CompositionGuardNode), "node");
         var related = Expression.Parameter(typeof(CompositionGuardNode), "node");
         var distance = Expression.Parameter(typeof(int), "node");
@@ -45,14 +66,21 @@ public sealed partial class CompositionCoordinateProjectionTests
             "unused-related" => (first, second, depth) => new[] { first.Id, -1, depth },
             "unused-distance" => (first, second, depth) => new[] { first.Id, second.Id, -1 },
             "nested-collection" => (first, second, depth) =>
-                new[] { first.Id, second.Id, depth }.Select(value => value + depth).ToArray(),
+                new[] { first.Id, second.Id, depth }
+                    .Select(value => value + depth)
+                    .ToArray(),
             _ => throw new ArgumentOutOfRangeException(nameof(shape)),
         };
 
         var projection = Expression.Lambda<Func<CompositionGuardNode, CompositionGuardNode, int, int[]>>(
-            NestedSetQueryExpressions.Inline(template, source, related, distance), source, related, distance);
+            NestedSetQueryExpressions.Inline(template, source, related, distance),
+            source,
+            related,
+            distance);
 
-        var method = root.GetType().GetMethod("ProjectPairs", BindingFlags.NonPublic | BindingFlags.Instance)!
+        var method = root
+            .GetType()
+            .GetMethod("ProjectPairs", BindingFlags.NonPublic | BindingFlags.Instance)!
             .MakeGenericMethod(typeof(CoordinatePair), typeof(int[]));
 
         Expression<Func<CoordinatePair, CompositionGuardNode>> upperSelector = pair => pair.Upper;
@@ -60,23 +88,32 @@ public sealed partial class CompositionCoordinateProjectionTests
 
         var expected = new[]
         {
-            shape == "unused-source" ? -1 : ancestors ? lower.Id : upper.Id,
-            shape == "unused-related" ? -1 : ancestors ? upper.Id : lower.Id,
+            shape == "unused-source"
+                ? -1
+                : ancestors
+                    ? lower.Id
+                    : upper.Id,
+            shape == "unused-related"
+                ? -1
+                : ancestors
+                    ? upper.Id
+                    : lower.Id,
             shape == "unused-distance" ? -1 : 5,
         };
 
         if (shape == "nested-collection")
         {
-            expected = expected.Select(value => value + 5).ToArray();
+            expected = expected
+                .Select(value => value + 5)
+                .ToArray();
         }
 
         // Act
-        var query = Assert.IsAssignableFrom<IQueryable<int[]>>(method.Invoke(root,
-            [pairs, upperSelector, lowerSelector, projection, ancestors]));
-
-        var result = query.Single();
+        var query = method.Invoke(root, [pairs, upperSelector, lowerSelector, projection, ancestors]);
+        var result = ((IQueryable<int[]>)query!).Single();
 
         // Assert
+        Assert.IsAssignableFrom<IQueryable<int[]>>(query);
         Assert.Equal(expected, result);
         Assert.Empty(context.ChangeTracker.Entries());
     }
@@ -86,14 +123,23 @@ public sealed partial class CompositionCoordinateProjectionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ShadowStructurePreservesDeferredCollectionProjection(bool includeSelf)
+    public async Task ShadowStructurePreservesDeferredCollectionProjection(
+        bool includeSelf
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
-        var options = CoordinateOptions().AddInterceptors(boundary);
+        var options = CoordinateOptions()
+            .AddInterceptors(boundary);
+
         await using var provider = CoordinateServices(options);
-        await using var context = new CoordinateContext(options.UseInternalServiceProvider(provider).Options);
-        var hierarchy = context.NestedSet<CoordinateNode>().InTree(Guid.Empty);
+        await using var context = new CoordinateContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
+        var hierarchy = context
+            .NestedSet<CoordinateNode>()
+            .InTree(Guid.Empty);
 
         // Act
         var query = includeSelf
@@ -103,7 +149,10 @@ public sealed partial class CompositionCoordinateProjectionTests
                     source.Id,
                     OwnerId = ancestor.Id,
                     Distance = distance,
-                    Items = ancestor.Items.Select(item => item.Id).ToList(),
+                    Items = ancestor
+                        .Items
+                        .Select(item => item.Id)
+                        .ToList(),
                 })
             : hierarchy.SelectAncestors(node => node.Id == 3,
                 (source, ancestor, distance) => new
@@ -111,7 +160,10 @@ public sealed partial class CompositionCoordinateProjectionTests
                     source.Id,
                     OwnerId = ancestor.Id,
                     Distance = distance,
-                    Items = ancestor.Items.Select(item => item.Id).ToList(),
+                    Items = ancestor
+                        .Items
+                        .Select(item => item.Id)
+                        .ToList(),
                 });
 
         var sql = query.ToQueryString();

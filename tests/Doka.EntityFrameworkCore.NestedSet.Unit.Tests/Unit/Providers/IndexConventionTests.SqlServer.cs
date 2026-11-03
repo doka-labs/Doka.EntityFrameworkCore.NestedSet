@@ -54,8 +54,7 @@ public sealed partial class IndexConventionTests
             });
 
         // Act
-        var model = context.GetService<IDesignTimeModel>()
-            .Model;
+        var model = context.GetService<IDesignTimeModel>().Model;
 
         // Assert
         var indexes = model.FindEntityType(typeof(IndexNode))!

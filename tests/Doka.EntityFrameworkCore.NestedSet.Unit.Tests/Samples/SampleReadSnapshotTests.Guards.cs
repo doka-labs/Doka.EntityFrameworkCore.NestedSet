@@ -1,5 +1,4 @@
 extern alias UserGroupsSample;
-
 using AmbientFlow = System.Transactions.TransactionScopeAsyncFlowOption;
 using AmbientScope = System.Transactions.TransactionScope;
 using SampleReadSnapshot = UserGroupsSample::Doka.EntityFrameworkCore.NestedSet.Samples.SampleReadSnapshot;
@@ -19,19 +18,22 @@ public sealed partial class SampleReadSnapshotTests
         var readInvoked = false;
 
         // Act
-        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context, _ =>
-        {
-            readInvoked = true;
+        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context,
+            _ =>
+            {
+                readInvoked = true;
 
-            return Task.FromResult(1);
-        }, CancellationToken.None));
+                return Task.FromResult(1);
+            },
+            CancellationToken.None));
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);
         Assert.False(readInvoked);
         Assert.Equal(1, boundary.ConnectionStarts);
         Assert.Null(context.Database.CurrentTransaction);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>A missing context or read delegate is rejected before the operation can begin.</summary>
@@ -54,9 +56,11 @@ public sealed partial class SampleReadSnapshotTests
             : SampleReadSnapshot.RunAsync<int>(context, null!, CancellationToken.None));
 
         // Assert
-        Assert.Equal(parameter, Assert.IsType<ArgumentNullException>(error).ParamName);
+        Assert.Equal(parameter,
+            Assert.IsType<ArgumentNullException>(error).ParamName);
         Assert.Equal(0, boundary.ConnectionStarts);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>An already canceled request neither opens a connection nor invokes the report delegate.</summary>
@@ -72,15 +76,18 @@ public sealed partial class SampleReadSnapshotTests
         var readInvoked = false;
 
         // Act
-        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context, _ =>
-        {
-            readInvoked = true;
+        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context,
+            _ =>
+            {
+                readInvoked = true;
 
-            return Task.FromResult(1);
-        }, stop.Token));
+                return Task.FromResult(1);
+            },
+            stop.Token));
 
         // Assert
-        Assert.Equal(stop.Token, Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
+        Assert.Equal(stop.Token,
+            Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
         Assert.False(readInvoked);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Null(context.Database.CurrentTransaction);
@@ -98,12 +105,14 @@ public sealed partial class SampleReadSnapshotTests
         var readInvoked = false;
 
         // Act
-        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context, _ =>
-        {
-            readInvoked = true;
+        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context,
+            _ =>
+            {
+                readInvoked = true;
 
-            return Task.FromResult(1);
-        }, CancellationToken.None));
+                return Task.FromResult(1);
+            },
+            CancellationToken.None));
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);
@@ -127,6 +136,7 @@ public sealed partial class SampleReadSnapshotTests
         // Assert
         Assert.IsType<InvalidOperationException>(error);
         Assert.Equal(1, boundary.ConnectionStarts);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 }

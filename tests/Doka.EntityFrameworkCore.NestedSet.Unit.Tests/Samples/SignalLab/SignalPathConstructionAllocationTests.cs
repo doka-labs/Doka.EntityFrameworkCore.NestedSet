@@ -7,7 +7,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples.SignalLab;
 /// <summary>Protects allocation-free fixed-syntax reuse on the real shadow-property reporting model.</summary>
 /// <param name="output">Records all measured allocation observations.</param>
 [Collection("Allocation measurements")]
-public sealed class SignalPathConstructionAllocationTests(ITestOutputHelper output)
+public sealed class SignalPathConstructionAllocationTests(
+    ITestOutputHelper output
+)
 {
     /// <summary>Independent bound proofs reuse their literals without retaining another endpoint alias.</summary>
     /// <param name="engine">The real configured dialect; no server discovery or database access is needed.</param>
@@ -15,15 +17,19 @@ public sealed class SignalPathConstructionAllocationTests(ITestOutputHelper outp
     [InlineData("Sqlite")]
     [InlineData("MariaDb")]
     [InlineData("MySql")]
-    public void IndependentPathBuildsReuseFixedSyntaxWithoutRetainingAliases(string engine)
+    public void IndependentPathBuildsReuseFixedSyntaxWithoutRetainingAliases(
+        string engine
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
-        var connection = engine == "Sqlite" ? "Data Source=:memory:"
+        var connection = engine == "Sqlite"
+            ? "Data Source=:memory:"
             : "Server=localhost;Database=path_construction;User ID=unused;Pooling=false";
 
-        var options = new DbContextOptionsBuilder(ModelCompatibilityDatabase.Options<SignalLabContext>(engine, connection))
-            .AddInterceptors(boundary, boundary.Commands);
+        var options =
+            new DbContextOptionsBuilder(ModelCompatibilityDatabase.Options<SignalLabContext>(engine, connection))
+                .AddInterceptors(boundary, boundary.Commands);
 
         using var context = new SignalLabContext(options.Options);
         var query = new NestedSetQuery<SignalNode>(context, context.Model.FindEntityType(typeof(SignalNode))!)
@@ -33,13 +39,17 @@ public sealed class SignalPathConstructionAllocationTests(ITestOutputHelper outp
         // every direct, two-edge and long-path branch rather than a copied approximation of the algorithm.
         var build = typeof(NestedSetQuery<SignalNode>)
             .GetMethod("PathEdgeEvidence", BindingFlags.NonPublic | BindingFlags.Instance)!
-            .CreateDelegate<Func<Expression, Expression, ParameterExpression, LambdaExpression?, ConditionalExpression>>(query);
+            .CreateDelegate<
+                Func<Expression, Expression, ParameterExpression, LambdaExpression?, ConditionalExpression>>(query);
 
         var upper = Expression.Parameter(typeof(SignalNode), "upper");
         var lower = Expression.Parameter(typeof(SignalNode), "lower");
         var row = Expression.Parameter(typeof(object), "row");
         Func<object> operation = () => build(upper, lower, row, null);
 
+        // WHY: Warm the complete construction path before observing allocation; LINQ would change the work measured.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var warmup = 0; warmup < 1_000; warmup++)
         {
             GC.KeepAlive(operation());
@@ -66,10 +76,14 @@ public sealed class SignalPathConstructionAllocationTests(ITestOutputHelper outp
         Assert.Same(firstLiterals.Invalid, secondLiterals.Invalid);
         Assert.Same(firstLiterals.One, secondLiterals.One);
         Assert.Same(firstLiterals.Two, secondLiterals.Two);
-        Assert.Equal(0L, Assert.IsAssignableFrom<ConstantExpression>(firstLiterals.Zero).Value);
-        Assert.Equal(-1L, Assert.IsAssignableFrom<ConstantExpression>(firstLiterals.Invalid).Value);
-        Assert.Equal(1L, Assert.IsAssignableFrom<ConstantExpression>(firstLiterals.One).Value);
-        Assert.Equal(2L, Assert.IsAssignableFrom<ConstantExpression>(firstLiterals.Two).Value);
+        Assert.Equal(0L,
+            Assert.IsAssignableFrom<ConstantExpression>(firstLiterals.Zero).Value);
+        Assert.Equal(-1L,
+            Assert.IsAssignableFrom<ConstantExpression>(firstLiterals.Invalid).Value);
+        Assert.Equal(1L,
+            Assert.IsAssignableFrom<ConstantExpression>(firstLiterals.One).Value);
+        Assert.Equal(2L,
+            Assert.IsAssignableFrom<ConstantExpression>(firstLiterals.Two).Value);
         Assert.NotSame(first, second);
         Assert.True(NestedSetQueryExpressions.References(first, upper));
         Assert.True(NestedSetQueryExpressions.References(first, lower));

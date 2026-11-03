@@ -178,7 +178,8 @@ public sealed class QueryPlanFixtureCleanupTests
             }));
 
         // Assert
-        Assert.Equal(canceled.Token, Assert.IsAssignableFrom<OperationCanceledException>(actual).CancellationToken);
+        Assert.Equal(canceled.Token,
+            Assert.IsAssignableFrom<OperationCanceledException>(actual).CancellationToken);
         Assert.True(cleaned);
     }
 }

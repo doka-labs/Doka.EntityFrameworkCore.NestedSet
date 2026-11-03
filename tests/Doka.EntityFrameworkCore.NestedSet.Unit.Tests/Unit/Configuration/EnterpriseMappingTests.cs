@@ -28,7 +28,8 @@ public sealed class EnterpriseMappingTests
         Assert.NotNull(service);
         Assert.NotNull(registry.FindProperty(NestedSetTreeRegistryMetadata.Scope));
         Assert.NotNull(registry.FindProperty(NestedSetTreeRegistryMetadata.TreeId));
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>Builds one variant-aware model without opening a database connection.</summary>

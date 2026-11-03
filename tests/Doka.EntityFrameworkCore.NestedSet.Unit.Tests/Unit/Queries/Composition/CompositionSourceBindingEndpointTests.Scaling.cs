@@ -6,7 +6,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public sealed partial class CompositionSourceBindingEndpointTests
 {
-    /// <summary>Repeated lexical references retain linear-sized metadata work instead of expanding their logical bag.</summary>
+    /// <summary>
+    /// Repeated lexical references retain linear-sized metadata work instead of expanding their logical bag.
+    /// </summary>
     /// <param name="depth">The number of nested statement-local source definitions.</param>
     /// <param name="maximumBytes">The metadata-allocation budget; result rows are not enumerated.</param>
     [Trait("Category", "Allocation")]
@@ -14,14 +16,22 @@ public sealed partial class CompositionSourceBindingEndpointTests
     [InlineData(12, 65_536)]
     [InlineData(24, 131_072)]
     [InlineData(48, 262_144)]
-    public void SharedSourceDagDoesNotExpandEndpointResolution(int depth, long maximumBytes)
+    public void SharedSourceDagDoesNotExpandEndpointResolution(
+        int depth,
+        long maximumBytes
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
-        IQueryable<CompositionGuardNode> nodes = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
+        IQueryable<CompositionGuardNode>
+            nodes = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
+
         var query = nodes;
 
+        // WHY: Each iteration binds the previous query twice to grow graph depth without copying its shared inputs.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < depth; index++)
         {
             query = Bind(query, selected => selected.Concat(selected));
@@ -50,20 +60,32 @@ public sealed partial class CompositionSourceBindingEndpointTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void IndependentIdentitySelectorsShareTheLexicalResolution(bool projected)
+    public void IndependentIdentitySelectorsShareTheLexicalResolution(
+        bool projected
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
-        IQueryable<CompositionGuardNode> nodes = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
+        IQueryable<CompositionGuardNode>
+            nodes = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
+
         var query = nodes.Select(node => new { Node = node });
 
+        // WHY: Build each layer from the previous lexical source to exercise shared endpoint resolution at depth.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < 24; index++)
         {
             query = projected
-                ? Bind(query, selected => selected.Select(x => new { Node = x.Node })
-                    .Concat(selected.Select(y => new { Node = y.Node })))
-                : Bind(query, selected => selected.Select(x => x).Concat(selected.Select(y => y)));
+                ? Bind(query,
+                    selected => selected
+                        .Select(x => new { Node = x.Node })
+                        .Concat(selected.Select(y => new { Node = y.Node })))
+                : Bind(query,
+                    selected => selected
+                        .Select(x => x)
+                        .Concat(selected.Select(y => y)));
         }
 
         var mapping = context.Model.FindEntityType(CompositionGuardContext.FirstMapping)!;
@@ -71,7 +93,9 @@ public sealed partial class CompositionSourceBindingEndpointTests
 
         // Act
         var before = GC.GetAllocatedBytesForCurrentThread();
-        var actual = NestedSetQueryEndpoint.Require(query, row => row.Node, mapping, nodes.Expression, "node", s_binding);
+        var actual =
+            NestedSetQueryEndpoint.Require(query, row => row.Node, mapping, nodes.Expression, "node", s_binding);
+
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
         output.WriteLine($"Independent selectors projected={projected}; depth=24; allocated={allocated} B.");
 
@@ -89,27 +113,42 @@ public sealed partial class CompositionSourceBindingEndpointTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void AlternatingEndpointPathsPreserveTheirMapping(bool foreignMapping)
+    public void AlternatingEndpointPathsPreserveTheirMapping(
+        bool foreignMapping
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
-        IQueryable<CompositionGuardNode> first = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
+        IQueryable<CompositionGuardNode>
+            first = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
+
         var second = foreignMapping
             ? context.Set<CompositionGuardNode>(CompositionGuardContext.SecondMapping)
             : first;
 
-        var query = first.Join(second, left => left.Id, right => right.Id,
-            (left, right) => new CompositionGuardRow { Upper = left, Lower = right });
+        var query = first.Join(second,
+            left => left.Id,
+            right => right.Id,
+            (left, right) => new CompositionGuardRow
+            {
+                Upper = left,
+                Lower = right,
+            });
 
+        // WHY: Alternate the endpoint slots at each layer so resolution must retain their exact mapping identities.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < 24; index++)
         {
-            query = Bind(query, selected => selected.Select(row => new CompositionGuardRow
-                {
-                    Upper = row.Lower,
-                    Lower = row.Upper,
-                })
-                .Concat(selected.Select(row => row)));
+            query = Bind(query,
+                selected => selected
+                    .Select(row => new CompositionGuardRow
+                    {
+                        Upper = row.Lower,
+                        Lower = row.Upper,
+                    })
+                    .Concat(selected.Select(row => row)));
         }
 
         var mapping = context.Model.FindEntityType(CompositionGuardContext.FirstMapping)!;
@@ -119,18 +158,29 @@ public sealed partial class CompositionSourceBindingEndpointTests
         // One complete call warms CLR metadata; the measured call still owns a fresh memo and proof.
         var firstCallBefore = GC.GetAllocatedBytesForCurrentThread();
         _ = Record.Exception(() => NestedSetQueryEndpoint.Require(
-            query, row => row.Upper, mapping, first.Expression, "node", s_binding));
+            query,
+            row => row.Upper,
+            mapping,
+            first.Expression,
+            "node",
+            s_binding));
 
         var firstCallAllocated = GC.GetAllocatedBytesForCurrentThread() - firstCallBefore;
 
         // Act
         var before = GC.GetAllocatedBytesForCurrentThread();
         var error = Record.Exception(() => result = NestedSetQueryEndpoint.Require(
-            query, row => row.Upper, mapping, first.Expression, "node", s_binding));
+            query,
+            row => row.Upper,
+            mapping,
+            first.Expression,
+            "node",
+            s_binding));
 
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
         output.WriteLine($"Alternating endpoints foreignMapping={foreignMapping}; depth=24; allocated={allocated} B.");
-        output.WriteLine($"First complete guard call allocated={firstCallAllocated} B; measurement owns a fresh operation cache.");
+        output.WriteLine(
+            $"First complete guard call allocated={firstCallAllocated} B; measurement owns a fresh operation cache.");
 
         // Assert
         if (foreignMapping)
@@ -149,21 +199,30 @@ public sealed partial class CompositionSourceBindingEndpointTests
     }
 
     /// <summary>A mutable captured query still resolves each occurrence and cannot borrow a cached mapping.</summary>
-    /// <param name="throughObjectField">Whether the captured field hides the query behind its declared object type.</param>
+    /// <param name="throughObjectField">
+    /// Whether the captured field hides the query behind its declared object type.
+    /// </param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void MutableQueryCaptureDoesNotReuseAnEarlierMapping(bool throughObjectField)
+    public void MutableQueryCaptureDoesNotReuseAnEarlierMapping(
+        bool throughObjectField
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
-        IQueryable<CompositionGuardNode> first = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
-        IQueryable<CompositionGuardNode> second = context.Set<CompositionGuardNode>(CompositionGuardContext.SecondMapping);
+        IQueryable<CompositionGuardNode>
+            first = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
+
+        IQueryable<CompositionGuardNode> second =
+            context.Set<CompositionGuardNode>(CompositionGuardContext.SecondMapping);
+
         var changing = new ChangingQuery(first, second);
         var expression = throughObjectField
             ? Expression.Convert(Expression.Field(Expression.Constant(new ObjectQueryCapture(changing)),
-                nameof(ObjectQueryCapture.Query)), typeof(IQueryable<CompositionGuardNode>))
+                    nameof(ObjectQueryCapture.Query)),
+                typeof(IQueryable<CompositionGuardNode>))
             : (Expression)Expression.Constant(changing, typeof(IQueryable<CompositionGuardNode>));
 
         var captured = first.Provider.CreateQuery<CompositionGuardNode>(expression);
@@ -173,7 +232,12 @@ public sealed partial class CompositionSourceBindingEndpointTests
 
         // Act
         var error = Record.Exception(() => NestedSetQueryEndpoint.Require(
-            query, node => node, mapping, first.Expression, "node", s_binding));
+            query,
+            node => node,
+            mapping,
+            first.Expression,
+            "node",
+            s_binding));
 
         // Assert
         Assert.IsType<ArgumentException>(error);
@@ -189,14 +253,33 @@ public sealed partial class CompositionSourceBindingEndpointTests
         // Arrange
         var boundary = new CompositionIoBoundary();
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
-        IQueryable<CompositionGuardNode> nodes = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
-        var payload = new object();
-        var query = nodes.Select(node => new { Node = node, Payload = payload });
+        IQueryable<CompositionGuardNode>
+            nodes = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
 
+        var payload = new object();
+        var query = nodes.Select(node => new
+        {
+            Node = node,
+            Payload = payload,
+        });
+
+        // WHY: Reuse the prior query and payload at each layer to exercise stable shared-source identity.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < 16; index++)
         {
-            query = Bind(query, selected => selected.Select(x => new { x.Node, x.Payload })
-                .Concat(selected.Select(y => new { y.Node, y.Payload })));
+            query = Bind(query,
+                selected => selected
+                    .Select(x => new
+                    {
+                        x.Node,
+                        x.Payload,
+                    })
+                    .Concat(selected.Select(y => new
+                    {
+                        y.Node,
+                        y.Payload,
+                    })));
         }
 
         var mapping = context.Model.FindEntityType(CompositionGuardContext.FirstMapping)!;
@@ -204,7 +287,9 @@ public sealed partial class CompositionSourceBindingEndpointTests
 
         // Act
         var before = GC.GetAllocatedBytesForCurrentThread();
-        var actual = NestedSetQueryEndpoint.Require(query, row => row.Node, mapping, nodes.Expression, "node", s_binding);
+        var actual =
+            NestedSetQueryEndpoint.Require(query, row => row.Node, mapping, nodes.Expression, "node", s_binding);
+
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
         output.WriteLine($"Stable object payload; shared-source depth=16; allocated={allocated} B.");
 
@@ -217,7 +302,9 @@ public sealed partial class CompositionSourceBindingEndpointTests
     }
 
     /// <summary>Hides a captured query's runtime identity behind an ordinary object-valued field.</summary>
-    private sealed class ObjectQueryCapture(object query)
+    private sealed class ObjectQueryCapture(
+        object query
+    )
     {
         /// <summary>Retains the caller's query without exposing IQueryable in the field's declared type.</summary>
         public readonly object Query = query;
@@ -241,7 +328,10 @@ public sealed partial class CompositionSourceBindingEndpointTests
     }
 
     /// <summary>Exposes application-owned expression metadata that deliberately changes between references.</summary>
-    private sealed class ChangingQuery(IQueryable<CompositionGuardNode> first, IQueryable<CompositionGuardNode> second)
+    private sealed class ChangingQuery(
+        IQueryable<CompositionGuardNode> first,
+        IQueryable<CompositionGuardNode> second
+    )
         : IQueryable<CompositionGuardNode>
     {
         internal int Reads { get; private set; }

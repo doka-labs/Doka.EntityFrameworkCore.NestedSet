@@ -8,7 +8,9 @@ internal static class ProviderQueryLifetime
 {
     /// <summary>Retains only weak observations after a completed-source or ordered-join construction.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    internal static WeakReference[] ReleaseInputs(bool orderedJoin)
+    internal static WeakReference[] ReleaseInputs(
+        bool orderedJoin
+    )
     {
         var probe = new ProviderQueryProbe();
         var source = probe.Source<int>();
@@ -21,6 +23,7 @@ internal static class ProviderQueryLifetime
         {
             Expression<Func<int, int>> key = value => value + request.Minimum;
             Expression<Func<int, int, int>> projection = (left, right) => left + right;
+
             adapter.TryOrderedJoin(source, source, key, key, projection, out query);
             selector = key;
         }
@@ -38,13 +41,22 @@ internal static class ProviderQueryLifetime
 
     /// <summary>Exercises closed typed provider methods with an actual collectible row identity.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    internal static WeakReference[] ReleaseCollectibleRows(bool orderedJoin, int position)
+    internal static WeakReference[] ReleaseCollectibleRows(
+        bool orderedJoin,
+        int position
+    )
     {
         var assembly = AssemblyBuilder.DefineDynamicAssembly(
-            new AssemblyName("NestedSet.TypedQueryArgument." + Guid.NewGuid().ToString("N")),
+            new AssemblyName("NestedSet.TypedQueryArgument."
+                + Guid
+                    .NewGuid()
+                    .ToString("N")),
             AssemblyBuilderAccess.RunAndCollect);
 
-        var builder = assembly.DefineDynamicModule("Rows").DefineType("CollectibleRow", TypeAttributes.Public);
+        var builder = assembly
+            .DefineDynamicModule("Rows")
+            .DefineType("CollectibleRow", TypeAttributes.Public);
+
         builder.DefineDefaultConstructor(MethodAttributes.Public);
         var row = builder.CreateTypeInfo()!.AsType();
         var probe = new ProviderQueryProbe();
@@ -60,7 +72,11 @@ internal static class ProviderQueryLifetime
     }
 
     /// <summary>Constructs the actual public operator after the CLR closes the collectible row type.</summary>
-    private static object ComposeTyped<T>(ProviderQueryProbe probe, bool orderedJoin, int position)
+    private static object ComposeTyped<T>(
+        ProviderQueryProbe probe,
+        bool orderedJoin,
+        int position
+    )
     {
         var adapter = NestedSetTestAdapters.ForEngine("MySql");
 
@@ -81,23 +97,39 @@ internal static class ProviderQueryLifetime
         switch (position)
         {
             case 0:
-                adapter.TryOrderedJoin(probe.Source<T>(), probe.Source<int>(), _ => 1, value => value,
-                    (_, right) => right, out var outer);
+                adapter.TryOrderedJoin(probe.Source<T>(),
+                    probe.Source<int>(),
+                    _ => 1,
+                    value => value,
+                    (_, right) => right,
+                    out var outer);
 
                 return outer!;
             case 1:
-                adapter.TryOrderedJoin(probe.Source<int>(), probe.Source<T>(), value => value, _ => 1,
-                    (left, _) => left, out var inner);
+                adapter.TryOrderedJoin(probe.Source<int>(),
+                    probe.Source<T>(),
+                    value => value,
+                    _ => 1,
+                    (left, _) => left,
+                    out var inner);
 
                 return inner!;
             case 2:
-                adapter.TryOrderedJoin(probe.Source<int>(), probe.Source<int>(), _ => default(T)!, _ => default(T)!,
-                    (left, right) => left + right, out var key);
+                adapter.TryOrderedJoin(probe.Source<int>(),
+                    probe.Source<int>(),
+                    _ => default(T)!,
+                    _ => default(T)!,
+                    (left, right) => left + right,
+                    out var key);
 
                 return key!;
             case 3:
-                adapter.TryOrderedJoin(probe.Source<int>(), probe.Source<int>(), value => value, value => value,
-                    (_, _) => default(T)!, out var projected);
+                adapter.TryOrderedJoin(probe.Source<int>(),
+                    probe.Source<int>(),
+                    value => value,
+                    value => value,
+                    (_, _) => default(T)!,
+                    out var projected);
 
                 return projected!;
             default:

@@ -39,7 +39,8 @@ public sealed class CompositionIoBoundaryTests
 
         // Act
         var error = await Record.ExceptionAsync(() => context.Database.ExecuteSqlRawAsync(
-            "SELECT 1", CancellationToken.None));
+            "SELECT 1",
+            CancellationToken.None));
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);

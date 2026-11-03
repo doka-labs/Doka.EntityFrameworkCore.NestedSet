@@ -10,7 +10,9 @@ public sealed partial class DokaQueryFeaturesTests
     [Theory]
     [InlineData("MySql")]
     [InlineData("MariaDb")]
-    public async Task ActualConfiguredProviderChoosesItsTypedStrategyWithoutIo(string engine)
+    public async Task ActualConfiguredProviderChoosesItsTypedStrategyWithoutIo(
+        string engine
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -22,7 +24,8 @@ public sealed partial class DokaQueryFeaturesTests
 
         await using var provider = NestedSetTestAdapters.BuildServices(options);
         var isolated = new DbContextOptionsBuilder<CompositionGuardContext>(options)
-            .UseInternalServiceProvider(provider).Options;
+            .UseInternalServiceProvider(provider)
+            .Options;
 
         await using var context = new CompositionGuardContext(isolated);
         var expected = engine == "MySql"
@@ -51,7 +54,9 @@ public sealed partial class DokaQueryFeaturesTests
     [InlineData("Sqlite")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public async Task OtherAdaptersDoNotExposeDokaQueryPrimitives(string engine)
+    public async Task OtherAdaptersDoNotExposeDokaQueryPrimitives(
+        string engine
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -62,7 +67,8 @@ public sealed partial class DokaQueryFeaturesTests
 
         await using var provider = NestedSetTestAdapters.BuildServices(options);
         var isolated = new DbContextOptionsBuilder<CompositionGuardContext>(options)
-            .UseInternalServiceProvider(provider).Options;
+            .UseInternalServiceProvider(provider)
+            .Options;
 
         await using var context = new CompositionGuardContext(isolated);
 
@@ -80,11 +86,15 @@ public sealed partial class DokaQueryFeaturesTests
     }
 
     /// <summary>Provides inert connection text valid for the requested provider's metadata initialization.</summary>
-    private static string MetadataConnection(string engine) => engine switch
+    private static string MetadataConnection(
+        string engine
+    ) => engine switch
     {
         "Sqlite" => "Data Source=:memory:",
         "PostgreSql" => "Host=127.0.0.1;Database=feature_contract;Username=unused;Pooling=false",
-        "SqlServer" => "Server=127.0.0.1;Database=feature_contract;User ID=unused;Password=unused;TrustServerCertificate=true;Pooling=false",
+        "SqlServer" =>
+            "Server=127.0.0.1;Database=feature_contract;User ID=unused;Password=unused;"
+            + "TrustServerCertificate=true;Pooling=false",
         _ => throw new ArgumentOutOfRangeException(nameof(engine)),
     };
 }

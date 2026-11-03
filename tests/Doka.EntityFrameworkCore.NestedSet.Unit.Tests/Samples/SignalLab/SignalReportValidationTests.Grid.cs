@@ -70,7 +70,10 @@ public sealed partial class SignalReportValidationTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public void GridRejectsDuplicateTotals(bool foreign, bool sameValue)
+    public void GridRejectsDuplicateTotals(
+        bool foreign,
+        bool sameValue
+    )
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request());
@@ -109,8 +112,14 @@ public sealed partial class SignalReportValidationTests
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request()) with
         {
-            AnchorIds = Enumerable.Range(1, 46_341).Select(SignalReportDataset.Id).ToArray(),
-            ChannelIds = Enumerable.Range(1, 46_341).Select(SignalReportDataset.Id).ToArray(),
+            AnchorIds = Enumerable
+                .Range(1, 46_341)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
+            ChannelIds = Enumerable
+                .Range(1, 46_341)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
         };
 
         // Act
@@ -127,8 +136,14 @@ public sealed partial class SignalReportValidationTests
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request() with
         {
-            AnchorIds = Enumerable.Range(1, 64).Select(SignalReportDataset.Id).ToArray(),
-            ChannelIds = Enumerable.Range(101, 32).Select(SignalReportDataset.Id).ToArray(),
+            AnchorIds = Enumerable
+                .Range(1, 64)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
+            ChannelIds = Enumerable
+                .Range(101, 32)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
             Sources = [CapturePort.Sweep, CapturePort.Pulse, CapturePort.Burst],
         });
 
@@ -155,10 +170,18 @@ public sealed partial class SignalReportValidationTests
 
         // Assert
         Assert.Equal(64 * 32 * 3, cells.Length);
-        Assert.Equal(new SignalReportCell(SignalReportDataset.Id(1), SignalReportDataset.Id(101),
-            CapturePort.Sweep, true, 0), cells[0]);
-        Assert.Equal(new SignalReportCell(SignalReportDataset.Id(64), SignalReportDataset.Id(132),
-            CapturePort.Burst, true, 13), cells[^1]);
+        Assert.Equal(new SignalReportCell(SignalReportDataset.Id(1),
+                SignalReportDataset.Id(101),
+                CapturePort.Sweep,
+                true,
+                0),
+            cells[0]);
+        Assert.Equal(new SignalReportCell(SignalReportDataset.Id(64),
+                SignalReportDataset.Id(132),
+                CapturePort.Burst,
+                true,
+                13),
+            cells[^1]);
         Assert.Equal(2, cells.Count(cell => cell.HasData));
         Assert.All(cells.Where(cell => !cell.HasData), cell => Assert.Equal(0, cell.Value));
     }
@@ -173,12 +196,22 @@ public sealed partial class SignalReportValidationTests
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request() with
         {
-            AnchorIds = Enumerable.Range(1, 64).Select(SignalReportDataset.Id).ToArray(),
-            ChannelIds = Enumerable.Range(101, 32).Select(SignalReportDataset.Id).ToArray(),
+            AnchorIds = Enumerable
+                .Range(1, 64)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
+            ChannelIds = Enumerable
+                .Range(101, 32)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
             Sources = [CapturePort.Sweep, CapturePort.Pulse, CapturePort.Burst],
         });
 
         const int cells = 64 * 32 * 3;
+
+        // WHY: Warm grid construction outside the observed per-cell allocation interval.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var warmup = 0; warmup < 10; warmup++)
         {
             _ = SignalReportValidation.CreateGrid(snapshot, []);

@@ -1,5 +1,4 @@
 extern alias UserGroupsSample;
-
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore.Storage;
 using AmbientTransaction = System.Transactions.Transaction;
@@ -40,7 +39,9 @@ public sealed partial class SampleReadSnapshotTests
         // WHY: Own this deliberate service replacement instead of adding its graph to EF's global cache.
         services.AddScoped<IRelationalConnection, SnapshotEnlistmentRelationalConnection>();
         await using var provider = services.BuildServiceProvider();
-        await using var context = new SampleLifecycleContext(options.UseInternalServiceProvider(provider).Options);
+        await using var context = new SampleLifecycleContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
 
         if (alreadyOpen)
         {
@@ -54,13 +55,15 @@ public sealed partial class SampleReadSnapshotTests
         // Act
         var error = await Record.ExceptionAsync(async () =>
         {
-            result = await SampleReadSnapshot.RunAsync(context, _ =>
-            {
-                reads++;
-                isolation = context.Database.CurrentTransaction?.GetDbTransaction().IsolationLevel;
+            result = await SampleReadSnapshot.RunAsync(context,
+                _ =>
+                {
+                    reads++;
+                    isolation = context.Database.CurrentTransaction?.GetDbTransaction().IsolationLevel;
 
-                return Task.FromResult(42);
-            }, CancellationToken.None);
+                    return Task.FromResult(42);
+                },
+                CancellationToken.None);
         });
 
         var state = connection.State;
@@ -97,7 +100,10 @@ public sealed partial class SampleReadSnapshotTests
     }
 
     /// <summary>Introduces a provider-owned boundary without changing the global ambient transaction.</summary>
-    private sealed class SnapshotEnlistmentConnection(string boundary, CommittableTransaction enlistment)
+    private sealed class SnapshotEnlistmentConnection(
+        string boundary,
+        CommittableTransaction enlistment
+    )
         : SqliteConnection("Data Source=:memory:")
     {
         /// <summary>Gets the native transaction that must be disposed even when EF rejects adoption.</summary>
@@ -123,7 +129,9 @@ public sealed partial class SampleReadSnapshotTests
 
     /// <summary>Exercises the public relational extension seam with connection-specific transaction state.</summary>
     /// <param name="dependencies">The configured context's relational dependencies.</param>
-    private sealed class SnapshotEnlistmentRelationalConnection(RelationalConnectionDependencies dependencies)
+    private sealed class SnapshotEnlistmentRelationalConnection(
+        RelationalConnectionDependencies dependencies
+    )
         : RelationalConnection(dependencies)
     {
         /// <inheritdoc />

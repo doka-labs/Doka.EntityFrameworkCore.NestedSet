@@ -62,7 +62,9 @@ public sealed partial class SignalReportValidationTests
         }
 
         /// <summary>Checks the caller's cancellation before exposing the sole reader.</summary>
-        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken token)
+        public IAsyncEnumerator<T> GetAsyncEnumerator(
+            CancellationToken token
+        )
         {
             token.ThrowIfCancellationRequested();
             probe.EnumerationToken = token;

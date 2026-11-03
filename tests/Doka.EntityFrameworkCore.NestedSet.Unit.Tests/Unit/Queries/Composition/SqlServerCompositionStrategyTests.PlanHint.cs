@@ -24,8 +24,14 @@ public sealed partial class SqlServerCompositionStrategyTests
     [InlineData(Tag + " extra\nSELECT 1", false)]
     [InlineData("-- caller\n\nSELECT 1\n" + Tag, false)]
     [InlineData("", false)]
-    public void CompositionTagMarksOnlyLeadingTagComments(string commandText, bool expected)
+    public void CompositionTagMarksOnlyLeadingTagComments(
+        string commandText,
+        bool expected
+    )
     {
+        // Arrange
+        // The theory row supplies the command text and expected classification.
+
         // Act
         var actual = NestedSetCompositionTag.Marks(commandText);
 
@@ -110,14 +116,26 @@ public sealed partial class SqlServerCompositionStrategyTests
             .AddInterceptors(boundary);
 
         await using var services = NestedSetTestAdapters.BuildServices(options.Options);
-        await using var context = new CompositionContext(options.UseInternalServiceProvider(services).Options);
-        var tree = context.NestedSet<CompositionNode>().ForScope(Guid.Empty).InTree(Guid.Empty);
+        await using var context = new CompositionContext(options
+            .UseInternalServiceProvider(services)
+            .Options);
+
+        var tree = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty)
+            .InTree(Guid.Empty);
 
         // Act
-        var composition = tree.SelectSubtrees(node => node.Id == 1, (anchor, node, distance) => node.Id)
+        var composition = tree
+            .SelectSubtrees(node => node.Id == 1,
+                (anchor, node, distance) => node.Id)
             .ToQueryString();
 
-        var nodes = tree.Nodes.Select(node => node.Id).ToQueryString();
+        var nodes = tree
+            .Nodes
+            .Select(node => node.Id)
+            .ToQueryString();
+
         var interceptors = ((IInfrastructure<IServiceProvider>)context).Instance.GetServices<IInterceptor>();
 
         // Assert
@@ -135,21 +153,31 @@ public sealed partial class SqlServerCompositionStrategyTests
     [InlineData("Sqlite")]
     [InlineData("MySql")]
     [InlineData("MariaDb")]
-    public async Task OtherAdaptersKeepCompositionSqlUntagged(string engine)
+    public async Task OtherAdaptersKeepCompositionSqlUntagged(
+        string engine
+    )
     {
         // Arrange
         var native = engine == "Sqlite"
             ? new DbContextOptionsBuilder<CompositionContext>()
-                .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets()).Options
+                .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
+                .Options
             : ModelCompatibilityDatabase.Options<CompositionContext>(engine);
 
         await using var services = NestedSetTestAdapters.BuildServices(native);
         await using var context = new CompositionContext(
-            new DbContextOptionsBuilder<CompositionContext>(native).UseInternalServiceProvider(services).Options);
+            new DbContextOptionsBuilder<CompositionContext>(native)
+                .UseInternalServiceProvider(services)
+                .Options);
 
         // Act
-        var sql = context.NestedSet<CompositionNode>().ForScope(Guid.Empty).InTree(Guid.Empty)
-            .SelectSubtrees(node => node.Id == 1, (anchor, node, distance) => node.Id).ToQueryString();
+        var sql = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty)
+            .InTree(Guid.Empty)
+            .SelectSubtrees(node => node.Id == 1,
+                (anchor, node, distance) => node.Id)
+            .ToQueryString();
 
         var interceptors = ((IInfrastructure<IServiceProvider>)context).Instance.GetServices<IInterceptor>();
 

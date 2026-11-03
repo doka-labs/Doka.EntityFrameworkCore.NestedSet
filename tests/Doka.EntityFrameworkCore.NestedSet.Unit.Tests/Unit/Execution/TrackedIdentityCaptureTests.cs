@@ -63,7 +63,8 @@ public sealed class TrackedIdentityCaptureTests
                 .ChangeTracker
                 .Entries<CountedNode>()
                 .Count());
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>Equivalent binary replacements are accepted through each captured typed property entry.</summary>
@@ -90,7 +91,8 @@ public sealed class TrackedIdentityCaptureTests
 
         var entry = context.Attach(node);
         using var guard = CaptureBinary(context);
-        var replacement = Identity(node, role).ToArray();
+        var replacement = Identity(node, role)
+            .ToArray();
 
         // Act
         ReplaceIdentity(node, role, replacement);
@@ -100,8 +102,10 @@ public sealed class TrackedIdentityCaptureTests
         Assert.Null(failure);
         Assert.Same(replacement, Identity(node, role));
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.Same(node, Assert.Single(context.ChangeTracker.Entries<BinaryNode>()).Entity);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Same(node,
+            Assert.Single(context.ChangeTracker.Entries<BinaryNode>()).Entity);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>A shallow model snapshot cannot hide in-place edits to any captured binary identity.</summary>
@@ -135,12 +139,15 @@ public sealed class TrackedIdentityCaptureTests
         var failure = Record.Exception(guard.VerifyUnchanged);
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure).Code);
         Assert.Same(identity, Identity(node, role));
         Assert.Equal(9, identity[0]);
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.Same(node, Assert.Single(context.ChangeTracker.Entries<BinaryNode>()).Entity);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Same(node,
+            Assert.Single(context.ChangeTracker.Entries<BinaryNode>()).Entity);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>The guard retains the original entry state even when cached property wrappers remain valid.</summary>
@@ -167,13 +174,15 @@ public sealed class TrackedIdentityCaptureTests
         var failure = Record.Exception(guard.VerifyUnchanged);
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure).Code);
         Assert.Equal(EntityState.Detached, entry.State);
         Assert.Empty(context.ChangeTracker.Entries<BinaryNode>());
         Assert.Equal<byte>([1], node.Id);
         Assert.Equal<byte>([2], node.Scope);
         Assert.Equal<byte>([3], node.TreeId);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>Equivalent replacements remain visible across candidate block boundaries.</summary>
@@ -214,7 +223,8 @@ public sealed class TrackedIdentityCaptureTests
             entry => Assert.Equal(EntityState.Unchanged, entry.State));
 
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>Late mutable identity edits are detected on both sides of a candidate block boundary.</summary>
@@ -242,8 +252,10 @@ public sealed class TrackedIdentityCaptureTests
         var failure = Record.Exception(guard.VerifyUnchanged);
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
-        Assert.Equal(9, nodes[^1].TreeId[0]);
+        Assert.Equal(NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(9,
+            nodes[^1].TreeId[0]);
         Assert.Equal(
             originalTrees.Take(candidates - 1),
             nodes
@@ -260,7 +272,8 @@ public sealed class TrackedIdentityCaptureTests
             entry => Assert.Equal(EntityState.Unchanged, entry.State));
 
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>Creates distinct valid scalar identities without relying on a database or generated keys.</summary>
@@ -337,7 +350,9 @@ public sealed class TrackedIdentityCaptureTests
     }
 
     /// <summary>Provides a converted identity whose provider work is observable without database commands.</summary>
-    private readonly record struct CountedIdentity(int Value);
+    private readonly record struct CountedIdentity(
+        int Value
+    );
 
     /// <summary>Maps two converted identity roles to ordinary scalar integer columns.</summary>
     private sealed class CountedContext : DbContext
@@ -392,10 +407,7 @@ public sealed class TrackedIdentityCaptureTests
             var node = modelBuilder.Entity<BinaryNode>();
             node.ToTable("TrackedIdentityBinaryNodes");
             var comparer = new ValueComparer<byte[]>(
-                (
-                        first,
-                        second
-                    ) => first == second
+                (first, second) => first == second
                     || (first != null
                         && second != null
                         && first

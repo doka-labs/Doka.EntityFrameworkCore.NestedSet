@@ -7,15 +7,18 @@ public sealed partial class UnicodeIdentityLengthTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task UnicodeMappingsOwnServicesAndReleaseThemWithContext(bool asynchronous)
+    public async Task UnicodeMappingsOwnServicesAndReleaseThemWithContext(
+        bool asynchronous
+    )
     {
         // Arrange
         await using var first = new UnicodeContext("Sqlite");
         await using var second = new UnicodeContext("Sqlite");
         var firstServices = first.GetService<IModelSource>();
         var secondServices = second.GetService<IModelSource>();
-        var firstOwner = first.GetService<IDbContextOptions>().FindExtension<CoreOptionsExtension>()!
-            .InternalServiceProvider;
+        var firstOwner = first
+            .GetService<IDbContextOptions>()
+            .FindExtension<CoreOptionsExtension>()!.InternalServiceProvider;
 
         // Act
         if (asynchronous)
@@ -25,6 +28,7 @@ public sealed partial class UnicodeIdentityLengthTests
         else
         {
             // WHY: The synchronous context contract must release its external provider too.
+            // ReSharper disable once MethodHasAsyncOverload
             first.Dispose();
         }
 
@@ -37,7 +41,8 @@ public sealed partial class UnicodeIdentityLengthTests
         Assert.NotNull(second.Model.FindEntityType(UnicodeContext.Raw));
         Assert.NotNull(second.Model.FindEntityType(UnicodeContext.Converted));
         Assert.NotNull(second.Model.FindEntityType(UnicodeContext.Binary));
-        Assert.Equal(ConnectionState.Closed, second.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            second.Database.GetDbConnection().State);
         Assert.Empty(second.ChangeTracker.Entries());
     }
 }

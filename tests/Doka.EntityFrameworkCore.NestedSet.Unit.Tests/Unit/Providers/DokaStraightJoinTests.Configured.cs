@@ -12,7 +12,9 @@ public sealed partial class DokaStraightJoinTests
     [Theory]
     [InlineData("MySql")]
     [InlineData("MariaDb")]
-    public async Task ConfiguredProviderUsesItsActualMethodWithoutIo(string engine)
+    public async Task ConfiguredProviderUsesItsActualMethodWithoutIo(
+        string engine
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -33,7 +35,8 @@ public sealed partial class DokaStraightJoinTests
         // provider cache cardinality for unrelated model and sample regressions.
         await using var provider = services.BuildServiceProvider();
         var isolated = new DbContextOptionsBuilder<CompositionGuardContext>(options)
-            .UseInternalServiceProvider(provider).Options;
+            .UseInternalServiceProvider(provider)
+            .Options;
 
         await using var context = new CompositionGuardContext(isolated);
         var adapter = NestedSetProviderCapabilities.Resolve(context);
@@ -42,12 +45,24 @@ public sealed partial class DokaStraightJoinTests
             Expression<Func<CompositionGuardNode, CompositionGuardNode, int>>, IQueryable<int>> publicApi =
             MySqlQueryableExtensions.StraightJoin;
 
-        var outer = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping).Where(node => node.Id > 4);
-        var inner = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping).Where(node => node.Id < 12);
+        var outer = context
+            .Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping)
+            .Where(node => node.Id > 4);
+
+        var inner = context
+            .Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping)
+            .Where(node => node.Id < 12);
 
         // Act
-        var available = adapter.TryOrderedJoin(outer, inner,
-            node => node.Id, node => node.Id, (left, right) => new { Left = left.Id, Right = right.Id },
+        var available = adapter.TryOrderedJoin(outer,
+            inner,
+            node => node.Id,
+            node => node.Id,
+            (left, right) => new
+            {
+                Left = left.Id,
+                Right = right.Id,
+            },
             out var joined);
 
         var method = adapter.OrderedJoinMethod;
@@ -79,8 +94,12 @@ public sealed partial class DokaStraightJoinTests
         var adapter = NestedSetProviderCapabilities.Resolve(context);
 
         // Act
-        var available = adapter.TryOrderedJoin(source, source, node => node.Id, node => node.Id,
-            (left, right) => left.Id + right.Id, out var query);
+        var available = adapter.TryOrderedJoin(source,
+            source,
+            node => node.Id,
+            node => node.Id,
+            (left, right) => left.Id + right.Id,
+            out var query);
 
         // Assert
         Assert.False(available);
@@ -95,15 +114,21 @@ public sealed partial class DokaStraightJoinTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task PublicDokaOperatorCannotExecuteThroughSqlite(bool asynchronous)
+    public async Task PublicDokaOperatorCannotExecuteThroughSqlite(
+        bool asynchronous
+    )
     {
         // Arrange
         var adapter = NestedSetTestAdapters.ForEngine("MySql");
         var boundary = new CompositionIoBoundary();
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
         var nodes = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
-        adapter.TryOrderedJoin(nodes, nodes, node => node.Id, node => node.Id,
-            (left, right) => left.Id + right.Id, out var query);
+        adapter.TryOrderedJoin(nodes,
+            nodes,
+            node => node.Id,
+            node => node.Id,
+            (left, right) => left.Id + right.Id,
+            out var query);
 
         // Act
         var error = asynchronous
@@ -125,7 +150,9 @@ public sealed partial class DokaStraightJoinTests
     [InlineData("outerKey")]
     [InlineData("innerKey")]
     [InlineData("projection")]
-    public void NullInputsAreRejectedAtTheBoundary(string argument)
+    public void NullInputsAreRejectedAtTheBoundary(
+        string argument
+    )
     {
         // Arrange
         var adapter = NestedSetTestAdapters.ForEngine("MySql");

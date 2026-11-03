@@ -12,7 +12,9 @@ public sealed class CompositionAnyConstructionTests
     [Theory]
     [InlineData("MySql")]
     [InlineData("MariaDb")]
-    public async Task EntityAndDirectEdgePredicatesKeepTheirTypedDeferredLambdas(string engine)
+    public async Task EntityAndDirectEdgePredicatesKeepTheirTypedDeferredLambdas(
+        string engine
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -31,15 +33,26 @@ public sealed class CompositionAnyConstructionTests
         // WHY: Each dialect owns its complete provider graph instead of changing EF's process-wide
         // service cache. This test observes expression construction only, including direct-edge sources.
         await using var provider = services.BuildServiceProvider();
-        await using var context = new CompositionContext(options.UseInternalServiceProvider(provider).Options);
-        var hierarchy = context.NestedSet<CompositionNode>()
-            .ForScope(Guid.Parse("820bc0eb-7a3c-4dd9-9cbb-87d758889237")).InTree(Guid.Empty);
+        await using var context = new CompositionContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Parse("820bc0eb-7a3c-4dd9-9cbb-87d758889237"))
+            .InTree(Guid.Empty);
 
         var rows = hierarchy.SelectSubtrees(node => node.Id == 1,
-            (upper, lower, distance) => new { Upper = upper, Lower = lower });
+            (upper, lower, distance) => new
+            {
+                Upper = upper,
+                Lower = lower,
+            });
 
         // Act
-        var query = hierarchy.WherePathEdges(rows, row => row.Upper, row => row.Lower,
+        var query = hierarchy.WherePathEdges(rows,
+            row => row.Upper,
+            row => row.Lower,
             (row, parent, child) => CallerAllowsEdge(parent.Id, child.Id));
 
         var observer = new AnyObserver();
@@ -47,21 +60,25 @@ public sealed class CompositionAnyConstructionTests
 
         // Assert
         Assert.Contains(observer.Calls,
-            call => call.Method.GetGenericArguments()[0] == typeof(CompositionNode));
+            call => call.Method.GetGenericArguments()[0]
+                == typeof(CompositionNode));
 
         Assert.Contains(observer.Calls,
-            call => call.Method.GetGenericArguments()[0] == typeof(NestedSetQueryEdge<CompositionNode>));
+            call => call.Method.GetGenericArguments()[0]
+                == typeof(NestedSetQueryEdge<CompositionNode>));
 
-        Assert.All(observer.Calls, call =>
-        {
-            var elementType = Assert.Single(call.Method.GetGenericArguments());
-            var quoted = Assert.IsAssignableFrom<UnaryExpression>(call.Arguments[1]);
-            var lambda = Assert.IsAssignableFrom<LambdaExpression>(quoted.Operand);
+        Assert.All(observer.Calls,
+            call =>
+            {
+                var elementType = Assert.Single(call.Method.GetGenericArguments());
+                var quoted = Assert.IsAssignableFrom<UnaryExpression>(call.Arguments[1]);
+                var lambda = Assert.IsAssignableFrom<LambdaExpression>(quoted.Operand);
 
-            Assert.Equal(ExpressionType.Quote, quoted.NodeType);
-            Assert.Equal(elementType, Assert.Single(lambda.Parameters).Type);
-            Assert.Equal(typeof(Func<,>).MakeGenericType(elementType, typeof(bool)), lambda.Type);
-        });
+                Assert.Equal(ExpressionType.Quote, quoted.NodeType);
+                Assert.Equal(elementType,
+                    Assert.Single(lambda.Parameters).Type);
+                Assert.Equal(typeof(Func<,>).MakeGenericType(elementType, typeof(bool)), lambda.Type);
+            });
 
         Assert.True(observer.CallerRules > 0);
         Assert.Equal(0, boundary.ConnectionStarts);
@@ -74,7 +91,9 @@ public sealed class CompositionAnyConstructionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ForeignNamedEndpointIsRejectedWithoutEvaluatingTheEdgeRule(bool foreignAnchor)
+    public void ForeignNamedEndpointIsRejectedWithoutEvaluatingTheEdgeRule(
+        bool foreignAnchor
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -83,13 +102,27 @@ public sealed class CompositionAnyConstructionTests
         var nodes = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
         var foreign = context.Set<CompositionGuardNode>(CompositionGuardContext.SecondMapping);
         var rows = foreignAnchor
-            ? nodes.Join(foreign, node => node.Id, other => other.Id,
-                (node, other) => new CompositionGuardRow { Upper = other, Lower = node })
-            : nodes.Join(foreign, node => node.Id, other => other.Id,
-                (node, other) => new CompositionGuardRow { Upper = node, Lower = other });
+            ? nodes.Join(foreign,
+                node => node.Id,
+                other => other.Id,
+                (node, other) => new CompositionGuardRow
+                {
+                    Upper = other,
+                    Lower = node,
+                })
+            : nodes.Join(foreign,
+                node => node.Id,
+                other => other.Id,
+                (node, other) => new CompositionGuardRow
+                {
+                    Upper = node,
+                    Lower = other,
+                });
 
         // Act
-        var error = Record.Exception(() => hierarchy.WherePathEdges(rows, row => row.Upper, row => row.Lower,
+        var error = Record.Exception(() => hierarchy.WherePathEdges(rows,
+            row => row.Upper,
+            row => row.Lower,
             (row, parent, child) => CallerAllowsEdge(parent.Id, child.Id)));
 
         // Assert
@@ -100,7 +133,10 @@ public sealed class CompositionAnyConstructionTests
     }
 
     /// <summary>Rejects accidental evaluation while the rule is copied into several deferred path branches.</summary>
-    private static bool CallerAllowsEdge(int parent, int child)
+    private static bool CallerAllowsEdge(
+        int parent,
+        int child
+    )
         => throw new InvalidOperationException($"The caller rule for edge {parent}/{child} must remain deferred.");
 
     /// <summary>Collects only standard predicate existence calls and the exact caller-rule marker.</summary>
@@ -113,10 +149,13 @@ public sealed class CompositionAnyConstructionTests
         internal int CallerRules { get; private set; }
 
         /// <inheritdoc />
-        protected override Expression VisitMethodCall(MethodCallExpression node)
+        protected override Expression VisitMethodCall(
+            MethodCallExpression node
+        )
         {
             if (node.Method.DeclaringType == typeof(Queryable)
-                && node.Method.Name == nameof(Queryable.Any) && node.Arguments.Count == 2)
+                && node.Method.Name == nameof(Queryable.Any)
+                && node.Arguments.Count == 2)
             {
                 Calls.Add(node);
             }

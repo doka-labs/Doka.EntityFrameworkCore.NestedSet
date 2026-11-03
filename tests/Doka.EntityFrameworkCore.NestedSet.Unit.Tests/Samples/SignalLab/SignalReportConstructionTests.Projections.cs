@@ -39,7 +39,10 @@ public sealed partial class SignalReportConstructionTests
     {
         // Arrange
         var request = Request(false);
-        var query = Array.Empty<SignalNode>().AsQueryable();
+        var query = Array
+            .Empty<SignalNode>()
+            .AsQueryable();
+
         var capturedRequest = Expression.Constant(request);
         var capturedRoot = Expression.Constant(query);
         var inspector = new ProjectionConstantInspector();
@@ -64,13 +67,18 @@ public sealed partial class SignalReportConstructionTests
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
     [InlineData("Sqlite")]
-    public async Task ReportsReuseFixedGraphsAcrossIndependentRequests(string engine)
+    public async Task ReportsReuseFixedGraphsAcrossIndependentRequests(
+        string engine
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
         var options = ContextOptions(engine, boundary);
         await using var provider = CreateServiceProvider(options.Options);
-        await using var context = new SignalLabContext(options.UseInternalServiceProvider(provider).Options);
+        await using var context = new SignalLabContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
         var firstRequest = Request(false);
         var secondRequest = Request(true);
         var fixedGraphs = ReportProjectionFields();
@@ -101,13 +109,18 @@ public sealed partial class SignalReportConstructionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ReportRetainsScalarProofBoundaryBeforeRestoringTheFactBag(bool nearest)
+    public async Task ReportRetainsScalarProofBoundaryBeforeRestoringTheFactBag(
+        bool nearest
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
         var options = ContextOptions("Sqlite", boundary);
         await using var provider = CreateServiceProvider(options.Options);
-        await using var context = new SignalLabContext(options.UseInternalServiceProvider(provider).Options);
+        await using var context = new SignalLabContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
         var request = Request(nearest);
         var fixedGraphs = ReportProjectionFields();
 
@@ -119,12 +132,15 @@ public sealed partial class SignalReportConstructionTests
         var projection = fixedGraphs["QualifiedPath"];
         var properties = projection.ReturnType.GetProperties();
         Assert.Equal(s_qualifiedPathGrain,
-            properties.Select(property => property.Name).OrderBy(name => name));
+            properties
+                .Select(property => property.Name)
+                .OrderBy(name => name));
         Assert.All(properties, property => Assert.True(property.PropertyType.IsValueType));
-        var measurementJoin = Assert.Single(graph.Calls, call => call.Method.DeclaringType == typeof(Queryable)
-            && call.Method.Name == nameof(Queryable.Join)
-            && call.Arguments[^1] is UnaryExpression { Operand: LambdaExpression result }
-            && ReferenceEquals(result, fixedGraphs["Measurement"]));
+        var measurementJoin = Assert.Single(graph.Calls,
+            call => call.Method.DeclaringType == typeof(Queryable)
+                && call.Method.Name == nameof(Queryable.Join)
+                && call.Arguments[^1] is UnaryExpression { Operand: LambdaExpression result }
+                && ReferenceEquals(result, fixedGraphs["Measurement"]));
 
         var distinct = Assert.IsAssignableFrom<MethodCallExpression>(measurementJoin.Arguments[0]);
         Assert.Equal(nameof(Queryable.Distinct), distinct.Method.Name);
@@ -132,10 +148,12 @@ public sealed partial class SignalReportConstructionTests
         Assert.Equal(nameof(Queryable.Select), select.Method.Name);
         var selected = Assert.IsAssignableFrom<UnaryExpression>(select.Arguments[1]);
         Assert.Same(projection, selected.Operand);
-        Assert.DoesNotContain(graph.Calls, call => call.Method.DeclaringType == typeof(Queryable)
-            && call.Method.Name == nameof(Queryable.Distinct)
-            && call.Method.GetGenericArguments()[0].Name is "MeasurementRow" or "MeasuredContribution"
-                or "DefinedContribution");
+        Assert.DoesNotContain(graph.Calls,
+            call => call.Method.DeclaringType == typeof(Queryable)
+                && call.Method.Name == nameof(Queryable.Distinct)
+                && call.Method.GetGenericArguments()[0].Name is "MeasurementRow"
+                    or "MeasuredContribution"
+                    or "DefinedContribution");
 
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
@@ -147,7 +165,8 @@ public sealed partial class SignalReportConstructionTests
         var type = typeof(SignalReportBuilder).GetNestedType("ReportProjections", BindingFlags.NonPublic);
         Assert.NotNull(type);
 
-        return type.GetFields(BindingFlags.Static | BindingFlags.NonPublic)
+        return type
+            .GetFields(BindingFlags.Static | BindingFlags.NonPublic)
             .ToDictionary(field => field.Name,
                 field => Assert.IsAssignableFrom<LambdaExpression>(field.GetValue(null)));
     }
@@ -159,9 +178,13 @@ public sealed partial class SignalReportConstructionTests
         internal List<object> CapturedObjects { get; } = [];
 
         /// <inheritdoc />
-        protected override Expression VisitConstant(ConstantExpression node)
+        protected override Expression VisitConstant(
+            ConstantExpression node
+        )
         {
-            if (node.Value is not null && node.Value is not string && !node.Type.IsValueType)
+            if (node.Value is not null
+                && node.Value is not string
+                && !node.Type.IsValueType)
             {
                 CapturedObjects.Add(node.Value);
             }
@@ -182,7 +205,9 @@ public sealed partial class SignalReportConstructionTests
         internal List<MethodCallExpression> Calls { get; } = [];
 
         /// <summary>Visits one report's deferred graph without causing provider execution.</summary>
-        internal static ReportGraphInspector Read(Expression expression)
+        internal static ReportGraphInspector Read(
+            Expression expression
+        )
         {
             var inspector = new ReportGraphInspector();
             inspector.Visit(expression);
@@ -191,7 +216,9 @@ public sealed partial class SignalReportConstructionTests
         }
 
         /// <inheritdoc />
-        protected override Expression VisitLambda<T>(Expression<T> node)
+        protected override Expression VisitLambda<T>(
+            Expression<T> node
+        )
         {
             Lambdas.Add(node);
 
@@ -199,7 +226,9 @@ public sealed partial class SignalReportConstructionTests
         }
 
         /// <inheritdoc />
-        protected override Expression VisitMethodCall(MethodCallExpression node)
+        protected override Expression VisitMethodCall(
+            MethodCallExpression node
+        )
         {
             Calls.Add(node);
 

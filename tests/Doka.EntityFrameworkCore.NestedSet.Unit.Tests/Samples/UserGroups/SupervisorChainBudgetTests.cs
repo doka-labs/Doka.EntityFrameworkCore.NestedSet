@@ -11,7 +11,9 @@ public sealed class SupervisorChainBudgetTests
     [Theory]
     [InlineData("reads")]
     [InlineData("visits")]
-    public void ExhaustedCounterPreservesOtherAllowances(string counter)
+    public void ExhaustedCounterPreservesOtherAllowances(
+        string counter
+    )
     {
         // Arrange
         var request = Request();
@@ -54,9 +56,13 @@ public sealed class SupervisorChainBudgetTests
         var before = GC.GetAllocatedBytesForCurrentThread();
 
         // Act
+        // WHY: Count every admission directly while measuring the counter's zero-allocation contract.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < operations; index++)
         {
-            if (budget.Read() && budget.Visit())
+            if (budget.Read()
+                && budget.Visit())
             {
                 admitted++;
             }
@@ -80,7 +86,11 @@ public sealed class SupervisorChainBudgetTests
         SourceUserId = 42,
         Steps =
         [
-            new(SearchStart.ParentsOnly, new NoRoleFilter(), new AllEligibleGroups(), [], null,
+            new(SearchStart.ParentsOnly,
+                new NoRoleFilter(),
+                new AllEligibleGroups(),
+                [],
+                null,
                 SupervisorSelection.RequireUnique),
         ],
         RoutingOrigin = RoutingOrigin.InitialSubject,

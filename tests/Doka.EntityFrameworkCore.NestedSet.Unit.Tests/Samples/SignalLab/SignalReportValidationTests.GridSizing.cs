@@ -22,8 +22,14 @@ public sealed partial class SignalReportValidationTests
         var count = shape == "sources" ? 32_768 : 46_341;
         snapshot = snapshot with
         {
-            AnchorIds = Enumerable.Range(1, count).Select(SignalReportDataset.Id).ToArray(),
-            ChannelIds = Enumerable.Range(1, count).Select(SignalReportDataset.Id).ToArray(),
+            AnchorIds = Enumerable
+                .Range(1, count)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
+            ChannelIds = Enumerable
+                .Range(1, count)
+                .Select(SignalReportDataset.Id)
+                .ToArray(),
             Sources = shape switch
             {
                 "sources" => [CapturePort.Pulse, CapturePort.Sweep, CapturePort.Burst],
@@ -38,7 +44,8 @@ public sealed partial class SignalReportValidationTests
 
         // Act
         var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(snapshot,
-            ReadRows(rows, probe, CancellationToken.None), CancellationToken.None));
+            ReadRows(rows, probe, CancellationToken.None),
+            CancellationToken.None));
 
         // Assert
         Assert.True(probe.EndReached);
@@ -79,7 +86,8 @@ public sealed partial class SignalReportValidationTests
         // Act
         var synchronous = SignalReportValidation.CreateGrid(snapshot, rows);
         var asynchronous = await SignalReportValidation.CreateGridAsync(snapshot,
-            ReadRows(rows, probe, CancellationToken.None), CancellationToken.None);
+            ReadRows(rows, probe, CancellationToken.None),
+            CancellationToken.None);
 
         // Assert
         Assert.Empty(synchronous);

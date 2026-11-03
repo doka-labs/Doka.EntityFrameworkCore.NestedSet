@@ -44,7 +44,8 @@ public sealed class SupervisorTranslationTests
         await using var context = new App.UserGroupContext(options);
         var request = new App.SupervisorRequest
         {
-            SourceUserId = 1, SearchStart = App.SearchStart.ParentsOnly,
+            SourceUserId = 1,
+            SearchStart = App.SearchStart.ParentsOnly,
             Roles = new App.EitherRole(Guid.NewGuid()),
             Groups = groupMode switch
             {
@@ -67,12 +68,16 @@ public sealed class SupervisorTranslationTests
         };
 
         // Act
-        var sql = App.SupervisorQueries.ResolutionRows(context, Guid.NewGuid(), request, selection).ToQueryString();
+        var sql = App
+            .SupervisorQueries
+            .ResolutionRows(context, Guid.NewGuid(), request, selection)
+            .ToQueryString();
 
         // Assert
         Assert.Contains("UNION ALL", sql, StringComparison.Ordinal);
         Assert.Contains("COUNT_BIG", sql, StringComparison.Ordinal);
-        Assert.NotEqual(ConnectionState.Open, context.Database.GetDbConnection().State);
+        Assert.NotEqual(ConnectionState.Open,
+            context.Database.GetDbConnection().State);
         Assert.Empty(context.ChangeTracker.Entries());
     }
 }

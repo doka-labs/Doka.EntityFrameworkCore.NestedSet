@@ -7,7 +7,9 @@ internal sealed class SampleLifecycleDirectory : IAsyncDisposable
     public string DirectoryPath { get; } = Path.Combine(
         Path.GetTempPath(),
         "nestedset-sample-lifecycle",
-        Guid.NewGuid().ToString("N"));
+        Guid
+            .NewGuid()
+            .ToString("N"));
 
     /// <summary>Resolves the chosen sample's fixed filename inside this test-owned directory.</summary>
     /// <param name="sample">The known sample whose database belongs to this test.</param>

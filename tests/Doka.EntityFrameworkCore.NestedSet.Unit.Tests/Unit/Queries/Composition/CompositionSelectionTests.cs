@@ -30,7 +30,11 @@ public sealed class CompositionSelectionTests
         // Arrange
         var values = new[] { 1, 2 };
         var collection = new List<int> { 1, 2 };
-        var query = Enumerable.Empty<SelectionNode>().AsQueryable();
+
+        var query = Enumerable
+            .Empty<SelectionNode>()
+            .AsQueryable();
+
         Expression<Func<SelectionNode, bool>> predicate = shape switch
         {
             "ScalarCount" => node => node.Count > 0,

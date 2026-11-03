@@ -11,8 +11,17 @@ public sealed partial class SignalReportValidationTests
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request() with { Criteria = [] });
         var rows = new RetentionReader<SignalCatalogRow>(index => index % 2 == 0
-            ? new SignalCatalogRow { Kind = 0, Id = snapshot.AnchorIds[0] }
-            : new SignalCatalogRow { Kind = 1, Id = snapshot.ChannelIds[0], UnitCode = "count" });
+            ? new SignalCatalogRow
+            {
+                Kind = 0,
+                Id = snapshot.AnchorIds[0],
+            }
+            : new SignalCatalogRow
+            {
+                Kind = 1,
+                Id = snapshot.ChannelIds[0],
+                UnitCode = "count",
+            });
 
         // Act
         await SignalReportValidation.RequireCatalogAsync(snapshot, rows, CancellationToken.None);
@@ -42,7 +51,9 @@ public sealed partial class SignalReportValidationTests
     }
 
     /// <summary>Generates fresh DTOs and observes retention only after clearing the reader's current row.</summary>
-    private sealed class RetentionReader<T>(Func<int, T> create) : IAsyncEnumerable<T>, IAsyncEnumerator<T>
+    private sealed class RetentionReader<T>(
+        Func<int, T> create
+    ) : IAsyncEnumerable<T>, IAsyncEnumerator<T>
         where T : class
     {
         private readonly WeakReference<T>[] _rows = new WeakReference<T>[256];
@@ -78,7 +89,9 @@ public sealed partial class SignalReportValidationTests
         }
 
         /// <summary>Provides the sole enumerator without adding a second retained reader state.</summary>
-        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken)
+        public IAsyncEnumerator<T> GetAsyncEnumerator(
+            CancellationToken cancellationToken
+        )
         {
             cancellationToken.ThrowIfCancellationRequested();
 

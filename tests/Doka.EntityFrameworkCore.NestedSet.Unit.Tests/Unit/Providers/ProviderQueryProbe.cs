@@ -18,11 +18,15 @@ internal sealed class ProviderQueryProbe : IAsyncQueryProvider
     internal IQueryable<T> Source<T>() => new Query<T>(this);
 
     /// <inheritdoc />
-    public IQueryable CreateQuery(Expression expression)
+    public IQueryable CreateQuery(
+        Expression expression
+    )
         => throw new InvalidOperationException("The typed provider contract must retain generic query construction.");
 
     /// <inheritdoc />
-    public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
+    public IQueryable<TElement> CreateQuery<TElement>(
+        Expression expression
+    )
     {
         if (ConstructionError is { } error)
         {
@@ -33,13 +37,20 @@ internal sealed class ProviderQueryProbe : IAsyncQueryProvider
     }
 
     /// <inheritdoc />
-    public object? Execute(Expression expression) => throw Execution();
+    public object? Execute(
+        Expression expression
+    ) => throw Execution();
 
     /// <inheritdoc />
-    public TResult Execute<TResult>(Expression expression) => throw Execution();
+    public TResult Execute<TResult>(
+        Expression expression
+    ) => throw Execution();
 
     /// <inheritdoc />
-    public TResult ExecuteAsync<TResult>(Expression expression, CancellationToken cancellationToken = default)
+    public TResult ExecuteAsync<TResult>(
+        Expression expression,
+        CancellationToken cancellationToken = default
+    )
         => throw Execution();
 
     /// <summary>Records a boundary crossing rather than returning invented provider results.</summary>
@@ -54,14 +65,19 @@ internal sealed class ProviderQueryProbe : IAsyncQueryProvider
     private sealed class Query<T> : IOrderedQueryable<T>
     {
         /// <summary>Creates the probe's initial root.</summary>
-        internal Query(ProviderQueryProbe provider)
+        internal Query(
+            ProviderQueryProbe provider
+        )
         {
             Provider = provider;
             Expression = ExpressionFactory.Constant(this);
         }
 
         /// <summary>Retains the exact expression produced by a public query operator.</summary>
-        internal Query(ProviderQueryProbe provider, Expression expression)
+        internal Query(
+            ProviderQueryProbe provider,
+            Expression expression
+        )
         {
             Provider = provider;
             Expression = expression;

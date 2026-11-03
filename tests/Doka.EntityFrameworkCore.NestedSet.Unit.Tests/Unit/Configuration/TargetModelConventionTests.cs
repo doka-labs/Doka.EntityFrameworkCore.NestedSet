@@ -66,35 +66,26 @@ public sealed class TargetModelConventionTests
         Assert.Contains(
             indexes,
             index => index.Properties.SequenceEqual(
-            [
-                nameof(TargetNode.Scope),
-                nameof(TargetNode.TreeId),
-                nameof(TargetNode.ParentId),
-                nameof(TargetNode.Position),
-            ]));
+                [
+                    nameof(TargetNode.Scope),
+                    nameof(TargetNode.TreeId),
+                    nameof(TargetNode.ParentId),
+                    nameof(TargetNode.Position),
+                ]));
 
         var order = Assert.Single(
             indexes,
             index => index.Properties.SequenceEqual(
-            [
-                nameof(TargetNode.Scope),
-                nameof(TargetNode.TreeId),
-                nameof(TargetNode.ParentId),
-                nameof(TargetNode.Name),
-                nameof(TargetNode.Kind),
-                nameof(TargetNode.NodeKey),
-            ]));
+                [
+                    nameof(TargetNode.Scope),
+                    nameof(TargetNode.TreeId),
+                    nameof(TargetNode.ParentId),
+                    nameof(TargetNode.Name),
+                    nameof(TargetNode.Kind),
+                    nameof(TargetNode.NodeKey),
+                ]));
 
-        Assert.Equal(
-            [
-                false,
-                false,
-                false,
-                false,
-                true,
-                false,
-            ],
-            order.Descending);
+        Assert.Equal([false, false, false, false, true, false], order.Descending);
         Assert.Equal(
             [nameof(TargetNode.Scope), nameof(TargetNode.ParentId)],
             parent.Properties.Select(property => property.Name));
@@ -116,7 +107,8 @@ public sealed class TargetModelConventionTests
                     .IsUnique));
         Assert.Equal(nameof(TargetNode.Scope), descriptor.Scope?.Name);
         Assert.Equal(8, descriptor.StructuralProperties.Count);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>Removes only scope from the access paths, identity key, and parent relationship.</summary>
@@ -170,11 +162,15 @@ public sealed class TargetModelConventionTests
         Assert.Equal([nameof(TargetNode.NodeKey)], parent.PrincipalKey.Properties.Select(property => property.Name));
         Assert.Equal(DeleteBehavior.Restrict, parent.DeleteBehavior);
         Assert.DoesNotContain(parent.Properties, property => property.Name == nameof(TargetNode.TreeId));
-        Assert.Equal(4, entity.GetCheckConstraints().Count());
+        Assert.Equal(4,
+            entity
+                .GetCheckConstraints()
+                .Count());
         Assert.All(indexes, properties => Assert.DoesNotContain(nameof(TargetNode.Scope), properties));
         Assert.Null(descriptor.Scope);
         Assert.Equal(7, descriptor.StructuralProperties.Count);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>Rejects a scoped parent relationship whose application-owned delete behavior can cascade.</summary>
@@ -309,7 +305,10 @@ public sealed class TargetModelConventionTests
         Assert.DoesNotContain(
             entity.GetForeignKeys(),
             foreignKey => foreignKey.Properties.Contains(entity.FindProperty(nameof(TargetNode.ParentName))!));
-        Assert.Equal(4, entity.GetCheckConstraints().Count());
+        Assert.Equal(4,
+            entity
+                .GetCheckConstraints()
+                .Count());
     }
 
     /// <summary>Accepts a scope-qualified scalar NodeKey when the EF primary key is composite.</summary>
@@ -345,8 +344,11 @@ public sealed class TargetModelConventionTests
                 .Properties
                 .Select(property => property.Name)
                 .SequenceEqual([nameof(TargetNode.Scope), nameof(TargetNode.NodeKey)]));
-        Assert.Equal(nameof(TargetNode.NodeKey), entity.FindAnnotation("Doka:NestedSet:NodeKey")?.Value);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(nameof(TargetNode.NodeKey),
+            entity.FindAnnotation("Doka:NestedSet:NodeKey")
+                ?.Value);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>Rejects an explicitly selected NodeKey that has no unique EF identity.</summary>
@@ -396,7 +398,8 @@ public sealed class TargetModelConventionTests
                 .Properties
                 .Select(property => property.Name)
                 .SequenceEqual(["Tree", "LeftBoundary"]));
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(ConnectionState.Closed,
+            context.Database.GetDbConnection().State);
     }
 
     /// <summary>Rejects Int32 boundaries selected through the untyped shadow-property surface.</summary>
@@ -463,7 +466,9 @@ public sealed class TargetModelConventionTests
         Assert.Contains("writable and not generated", invalid.Message, StringComparison.Ordinal);
     }
 
-    /// <summary>Rejects every invalid structural role type or nullable arithmetic role with a precise diagnosis.</summary>
+    /// <summary>
+    /// Rejects every invalid structural role type or nullable arithmetic role with a precise diagnosis.
+    /// </summary>
     /// <param name="variant">The deliberately invalid role mapping.</param>
     /// <param name="role">The structural role expected in the diagnostic.</param>
     /// <param name="diagnostic">The role-specific contract fragment expected in the diagnostic.</param>
@@ -570,7 +575,9 @@ public sealed class TargetModelConventionTests
             StringComparison.Ordinal);
     }
 
-    /// <summary>Accepts an explicit decision to preserve application-managed tokens during structure-only writes.</summary>
+    /// <summary>
+    /// Accepts an explicit decision to preserve application-managed tokens during structure-only writes.
+    /// </summary>
     [Fact]
     public void ApplicationManagedConcurrencyTokenCanBePreserved()
     {

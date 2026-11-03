@@ -281,6 +281,16 @@ existing deterministic mutation sequences and capacity tests remain unchanged.
 Sources: [core properties](../tests/Doka.NestedSet.Tests/Unit/NestedSetPropertyTests.cs),
 [bulk-plan properties](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/BulkPlanPropertyTests.cs).
 
+### Maintaining generated properties
+
+Use generated arguments rather than an internal random seed so FsCheck can
+shrink a failure. Create fresh mutable state inside each invocation; shrinking
+reexecutes the property. Bound each forest to 64 nodes because the existing
+capacity suites own large-scale evidence. Keep ordinary runs randomized. To
+reproduce a failure, copy the reported seed tuple into the property's `Replay`
+attribute temporarily, then retain the minimal failing input as a regression.
+Each property keeps one Arrange/Act/Assert sequence.
+
 ## Current-source optional migration contracts
 
 The suite now declares published Doka 10.6.3 and same-version SafeMigrations
@@ -1863,6 +1873,20 @@ Sources: [local and shared ownership guards](../tests/Doka.EntityFrameworkCore.N
 [shared query-plan evidence](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/QueryPlanTestSupport.cs),
 [constructor guard](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Providers/ProviderFixtureContract.cs),
 and [constructor regressions](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/ProviderFixtureContractTests.cs).
+
+`UserSupervisorCommandTests` retains its four sample-entry-point checks and adds
+six child-process cases: successful and nonzero exit with both captured streams,
+cancellation before start and during execution, launch failure and stream-setup
+failure after launch. Failure cleanup terminates and reaps the child before
+propagating the initiating error; recovery has an independent bounded deadline.
+
+`CandidateReuseSelectionTests.OnePassSelectionMatchesIndependentGroupedReference`
+exposes all six selection modes, 256 fixed input bags and both arrival orders as
+3,072 separate theory rows. The independent grouped oracle checks status, ordered
+evidence and continuation identity for each row. These are the same scenarios
+previously exercised inside six batched rows, rather than additional workload.
+Reserved provider-name rejection and the three root-binding variants likewise
+have separate discovered cases.
 
 Run a fresh Release solution build before any `--no-build` test invocation.
 Record the source revision or source hashes, dependencies, provider/image

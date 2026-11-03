@@ -23,6 +23,9 @@ public sealed class BulkPlanWidthTests
 
         var children = new NestedSetBranch<TreeNode>[ChildCount];
 
+        // WHY: Fill the final million-child buffer directly with position-derived keys and no intermediate collection.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < children.Length; index++)
         {
             children[index] = new NestedSetBranch<TreeNode>(new TreeNode { NodeId = index + 2 });

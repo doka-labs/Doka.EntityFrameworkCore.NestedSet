@@ -21,7 +21,8 @@ public sealed partial class EngineTestDiscoveryTests
         if (databaseIndependent)
         {
             builder.SetCustomAttribute(new CustomAttributeBuilder(
-                typeof(DatabaseIndependentAttribute).GetConstructor(Type.EmptyTypes)!, []));
+                typeof(DatabaseIndependentAttribute).GetConstructor(Type.EmptyTypes)!,
+                []));
         }
 
         fixtureTypes ??= [GetFixtureType(engine)];

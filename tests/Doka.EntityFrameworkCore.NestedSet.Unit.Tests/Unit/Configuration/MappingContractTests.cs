@@ -77,10 +77,15 @@ public sealed class MappingContractTests
         // Arrange
         using var context = ContractModels.CreateVariantContext("model-collation");
         var store = new NestedSetStore<TextNode, string, Guid, string>(
-            context, context.Model.FindEntityType(typeof(TextNode))!, "scope", Guid.Empty);
+            context,
+            context.Model.FindEntityType(typeof(TextNode))!,
+            "scope",
+            Guid.Empty);
 
         // Act
-        var query = store.Siblings(new NestedSetParent<string>(true, "parent")).ToQueryString();
+        var query = store
+            .Siblings(new NestedSetParent<string>(true, "parent"))
+            .ToQueryString();
 
         // Assert
         Assert.Contains("COLLATE NOCASE", query, StringComparison.Ordinal);
@@ -94,7 +99,9 @@ public sealed class MappingContractTests
         using var context = ContractModels.CreateVariantContext("filter");
 
         // Act
-        var exception = Record.Exception(() => context.NestedSet<TreeNode>().ForScope(1));
+        var exception = Record.Exception(() => context
+            .NestedSet<TreeNode>()
+            .ForScope(1));
 
         // Assert
         Assert.Null(exception);
@@ -114,7 +121,9 @@ public sealed class MappingContractTests
         using var context = ContractModels.CreateVariantContext(variant);
 
         // Act
-        var exception = Record.Exception(() => context.NestedSet<TreeNode>().ForScope(1));
+        var exception = Record.Exception(() => context
+            .NestedSet<TreeNode>()
+            .ForScope(1));
 
         // Assert
         Assert.Null(exception);
@@ -150,7 +159,9 @@ public sealed class MappingContractTests
         await using var context = ContractModels.CreateVariantContext(variant);
 
         // Act
-        var exception = await Record.ExceptionAsync(() => context.NestedSet<TreeNode>().ForScope(1)
+        var exception = await Record.ExceptionAsync(() => context
+            .NestedSet<TreeNode>()
+            .ForScope(1)
             .InsertRootAsync(new TreeNode { NodeId = 1 }, Guid.Empty, CancellationToken.None));
 
         // Assert
@@ -172,7 +183,9 @@ public sealed class MappingContractTests
         await using var context = ContractModels.CreateVariantContext(variant);
 
         // Act
-        var exception = await Record.ExceptionAsync(() => context.NestedSet<TextNode>().ForScope("scope")
+        var exception = await Record.ExceptionAsync(() => context
+            .NestedSet<TextNode>()
+            .ForScope("scope")
             .InsertRootAsync(new TextNode { Id = "root" }, Guid.Empty, CancellationToken.None));
 
         // Assert
@@ -187,7 +200,9 @@ public sealed class MappingContractTests
         await using var context = ContractModels.CreateVariantContext("keyless");
 
         // Act
-        var exception = await Record.ExceptionAsync(() => context.NestedSet<TreeNode>().ForScope(1)
+        var exception = await Record.ExceptionAsync(() => context
+            .NestedSet<TreeNode>()
+            .ForScope(1)
             .InsertRootAsync(new TreeNode { NodeId = 1 }, Guid.Empty, CancellationToken.None));
 
         // Assert
@@ -203,7 +218,9 @@ public sealed class MappingContractTests
         await using var context = ContractModels.CreateVariantContext("split");
 
         // Act
-        var exception = await Record.ExceptionAsync(() => context.NestedSet<TreeNode>().ForScope(1)
+        var exception = await Record.ExceptionAsync(() => context
+            .NestedSet<TreeNode>()
+            .ForScope(1)
             .InsertRootAsync(new TreeNode { NodeId = 1 }, Guid.Empty, CancellationToken.None));
 
         // Assert

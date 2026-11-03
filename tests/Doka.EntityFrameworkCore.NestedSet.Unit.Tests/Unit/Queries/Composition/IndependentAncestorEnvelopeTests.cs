@@ -3,10 +3,14 @@ using Doka.EntityFrameworkCore.NestedSet.Providers;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-/// <summary>Checks bounded unindexed ancestor construction without evaluating application selection or doing I/O.</summary>
+/// <summary>
+/// Checks bounded unindexed ancestor construction without evaluating application selection or doing I/O.
+/// </summary>
 public sealed class IndependentAncestorEnvelopeTests
 {
-    /// <summary>The optional source binder supplies necessary limits while preserving the legacy provider path.</summary>
+    /// <summary>
+    /// The optional source binder supplies necessary limits while preserving the legacy provider path.
+    /// </summary>
     /// <param name="engine">The explicitly configured Doka engine.</param>
     /// <param name="treeBound">Whether the caller binds one tree instead of querying the scope's forest.</param>
     [Theory]
@@ -14,7 +18,10 @@ public sealed class IndependentAncestorEnvelopeTests
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
     [InlineData("MariaDb", true)]
-    public async Task StructuralSourceBoundsTranslateWithoutAnAncestorIndexOrIo(string engine, bool treeBound)
+    public async Task StructuralSourceBoundsTranslateWithoutAnAncestorIndexOrIo(
+        string engine,
+        bool treeBound
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -31,13 +38,31 @@ public sealed class IndependentAncestorEnvelopeTests
         }
 
         await using var provider = services.BuildServiceProvider();
-        await using var context = new CompositionContext(options.UseInternalServiceProvider(provider).Options);
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(Guid.Empty);
+        await using var context = new CompositionContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty);
+
         var query = treeBound
-            ? hierarchy.InTree(Guid.Empty).SelectAncestors(node => node.Id == 3,
-                (source, owner, distance) => new { Source = source.Id, Owner = owner.Id, Distance = distance })
+            ? hierarchy
+                .InTree(Guid.Empty)
+                .SelectAncestors(node => node.Id == 3,
+                    (source, owner, distance) => new
+                    {
+                        Source = source.Id,
+                        Owner = owner.Id,
+                        Distance = distance,
+                    })
             : hierarchy.SelectAncestors(node => node.Id == 3,
-                (source, owner, distance) => new { Source = source.Id, Owner = owner.Id, Distance = distance });
+                (source, owner, distance) => new
+                {
+                    Source = source.Id,
+                    Owner = owner.Id,
+                    Distance = distance,
+                });
 
         var enabled = NestedSetProviderCapabilities.Resolve(context).CompletedSourceMethod is not null
             && NestedSetProviderCapabilities.Resolve(context).OrderedJoinMethod is not null;
@@ -56,7 +81,9 @@ public sealed class IndependentAncestorEnvelopeTests
         Assert.DoesNotContain("HasChildren", sql, StringComparison.Ordinal);
         // WHY: Each completed source has one recursive dead arm. MySQL needs a second boundary
         // against semijoin pullout; applying that extra materialization to MariaDB regressed branched chains.
-        Assert.Equal(expectedCompletions, sql.Split("UNION ALL", StringSplitOptions.None).Length - 1);
+        Assert.Equal(expectedCompletions,
+            sql.Split("UNION ALL", StringSplitOptions.None).Length
+            - 1);
 
         if (enabled)
         {
@@ -71,18 +98,31 @@ public sealed class IndependentAncestorEnvelopeTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>Only owner payload hydration is directed after matching, while source hydration remains ordinary.</summary>
+    /// <summary>
+    /// Only owner payload hydration is directed after matching, while source hydration remains ordinary.
+    /// </summary>
     /// <param name="engine">The explicitly configured Doka engine.</param>
     [Theory]
     [InlineData("MySql")]
     [InlineData("MariaDb")]
-    public async Task MatchedOwnerHydrationHasItsOwnDirectedSqlEdge(string engine)
+    public async Task MatchedOwnerHydrationHasItsOwnDirectedSqlEdge(
+        string engine
+    )
     {
         // Arrange
-        await using var context = new CompositionContext(ModelCompatibilityDatabase.Options<CompositionContext>(engine));
-        var query = context.NestedSet<CompositionNode>().ForScope(Guid.Empty)
+        await using var context =
+            new CompositionContext(ModelCompatibilityDatabase.Options<CompositionContext>(engine));
+
+        var query = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty)
             .SelectAncestors(node => node.Id == 3,
-                (source, owner, distance) => new { Source = source.Id, Owner = owner.Id, Distance = distance });
+                (source, owner, distance) => new
+                {
+                    Source = source.Id,
+                    Owner = owner.Id,
+                    Distance = distance,
+                });
 
         var enabled = NestedSetProviderCapabilities.Resolve(context).CompletedSourceMethod is not null
             && NestedSetProviderCapabilities.Resolve(context).OrderedJoinMethod is not null;
@@ -91,7 +131,9 @@ public sealed class IndependentAncestorEnvelopeTests
         var sql = query.ToQueryString();
 
         // Assert
-        Assert.Equal(enabled ? 1 : 0, sql.Split("STRAIGHT_JOIN", StringSplitOptions.None).Length - 1);
+        Assert.Equal(enabled ? 1 : 0,
+            sql.Split("STRAIGHT_JOIN", StringSplitOptions.None).Length
+            - 1);
         Assert.DoesNotContain("SELECT STRAIGHT_JOIN", sql, StringComparison.OrdinalIgnoreCase);
 
         if (enabled)
@@ -106,7 +148,9 @@ public sealed class IndependentAncestorEnvelopeTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>Only one caller selection remains, including when a relational pivot keeps the unfenced route.</summary>
+    /// <summary>
+    /// Only one caller selection remains, including when a relational pivot keeps the unfenced route.
+    /// </summary>
     /// <param name="engine">The explicitly configured Doka engine.</param>
     /// <param name="queryBearing">Whether the predicate refers to a hierarchy query that can become a pivot.</param>
     [Theory]
@@ -114,20 +158,32 @@ public sealed class IndependentAncestorEnvelopeTests
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
     [InlineData("MariaDb", true)]
-    public async Task ApplicationSelectionIsRetainedOnceWithoutEvaluation(string engine, bool queryBearing)
+    public async Task ApplicationSelectionIsRetainedOnceWithoutEvaluation(
+        string engine,
+        bool queryBearing
+    )
     {
         // Arrange
         var options = ModelCompatibilityDatabase.Options<CompositionContext>(engine);
         await using var context = new CompositionContext(options);
         Expression<Func<CompositionNode, bool>> selected = queryBearing
-            ? node => context.Set<CompositionNode>().Any(other => other.Id == node.Id && SelectNode(other.Id))
+            ? node => context
+                .Set<CompositionNode>()
+                .Any(other => other.Id == node.Id && SelectNode(other.Id))
             : node => SelectNode(node.Id);
 
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(Guid.Empty);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty);
 
         // Act
         var query = hierarchy.SelectAncestors(selected,
-            (source, owner, distance) => new { Source = source.Id, Owner = owner.Id, Distance = distance });
+            (source, owner, distance) => new
+            {
+                Source = source.Id,
+                Owner = owner.Id,
+                Distance = distance,
+            });
 
         var counter = new SelectionCounter();
         counter.Visit(query.Expression);
@@ -137,28 +193,45 @@ public sealed class IndependentAncestorEnvelopeTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>A volatile server predicate is emitted once in the completed source, never copied to its envelope.</summary>
+    /// <summary>
+    /// A volatile server predicate is emitted once in the completed source, never copied to its envelope.
+    /// </summary>
     /// <param name="engine">The explicitly configured Doka engine.</param>
     [Theory]
     [InlineData("MySql")]
     [InlineData("MariaDb")]
-    public async Task VolatileServerSelectionOccursOnceInTheStatement(string engine)
+    public async Task VolatileServerSelectionOccursOnceInTheStatement(
+        string engine
+    )
     {
         // Arrange
-        await using var context = new CompositionContext(ModelCompatibilityDatabase.Options<CompositionContext>(engine));
-        var query = context.NestedSet<CompositionNode>().ForScope(Guid.Empty)
+        await using var context =
+            new CompositionContext(ModelCompatibilityDatabase.Options<CompositionContext>(engine));
+
+        var query = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty)
             .SelectAncestors(node => EF.Functions.Random() >= 0,
-                (source, owner, distance) => new { Source = source.Id, Owner = owner.Id, Distance = distance });
+                (source, owner, distance) => new
+                {
+                    Source = source.Id,
+                    Owner = owner.Id,
+                    Distance = distance,
+                });
 
         // Act
         var sql = query.ToQueryString();
 
         // Assert
-        Assert.Equal(1, sql.Split("RAND()", StringSplitOptions.None).Length - 1);
+        Assert.Equal(1,
+            sql.Split("RAND()", StringSplitOptions.None).Length
+            - 1);
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>Independent facts keep their query block while hidden hierarchy dependencies retain decorrelation.</summary>
+    /// <summary>
+    /// Independent facts keep their query block while hidden hierarchy dependencies retain decorrelation.
+    /// </summary>
     /// <param name="engine">The explicitly configured native Doka dialect.</param>
     /// <param name="shape">An owned root, ordinary capture, or a hierarchy-bearing fact source.</param>
     [Theory]
@@ -168,7 +241,10 @@ public sealed class IndependentAncestorEnvelopeTests
     [InlineData("MariaDb", "embedded")]
     [InlineData("MariaDb", "captured")]
     [InlineData("MariaDb", "hierarchy")]
-    public async Task IndependentFactsRetainTheirCompletedSourceBoundary(string engine, string shape)
+    public async Task IndependentFactsRetainTheirCompletedSourceBoundary(
+        string engine,
+        string shape
+    )
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -185,22 +261,40 @@ public sealed class IndependentAncestorEnvelopeTests
         }
 
         await using var provider = services.BuildServiceProvider();
-        await using var context = new CompositionContext(options.UseInternalServiceProvider(provider).Options);
-        var facts = context.Set<CompositionInputOne>().Where(fact => fact.Amount > 0);
+        await using var context = new CompositionContext(options
+            .UseInternalServiceProvider(provider)
+            .Options);
+
+        var facts = context
+            .Set<CompositionInputOne>()
+            .Where(fact => fact.Amount > 0);
+
         var selection = shape switch
         {
-            "embedded" => FactSelection(facts, (node, fact) => fact.Scope == node.Scope && fact.NodeId == node.Id),
+            "embedded" => FactSelection(facts,
+                (node, fact) => fact.Scope == node.Scope && fact.NodeId == node.Id),
             "captured" => node => facts.Any(fact => fact.Scope == node.Scope && fact.NodeId == node.Id),
-            "hierarchy" => node => facts.Any(fact => fact.Scope == node.Scope && fact.NodeId == node.Id
-                && context.Set<CompositionNode>().Any(hidden => hidden.Id == fact.NodeId)),
+            "hierarchy" => node => facts.Any(fact => fact.Scope == node.Scope
+                && fact.NodeId == node.Id
+                && context
+                    .Set<CompositionNode>()
+                    .Any(hidden => hidden.Id == fact.NodeId)),
             _ => throw new ArgumentOutOfRangeException(nameof(shape)),
         };
 
-        var query = context.NestedSet<CompositionNode>().ForScope(Guid.Empty)
+        var query = context
+            .NestedSet<CompositionNode>()
+            .ForScope(Guid.Empty)
             .SelectAncestors(selection,
-                (source, owner, distance) => new { Source = source.Id, Owner = owner.Id, Distance = distance });
+                (source, owner, distance) => new
+                {
+                    Source = source.Id,
+                    Owner = owner.Id,
+                    Distance = distance,
+                });
 
-        var enabled = shape != "hierarchy" && NestedSetProviderCapabilities.Resolve(context).CompletedSourceMethod is not null
+        var enabled = shape != "hierarchy"
+            && NestedSetProviderCapabilities.Resolve(context).CompletedSourceMethod is not null
             && NestedSetProviderCapabilities.Resolve(context).OrderedJoinMethod is not null;
 
         // Act
@@ -229,7 +323,9 @@ public sealed class IndependentAncestorEnvelopeTests
         Expression<Func<CompositionNode, CompositionInputOne, bool>> match
     )
     {
-        var exists = Expression.Call(typeof(Queryable), nameof(Queryable.Any), [typeof(CompositionInputOne)],
+        var exists = Expression.Call(typeof(Queryable),
+            nameof(Queryable.Any),
+            [typeof(CompositionInputOne)],
             facts.Expression,
             Expression.Quote(Expression.Lambda<Func<CompositionInputOne, bool>>(match.Body, match.Parameters[1])));
 
@@ -237,7 +333,9 @@ public sealed class IndependentAncestorEnvelopeTests
     }
 
     /// <summary>Marks deferred application code that construction must never execute.</summary>
-    private static bool SelectNode(int key)
+    private static bool SelectNode(
+        int key
+    )
         => throw new InvalidOperationException($"Selection for {key} must remain deferred.");
 
     /// <summary>Counts the exact caller marker rather than unrelated provider operations.</summary>
@@ -247,7 +345,9 @@ public sealed class IndependentAncestorEnvelopeTests
         internal int Occurrences { get; private set; }
 
         /// <inheritdoc />
-        protected override Expression VisitMethodCall(MethodCallExpression node)
+        protected override Expression VisitMethodCall(
+            MethodCallExpression node
+        )
         {
             if (node.Method.DeclaringType == typeof(IndependentAncestorEnvelopeTests)
                 && node.Method.Name == nameof(SelectNode))

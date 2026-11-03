@@ -2,12 +2,15 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public sealed partial class UnicodeIdentityLengthTests
 {
-    /// <summary>Every BMP code unit outside the surrogate range counts once, including its adjacent boundaries.</summary>
+    /// <summary>
+    /// Every BMP code unit outside the surrogate range counts once, including its adjacent boundaries.
+    /// </summary>
     [Fact]
     public void EveryNonSurrogateCodeUnitCountsOnce()
     {
         // Arrange
-        var characters = Enumerable.Range(0, char.MaxValue + 1)
+        var characters = Enumerable
+            .Range(0, char.MaxValue + 1)
             .Select(value => (char)value)
             .Where(character => !char.IsSurrogate(character))
             .ToArray();
@@ -26,7 +29,9 @@ public sealed partial class UnicodeIdentityLengthTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void EverySurrogateCodeUnitCountsInsideValidPairs(bool varyHighSurrogate)
+    public void EverySurrogateCodeUnitCountsInsideValidPairs(
+        bool varyHighSurrogate
+    )
     {
         // Arrange
         var characters = new char[2048];
@@ -56,7 +61,8 @@ public sealed partial class UnicodeIdentityLengthTests
     {
         // Arrange
         // WHY: Build malformed strings at runtime; attribute-string encoding cannot preserve unpaired surrogates.
-        var inputs = Enumerable.Range(0xd800, 0x800)
+        var inputs = Enumerable
+            .Range(0xd800, 0x800)
             .Select(value => ((char)value).ToString())
             .ToArray();
 
@@ -65,11 +71,12 @@ public sealed partial class UnicodeIdentityLengthTests
             input => Record.Exception(() => NestedSetIdentityLength.CountUnicodeScalars(input, "Scope")));
 
         // Assert
-        Assert.All(failures, failure =>
-        {
-            var error = Assert.IsType<ArgumentException>(failure);
+        Assert.All(failures,
+            failure =>
+            {
+                var error = Assert.IsType<ArgumentException>(failure);
 
-            Assert.Equal("Scope", error.ParamName);
-        });
+                Assert.Equal("Scope", error.ParamName);
+            });
     }
 }

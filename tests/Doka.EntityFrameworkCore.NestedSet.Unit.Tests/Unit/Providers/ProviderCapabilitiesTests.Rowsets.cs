@@ -4,7 +4,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public sealed partial class ProviderCapabilitiesTests
 {
-    /// <summary>Scalar transports reserve exact identity capacity and switch to one parameter at their boundary.</summary>
+    /// <summary>
+    /// Scalar transports reserve exact identity capacity and switch to one parameter at their boundary.
+    /// </summary>
     /// <param name="engine">The selected native adapter.</param>
     [Theory]
     [InlineData("MySql")]
@@ -79,7 +81,8 @@ public sealed partial class ProviderCapabilitiesTests
         var boundary = new CompositionIoBoundary();
         var options = new DbContextOptionsBuilder<CompositionGuardContext>(
                 ModelCompatibilityDatabase.Options<CompositionGuardContext>(engine, connection))
-            .AddInterceptors(boundary, boundary.Commands).Options;
+            .AddInterceptors(boundary, boundary.Commands)
+            .Options;
 
         using var owner = OwnedModelTestServices<CompositionGuardContext>.Create(options);
         using var context = new CompositionGuardContext(owner.Options);
@@ -88,15 +91,29 @@ public sealed partial class ProviderCapabilitiesTests
         INestedSetTreeLockRequest[] requests =
         [
             new NestedSetTreeLockRequest<Guid, NestedSetNoScope>(
-                metadata, default, Guid.Empty, NestedSetTreeLockMode.New),
+                metadata,
+                default,
+                Guid.Empty,
+                NestedSetTreeLockMode.New),
             new NestedSetTreeLockRequest<Guid, NestedSetNoScope>(
-                metadata, default, treeId, NestedSetTreeLockMode.Tombstoned),
+                metadata,
+                default,
+                treeId,
+                NestedSetTreeLockMode.Tombstoned),
         ];
 
         var aliases = new NestedSetTreeRowsetAliases(
-            "\"RequestedTrees\"", "\"Scope\"", "\"TreeId\"", "\"Ordinal\"", "\"Create\"");
+            "\"RequestedTrees\"",
+            "\"Scope\"",
+            "\"TreeId\"",
+            "\"Ordinal\"",
+            "\"Create\"");
 
-        using var command = context.Database.GetDbConnection().CreateCommand();
+        using var command = context
+            .Database
+            .GetDbConnection()
+            .CreateCommand();
+
         var parameters = new List<object>();
         var adapter = NestedSetTestAdapters.ForEngine(engine);
 
@@ -105,10 +122,13 @@ public sealed partial class ProviderCapabilitiesTests
 
         // Assert
         Assert.Equal("WITH \"RequestedTrees\" (\"TreeId\", \"Ordinal\", \"Create\") AS (VALUES "
-            + "({0}, 0, 1), ({1}, 1, 2)) ", sql);
+            + "({0}, 0, 1), ({1}, 1, 2)) ",
+            sql);
         Assert.Equal(2, parameters.Count);
-        Assert.Equal(["treeId0", "treeId1"], parameters.Cast<DbParameter>()
-            .Select(parameter => parameter.ParameterName));
+        Assert.Equal(["treeId0", "treeId1"],
+            parameters
+                .Cast<DbParameter>()
+                .Select(parameter => parameter.ParameterName));
         Assert.Equal(Guid.Empty, ((DbParameter)parameters[0]).Value);
         Assert.Equal(treeId, ((DbParameter)parameters[1]).Value);
         Assert.Equal(0, boundary.ConnectionStarts);
