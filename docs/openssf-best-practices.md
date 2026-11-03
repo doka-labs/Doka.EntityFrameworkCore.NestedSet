@@ -77,7 +77,7 @@ the assessment. Do not select N/A merely because this is a new project.
 | `test_invocation` | SHOULD | Met: standard `dotnet test` command |
 | `test_most` | SUGGESTED | Met: [regression matrix](regression-coverage.md) plus measured shipping-module branch coverage below |
 | `test_continuous_integration` | SUGGESTED | Met: [PR CI](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/workflows/ci.yml) runs named parallel build, analysis, tests, and sample checks |
-| `test_policy` | MUST | Met: [test requirements](../CONTRIBUTING.md#test-structure) require coverage for new functionality and regressions |
+| `test_policy` | MUST | Met: [test requirements](../CONTRIBUTING.md#tests) require coverage for new functionality and regressions |
 | `tests_are_added` | MUST | Met: typed-runtime and provider-structure changes include [positive/negative/adversarial regressions](regression-coverage.md) in source history |
 | `tests_documented_added` | SUGGESTED | Met: Contributing documents the policy for change proposals |
 | `warnings` | MUST | Met: [build properties](../Directory.Build.props) enable nullable and recommended SDK analysis |
