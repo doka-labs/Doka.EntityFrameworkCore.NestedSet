@@ -47,17 +47,18 @@ source remains .NET/EF Core 10; additional release lines are registered inactive
 
 ## Install
 
-Version `10.1.0` is the stable six-package contract, including a breaking
-installation and infrastructure-registration change from `10.0.0`. The hierarchy
-API and its data/transaction contracts stay shared. See the
+Version `10.2.0` is the stable six-package contract. It adds optional registry
+table naming and corrects manual change detection and save recovery. The
+provider-callback registration introduced in `10.1.0` remains unchanged; upgrading
+from `10.0.0` still requires the documented installation/registration transition. See the
 [upgrade guide](docs/upgrading-provider-packages.md) and [changelog](CHANGELOG.md).
 For Doka MySQL/MariaDB, install the selected adapter:
 
 ```bash
-dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.1.0
+dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.2.0
 ```
 
-Keep all selected NestedSet adapters and the common EF package at `10.1.0`.
+Keep all selected NestedSet adapters and the common EF package at `10.2.0`.
 Each adapter requires its exact matching common EF kernel version.
 
 The provider qualification matrix is:
@@ -199,6 +200,11 @@ internal sealed class FolderConfiguration : IEntityTypeConfiguration<Folder>
 `Doka.NestedSet` can supply conventional property names, but existing entities
 can map every role explicitly.
 
+Optionally add `.HasTreeRegistryTable("Reporting_HierarchyTrees")` to match an
+application naming scheme. Without it, the generated registry name stays unchanged.
+Naming an existing registry requires a reviewed data-preserving migration; see
+[registry configuration](docs/configuration.md#optional-registry-table-name).
+
 The convention creates or validates the restrictive self-reference. When the
 application configures a navigation on a scoped hierarchy, its FK is
 `(Scope, ParentId)` and its principal key is `(Scope, NodeKey)`. `TreeId` is not
@@ -262,6 +268,12 @@ already own another base class. Synchronous saves support ordinary payload
 changes and reject hierarchy work that needs asynchronous coordination.
 Without either wrapper, the registered guard rejects Parent and sort-property
 changes before SQL can persist inconsistent structure.
+
+`AutoDetectChangesEnabled = false` remains respected across ordinary, coordinated
+and facade saves. Explicitly record Parent/order changes through EF entry APIs,
+notifications or an application detection pass. Unrecorded hierarchy edits reject;
+unrelated unmarked payload is not discovered. See
+[manual detection](docs/configuration.md#manual-change-detection).
 
 ## Query and mutate through the facade
 

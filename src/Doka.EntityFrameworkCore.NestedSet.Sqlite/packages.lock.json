@@ -163,7 +163,7 @@
       "doka.entityframeworkcore.nestedset": {
         "type": "Project",
         "dependencies": {
-          "Doka.NestedSet": "[10.1.0, )",
+          "Doka.NestedSet": "[10.2.0, )",
           "Microsoft.EntityFrameworkCore": "[10.0.12, 11.0.0)",
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.12, 11.0.0)"
         }

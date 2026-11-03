@@ -62,8 +62,9 @@ Every line executes its own release workflow and toolchain. The parallel DAG,
 single build/pack, immutable artifact-ID handoffs, complete results, shared
 qualification deadline and exact producer-attempt guards remain intact.
 Inspection, consumers and SBOMs use the approved line's framework expectations.
-Current source remains .NET 10 with VersionPrefix 10.1.0; this capability does
-not adopt .NET 11 or activate another branch.
+At adoption, source remained .NET 10 with VersionPrefix 10.1.0. The
+[release-line runbook](../operations/release-lines.md) records the current source
+version; this capability does not adopt .NET 11 or activate another branch.
 
 Qualification freezes line identity in the existing candidate/evidence graph.
 Publication independently reads current policy from protected main after
@@ -170,6 +171,7 @@ always-Latest assumptions without replacing its parallel qualification contract.
 - 2026-10-28: Status changed from accepted to implemented.
 - 2026-10-28: Local engineering/CI regressions, Release build, complete advisory audit and scoped workflow checks confirmed the implementation. Scope review retained direct uploads from the sealed candidate and preserved original source-ref rejection before consumer asset copying. Extra lines remain inactive; no commit, hosted activation or publication is implied. Standalone full ADR validation still reports the separately proven pre-existing D-018/D-019 history/source-format diagnostics; this record and its D-016 amendment validate independently.
 - 2026-10-30: D-022 replaces the retained shared qualification deadline with job timeouts and a per-process budget; every release-line rule is unchanged.
+- 2026-11-03: Clarified 10.1.0 as the recorded adoption version and linked the maintained runbook while preparing stable 10.2.0. The original decision, approval history, branch eligibility and inactive additional lines are unchanged.
 
 ### Implementation References
 

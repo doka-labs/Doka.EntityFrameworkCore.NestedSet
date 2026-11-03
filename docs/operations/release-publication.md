@@ -18,12 +18,12 @@ preview/11.x are registered inactive. This procedure activates none of them.
 
 ## Release identity
 
-The source uses `VersionPrefix=10.1.0` without a prerelease suffix and the
-`## 10.1.0 (2026-10-29)` changelog entry. The reviewed stable APIs are recorded
+The source uses `VersionPrefix=10.2.0` without a prerelease suffix and the
+`## 10.2.0 (2026-11-03)` changelog entry. The reviewed stable APIs are recorded
 in all six shipped baselines; their unshipped files contain no pending changes.
 SDK package validation still compares the two original packages with `10.0.0`
 and retains only the approved options-registration removal exception. The
-breaking transition is documented in the
+historical `10.1.0` registration transition is documented in the
 [upgrade guide](../upgrading-provider-packages.md).
 Prior release artifacts remain evidence for their exact version, not for the
 changed source or packages.
@@ -32,7 +32,7 @@ Use the reviewed PR and publication sequence below for each release.
 
 Before starting the candidate:
 
-1. Confirm the reviewed `## 10.1.0 (2026-10-29)` entry in `CHANGELOG.md` and
+1. Confirm the reviewed `## 10.2.0 (2026-11-03)` entry in `CHANGELOG.md` and
    retain that exact version/date heading for qualification. If the publication
    date changes before qualification, update the changelog and this release
    identity together. Do not change the qualified source afterward.
@@ -162,11 +162,11 @@ In GitHub Actions, start **Release candidate**. Select the same authorized
 branch as `release_branch` and enter:
 
 ```text
-version: 10.1.0
+version: 10.2.0
 qualification-only: false
 ```
 
-Use `10.1.0` for this stable release. Other release versions use
+Use `10.2.0` for this stable release. Other release versions use
 `X.Y.Z-rc.N` or `X.Y.Z`, without a leading `v`. Wait for:
 
 1. `Verify source and unused version`;

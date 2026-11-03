@@ -8,16 +8,20 @@ transaction/lifecycle coordination.
 ## Install
 
 ```sh
-dotnet package add Doka.EntityFrameworkCore.NestedSet.SqlServer --version 10.1.0
+dotnet package add Doka.EntityFrameworkCore.NestedSet.SqlServer --version 10.2.0
 ```
 
 The adapter brings in `Doka.EntityFrameworkCore.NestedSet`, `Doka.NestedSet`,
 and `Microsoft.EntityFrameworkCore.SqlServer` `[10.0.13,11.0.0)` transitively. Use one qualified
-NestedSet version across the application's NestedSet packages. Version `10.1.0`
+NestedSet version across the application's NestedSet packages. Version `10.2.0`
 is the stable six-package contract.
 
-The adapter requires exactly the matching common EF kernel version, `[10.1.0]`
+The adapter requires exactly the matching common EF kernel version, `[10.2.0]`
 for this release. Update all selected NestedSet adapters together.
+
+This release adds common `HasTreeRegistryTable(...)` configuration and corrects
+manual-detection/save-recovery behavior. Registration remains in the native
+provider callback; the default registry schema is unchanged.
 
 The shipping dependency graph explicitly raises `System.Security.Cryptography.Pkcs`
 to a minimum of `9.0.21`, without an upper bound, for the native SQL Client path.

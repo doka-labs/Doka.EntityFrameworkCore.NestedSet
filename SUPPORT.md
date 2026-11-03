@@ -153,8 +153,9 @@ without expanding the support matrix.
 
 ## Version and Compatibility Lifecycle
 
-Version `10.1.0` defines the stable contract across the common libraries and four
-provider adapters, including the documented breaking registration transition.
+Version `10.2.0` defines the stable contract across the common libraries and four
+provider adapters, with optional registry naming and corrected manual detection
+and recovery. The earlier `10.1.0` registration transition remains documented.
 Reports must identify the actual package version or the exact source revision
 and build for unreleased changes. The earlier `10.0.0-rc.1` has no separate
 maintenance line; fixes target the shared 10.x line.
@@ -179,7 +180,7 @@ establish NestedSet compatibility: EF providers generally do not work across
 major EF Core versions, and every provider or engine line requires explicit
 NestedSet qualification.
 
-The current `10.1.0` API is recorded in the shipped baselines. The historical
+The current `10.2.0` API is recorded in the shipped baselines. The historical
 `10.0.0` contract remains in its release tag and SDK compatibility baseline.
 The owner explicitly
 kept `10.1.0` for the provider-package/registration break as the narrow SemVer

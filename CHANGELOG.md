@@ -7,7 +7,13 @@ explicit one-time `10.1.0` exception for the provider-package/registration break
 below. The package major follows the .NET family; `11.x` is reserved for .NET 11.
 This exception does not authorize other breaking minor releases.
 
-## Unreleased
+## 10.2.0 (2026-11-03)
+
+Stable contract for all six packages on .NET 10 and EF Core 10. This additive
+release preserves the provider-callback registration introduced in `10.1.0`.
+Update selected adapters and the common EF package together. Existing mappings
+need no migration unless an application opts into an explicit registry name.
+See the [upgrade guide](docs/upgrading-provider-packages.md#upgrade-from-1010-to-1020).
 
 ### Added
 
@@ -16,8 +22,18 @@ This exception does not authorize other breaking minor releases.
   and collisions during model finalization. Without the option nothing changes;
   naming an existing registry migrates as a data-preserving table rename.
 
+### Changed
+
+- Run pull-request and release-candidate qualification through the same parallel
+  jobs, including package consumers and SBOMs, while retaining exact candidate
+  sealing and protected publication.
+- Standardize Unit test discovery, resource cleanup and contributor guidance,
+  keeping timing benchmarks outside release gates.
+
 ### Fixed
 
+- Handle delayed GitHub maintenance-run metadata and restrict dependency-audit
+  uploads to their intended reports and logs.
 - Complete saved insertion relationships with one traversal of the identity
   source, including single-use producers. Reuse the save guard's exact insertion
   sets and retain only relationship candidates, without a batch buffer on the
