@@ -124,7 +124,7 @@ class LinePublicationTests(unittest.TestCase):
         case = self.case
         write_json(case.candidate / "candidate.json", case.manifest)
         case.statement = case.make_statement()
-        case.write_bundle("release-provenance.jsonl", case.statement)
+        case.write_bundle("release-provenance.intoto.jsonl", case.statement)
 
     def test_maintenance_uses_its_original_source_and_provenance(self):
         """A maintained major qualifies independently while main owns the next major."""
@@ -159,7 +159,7 @@ class LinePublicationTests(unittest.TestCase):
         # Arrange
         self.maintenance()
         self.case.statement["predicate"]["buildDefinition"]["externalParameters"]["workflow"]["ref"] = "refs/heads/main"
-        self.case.write_bundle("release-provenance.jsonl", self.case.statement)
+        self.case.write_bundle("release-provenance.intoto.jsonl", self.case.statement)
 
         # Act
         error = baseline.record_error(self.case.stage)
@@ -331,7 +331,7 @@ class LinePublicationTests(unittest.TestCase):
         authorization = case.directory / "authorization.json"
         write_json(authorization, release.receipt(case.manifest, case.candidate, case.provenance,
                                                  state="authorize", environment=case.environment))
-        case.write_bundle("release-provenance.jsonl", {"tampered": True})
+        case.write_bundle("release-provenance.intoto.jsonl", {"tampered": True})
 
         # Act
         error = baseline.record_error(lambda: release.recheck(case.candidate, case.provenance, authorization,

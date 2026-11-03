@@ -16,6 +16,12 @@ six-package inventory must not be applied retroactively. Current line activation
 and continued GitHub Latest status are publication concerns, not conditions
 for accepting an already published immutable release.
 
+Published releases through `10.2.0` use `release-provenance.jsonl` for the signed
+build bundle. The current convention matches Doka and SafeMigrations:
+`release-provenance.intoto.jsonl`. Use the guide and helpers from the exact
+signed release tag for historical assets; their names and signed bytes remain
+unchanged.
+
 ## Prerequisites
 
 - Git with SSH signature verification;
@@ -80,7 +86,7 @@ The release must contain exactly one of each candidate asset:
   `Doka.EntityFrameworkCore.NestedSet.MySql`, `.Postgres`, `.Sqlite`, and `.SqlServer`;
 - `candidate.json`, `package-manifest.json`, `qualification-evidence.zip`, and
   `release-notes.md`;
-- `release-provenance.jsonl`; and
+- `release-provenance.intoto.jsonl`; and
 - one SBOM attestation bundle for each primary package.
 
 Missing, duplicate, or unexpected identity assets require investigation. Do
@@ -126,7 +132,7 @@ required_candidate = {
 }
 required_release = {
     "candidate.json",
-    "release-provenance.jsonl",
+    "release-provenance.intoto.jsonl",
     *(f"sbom-{package}.jsonl" for package in packages),
     *required_candidate,
 }
@@ -211,7 +217,7 @@ pin the repository, workflow, source, and hosted runner:
 ```sh
 for artifact in "${verified_root}"/*.nupkg "${verified_root}"/*.snupkg; do
   gh attestation verify "${artifact}" \
-    --bundle "${verified_root}/release-provenance.jsonl" \
+    --bundle "${verified_root}/release-provenance.intoto.jsonl" \
     --repo "${repository}" \
     --signer-workflow "${repository}/.github/workflows/release-candidate.yml" \
     --signer-digest "${release_commit}" \

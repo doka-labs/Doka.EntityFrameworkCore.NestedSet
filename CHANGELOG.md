@@ -7,6 +7,15 @@ explicit one-time `10.1.0` exception for the provider-package/registration break
 below. The package major follows the .NET family; `11.x` is reserved for .NET 11.
 This exception does not authorize other breaking minor releases.
 
+## Unreleased
+
+### Fixed
+
+- Align the portable signed build-provenance filename with Doka and
+  SafeMigrations (`release-provenance.intoto.jsonl`) so release consumers can
+  discover it. Preserve signature verification and exact asset inventories;
+  published releases retain their original assets and tagged verification guide.
+
 ## 10.2.0 (2026-11-03)
 
 Stable contract for all six packages on .NET 10 and EF Core 10. This additive
