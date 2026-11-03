@@ -453,6 +453,8 @@ informational diagnosis when that path is actually requested.
 
 ### Decision History
 
+- 2026-10-19: Decision recorded with status proposed.
+- 2026-10-19: Status changed from proposed to accepted.
 - 2026-10-19: Accepted an explicit additive ancestor index and exact public Doka source binding, with an independently required ordered edge for inclusive reads. Schema availability does not imply read eligibility or a workload benefit.
 - 2026-10-19: Retained narrow structural envelopes/lanes, original containment and application filters after native materialization and range-planning regressions. Deferred payload hydration preserves mapped aliases and source occurrences.
 - 2026-10-20: Admitted inspected independent fact roots while retaining hierarchy, navigation, named/inherited-filter and opaque-source safeguards. Shared syntax discovery does not merge distinct provenance, visibility and stability proofs.
@@ -466,6 +468,10 @@ informational diagnosis when that path is actually requested.
 - 2026-10-25: Reused only exact standard options-map membership under weak keys during repeated public provider-feature lookup. Retained fresh extension metadata, actual assembly validation and custom-options enumeration; rejected caching resolved owners based only on map immutability. Runtime and allocation qualification remain separate from this ownership decision.
 
 - 2026-10-26: D-020 amends optional reflected Doka binding and the no-shipping-provider-dependency assumption; the generated-index opt-in and historical evidence remain intact.
+- 2026-10-28: Status changed from accepted to implemented.
+- 2026-10-28: Commit bdb3ce095a4d3ed6d06dbb96799686c16a4e2b1a records this metadata change. This is the repository recording date, not a claim that implementation first completed or received a new approval on that date.
+- 2026-11-03: Restored the two original initial status entries from manifest-verified pre-consolidation ADR copies and recorded the later Git metadata transition. Earlier copies also describe implementation on October 19; that date is not used as an independently verified transition. The restoration adds no historical approval or new decision.
+- 2026-11-03: Retrieved the four pinned EF/.NET source files again to record actual retrieval provenance. The earlier inspections remain historical: QueryCompiler on October 24, both options files on October 25, and RuntimeType.CoreCLR on October 26. The new retrieval dates do not replace those inspections or requalify runtime behavior.
 
 ### Implementation References
 
@@ -522,15 +528,15 @@ informational diagnosis when that path is actually requested.
 
 ### Sources
 
-- [EF 10.0.13 standard options map](https://github.com/dotnet/efcore/blob/v10.0.13/src/EFCore/DbContextOptions.cs) (primary source; inspected 2026-10-25)
-- [EF 10.0.13 generic options replacement](https://github.com/dotnet/efcore/blob/v10.0.13/src/EFCore/DbContextOptions%60.cs) (primary source; inspected 2026-10-25)
+- [EF 10.0.13 standard options map](https://github.com/dotnet/efcore/blob/v10.0.13/src/EFCore/DbContextOptions.cs) (primary source; retrieved 2026-11-03)
+- [EF 10.0.13 generic options replacement](https://github.com/dotnet/efcore/blob/v10.0.13/src/EFCore/DbContextOptions%60.cs) (primary source; retrieved 2026-11-03)
 - [ConditionalWeakTable key and value lifetimes](https://learn.microsoft.com/en-us/dotnet/api/system.runtime.compilerservices.conditionalweaktable-2?view=net-10.0) (primary source; retrieved 2026-10-25)
-- [.NET 10.0.13 weak runtime type-metadata cache](https://github.com/dotnet/runtime/blob/v10.0.13/src/coreclr/System.Private.CoreLib/src/System/RuntimeType.CoreCLR.cs) (primary source; inspected 2026-10-26)
+- [.NET 10.0.13 weak runtime type-metadata cache](https://github.com/dotnet/runtime/blob/v10.0.13/src/coreclr/System.Private.CoreLib/src/System/RuntimeType.CoreCLR.cs) (primary source; retrieved 2026-11-03)
 - [Published Doka 10.6.2 metadata](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.mysql/10.6.2/doka.entityframeworkcore.mysql.nuspec) (primary source; retrieved 2026-10-25)
 - [Published SafeMigrations 10.6.0 metadata](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.safemigrations/10.6.0/doka.entityframeworkcore.safemigrations.nuspec) (primary source; retrieved 2026-10-25)
 - [Published SafeMigrations MySQL 10.6.0 dependency range](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.safemigrations.mysql/10.6.0/doka.entityframeworkcore.safemigrations.mysql.nuspec) (primary source; retrieved 2026-10-25)
 - [EF public query-compilation interception](https://learn.microsoft.com/en-us/dotnet/api/microsoft.entityframeworkcore.diagnostics.iqueryexpressioninterceptor.querycompilationstarting?view=efcore-10.0) (primary source; retrieved 2026-10-24)
-- [EF 10.0.13 parameter extraction and compiled-query cache boundary](https://github.com/dotnet/efcore/blob/v10.0.13/src/EFCore/Query/Internal/QueryCompiler.cs) (primary source; archived source inspected 2026-10-24)
+- [EF 10.0.13 parameter extraction and compiled-query cache boundary](https://github.com/dotnet/efcore/blob/v10.0.13/src/EFCore/Query/Internal/QueryCompiler.cs) (primary source; retrieved 2026-11-03)
 - [MySQL 8.4 ordered inner join](https://dev.mysql.com/doc/refman/8.4/en/join.html) (primary source; retrieved 2026-10-19)
 - [MySQL 8.4 semijoin restrictions](https://dev.mysql.com/doc/refman/8.4/en/semijoins-antijoins.html) (primary source; retrieved 2026-10-19)
 - [MariaDB targeted versus SELECT-wide join ordering](https://mariadb.com/docs/server/ha-and-performance/optimization-and-tuning/query-optimizations/index-hints-how-to-force-query-plans) (primary source; retrieved 2026-10-19)

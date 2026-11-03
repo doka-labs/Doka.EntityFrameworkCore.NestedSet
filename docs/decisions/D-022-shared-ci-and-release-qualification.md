@@ -1,6 +1,6 @@
 ---
 id: D-022
-status: accepted
+status: implemented
 date: 2026-10-30
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
@@ -98,6 +98,11 @@ Job timeouts and a bounded per-process budget replace the shared deadline.
 
 ### Confirmation
 
+Both callers use the shared quality workflow, and the candidate caller implements
+the seal and attestation handoff. Hosted CI run 41447864717 passed on November 2.
+The implementation is complete; the separate hosted RC confirmation below
+remains an execution-evidence boundary rather than an unimplemented component.
+
 - Run `python3 -m unittest discover -s eng/tests -p 'test_*.py'` and require seal, result-partition, plan, producer and workflow-contract regressions to pass. They must reject overlapping partitions, missing projects or plans, a CI identity that tries to seal, a foreign build identity and changed package bytes.
 - Run `python3 -m eng.release.qualification --verify-results <directory>` on the downloaded test artifacts of a complete run. The MySQL project's partitions must sum to its full suite, and a missing plan family must fail.
 - Pull-request CI must report `Repository qualification` success with every `Qualification / ...` job, including package consumers and SBOMs.
@@ -140,6 +145,8 @@ timeouts and the per-process budget.
 - 2026-10-30: Decision recorded with status proposed.
 - 2026-10-30: Status changed from proposed to accepted.
 - 2026-10-30: After the 10.1.0 release candidate waited on its single 71.8-minute MySQL/MariaDB cell, the owner chose the SafeMigrations model, consumer and SBOM checks in every pull request, and removal of the local complete qualification.
+- 2026-11-03: Status changed from accepted to implemented.
+- 2026-11-03: Reconciled status with both shared-workflow callers, candidate sealing/attestation wiring and successful hosted CI run 41447864717. A complete hosted RC execution of this arrangement remains pending and is not inferred from the earlier 10.1.0 RC. No historical approval date or publication evidence is added.
 
 ### Implementation References
 
@@ -157,3 +164,4 @@ timeouts and the per-process budget.
 - [GitHub reusable workflows and the caller context](https://docs.github.com/en/actions/reference/workflows-and-actions/reusable-workflows) (primary source; retrieved 2026-10-30)
 - [Release candidate 10.1.0 run](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/runs/41014625971) (primary source; retrieved 2026-10-30)
 - [CI run with five MySQL/MariaDB cells](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/runs/41009240640) (primary source; retrieved 2026-10-30)
+- [Successful shared-workflow CI run](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/runs/41447864717) (primary source; retrieved 2026-11-03)

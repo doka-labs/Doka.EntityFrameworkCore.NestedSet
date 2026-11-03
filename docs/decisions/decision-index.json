@@ -169,7 +169,7 @@
     {
       "id": "D-015",
       "title": "Use BenchmarkDotNet for optional development measurements",
-      "status": "accepted",
+      "status": "implemented",
       "date": "2026-09-28",
       "path": "docs/decisions/D-015-benchmarkdotnet-development-measurements.md",
       "supersedes": [],
@@ -205,7 +205,7 @@
     {
       "id": "D-018",
       "title": "Compose generic hierarchy queries through ordinary EF expressions",
-      "status": "accepted",
+      "status": "implemented",
       "date": "2026-10-16",
       "path": "docs/decisions/D-018-generic-hierarchy-query-composition.md",
       "supersedes": [],
@@ -259,7 +259,7 @@
     {
       "id": "D-022",
       "title": "Qualify releases through the shared CI workflow",
-      "status": "accepted",
+      "status": "implemented",
       "date": "2026-10-30",
       "path": "docs/decisions/D-022-shared-ci-and-release-qualification.md",
       "supersedes": [],
