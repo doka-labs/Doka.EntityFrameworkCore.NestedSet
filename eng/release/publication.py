@@ -37,7 +37,8 @@ API_VERSION = "2026-03-10"
 SLSA_TYPE = "https://slsa.dev/provenance/v1"
 # The pinned actions/attest implementation derives this suffix from the document's SPDX-2.2 version.
 SPDX_TYPE = "https://spdx.dev/Document/v2.2"
-PROVENANCE_FILES = {"release-provenance.jsonl", *(f"sbom-{package}.jsonl" for package in PACKAGES)}
+# WHY: Match Doka/SafeMigrations' portable SLSA filename so release consumers can discover the signed bundle.
+PROVENANCE_FILES = {"release-provenance.intoto.jsonl", *(f"sbom-{package}.jsonl" for package in PACKAGES)}
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -327,7 +328,7 @@ def attest_verify(candidate, provenance, *, commands=None, environment=None):
             name = f"{package}.{manifest['version']}.{extension}"
             subjects[name] = manifest["files"][name]["sha256"]
 
-    bundle = provenance / "release-provenance.jsonl"
+    bundle = provenance / "release-provenance.intoto.jsonl"
     statement = statements(bundle)
     verify_subjects(statement, subjects)
     verify_origin(statement, manifest, current_attempt)

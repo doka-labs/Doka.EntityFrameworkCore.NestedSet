@@ -13,7 +13,7 @@ import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from eng.release import common, qualification
+from eng.release import common, publication, qualification
 from eng.tests.test_release_qualification import (
     COMMIT,
     VERSION,
@@ -261,7 +261,7 @@ class DocumentedConsumerTests(QualificationFixture):
         candidate = self.complete_fixture()
         self.downloads = self.root / "downloads"
         shutil.copytree(candidate, self.downloads)
-        for name in ("release-provenance.jsonl", *(f"sbom-{package}.jsonl" for package in common.PACKAGES)):
+        for name in ("release-provenance.intoto.jsonl", *(f"sbom-{package}.jsonl" for package in common.PACKAGES)):
             text_file(self.downloads / name, "offline fixture, not a cryptographic attestation")
 
         self.target = self.root / "consumer"
@@ -591,6 +591,18 @@ class WorkflowBoundaryTests(unittest.TestCase):
         self.ci = workflow_jobs(self.ci_path)
         self.gates = workflow_jobs(self.gates_path)
         self.release = workflow_jobs(self.release_path)
+
+    def test_portable_build_provenance_uses_reference_release_name(self):
+        """Keep the actual producer and verifier on the discoverable Doka/SafeMigrations convention."""
+        # Arrange
+        expected = "release-provenance.intoto.jsonl"
+
+        # Act
+        exported = re.findall(r'cp "\$PROVENANCE_BUNDLE" artifacts/provenance/([^\s]+)', self.release["attest"])
+
+        # Assert
+        self.assertEqual([expected], exported)
+        self.assertIn(expected, publication.PROVENANCE_FILES)
 
     def test_ci_and_rc_call_one_shared_qualification(self):
         """Pull requests and release candidates run the same jobs; only the RC binds a version and line."""

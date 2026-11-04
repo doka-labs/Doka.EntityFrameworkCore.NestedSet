@@ -184,6 +184,8 @@ dotnet_style_prefer_collection_expression = when_types_exactly_match:suggestion
 # WHY: Preserve explicit fluent collection construction while keeping other collection-expression rules active.
 dotnet_diagnostic.IDE0305.severity = none
 dotnet_style_prefer_simplified_boolean_expressions = true:suggestion
+dotnet_style_prefer_conditional_expression_over_assignment = false:suggestion
+dotnet_style_prefer_conditional_expression_over_return = true:suggestion
 dotnet_style_null_propagation = true:suggestion
 dotnet_style_coalesce_expression = true:suggestion
 dotnet_style_prefer_compound_assignment = true:suggestion
@@ -298,7 +300,7 @@ resharper_csharp_place_accessorholder_attribute_on_same_line = never
 resharper_csharp_max_attribute_length_for_same_line = 120
 
 # --- Declarations And Constraints --------------------------------------------
-# Keep declaration parameters multiline, including a single parameter.
+# More than one declared parameter should become one parameter per line.
 resharper_csharp_wrap_parameters_style = chop_always
 resharper_csharp_max_formal_parameters_on_line = 0
 resharper_csharp_wrap_after_declaration_lpar = true
@@ -308,9 +310,9 @@ resharper_csharp_wrap_before_first_type_parameter_constraint = true
 resharper_csharp_wrap_multiple_type_parameter_constraints_style = chop_always
 resharper_csharp_align_multline_type_parameter_constrains = false
 
-# --- Primary Constructors And Positional Records -----------------------------
-resharper_csharp_wrap_primary_constructor_parameters_style = chop_always
-resharper_csharp_max_primary_constructor_parameters_on_line = 0
+# --- Positional Records ------------------------------------------------------
+resharper_csharp_wrap_primary_constructor_parameters_style = chop_if_long
+resharper_csharp_max_primary_constructor_parameters_on_line = 1
 resharper_csharp_wrap_after_primary_constructor_declaration_lpar = true
 resharper_csharp_wrap_before_primary_constructor_declaration_rpar = true
 
@@ -352,9 +354,8 @@ resharper_csharp_nested_ternary_style = expanded
 resharper_csharp_wrap_linq_expressions = chop_always
 resharper_csharp_wrap_before_linq_expression = false
 resharper_csharp_place_linq_into_on_new_line = false
-# Avoid hanging alignment so nested initializers retain normal block indentation.
-resharper_csharp_align_multiline_array_and_object_initializer = false
 resharper_csharp_place_simple_initializer_on_single_line = true
+resharper_csharp_align_multiline_array_and_object_initializer = false
 resharper_csharp_max_initializer_elements_on_line = 1
 resharper_csharp_max_array_initializer_elements_on_line = 4
 resharper_csharp_wrap_array_initializer_style = chop_if_long

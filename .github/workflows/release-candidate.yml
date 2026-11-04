@@ -256,7 +256,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p artifacts/provenance
-          cp "$PROVENANCE_BUNDLE" artifacts/provenance/release-provenance.jsonl
+          cp "$PROVENANCE_BUNDLE" artifacts/provenance/release-provenance.intoto.jsonl
           cp "$CORE_BUNDLE" artifacts/provenance/sbom-Doka.NestedSet.jsonl
           cp "$EF_BUNDLE" artifacts/provenance/sbom-Doka.EntityFrameworkCore.NestedSet.jsonl
           cp "$MYSQL_BUNDLE" artifacts/provenance/sbom-Doka.EntityFrameworkCore.NestedSet.MySql.jsonl

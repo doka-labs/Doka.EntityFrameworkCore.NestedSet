@@ -303,7 +303,7 @@ class PublicationTests(unittest.TestCase):
                                       "workflow": release.WORKFLOW}, "files": file_inventory(self.candidate)}
         write_json(self.candidate / "candidate.json", self.manifest)
         self.statement = self.make_statement()
-        self.write_bundle("release-provenance.jsonl", self.statement)
+        self.write_bundle("release-provenance.intoto.jsonl", self.statement)
 
         for package in self.packages:
             statement = {"_type": "https://in-toto.io/Statement/v1", "predicateType": "https://spdx.dev/Document/v2.2",
@@ -414,10 +414,35 @@ class PublicationTests(unittest.TestCase):
         self.assertRegex(str(error), "hosted-identity")
         self.assertEqual([], self.hosted.calls)
 
+    def test_legacy_build_provenance_name_blocks_all_commands(self):
+        """A renamed legacy bundle cannot silently replace the canonical new release inventory."""
+        # Arrange
+        (self.provenance / "release-provenance.intoto.jsonl").rename(self.provenance / "release-provenance.jsonl")
+
+        # Act
+        error = record_error(self.stage)
+
+        # Assert
+        self.assertEqual("provenance-inventory", error.code)
+        self.assertEqual([], self.hosted.calls)
+
+    def test_legacy_alias_beside_canonical_provenance_blocks_all_commands(self):
+        """An extra alias must not weaken the exact release asset inventory."""
+        # Arrange
+        bundle = self.provenance / "release-provenance.intoto.jsonl"
+        (self.provenance / "release-provenance.jsonl").write_bytes(bundle.read_bytes())
+
+        # Act
+        error = record_error(self.stage)
+
+        # Assert
+        self.assertEqual("provenance-inventory", error.code)
+        self.assertEqual([], self.hosted.calls)
+
     def test_missing_provenance_blocks_all_commands(self):
         """A missing retained bundle requires recovery, never unverified publication."""
         # Arrange
-        (self.provenance / "release-provenance.jsonl").unlink()
+        (self.provenance / "release-provenance.intoto.jsonl").unlink()
 
         # Act
         error = record_error(self.stage)
@@ -430,7 +455,7 @@ class PublicationTests(unittest.TestCase):
         """An apparent complete subject list must also be unique."""
         # Arrange
         self.statement["subject"].append(self.statement["subject"][0])
-        self.write_bundle("release-provenance.jsonl", self.statement)
+        self.write_bundle("release-provenance.intoto.jsonl", self.statement)
 
         # Act
         error = record_error(self.stage)
@@ -443,7 +468,7 @@ class PublicationTests(unittest.TestCase):
         """Signed metadata must bind actual candidate bytes."""
         # Arrange
         self.statement["subject"][0]["digest"]["sha256"] = "0" * 64
-        self.write_bundle("release-provenance.jsonl", self.statement)
+        self.write_bundle("release-provenance.intoto.jsonl", self.statement)
 
         # Act
         error = record_error(self.stage)
@@ -456,7 +481,7 @@ class PublicationTests(unittest.TestCase):
         """A signed invocation of a different workflow cannot authorize these bytes."""
         # Arrange
         self.statement["predicate"]["buildDefinition"]["externalParameters"]["workflow"]["path"] = "foreign.yml"
-        self.write_bundle("release-provenance.jsonl", self.statement)
+        self.write_bundle("release-provenance.intoto.jsonl", self.statement)
 
         # Act
         error = record_error(self.stage)
@@ -469,7 +494,7 @@ class PublicationTests(unittest.TestCase):
         """Subject equality cannot hide provenance produced from different source."""
         # Arrange
         self.statement["predicate"]["buildDefinition"]["resolvedDependencies"][0]["digest"]["gitCommit"] = "0" * 40
-        self.write_bundle("release-provenance.jsonl", self.statement)
+        self.write_bundle("release-provenance.intoto.jsonl", self.statement)
 
         # Act
         error = record_error(self.stage)
@@ -482,7 +507,7 @@ class PublicationTests(unittest.TestCase):
         """Malformed evidence produces a named refusal rather than escaping validation."""
         # Arrange
         self.statement["predicate"] = None
-        self.write_bundle("release-provenance.jsonl", self.statement)
+        self.write_bundle("release-provenance.intoto.jsonl", self.statement)
 
         # Act
         error = record_error(self.stage)
@@ -511,7 +536,7 @@ class PublicationTests(unittest.TestCase):
         # Arrange
         self.statement["predicate"]["runDetails"]["metadata"]["invocationId"] = (
             f"https://github.com/{release.REPOSITORY}/actions/runs/9999/attempts/1")
-        self.write_bundle("release-provenance.jsonl", self.statement)
+        self.write_bundle("release-provenance.intoto.jsonl", self.statement)
 
         # Act
         error = record_error(self.stage)
@@ -525,7 +550,7 @@ class PublicationTests(unittest.TestCase):
         # Arrange
         self.statement["predicate"]["runDetails"]["metadata"]["invocationId"] = (
             f"https://github.com/{release.REPOSITORY}/actions/runs/1234/attempts/2")
-        self.write_bundle("release-provenance.jsonl", self.statement)
+        self.write_bundle("release-provenance.intoto.jsonl", self.statement)
 
         # Act
         error = record_error(self.stage)
@@ -554,7 +579,7 @@ class PublicationTests(unittest.TestCase):
         self.environment["GITHUB_RUN_ATTEMPT"] = "3"
         self.statement["predicate"]["runDetails"]["metadata"]["invocationId"] = (
             f"https://github.com/{release.REPOSITORY}/actions/runs/1234/attempts/2")
-        self.write_bundle("release-provenance.jsonl", self.statement)
+        self.write_bundle("release-provenance.intoto.jsonl", self.statement)
 
         # Act
         result = self.stage()
@@ -629,7 +654,7 @@ class PublicationTests(unittest.TestCase):
     def test_provenance_drift_during_tag_verification_blocks_writes(self):
         """The portable bundle itself remains the exact bundle cryptographically verified earlier."""
         # Arrange
-        path = self.provenance / "release-provenance.jsonl"
+        path = self.provenance / "release-provenance.intoto.jsonl"
         self.hosted.during_signer_verification = lambda: path.write_bytes(b"changed after verification")
 
         # Act

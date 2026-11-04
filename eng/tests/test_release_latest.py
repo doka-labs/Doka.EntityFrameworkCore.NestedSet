@@ -103,7 +103,7 @@ class LatestTests(unittest.TestCase):
         case.environment.update(GITHUB_REF=maintenance["sourceRef"],
                                 GITHUB_WORKFLOW_REF=workflow_ref)
         write_json(case.candidate / "candidate.json", case.manifest)
-        case.write_bundle("release-provenance.jsonl", case.make_statement())
+        case.write_bundle("release-provenance.intoto.jsonl", case.make_statement())
         case.hosted.existing_release()
         self.latest("11.0.0")
 

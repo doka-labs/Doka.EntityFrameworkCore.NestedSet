@@ -293,7 +293,13 @@ correct prerelease state, and contain exactly twenty-nine assets:
 - six `<package-id>.spdx.json` documents, one per primary package;
 - `candidate.json`, `package-manifest.json`, `qualification-evidence.zip`, and
   `release-notes.md`; and
-- `release-provenance.jsonl` plus six `sbom-<package-id>.jsonl` bundles.
+- `release-provenance.intoto.jsonl` plus six `sbom-<package-id>.jsonl` bundles.
+
+The build-provenance name matches Doka and SafeMigrations and permits discovery
+by consumers such as Scorecard. Cryptographic verification still checks the
+signed bundle, subjects and producer identity independently of its filename.
+Immutable releases through `10.2.0` retain their original
+`release-provenance.jsonl` asset; use their tagged verification instructions.
 
 The package IDs and dependency order are listed in
 [Release process](../release-process.md#release-identity). Confirm all six NuGet
