@@ -11,9 +11,11 @@ public abstract partial class SaveChangesTests
     public async Task FailedParentMovePreservesAcceptedStalePrincipalMembership(bool automaticDetection)
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        await using (var setup = await CreateNavigationContextAsync(database, wrapped: true))
+        await using (var setup = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken))
         {
             var tree = setup.NestedSet<NavigationNode>().ForScope(1);
             await tree.InsertSubtreeAsync(
@@ -26,7 +28,9 @@ public abstract partial class SaveChangesTests
             await tree.MoveToAsync(2, 4, CancellationToken.None);
         }
 
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true);
+        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var nodes = await context.Set<NavigationNode>().Include(node => node.Children).Include(node => node.ScopeOwner)
             .ToArrayAsync(CancellationToken.None);
 
@@ -39,7 +43,8 @@ public abstract partial class SaveChangesTests
         // WHY: Detachment can leave a principal's CLR collection and native relationship snapshot populated.
         context.Entry(child).State = EntityState.Detached;
 
-        await using (var external = await CreateNavigationContextAsync(database, wrapped: true))
+        await using (var external = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken))
         {
             await external.NestedSet<NavigationNode>().ForScope(1).MoveToAsync(2, 1, CancellationToken.None);
         }
@@ -81,7 +86,8 @@ public abstract partial class SaveChangesTests
         // Act
         var error = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
         var after = CapturePlannedParentState(context);
-        var stored = await ReadPreparedOwnerStoreAsync(database);
+        var stored = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(0, accepted);

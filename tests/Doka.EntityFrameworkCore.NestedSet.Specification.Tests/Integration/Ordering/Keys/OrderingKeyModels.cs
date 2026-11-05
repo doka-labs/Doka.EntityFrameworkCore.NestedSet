@@ -10,73 +10,121 @@ public sealed class OrderingKeyFixture : IAsyncLifetime
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
     /// <summary>Clears the fixture's key-specific tables and returns a context owned by the caller.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="engine">The requested relational engine.</param>
     /// <returns>A context connected to the empty key-ordering tables.</returns>
     public async Task<OrderingKeyContext> ResetAsync(
-        string engine
+        string engine,
+        CancellationToken cancellationToken
     )
     {
         if (!_databases.TryGetValue(engine, out var database))
         {
-            database = await TestDatabase.CreateAsync(engine);
+            database = await TestDatabase.CreateAsync(engine, cancellationToken: cancellationToken);
             _databases.Add(engine, database);
 
-            await using var setup = await CreateContextAsync(engine);
-            await setup
-                .GetService<IRelationalDatabaseCreator>()
-                .CreateTablesAsync(CancellationToken.None);
+            try
+            {
+                await using var setup = await CreateContextAsync(engine, cancellationToken: cancellationToken);
+                await setup
+                    .GetService<IRelationalDatabaseCreator>()
+                    .CreateTablesAsync(cancellationToken);
+            }
+            catch (Exception initializationFailure)
+            {
+                // WHY: Canceled table creation must not leave a partially initialized reusable database.
+                _databases.Remove(engine);
+
+                try
+                {
+                    await database.DisposeAsync();
+                }
+                catch (Exception cleanupFailure)
+                {
+                    throw new AggregateException(
+                        "Ordering fixture initialization and cleanup both failed.",
+                        initializationFailure,
+                        cleanupFailure);
+                }
+
+                throw;
+            }
         }
 
-        var context = await CreateContextAsync(engine);
-        await context
-            .Set<OrderingKeyNode<string, string?>>()
-            .ExecuteUpdateAsync(
-                setters => setters.SetProperty(node => node.ParentId, (string?)null),
-                CancellationToken.None);
+        var context = await CreateContextAsync(engine, cancellationToken: cancellationToken);
 
-        await context
-            .Set<OrderingKeyNode<string, string?>>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+        try
+        {
+            await context
+                .Set<OrderingKeyNode<string, string?>>()
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(node => node.ParentId, (string?)null),
+                    cancellationToken);
 
-        await context
-            .Set<OrderingKeyNode<Guid, Guid?>>()
-            .ExecuteUpdateAsync(
-                setters => setters.SetProperty(node => node.ParentId, (Guid?)null),
-                CancellationToken.None);
+            await context
+                .Set<OrderingKeyNode<string, string?>>()
+                .ExecuteDeleteAsync(cancellationToken);
 
-        await context
-            .Set<OrderingKeyNode<Guid, Guid?>>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            await context
+                .Set<OrderingKeyNode<Guid, Guid?>>()
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(node => node.ParentId, (Guid?)null),
+                    cancellationToken);
 
-        await context
-            .Set<OrderingKeyNode<byte[], byte[]?>>()
-            .ExecuteUpdateAsync(
-                setters => setters.SetProperty(node => node.ParentId, (byte[]?)null),
-                CancellationToken.None);
+            await context
+                .Set<OrderingKeyNode<Guid, Guid?>>()
+                .ExecuteDeleteAsync(cancellationToken);
 
-        await context
-            .Set<OrderingKeyNode<byte[], byte[]?>>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            await context
+                .Set<OrderingKeyNode<byte[], byte[]?>>()
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(node => node.ParentId, (byte[]?)null),
+                    cancellationToken);
 
-        await context
-            .Set<OrderingKeyNode<int, int?>>()
-            .ExecuteUpdateAsync(
-                setters => setters.SetProperty(node => node.ParentId, (int?)null),
-                CancellationToken.None);
-        await context
-            .Set<OrderingKeyNode<int, int?>>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            await context
+                .Set<OrderingKeyNode<byte[], byte[]?>>()
+                .ExecuteDeleteAsync(cancellationToken);
 
-        await NestedSetTestInfrastructure.ClearRegistriesAsync(context, CancellationToken.None);
+            await context
+                .Set<OrderingKeyNode<int, int?>>()
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(node => node.ParentId, (int?)null),
+                    cancellationToken);
+            await context
+                .Set<OrderingKeyNode<int, int?>>()
+                .ExecuteDeleteAsync(cancellationToken);
 
-        return context;
+            await NestedSetTestInfrastructure.ClearRegistriesAsync(context, cancellationToken);
+
+            return context;
+        }
+        catch (Exception resetFailure)
+        {
+            // WHY: Ownership transfers only after a complete reset; cleanup cannot use the canceled token.
+            try
+            {
+                await context.DisposeAsync();
+            }
+            catch (Exception cleanupFailure)
+            {
+                throw new AggregateException(
+                    "Ordering fixture reset and context cleanup both failed.",
+                    resetFailure,
+                    cleanupFailure);
+            }
+
+            throw;
+        }
     }
 
     /// <summary>Uses the provisioned connection with this fixture's independent ordered EF model.</summary>
     private async Task<OrderingKeyContext> CreateContextAsync(
-        string engine
+        string engine,
+        CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         await using var source = _databases[engine]
             .CreateContext();
 

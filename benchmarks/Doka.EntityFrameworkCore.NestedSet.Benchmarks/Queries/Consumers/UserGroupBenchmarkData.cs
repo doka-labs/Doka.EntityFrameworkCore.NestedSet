@@ -27,12 +27,19 @@ internal static class UserGroupBenchmarkData
     ]);
 
     /// <summary>Prepares the selected group population and exact source-origin count.</summary>
+    /// <param name="context">The context used for the benchmark data and verification reads.</param>
+    /// <param name="nodes">The exact prepared node population.</param>
+    /// <param name="shape">The deterministic hierarchy shape.</param>
+    /// <param name="origins">The number of requested source memberships.</param>
+    /// <param name="matches">The number of matching metadata fields.</param>
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
     internal static async Task<(SupervisorScenarioFixture Data, SupervisorRequest Request)> CreateAsync(
         UserGroupContext context,
         int nodes,
         BenchmarkShape shape,
         int origins,
-        int matches
+        int matches,
+        CancellationToken cancellationToken
     )
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(nodes, 10);
@@ -40,7 +47,7 @@ internal static class UserGroupBenchmarkData
         ArgumentOutOfRangeException.ThrowIfGreaterThan(origins, nodes);
         ArgumentOutOfRangeException.ThrowIfLessThan(matches, 1);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(matches, Fields.Count);
-        var data = await SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
+        var data = await SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), cancellationToken);
         var count = nodes - 7;
         var groups = new UserGroup[count];
         var branches = new NestedSetBranch<UserGroup>[count];
@@ -82,7 +89,7 @@ internal static class UserGroupBenchmarkData
         await context
             .NestedSet<UserGroup>()
             .ForScope(data.TenantId)
-            .InsertSubtreeAsync(branches[0], data.Groups[0], CancellationToken.None);
+            .InsertSubtreeAsync(branches[0], data.Groups[0], cancellationToken);
 
         // WHY: Derive added link windows from the synthetic fixture instead of a copied calendar date.
         var observationDay = data.Request().OnDay
@@ -127,9 +134,9 @@ internal static class UserGroupBenchmarkData
                 });
         }
 
-        await context.SaveChangesAsync(CancellationToken.None);
+        await context.SaveChangesAsync(cancellationToken);
         context.ChangeTracker.Clear();
-        await AddFieldsAsync(context, data, matches);
+        await AddFieldsAsync(context, data, matches, cancellationToken);
         var request = data.Request(group: origins == 1 ? data.Groups[5] : null) with
         {
             Matches = Fields
@@ -146,7 +153,7 @@ internal static class UserGroupBenchmarkData
             await context
                 .Groups
                 .IgnoreQueryFilters()
-                .LongCountAsync(CancellationToken.None)
+                .LongCountAsync(cancellationToken)
             == nodes,
             "UserGroups benchmark population differs from its Nodes parameter.");
 
@@ -154,10 +161,15 @@ internal static class UserGroupBenchmarkData
     }
 
     /// <summary>Registers and populates the same finite field list on exact candidate memberships.</summary>
+    /// <param name="context">The context used for the benchmark data and verification reads.</param>
+    /// <param name="data">The independently seeded sample identities.</param>
+    /// <param name="matches">The number of matching metadata fields.</param>
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
     private static async Task AddFieldsAsync(
         UserGroupContext context,
         SupervisorScenarioFixture data,
-        int matches
+        int matches,
+        CancellationToken cancellationToken
     )
     {
         var memberships = await context
@@ -174,7 +186,7 @@ internal static class UserGroupBenchmarkData
                     member.UserGroupId,
                     GroupType = group.TypeId!.Value
                 })
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         var oldFields = new HashSet<string>(
             ["Route", "ManagerRoute", "ChannelClass", "RoutingZone"],
@@ -229,7 +241,7 @@ internal static class UserGroupBenchmarkData
             }
         }
 
-        await context.SaveChangesAsync(CancellationToken.None);
+        await context.SaveChangesAsync(cancellationToken);
         context.ChangeTracker.Clear();
     }
 }

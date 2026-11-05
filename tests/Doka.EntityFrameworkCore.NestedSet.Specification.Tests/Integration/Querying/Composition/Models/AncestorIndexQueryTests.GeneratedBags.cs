@@ -15,7 +15,8 @@ public abstract partial class AncestorIndexQueryTests
         // Arrange
         var tree = Guid.NewGuid();
         await using var context = await _fixture.CreateContextAsync<AncestorIndexGeneratedBagContext>(Engine,
-            static options => new AncestorIndexGeneratedBagContext(options));
+            static options => new AncestorIndexGeneratedBagContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<Dictionary<string, object?>>(AncestorIndexGeneratedBagContext.Mapping);
         var root = GeneratedBag("root", nullKey);
@@ -25,7 +26,8 @@ public abstract partial class AncestorIndexQueryTests
         var leaf = GeneratedBag("leaf", nullKey);
 
         // Act
-        await InsertGeneratedBagAsync(hierarchy, child, leaf, rootKey, bulk);
+        await InsertGeneratedBagAsync(hierarchy, child, leaf, rootKey, bulk,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var childKey = Assert.IsType<int>(child[NestedSetPropertyRoles.NodeKey]);
@@ -58,7 +60,9 @@ public abstract partial class AncestorIndexQueryTests
         var tree = Guid.NewGuid();
         var failure = new BagSaveFailure();
         await using var context = await _fixture.CreateContextAsync<AncestorIndexGeneratedBagContext>(Engine,
-            static options => new AncestorIndexGeneratedBagContext(options), failure);
+            static options => new AncestorIndexGeneratedBagContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            failure);
 
         var hierarchy = context.NestedSet<Dictionary<string, object?>>(AncestorIndexGeneratedBagContext.Mapping);
         var root = GeneratedBag("root", nullKey);
@@ -71,7 +75,8 @@ public abstract partial class AncestorIndexQueryTests
         failure.Enabled = true;
 
         // Act
-        var error = await Record.ExceptionAsync(() => InsertGeneratedBagAsync(hierarchy, child, leaf, rootKey, bulk));
+        var error = await Record.ExceptionAsync(() => InsertGeneratedBagAsync(hierarchy, child, leaf, rootKey, bulk,
+            cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         Assert.Equal(BagSaveFailure.Message, Assert.IsType<InvalidOperationException>(error).Message);
@@ -97,7 +102,9 @@ public abstract partial class AncestorIndexQueryTests
         var tree = Guid.NewGuid();
         var failure = new BagSaveFailure();
         await using var context = await _fixture.CreateContextAsync<AncestorIndexGeneratedBagContext>(Engine,
-            static options => new AncestorIndexGeneratedBagContext(options), failure);
+            static options => new AncestorIndexGeneratedBagContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            failure);
 
         var hierarchy = context.NestedSet<Dictionary<string, object?>>(AncestorIndexGeneratedBagContext.Mapping);
         var root = GeneratedBag("root", nullKey);
@@ -106,12 +113,15 @@ public abstract partial class AncestorIndexQueryTests
         var child = GeneratedBag("child", nullKey);
         var leaf = GeneratedBag("leaf", nullKey);
         failure.Enabled = true;
-        var setupError = await Record.ExceptionAsync(() => InsertGeneratedBagAsync(hierarchy, child, leaf, rootKey, bulk));
+        var setupError = await Record.ExceptionAsync(() => InsertGeneratedBagAsync(hierarchy, child, leaf, rootKey, bulk,
+            cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Equal(BagSaveFailure.Message, Assert.IsType<InvalidOperationException>(setupError).Message);
         failure.Enabled = false;
 
         // Act
-        await InsertGeneratedBagAsync(hierarchy, child, leaf, rootKey, bulk);
+        await InsertGeneratedBagAsync(hierarchy, child, leaf, rootKey, bulk,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var childKey = Assert.IsType<int>(child[NestedSetPropertyRoles.NodeKey]);
@@ -141,9 +151,10 @@ public abstract partial class AncestorIndexQueryTests
         Dictionary<string, object?> child,
         Dictionary<string, object?> leaf,
         int rootKey,
-        bool bulk
+        bool bulk,
+        CancellationToken cancellationToken
     ) => bulk
         ? hierarchy.InsertSubtreeAsync(new NestedSetBranch<Dictionary<string, object?>>(
-            child, [new NestedSetBranch<Dictionary<string, object?>>(leaf)]), rootKey, CancellationToken.None)
-        : hierarchy.InsertChildAsync(child, rootKey, CancellationToken.None);
+            child, [new NestedSetBranch<Dictionary<string, object?>>(leaf)]), rootKey, cancellationToken)
+        : hierarchy.InsertChildAsync(child, rootKey, cancellationToken);
 }

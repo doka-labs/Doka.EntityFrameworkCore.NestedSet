@@ -28,6 +28,7 @@ public abstract partial class HierarchyCompositionModelTests
         await using var context = await _fixture.CreateContextAsync<TableSplitContext>(
             Engine,
             static options => new TableSplitContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe,
             TestMaterializationObserver.Instance);
 
@@ -89,6 +90,7 @@ public abstract partial class HierarchyCompositionModelTests
         await using var context = await _fixture.CreateContextAsync<EntitySplitContext>(
             Engine,
             static options => new EntitySplitContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe,
             TestMaterializationObserver.Instance);
 

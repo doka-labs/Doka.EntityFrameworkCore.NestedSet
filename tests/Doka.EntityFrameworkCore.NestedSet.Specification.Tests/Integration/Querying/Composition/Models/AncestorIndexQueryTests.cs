@@ -18,17 +18,18 @@ public abstract partial class AncestorIndexQueryTests : ProviderTest
         Guid scope,
         Guid tree,
         CompositionCommandProbe probe,
+        CancellationToken cancellationToken,
         bool foreignTrees = false
     )
     {
         var context = await _fixture.CreateContextAsync<AncestorIndexQueryContext>(Engine,
-            static options => new AncestorIndexQueryContext(options), probe);
+            static options => new AncestorIndexQueryContext(options), cancellationToken: cancellationToken, probe);
 
         try
         {
             for (var id = 1; id <= 3; id++)
             {
-                await context.AddAsync(CreateNode(scope, tree, id), CancellationToken.None);
+                await context.AddAsync(CreateNode(scope, tree, id), cancellationToken);
             }
 
             if (foreignTrees)
@@ -38,17 +39,17 @@ public abstract partial class AncestorIndexQueryTests : ProviderTest
 
                 for (var id = 1; id <= 3; id++)
                 {
-                    await context.AddAsync(CreateNode(otherScope, otherTree, id), CancellationToken.None);
+                    await context.AddAsync(CreateNode(otherScope, otherTree, id), cancellationToken);
                     var sameScope = CreateNode(scope, otherTree, id);
                     sameScope.Id += 10;
                     sameScope.ParentId = id == 1 ? null : id + 9;
                     sameScope.Tags.Clear();
                     sameScope.Items.Clear();
-                    await context.AddAsync(sameScope, CancellationToken.None);
+                    await context.AddAsync(sameScope, cancellationToken);
                 }
             }
 
-            await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+            await context.SavePrecomputedHierarchyAsync(cancellationToken);
             context.ChangeTracker.Clear();
             probe.Reset();
 

@@ -23,7 +23,10 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
     {
         // Arrange
         var barrier = new IdentityResolutionBarrier();
-        await using var context = await _fixture.CreateContextAsync(Engine, barrier);
+        await using var context = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            barrier);
+
         var scope = new MutableIdentity("scope");
         var hierarchy = context
             .NestedSet<ConfiguredIdentityNode>()
@@ -124,7 +127,9 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
     )
     {
         // Arrange
-        await using var context = await _fixture.CreateContextAsync(Engine);
+        await using var context = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context
             .NestedSet<ConfiguredIdentityNode>()
             .ForScope(new MutableIdentity("scope"));
@@ -141,8 +146,8 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
 
         var input = OriginalInput();
         var original = Snapshot(input);
-        var rowsBefore = await RowsAsync(context);
-        var registriesBefore = await RegistriesAsync(context);
+        var rowsBefore = await RowsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        var registriesBefore = await RegistriesAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var callbacks = 0;
         ObserveSave(
             context,
@@ -154,7 +159,8 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
             });
 
         // Act
-        var error = await Record.ExceptionAsync(() => InsertAsync(hierarchy, input, bulk));
+        var error = await Record.ExceptionAsync(() => InsertAsync(hierarchy, input, bulk,
+            cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         Assert.Equal(
@@ -162,8 +168,9 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
             Assert.IsType<NestedSetException>(error).Code);
         Assert.Equal(1, callbacks);
         Assert.Equal(original, Snapshot(input));
-        Assert.Equal(rowsBefore, await RowsAsync(context));
-        Assert.Equal(registriesBefore, await RegistriesAsync(context));
+        Assert.Equal(rowsBefore, await RowsAsync(context, cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(registriesBefore, await RegistriesAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(EntityState.Detached, context.Entry(input).State);
         Assert.Empty(context.ChangeTracker.Entries());
     }
@@ -180,7 +187,9 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
     )
     {
         // Arrange
-        await using var context = await _fixture.CreateContextAsync(Engine);
+        await using var context = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context
             .NestedSet<ConfiguredIdentityNode>()
             .ForScope(new MutableIdentity("scope"));
@@ -204,7 +213,7 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
             });
 
         // Act
-        await InsertAsync(hierarchy, input, bulk);
+        await InsertAsync(hierarchy, input, bulk, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(assignedParent);
@@ -227,16 +236,18 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
     }
 
     /// <summary>Dispatches one public insertion while retaining the configured mutable parent model.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static Task InsertAsync(
         ScopedNestedSet<ConfiguredIdentityNode, MutableIdentity> hierarchy,
         ConfiguredIdentityNode input,
-        bool bulk
+        bool bulk,
+        CancellationToken cancellationToken
     ) => bulk
         ? hierarchy.InsertSubtreeAsync(
             new NestedSetBranch<ConfiguredIdentityNode>(input),
             new MutableIdentity("root"),
-            CancellationToken.None)
-        : hierarchy.InsertChildAsync(input, new MutableIdentity("root"), CancellationToken.None);
+            cancellationToken)
+        : hierarchy.InsertChildAsync(input, new MutableIdentity("root"), cancellationToken);
 
     /// <summary>Registers one application callback at the selected active stage after fixture seeding.</summary>
     private static void ObserveSave(
@@ -282,14 +293,16 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
         node.Position);
 
     /// <summary>Reads exact persisted structure independently of the operation's tracker state.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task<IdentitySnapshot[]> RowsAsync(
-        DbContext context
+        DbContext context,
+        CancellationToken cancellationToken
     )
     {
         var rows = await context
             .Set<ConfiguredIdentityNode>()
             .AsNoTracking()
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         return rows
             .OrderBy(row => row.Id.Value, StringComparer.Ordinal)
@@ -298,8 +311,10 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
     }
 
     /// <summary>Captures registry identity, revision and lifecycle to detect hidden callback writes.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task<RegistrySnapshot[]> RegistriesAsync(
-        DbContext context
+        DbContext context,
+        CancellationToken cancellationToken
     )
     {
         var entityType = context.Model.FindEntityType(typeof(ConfiguredIdentityNode))!;
@@ -313,7 +328,7 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
                 Revision = EF.Property<long>(row, NestedSetTreeRegistryMetadata.Revision),
                 Lifecycle = EF.Property<byte>(row, NestedSetTreeRegistryMetadata.Lifecycle),
             })
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         return rows
             .OrderBy(row => row.TreeId.Value, StringComparer.Ordinal)
@@ -350,8 +365,10 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
         public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
         /// <summary>Returns this fixture's model with the requested asynchronous database barrier.</summary>
+        /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
         internal async Task<DbContext> CreateContextAsync(
             string engine,
+            CancellationToken cancellationToken,
             params IInterceptor[] interceptors
         )
         {
@@ -361,7 +378,7 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
                 // This adds no containers and does not alter another fixture's tables or resource lifecycle.
                 database = await TestDatabase.CreateAsync(
                     engine,
-                    async source =>
+                    async (source, token) =>
                     {
                         var extensions = source
                             .GetService<IDbContextOptions>()
@@ -374,8 +391,8 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
 
                         _options[engine] = options;
                         await using var schema = new ConfiguredIdentityContext(options);
-                        await schema.Database.EnsureCreatedAsync(CancellationToken.None);
-                    });
+                        await schema.Database.EnsureCreatedAsync(token);
+                    }, cancellationToken: cancellationToken);
 
                 _databases.Add(engine, database);
             }
@@ -391,13 +408,13 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
                 .Set<ConfiguredIdentityNode>()
                 .ExecuteUpdateAsync(
                     setters => setters.SetProperty(node => node.ParentId, (MutableIdentity?)null),
-                    CancellationToken.None);
+                    cancellationToken);
 
             await context
                 .Set<ConfiguredIdentityNode>()
-                .ExecuteDeleteAsync(CancellationToken.None);
+                .ExecuteDeleteAsync(cancellationToken);
 
-            await context.ClearNestedSetTreeRegistriesAsync(CancellationToken.None);
+            await context.ClearNestedSetTreeRegistriesAsync(cancellationToken);
 
             return context;
         }

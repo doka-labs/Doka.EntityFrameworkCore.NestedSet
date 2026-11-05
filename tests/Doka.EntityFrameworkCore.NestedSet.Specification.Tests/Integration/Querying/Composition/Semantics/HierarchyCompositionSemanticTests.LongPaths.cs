@@ -56,7 +56,9 @@ public abstract partial class HierarchyCompositionSemanticTests
 
         var all = nodes.Concat(foreignTree).Concat(foreignScope).ToArray();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateLongPathContextAsync(scope, 6, all, probe);
+        await using var context = await CreateLongPathContextAsync(scope, 6, all, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
         var rows = LongRows(context, scope, 1, 1, 6);
         var expected = ExpectedLongRows(all, scope, tree, 1, 1, 6, filter);
@@ -74,7 +76,7 @@ public abstract partial class HierarchyCompositionSemanticTests
             _ => throw new ArgumentOutOfRangeException(nameof(filter)),
         };
 
-        var actual = await ReadLongRowsAsync(query);
+        var actual = await ReadLongRowsAsync(query, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -121,7 +123,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         }
 
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateLongPathContextAsync(scope, 9, nodes, probe);
+        await using var context = await CreateLongPathContextAsync(scope, 9, nodes, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope).InTree(tree);
         var rows = LongRows(context, scope, 4, 4, 9);
         var expected = ExpectedLongRows(nodes, scope, tree, 4, 4, 9, filter);
@@ -139,7 +143,7 @@ public abstract partial class HierarchyCompositionSemanticTests
             _ => throw new ArgumentOutOfRangeException(nameof(filter)),
         };
 
-        var actual = await ReadLongRowsAsync(query);
+        var actual = await ReadLongRowsAsync(query, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -179,7 +183,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Parent links are deliberately invalid; completeness below the chosen upper must ignore them.
         var all = nodes.Append(sibling).ToArray();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateLongPathContextAsync(scope, 8, all, probe);
+        await using var context = await CreateLongPathContextAsync(scope, 8, all, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope).InTree(tree);
         var rows = LongRows(context, scope, 3, 3, 8);
         var expected = ExpectedLongRows(all, scope, tree, 3, 3, 8, filter);
@@ -197,7 +203,7 @@ public abstract partial class HierarchyCompositionSemanticTests
             _ => throw new ArgumentOutOfRangeException(nameof(filter)),
         };
 
-        var actual = await ReadLongRowsAsync(query);
+        var actual = await ReadLongRowsAsync(query, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -226,7 +232,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         foreignScope[3].ParentId = null;
         var all = nodes.Concat(foreignTree).Concat(foreignScope).ToArray();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateLongPathContextAsync(scope, 6, all, probe);
+        await using var context = await CreateLongPathContextAsync(scope, 6, all, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope).InTree(tree);
         var localRows = LongRows(context, scope, 1, 2, 6);
         var anchors = context.Set<CompositionNode>().Where(node => node.Scope == scope && node.Id <= 2);
@@ -255,7 +263,7 @@ public abstract partial class HierarchyCompositionSemanticTests
             _ => throw new ArgumentOutOfRangeException(nameof(filter)),
         };
 
-        var actual = await ReadLongRowsAsync(query);
+        var actual = await ReadLongRowsAsync(query, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -277,23 +285,26 @@ public abstract partial class HierarchyCompositionSemanticTests
         Guid scope,
         int lower,
         CompositionNode[] nodes,
-        CompositionCommandProbe probe
+        CompositionCommandProbe probe,
+        CancellationToken cancellationToken
     )
     {
         var context = await _fixture.CreateContextAsync<CompositionContext>(Engine,
-            static options => new CompositionContext(options), probe, TestMaterializationObserver.Instance);
+            static options => new CompositionContext(options),
+            cancellationToken: cancellationToken,
+            probe, TestMaterializationObserver.Instance);
 
         TestMaterializationObserver.Instance.Register(context, probe.RecordMaterialization);
 
         try
         {
-            await context.AddRangeAsync(nodes, CancellationToken.None);
+            await context.AddRangeAsync(nodes, cancellationToken);
             await context.AddRangeAsync(LongDays().Select(day => new CompositionInputOne
             {
                 Scope = scope, NodeId = lower, Date = day, Amount = 1,
-            }), CancellationToken.None);
+            }), cancellationToken);
 
-            await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+            await context.SavePrecomputedHierarchyAsync(cancellationToken);
             context.ChangeTracker.Clear();
             probe.Reset();
 
@@ -323,10 +334,13 @@ public abstract partial class HierarchyCompositionSemanticTests
             (pair, fact) => new LongPathRow { Upper = pair.Upper, Node = pair.Node, Day = fact.Date });
 
     /// <summary>Reads a scalar bag without materializing the hierarchy aliases carried by the source.</summary>
-    private static Task<LongPathOccurrence[]> ReadLongRowsAsync(IQueryable<LongPathRow> rows)
+    private static Task<LongPathOccurrence[]> ReadLongRowsAsync(
+        IQueryable<LongPathRow> rows,
+        CancellationToken cancellationToken
+    )
         => rows.OrderBy(row => row.Upper.Id).ThenBy(row => row.Day)
             .Select(row => new LongPathOccurrence(row.Upper.Id, row.Node.Id, row.Day))
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
     /// <summary>Walks explicit Parent identities rather than counting or excluding coordinate intervals.</summary>
     private static LongPathOccurrence[] ExpectedLongRows(

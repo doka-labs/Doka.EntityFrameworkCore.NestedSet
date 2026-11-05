@@ -36,11 +36,15 @@ internal static class ManagedHeapProbe
     /// Executes this assembly's private probe without SDK builds, environment mutation or a new project.
     /// </summary>
     /// <param name="shape">The allocation shape measured in the independent process.</param>
+    /// <param name="cancellationToken">The caller's token for forward waiting, never for child cleanup.</param>
     /// <returns>The child process's independent counters.</returns>
     internal static async Task<Measurement> RunIsolatedAsync(
-        string shape
+        string shape,
+        CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var start = new ProcessStartInfo("dotnet")
         {
             UseShellExecute = false,
@@ -55,15 +59,19 @@ internal static class ManagedHeapProbe
         using var process = Process.Start(start)
             ?? throw new InvalidOperationException("The isolated heap calibration process did not start.");
 
-        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(1));
-        var output = process.StandardOutput.ReadToEndAsync(timeout.Token);
-        var errors = process.StandardError.ReadToEndAsync(timeout.Token);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(1));
+        using var cleanup = new CancellationTokenSource();
+
+        // WHY: Cancellation must stop forward waiting without abandoning the streams before child termination.
+        var output = process.StandardOutput.ReadToEndAsync(cleanup.Token);
+        var errors = process.StandardError.ReadToEndAsync(cleanup.Token);
 
         try
         {
             await process.WaitForExitAsync(timeout.Token);
-            var json = await output;
-            var error = await errors;
+            var json = await output.WaitAsync(timeout.Token);
+            var error = await errors.WaitAsync(timeout.Token);
 
             if (process.ExitCode != 0)
             {
@@ -72,14 +80,69 @@ internal static class ManagedHeapProbe
 
             return JsonSerializer.Deserialize<Measurement>(json);
         }
-        finally
+        catch (Exception failure)
         {
-            if (!process.HasExited)
+            // WHY: Recovery has its own deadline; the caller's expired token cannot prevent reaping or draining.
+            cleanup.CancelAfter(TimeSpan.FromSeconds(10));
+            var cleanupFailures = new List<Exception>();
+
+            try
             {
-                // WHY: A timed-out diagnostic child belongs only to this test and must not outlive it.
-                process.Kill(entireProcessTree: true);
-                await process.WaitForExitAsync(CancellationToken.None);
+                if (!process.HasExited)
+                {
+                    process.Kill(entireProcessTree: true);
+                }
             }
+            catch (InvalidOperationException) when (process.HasExited)
+            {
+                // WHY: Exit can race the kill; the child still needs the wait below.
+            }
+            catch (Exception cleanupFailure)
+            {
+                cleanupFailures.Add(cleanupFailure);
+            }
+
+            try
+            {
+                await process.WaitForExitAsync(cleanup.Token);
+            }
+            catch (Exception cleanupFailure)
+            {
+                cleanupFailures.Add(cleanupFailure);
+            }
+
+            foreach (var read in new[] { output, errors })
+            {
+                try
+                {
+                    await read;
+                }
+                catch (Exception cleanupFailure)
+                {
+                    if (!ReferenceEquals(cleanupFailure, failure))
+                    {
+                        cleanupFailures.Add(cleanupFailure);
+                    }
+                }
+            }
+
+            var original = failure is OperationCanceledException && cancellationToken.IsCancellationRequested
+                ? new OperationCanceledException("The heap calibration was canceled.", failure, cancellationToken)
+                : failure;
+
+            if (cleanupFailures.Count > 0)
+            {
+                cleanupFailures.Insert(0, original);
+
+                throw new AggregateException("Heap calibration and child cleanup both failed.", cleanupFailures);
+            }
+
+            if (!ReferenceEquals(original, failure))
+            {
+                throw original;
+            }
+
+            throw;
         }
     }
 

@@ -14,14 +14,14 @@ public abstract partial class RelationalTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedRebuildTreeAsync(context, 1);
-        await CorruptStructureAsync(context, 1, corruption);
+        await SeedRebuildTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
+        await CorruptStructureAsync(context, 1, corruption, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var report = await tree
@@ -51,15 +51,15 @@ public abstract partial class RelationalTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedRebuildTreeAsync(context, 1);
-        var before = await SnapshotAsync(context, 1);
-        await CorruptStructureAsync(context, 1, corruption);
+        await SeedRebuildTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
+        var before = await SnapshotAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
+        await CorruptStructureAsync(context, 1, corruption, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         await tree
@@ -67,8 +67,8 @@ public abstract partial class RelationalTests
             .RebuildAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(before, await SnapshotAsync(context, 1));
-        await AssertValidAsync(context, 1);
+        Assert.Equal(before, await SnapshotAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken));
+        await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Rebuild rejects cycles, missing parents and duplicate sibling positions atomically.</summary>
@@ -84,15 +84,16 @@ public abstract partial class RelationalTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedRebuildTreeAsync(context, 1);
-        await CorruptAdjacencyAsync(context, 1, Engine, corruption);
-        var before = await SnapshotAsync(context, 1);
+        await SeedRebuildTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
+        await CorruptAdjacencyAsync(context, 1, Engine, corruption,
+            cancellationToken: TestContext.Current.CancellationToken);
+        var before = await SnapshotAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var error = await Record.ExceptionAsync(() => tree
@@ -101,6 +102,6 @@ public abstract partial class RelationalTests
 
         // Assert
         Assert.IsAssignableFrom<InvalidOperationException>(error);
-        Assert.Equal(before, await SnapshotAsync(context, 1));
+        Assert.Equal(before, await SnapshotAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken));
     }
 }

@@ -16,7 +16,7 @@ public sealed partial class NullableParentIndexTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var source = database.CreateContext();
         var observer = new TreeEligibilityObserver();
         var options = new DbContextOptionsBuilder<TreeEligibilityContext>()
@@ -58,7 +58,9 @@ public sealed partial class NullableParentIndexTests
             + "WHERE x.\"Scope\" = @scope AND x.\"Id\" = @key FOR KEY SHARE OF x";
 
         // Act
-        var principalPlan = await ExplainAsync(context, principalQuery, true);
+        var principalPlan = await ExplainAsync(context, principalQuery, true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var nodes = await context
             .NestedSet<TreeEligibilityNode>()
             .ForScope(1)
@@ -70,7 +72,8 @@ public sealed partial class NullableParentIndexTests
 
         await QueryPlanTestSupport.WriteEvidenceAsync(
             "PostgreSql-tree-predicate-" + (convertedTree ? "converted" : "native"),
-            ["principal\n" + principalPlan, "typed-tree\n" + observer.Plan]);
+            ["principal\n" + principalPlan, "typed-tree\n" + observer.Plan],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Empty(IndexNames(principalPlan));

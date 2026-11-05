@@ -38,9 +38,13 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
     )
     {
         // Arrange
-        await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, nodes);
+        await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, nodes,
+            cancellationToken: TestContext.Current.CancellationToken);
         using var probe = new ScaleProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine, "Strict", probe);
+        await using var context = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "Strict", probe);
+
         var query = context
             .Set<OrderingNode>()
             .Where(node => node.ParentId != null)
@@ -126,8 +130,11 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
     public async Task NativeTrackedKeyCollectionKeepsOneShapeBeyondProviderScalarLimit()
     {
         // Arrange
-        await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, 5000);
-        await using var template = await _fixture.CreateContextAsync(Engine);
+        await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, 5000,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await using var template = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var services = CacheTestServices.Create(template.GetService<IDbContextOptions>());
         using var probe = new ScaleProbe();
         await using var context = OrderingRefreshTestSupport.CreateCacheContext(template, services, probe);
@@ -152,7 +159,9 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
                     .Range(1, count)
                     .ToArray();
 
-                var rows = await ReadParameterizedAsync(context, keys, tag);
+                var rows = await ReadParameterizedAsync(context, keys, tag,
+                    cancellationToken: TestContext.Current.CancellationToken);
+
                 results.Add(rows.Length);
             }
 
@@ -195,8 +204,11 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
     public async Task OrdinalFallbackReportsActualCompilationCardinalities()
     {
         // Arrange
-        await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, 64);
-        await using var template = await _fixture.CreateContextAsync(Engine);
+        await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, 64,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await using var template = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var services = CacheTestServices.Create(template.GetService<IDbContextOptions>());
         using var probe = new ScaleProbe();
         await using var context = OrderingRefreshTestSupport.CreateCacheContext(template, services, probe);
@@ -277,7 +289,8 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
     private static Task<int[]> ReadParameterizedAsync(
         OrderingContext context,
         int[] keys,
-        string tag
+        string tag,
+        CancellationToken cancellationToken
     )
     {
         var map = NestedSetMapping<OrderingNode, int, int>.For(
@@ -295,6 +308,6 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
                 map.KeyProperty,
                 keys)
             .Select(node => node.Id)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
     }
 }

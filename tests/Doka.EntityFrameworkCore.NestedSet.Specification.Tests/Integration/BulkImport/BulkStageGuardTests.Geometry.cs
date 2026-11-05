@@ -35,11 +35,16 @@ public abstract partial class BulkStageGuardTests
     )
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var treeId = Guid.NewGuid();
         var otherTreeId = Guid.NewGuid();
-        await SeedGeometryTreesAsync(context, treeId, otherTreeId);
-        var persistedBefore = await ReadGeometryStatesAsync(context);
+        await SeedGeometryTreesAsync(context, treeId, otherTreeId,
+            cancellationToken: TestContext.Current.CancellationToken);
+        var persistedBefore = await ReadGeometryStatesAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var inputs = GeometryInputs();
         var inputBefore = inputs
             .Select(CaptureGeometryState)
@@ -73,9 +78,11 @@ public abstract partial class BulkStageGuardTests
                 .Code);
         Assert.Equal(1, callbacks);
         Assert.Equal(inputBefore, inputs.Select(CaptureGeometryState));
-        Assert.Equal(persistedBefore, await ReadGeometryStatesAsync(context));
+        Assert.Equal(persistedBefore, await ReadGeometryStatesAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken));
         Assert.Empty(context.ChangeTracker.Entries());
-        await AssertGeometryTreesValidAsync(context, treeId, otherTreeId);
+        await AssertGeometryTreesValidAsync(context, treeId, otherTreeId,
+            cancellationToken: TestContext.Current.CancellationToken);
         Assert.Null(context.Database.CurrentTransaction);
     }
 
@@ -88,11 +95,16 @@ public abstract partial class BulkStageGuardTests
     )
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var treeId = Guid.NewGuid();
         var otherTreeId = Guid.NewGuid();
-        await SeedGeometryTreesAsync(context, treeId, otherTreeId);
-        var persistedBefore = await ReadGeometryStatesAsync(context);
+        await SeedGeometryTreesAsync(context, treeId, otherTreeId,
+            cancellationToken: TestContext.Current.CancellationToken);
+        var persistedBefore = await ReadGeometryStatesAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var inputs = GeometryInputs();
         var branch = new NestedSetBranch<BulkStageTextNode>(
             inputs[0],
@@ -146,17 +158,21 @@ public abstract partial class BulkStageGuardTests
         // Assert
         Assert.Equal(1, callbacks);
         Assert.Equal(expectedInputs, inputs.Select(CaptureGeometryState));
-        Assert.Equal(expectedPersisted, await ReadGeometryStatesAsync(context));
+        Assert.Equal(expectedPersisted, await ReadGeometryStatesAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken));
         Assert.Empty(context.ChangeTracker.Entries());
-        await AssertGeometryTreesValidAsync(context, treeId, otherTreeId);
+        await AssertGeometryTreesValidAsync(context, treeId, otherTreeId,
+            cancellationToken: TestContext.Current.CancellationToken);
         Assert.Null(context.Database.CurrentTransaction);
     }
 
     /// <summary>Seeds another tree and Scope alongside the destination through public import contracts.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task SeedGeometryTreesAsync(
         BulkStageGuardContext context,
         Guid treeId,
-        Guid otherTreeId
+        Guid otherTreeId,
+        CancellationToken cancellationToken
     )
     {
         await context
@@ -175,7 +191,7 @@ public abstract partial class BulkStageGuardTests
                             new BulkStageTextNode { Id = "E" },
                             [new NestedSetBranch<BulkStageTextNode>(new BulkStageTextNode { Id = "F" })])),
                 ],
-                CancellationToken.None);
+                cancellationToken);
 
         await context
             .NestedSet<BulkStageTextNode>()
@@ -188,7 +204,7 @@ public abstract partial class BulkStageGuardTests
                             new BulkStageTextNode { Id = "G" },
                             [new NestedSetBranch<BulkStageTextNode>(new BulkStageTextNode { Id = "H" })])),
                 ],
-                CancellationToken.None);
+                cancellationToken);
     }
 
     /// <summary>Creates caller-owned inputs whose original managed values must all survive a rejected import.</summary>
@@ -246,14 +262,16 @@ public abstract partial class BulkStageGuardTests
     }
 
     /// <summary>Reads every persisted row without permitting tracker state to conceal rollback discrepancies.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task<GeometryState[]> ReadGeometryStatesAsync(
-        BulkStageGuardContext context
+        BulkStageGuardContext context,
+        CancellationToken cancellationToken
     )
     {
         var nodes = await context
             .Set<BulkStageTextNode>()
             .AsNoTracking()
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         return nodes
             .Select(CaptureGeometryState)
@@ -262,10 +280,12 @@ public abstract partial class BulkStageGuardTests
     }
 
     /// <summary>Checks the destination, its neighboring tree, and the same TreeId in an independent Scope.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task AssertGeometryTreesValidAsync(
         BulkStageGuardContext context,
         Guid treeId,
-        Guid otherTreeId
+        Guid otherTreeId,
+        CancellationToken cancellationToken
     )
     {
         Assert.Empty(
@@ -273,21 +293,21 @@ public abstract partial class BulkStageGuardTests
                 .NestedSet<BulkStageTextNode>()
                 .ForScope("S")
                 .InTree(treeId)
-                .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).Issues);
+                .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken)).Issues);
 
         Assert.Empty(
             (await context
                 .NestedSet<BulkStageTextNode>()
                 .ForScope("S")
                 .InTree(otherTreeId)
-                .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).Issues);
+                .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken)).Issues);
 
         Assert.Empty(
             (await context
                 .NestedSet<BulkStageTextNode>()
                 .ForScope("Other")
                 .InTree(treeId)
-                .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).Issues);
+                .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken)).Issues);
     }
 
     /// <summary>Snapshots every input and persisted field independently from application value comparers.</summary>

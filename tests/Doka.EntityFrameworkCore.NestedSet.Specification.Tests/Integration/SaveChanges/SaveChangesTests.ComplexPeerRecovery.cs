@@ -21,21 +21,30 @@ public abstract partial class SaveChangesTests
     public async Task ComplexPeerRollbackPreservesPendingGraph(string shape, string mutation, bool hierarchyFailure)
     {
         // Arrange
-        await using var database = await CreateComplexPeerRecoveryDatabaseAsync(shape);
+        await using var database = await CreateComplexPeerRecoveryDatabaseAsync(shape,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var (failure, expectedError) = CreatePayloadOwnerRecoveryFailure(hierarchyFailure);
-        await using var context = await CreateComplexPeerRecoveryContextAsync(database, shape, failure);
+        await using var context = await CreateComplexPeerRecoveryContextAsync(database, shape,
+            cancellationToken: TestContext.Current.CancellationToken,
+            failure);
+
         ArmPayloadOwnerHierarchyFailure(context, failure);
-        var graph = await PrepareComplexPeerRecoveryAsync(context);
+        var graph = await PrepareComplexPeerRecoveryAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         ChangeComplexPeerPayload(graph, mutation);
         var before = CapturePlannedParentState(context);
         var complexBefore = CaptureComplexPeerState(graph);
-        var storedBefore = await ReadComplexPeerStoreAsync(database, shape);
+        var storedBefore = await ReadComplexPeerStoreAsync(database, shape,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var error = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
         var after = CapturePlannedParentState(context);
         var complexAfter = CaptureComplexPeerState(graph);
-        var storedAfter = await ReadComplexPeerStoreAsync(database, shape);
+        var storedAfter = await ReadComplexPeerStoreAsync(database, shape,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         AssertPlannedParentState(before, after);
@@ -55,15 +64,24 @@ public abstract partial class SaveChangesTests
     public async Task ComplexPeerRollbackAllowsIdenticalRetry(string shape, string mutation, bool hierarchyFailure)
     {
         // Arrange
-        await using var database = await CreateComplexPeerRecoveryDatabaseAsync(shape);
+        await using var database = await CreateComplexPeerRecoveryDatabaseAsync(shape,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var (failure, expectedError) = CreatePayloadOwnerRecoveryFailure(hierarchyFailure);
-        await using var context = await CreateComplexPeerRecoveryContextAsync(database, shape, failure);
+        await using var context = await CreateComplexPeerRecoveryContextAsync(database, shape,
+            cancellationToken: TestContext.Current.CancellationToken,
+            failure);
+
         ArmPayloadOwnerHierarchyFailure(context, failure);
-        var graph = await PrepareComplexPeerRecoveryAsync(context);
+        var graph = await PrepareComplexPeerRecoveryAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         ChangeComplexPeerPayload(graph, mutation);
         var before = CapturePlannedParentState(context);
         var complexBefore = CaptureComplexPeerState(graph);
-        var storedBefore = await ReadComplexPeerStoreAsync(database, shape);
+        var storedBefore = await ReadComplexPeerStoreAsync(database, shape,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var detections = 0;
         context.ChangeTracker.DetectedAllChanges += (_, _) => detections++;
         // WHY: The one-shot failure is the retry's precondition; no state or modification flag is repaired manually.
@@ -73,7 +91,8 @@ public abstract partial class SaveChangesTests
 
         // Act
         var retryError = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
-        var storedAfter = await ReadComplexPeerStoreAsync(database, shape);
+        var storedAfter = await ReadComplexPeerStoreAsync(database, shape,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         AssertPlannedParentState(before, afterFailure);
@@ -105,18 +124,27 @@ public abstract partial class SaveChangesTests
     public async Task ComplexPeerSuccessPreservesUnmarkedPayload(string shape, string mutation)
     {
         // Arrange
-        await using var database = await CreateComplexPeerRecoveryDatabaseAsync(shape);
-        await using var context = await CreateComplexPeerRecoveryContextAsync(database, shape);
-        var graph = await PrepareComplexPeerRecoveryAsync(context);
+        await using var database = await CreateComplexPeerRecoveryDatabaseAsync(shape,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using var context = await CreateComplexPeerRecoveryContextAsync(database, shape,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var graph = await PrepareComplexPeerRecoveryAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         ChangeComplexPeerPayload(graph, mutation);
         var complexBefore = CaptureComplexPeerState(graph);
-        var storedBefore = await ReadComplexPeerStoreAsync(database, shape);
+        var storedBefore = await ReadComplexPeerStoreAsync(database, shape,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var detections = 0;
         context.ChangeTracker.DetectedAllChanges += (_, _) => detections++;
 
         // Act
         var error = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
-        var storedAfter = await ReadComplexPeerStoreAsync(database, shape);
+        var storedAfter = await ReadComplexPeerStoreAsync(database, shape,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Null(error);

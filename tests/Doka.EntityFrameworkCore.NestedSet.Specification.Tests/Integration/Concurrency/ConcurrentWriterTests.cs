@@ -22,7 +22,7 @@ public abstract class ConcurrentWriterTests : ProviderTest
     public async Task SameTreeSerializes64ChildWritersWithDensePositions()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var treeId = TreeId(1);
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         await using (var setup = database.CreateContext())

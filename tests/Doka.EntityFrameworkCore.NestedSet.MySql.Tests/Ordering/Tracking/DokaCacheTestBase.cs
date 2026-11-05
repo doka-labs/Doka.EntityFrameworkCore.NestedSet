@@ -35,8 +35,11 @@ public abstract class DokaCacheTestBase : ProviderTest
     )
     {
         // Arrange
-        await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, 5000);
-        await using var template = await _fixture.CreateContextAsync(Engine);
+        await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, 5000,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await using var template = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var services = CacheTestServices.Create(template.GetService<IDbContextOptions>());
 
         await using (var warm = OrderingRefreshTestSupport.CreateCacheContext(template, services))
@@ -52,7 +55,8 @@ public abstract class DokaCacheTestBase : ProviderTest
         }
 
         // WHY: Warmup must not leave a no-op rename or changed tree for measurement; reset every persisted row.
-        await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, 5000);
+        await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, 5000,
+            cancellationToken: TestContext.Current.CancellationToken);
         using var probe = new ScaleProbe();
         await using var context = OrderingRefreshTestSupport.CreateCacheContext(template, services, probe);
         var tracked = await context

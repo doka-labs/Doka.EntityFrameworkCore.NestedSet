@@ -24,22 +24,34 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var database = await CreateComplexCompositionDatabaseAsync();
+        await using var database = await CreateComplexCompositionDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var callback = new SaveBoundaryCallback();
         Action? mutateOnCompletion = null;
         var failure = new ComplexCallbackCompletionFailure(() => mutateOnCompletion?.Invoke());
-        await using var context = await CreateComplexCallbackContextAsync(database, callback, failure);
-        var graph = await LoadComplexCallbackGraphAsync(context);
+        await using var context = await CreateComplexCallbackContextAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken,
+            callback, failure);
+
+        var graph = await LoadComplexCallbackGraphAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var inputs = CreateComplexCompositionInputs(shape);
-        await PrepareComplexCompositionOperationAsync(context, shape);
+        await PrepareComplexCompositionOperationAsync(context, shape,
+            cancellationToken: TestContext.Current.CancellationToken);
         context.ChangeTracker.AutoDetectChangesEnabled = automaticDetection;
         PlannedEntryState[]? before = null;
         ComplexCallbackClrState? clrBefore = null;
         ComplexCompositionNativeState? nativeBefore = null;
         ComplexCallbackStoredRow? expectedAfterRetry = null;
         var inputBefore = CapturePreparedOwnerInputs(inputs);
-        var storedBefore = await ReadComplexCallbackRowAsync(database);
-        var hierarchyBefore = await ReadPreparedOwnerStoreAsync(database);
+        var storedBefore = await ReadComplexCallbackRowAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchyBefore = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         Action mutation = () =>
         {
             ChangePendingComplexComposition(graph.Row.Entity, pending);
@@ -86,13 +98,17 @@ public abstract partial class SaveChangesTests
         }
 
         var firstError = await Record.ExceptionAsync(() =>
-            RunComplexCompositionOperationAsync(context, shape, inputs));
+            RunComplexCompositionOperationAsync(context, shape, inputs,
+                cancellationToken: TestContext.Current.CancellationToken));
 
         var afterFailure = CaptureComplexCompositionEntries(context, graph);
         var clrAfterFailure = CaptureComplexCallbackClr(graph.Row.Entity);
         var nativeAfterFailure = CaptureComplexCompositionNative(graph);
-        var storedAfterFailure = await ReadComplexCallbackRowAsync(database);
-        var hierarchyAfterFailure = await ReadPreparedOwnerStoreAsync(database);
+        var storedAfterFailure = await ReadComplexCallbackRowAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchyAfterFailure = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var retryError = await Record.ExceptionAsync(async () =>
@@ -101,8 +117,11 @@ public abstract partial class SaveChangesTests
             await context.SaveChangesAsync(CancellationToken.None);
         });
 
-        var storedAfterRetry = await ReadComplexCallbackRowAsync(database);
-        var hierarchyAfterRetry = await ReadPreparedOwnerStoreAsync(database);
+        var storedAfterRetry = await ReadComplexCallbackRowAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchyAfterRetry = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Same(failure.Error, firstError);

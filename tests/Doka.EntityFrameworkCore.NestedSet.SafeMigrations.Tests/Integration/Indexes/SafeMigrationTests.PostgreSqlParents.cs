@@ -12,25 +12,32 @@ public sealed partial class SafeMigrationTests
     )
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync("PostgreSql", qualifySchema);
+        await using var database = await CreateDatabaseAsync("PostgreSql", qualifySchema,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var chain = database.Scaffold(MigrationStage.Current, "PartialParents");
-        await database.MigrateAsync(chain);
-        await database.SeedAsync();
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
+        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext(MigrationStage.Current, chain.Assembly);
         var operations = GetIndexOperations(chain, context)
             .Where(operation => ((EnsureIndexIntent)operation.Intent).Definition.Filter
                 is "parent_entry IS NULL" or "parent_entry IS NOT NULL").ToArray();
 
-        var filtersBefore = await ReadPostgreSqlParentFiltersAsync(context);
-        var nodesBefore = await database.ReadNodesAsync();
+        var filtersBefore = await ReadPostgreSqlParentFiltersAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var nodesBefore = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         // Act
-        await SafeMigrationTestServices.ExecuteOperationsAsync(context, operations);
+        await SafeMigrationTestServices.ExecuteOperationsAsync(context, operations,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        var filtersAfter = await ReadPostgreSqlParentFiltersAsync(context);
-        var nodesAfter = await database.ReadNodesAsync();
+        var filtersAfter = await ReadPostgreSqlParentFiltersAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var nodesAfter = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
         var historyAfter = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         Assert.Equal(2, operations.Length);
@@ -57,17 +64,21 @@ public sealed partial class SafeMigrationTests
     )
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync("PostgreSql", qualifySchema);
+        await using var database = await CreateDatabaseAsync("PostgreSql", qualifySchema,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var chain = database.Scaffold(MigrationStage.Current, "PartialParents");
-        await database.MigrateAsync(chain);
-        await database.SeedAsync();
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
+        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext(MigrationStage.Current, chain.Assembly);
         var operations = GetIndexOperations(chain, context)
             .Where(operation => ((EnsureIndexIntent)operation.Intent).Definition.Filter
                 is "parent_entry IS NULL" or "parent_entry IS NOT NULL").ToArray();
 
-        var filtersBefore = await ReadPostgreSqlParentFiltersAsync(context);
-        var nodesBefore = await database.ReadNodesAsync();
+        var filtersBefore = await ReadPostgreSqlParentFiltersAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var nodesBefore = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         // Act
@@ -75,8 +86,10 @@ public sealed partial class SafeMigrationTests
             new SafeMigrationRunOptions("nested-set-partial-parent-replay"), CancellationToken.None);
 
         // Assert
-        var filtersAfter = await ReadPostgreSqlParentFiltersAsync(context);
-        var nodesAfter = await database.ReadNodesAsync();
+        var filtersAfter = await ReadPostgreSqlParentFiltersAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var nodesAfter = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
         var historyAfter = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         Assert.Equal(2, operations.Length);
@@ -110,10 +123,12 @@ public sealed partial class SafeMigrationTests
     )
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync("PostgreSql", qualifySchema);
+        await using var database = await CreateDatabaseAsync("PostgreSql", qualifySchema,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var chain = database.Scaffold(MigrationStage.Current, "PartialParents");
-        await database.MigrateAsync(chain);
-        await database.SeedAsync();
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
+        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext(MigrationStage.Current, chain.Assembly);
         var filter = role switch
         {
@@ -144,8 +159,10 @@ public sealed partial class SafeMigrationTests
         // WHY: Native DDL represents external drift independently of the generated migration's safeguards.
         await context.Database.ExecuteSqlRawAsync(drop, CancellationToken.None);
         await context.Database.ExecuteSqlRawAsync(create, CancellationToken.None);
-        var filtersBefore = await ReadPostgreSqlParentFiltersAsync(context);
-        var nodesBefore = await database.ReadNodesAsync();
+        var filtersBefore = await ReadPostgreSqlParentFiltersAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var nodesBefore = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         // Act
@@ -153,8 +170,10 @@ public sealed partial class SafeMigrationTests
             new SafeMigrationRunOptions("nested-set-partial-parent-drift"), CancellationToken.None);
 
         // Assert
-        var filtersAfter = await ReadPostgreSqlParentFiltersAsync(context);
-        var nodesAfter = await database.ReadNodesAsync();
+        var filtersAfter = await ReadPostgreSqlParentFiltersAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var nodesAfter = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
         var historyAfter = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         Assert.Single(report.Assessments);
@@ -181,10 +200,12 @@ public sealed partial class SafeMigrationTests
     )
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync("PostgreSql", qualifySchema);
+        await using var database = await CreateDatabaseAsync("PostgreSql", qualifySchema,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var chain = database.Scaffold(MigrationStage.Current, "PartialParents");
-        await database.MigrateAsync(chain);
-        await database.SeedAsync();
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
+        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext(MigrationStage.Current, chain.Assembly);
         var filter = role switch
         {
@@ -215,17 +236,22 @@ public sealed partial class SafeMigrationTests
         // WHY: Native DDL represents external drift independently of the generated migration's safeguards.
         await context.Database.ExecuteSqlRawAsync(drop, CancellationToken.None);
         await context.Database.ExecuteSqlRawAsync(create, CancellationToken.None);
-        var filtersBefore = await ReadPostgreSqlParentFiltersAsync(context);
-        var nodesBefore = await database.ReadNodesAsync();
+        var filtersBefore = await ReadPostgreSqlParentFiltersAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var nodesBefore = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         // Act
         var exception = await Record.ExceptionAsync(() =>
-            SafeMigrationTestServices.ExecuteOperationsAsync(context, [operation]));
+            SafeMigrationTestServices.ExecuteOperationsAsync(context, [operation],
+                cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
-        var filtersAfter = await ReadPostgreSqlParentFiltersAsync(context);
-        var nodesAfter = await database.ReadNodesAsync();
+        var filtersAfter = await ReadPostgreSqlParentFiltersAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var nodesAfter = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
         var historyAfter = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         var databaseException = Assert.IsAssignableFrom<DbException>(exception);
@@ -237,11 +263,14 @@ public sealed partial class SafeMigrationTests
     }
 
     /// <summary>Reads actual partial-index predicates without modifying statistics or catalog metadata.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
     private static async Task<Dictionary<string, string>> ReadPostgreSqlParentFiltersAsync(
-        DbContext context
+        DbContext context,
+        CancellationToken cancellationToken
     )
     {
-        await context.Database.OpenConnectionAsync(CancellationToken.None);
+        await context.Database.OpenConnectionAsync(cancellationToken);
         await using var command = context.Database.GetDbConnection().CreateCommand();
         command.CommandText = """
             SELECT i.relname, pg_get_expr(ix.indpred, ix.indrelid)
@@ -259,9 +288,9 @@ public sealed partial class SafeMigrationTests
         schema.Value = context.Model.GetDefaultSchema() ?? "public";
         command.Parameters.Add(schema);
         var filters = new Dictionary<string, string>(StringComparer.Ordinal);
-        await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
-        while (await reader.ReadAsync(CancellationToken.None))
+        while (await reader.ReadAsync(cancellationToken))
         {
             filters.Add(reader.GetString(0), reader.GetString(1));
         }

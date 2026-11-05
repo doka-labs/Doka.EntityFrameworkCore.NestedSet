@@ -6,7 +6,8 @@ internal static partial class CompositionConsumerCapacityProfiles
 {
     /// <summary>Measures finite real frontier expansion on the persisted deep hierarchy.</summary>
     private static async Task<CompositionConsumerCapacityObservation> MeasureChainAsync(
-        TestDatabase database, string engine, CompositionConsumerDataset data, int hops, bool expanded)
+        TestDatabase database, string engine, CompositionConsumerDataset data, int hops, bool expanded,
+        CancellationToken cancellationToken)
     {
         await using var source = database.CreateContext();
         var planProbe = new EnterpriseProbe(captureParameterBindings: true);
@@ -46,9 +47,9 @@ internal static partial class CompositionConsumerCapacityProfiles
         var started = Stopwatch.GetTimestamp();
         var result = expanded
             ? await App.SupervisorQueries.FollowAllMembershipsAsync(
-                context, CompositionConsumerModel.Tenant, request, CancellationToken.None)
+                context, CompositionConsumerModel.Tenant, request, cancellationToken)
             : await App.SupervisorQueries.FollowOriginalPathAsync(
-                context, CompositionConsumerModel.Tenant, request, CancellationToken.None);
+                context, CompositionConsumerModel.Tenant, request, cancellationToken);
 
         var elapsed = Stopwatch.GetElapsedTime(started);
         var commandCount = commands.CommandCount;
@@ -59,13 +60,15 @@ internal static partial class CompositionConsumerCapacityProfiles
             .Order(StringComparer.Ordinal).Prepend($"{result.Status}:{result.Complete}").ToArray();
 
         var expected = ExpectedChains(data.Nodes, hops, expanded);
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, 0, engine);
+        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, 0, engine,
+            cancellationToken: cancellationToken);
+
         var profile = $"groups-chain-{data.Nodes}-hops-{hops}-{(expanded ? "expanded" : "original")}-initial-build";
         var observation = new CompositionConsumerCapacityObservation(profile, actual, expected, commandCount,
             hops, maximumParameters, constructionCommands, materialized, tracked, buildBytes,
             256 * 1_024, elapsed, plan);
 
-        await WriteAsync(engine, observation, planProbe.Commands[0]);
+        await WriteAsync(engine, observation, planProbe.Commands[0], cancellationToken: cancellationToken);
 
         // WHY: Later hops use different current subjects, origins and role parameters. The first reader's
         // plan cannot establish their database work, even when all readers reuse a compiled query shape.
@@ -73,12 +76,13 @@ internal static partial class CompositionConsumerCapacityProfiles
         for (var reader = 0; reader < commandCount; reader++)
         {
             var readerPlan = reader == 0 ? plan
-                : await QueryPlanTestSupport.ExplainAsync(context, planProbe, reader, engine);
+                : await QueryPlanTestSupport.ExplainAsync(context, planProbe, reader, engine,
+                    cancellationToken: cancellationToken);
 
             await WriteAsync(engine, observation with
             {
                 Profile = $"{profile}-reader-{reader + 1}", Plan = readerPlan,
-            }, planProbe.Commands[reader]);
+            }, planProbe.Commands[reader], cancellationToken: cancellationToken);
         }
 
         return observation;

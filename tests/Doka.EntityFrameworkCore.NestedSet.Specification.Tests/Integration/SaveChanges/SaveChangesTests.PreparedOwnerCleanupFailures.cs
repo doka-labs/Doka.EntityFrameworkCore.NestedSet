@@ -11,16 +11,26 @@ public abstract partial class SaveChangesTests
     public async Task PreparedOwnerImportContinuesFutureCleanupAfterCallbackFailure(string shape)
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedPreparedNavigationDestinationAsync(database);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedPreparedNavigationDestinationAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, callback, probe);
-        var graph = await PrepareOwnerImportAsync(context, 130);
+        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            callback, probe);
+
+        var graph = await PrepareOwnerImportAsync(context, 130,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var firstFuture = graph.Inputs[64];
         var secondFuture = graph.Inputs[129];
         var inputBefore = CapturePreparedOwnerInputs(graph.Inputs);
-        var storedBefore = await ReadPreparedOwnerStoreAsync(database);
+        var storedBefore = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var cleanupError = new InvalidOperationException("Injected future-input detachment callback failure.");
         var futureAttempts = new List<NavigationNode>();
         var activeAttempts = new List<int>();
@@ -70,7 +80,8 @@ public abstract partial class SaveChangesTests
             InsertPreparedOwnerImportAsync(context, shape, graph.Inputs, CancellationToken.None));
 
         var inputAfter = CapturePreparedOwnerInputs(graph.Inputs);
-        var storedAfter = await ReadPreparedOwnerStoreAsync(database);
+        var storedAfter = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var aggregate = Assert.IsType<AggregateException>(error);

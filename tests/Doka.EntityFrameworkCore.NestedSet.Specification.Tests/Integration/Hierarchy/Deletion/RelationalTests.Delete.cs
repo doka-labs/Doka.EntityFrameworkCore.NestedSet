@@ -10,13 +10,13 @@ public abstract partial class RelationalTests
     public async Task DeletePromotesChildrenIntoRemovedSiblingPosition()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedPlacementTreeAsync(context, 1);
+        await SeedPlacementTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         await tree.MoveBeforeAsync(5, 6, CancellationToken.None);
         await tree.MoveToAsync(3, 2, CancellationToken.None);
@@ -32,11 +32,16 @@ public abstract partial class RelationalTests
                 .Where(node => node.Tree == 1)
                 .Where(node => node.Parent == null)
                 .OrderBy(node => node.NodeId),
+            cancellationToken: TestContext.Current.CancellationToken,
             1);
 
-        await AssertOrderAsync(tree.ChildrenOf(1), 4, 5, 6, 3);
-        await AssertDepthsAsync(context, 1, (5, 1), (6, 1), (3, 1));
-        await AssertValidAsync(context, 1);
+        await AssertOrderAsync(tree.ChildrenOf(1),
+            cancellationToken: TestContext.Current.CancellationToken,
+            4, 5, 6, 3);
+        await AssertDepthsAsync(context, 1,
+            cancellationToken: TestContext.Current.CancellationToken,
+            (5, 1), (6, 1), (3, 1));
+        await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Deleting a subtree removes its descendants and compacts the surviving forest.</summary>
@@ -45,13 +50,13 @@ public abstract partial class RelationalTests
     public async Task DeleteSubtreeRemovesAllDescendants()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedPlacementTreeAsync(context, 1);
+        await SeedPlacementTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         await tree.MoveBeforeAsync(5, 6, CancellationToken.None);
         await tree.MoveToAsync(3, 2, CancellationToken.None);
@@ -69,6 +74,7 @@ public abstract partial class RelationalTests
                 .Where(node => node.Tree == 1)
                 .Where(node => node.Parent == null)
                 .OrderBy(node => node.NodeId),
+            cancellationToken: TestContext.Current.CancellationToken,
             99);
         Assert.False(
             await context
@@ -76,7 +82,7 @@ public abstract partial class RelationalTests
                 .AsNoTracking()
                 .Where(node => node.Tree == 1)
                 .AnyAsync(x => x.NodeId == 4, CancellationToken.None));
-        await AssertValidAsync(context, 1);
+        await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Promotion preserves child order, descendants and immediate-parent relations.</summary>
@@ -85,23 +91,27 @@ public abstract partial class RelationalTests
     public async Task DeleteDeepNodePromotesAllChildSubtrees()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedPromotionTreeAsync(context, 1);
+        await SeedPromotionTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         await tree.DeleteAsync(3, CancellationToken.None);
 
         // Assert
-        await AssertOrderAsync(tree.ChildrenOf(2), 9, 4, 11, 10);
-        await AssertDepthsAsync(context, 1, (4, 2), (5, 3), (11, 2), (12, 3));
-        await AssertOrderAsync(tree.ParentOf(5), 4);
-        await AssertOrderAsync(tree.ParentOf(12), 11);
-        await AssertValidAsync(context, 1);
+        await AssertOrderAsync(tree.ChildrenOf(2),
+            cancellationToken: TestContext.Current.CancellationToken,
+            9, 4, 11, 10);
+        await AssertDepthsAsync(context, 1,
+            cancellationToken: TestContext.Current.CancellationToken,
+            (4, 2), (5, 3), (11, 2), (12, 3));
+        await AssertOrderAsync(tree.ParentOf(5), cancellationToken: TestContext.Current.CancellationToken, 4);
+        await AssertOrderAsync(tree.ParentOf(12), cancellationToken: TestContext.Current.CancellationToken, 11);
+        await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Subtree removal does not change the depth of surviving siblings.</summary>
@@ -110,13 +120,13 @@ public abstract partial class RelationalTests
     public async Task DeleteDeepSubtreePreservesSiblingDepths()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedPromotionTreeAsync(context, 1);
+        await SeedPromotionTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         await tree.DeleteAsync(3, CancellationToken.None);
 
@@ -124,9 +134,9 @@ public abstract partial class RelationalTests
         await tree.DeleteSubtreeAsync(4, CancellationToken.None);
 
         // Assert
-        await AssertOrderAsync(tree.ChildrenOf(2), 9, 11, 10);
-        await AssertDepthsAsync(context, 1, (11, 2), (12, 3));
-        await AssertValidAsync(context, 1);
+        await AssertOrderAsync(tree.ChildrenOf(2), cancellationToken: TestContext.Current.CancellationToken, 9, 11, 10);
+        await AssertDepthsAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken, (11, 2), (12, 3));
+        await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Removing a non-root ancestor rebases every surviving descendant depth.</summary>
@@ -135,13 +145,13 @@ public abstract partial class RelationalTests
     public async Task DeleteDeepAncestorRebasesEntireSurvivingSubtree()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedPromotionTreeAsync(context, 1);
+        await SeedPromotionTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         await tree.DeleteAsync(3, CancellationToken.None);
         await tree.DeleteSubtreeAsync(4, CancellationToken.None);
@@ -161,11 +171,14 @@ public abstract partial class RelationalTests
                 .Where(node => node.Tree == 1)
                 .Where(node => node.Parent == null)
                 .OrderBy(node => node.NodeId),
+            cancellationToken: TestContext.Current.CancellationToken,
             6,
             99);
-        await AssertOrderAsync(tree.ChildrenOf(99), 2);
-        await AssertDepthsAsync(context, 1, (2, 1), (11, 2), (12, 3));
-        await AssertValidAsync(context, 1);
+        await AssertOrderAsync(tree.ChildrenOf(99), cancellationToken: TestContext.Current.CancellationToken, 2);
+        await AssertDepthsAsync(context, 1,
+            cancellationToken: TestContext.Current.CancellationToken,
+            (2, 1), (11, 2), (12, 3));
+        await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Subtree deletion breaks internal references before restrictive foreign-key checks.</summary>
@@ -174,13 +187,13 @@ public abstract partial class RelationalTests
     public async Task DeleteSubtreeSupportsRestrictiveSelfForeignKey()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<ConstrainedNode>()
             .ForScope(1);
 
-        await SeedConstrainedTreeAsync(context, 1);
+        await SeedConstrainedTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         await tree.DeleteSubtreeAsync(2, CancellationToken.None);
@@ -207,13 +220,13 @@ public abstract partial class RelationalTests
     public async Task DeletePromotesChildWithRestrictiveSelfForeignKey()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<ConstrainedNode>()
             .ForScope(1);
 
-        await SeedConstrainedTreeAsync(context, 1);
+        await SeedConstrainedTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
         await tree.DeleteSubtreeAsync(2, CancellationToken.None);
 
         await tree.InsertRootAsync(new ConstrainedNode { Id = 5 }, Guid.NewGuid(), CancellationToken.None);
@@ -243,21 +256,21 @@ public abstract partial class RelationalTests
     public async Task DeleteRootPromotionIsRejectedWithoutChangingItsTree()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedPlacementTreeAsync(context, 1);
-        var before = await SnapshotAsync(context, 1);
+        await SeedPlacementTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
+        var before = await SnapshotAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var error = await Record.ExceptionAsync(() => tree.DeleteAsync(1, CancellationToken.None));
 
         // Assert
         Assert.Equal(NestedSetErrorCode.OperationRejected, Assert.IsType<NestedSetException>(error).Code);
-        Assert.Equal(before, await SnapshotAsync(context, 1));
-        await AssertValidAsync(context, 1);
+        Assert.Equal(before, await SnapshotAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken));
+        await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
 }

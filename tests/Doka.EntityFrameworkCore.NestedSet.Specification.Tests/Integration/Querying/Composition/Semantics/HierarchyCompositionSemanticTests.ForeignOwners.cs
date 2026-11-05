@@ -16,7 +16,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
+        await using var context = await CreateContextAsync(scope, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var foreignTree = Guid.NewGuid();
         await context.AddRangeAsync(Enumerable.Range(0, 8).Select(depth => new CompositionNode
         {

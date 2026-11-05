@@ -13,7 +13,9 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new SaveBoundaryProbe { FailNextPayload = true };
         await using var services = RetryBoundaryServices.Create(Engine);
         var options = SaveBoundaryTestSupport
@@ -59,7 +61,9 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new SaveBoundaryProbe();
         await using var context = new SaveBoundaryContext(SaveBoundaryTestSupport.Options(setup, probe).Options);
         await using var transaction = await context.Database.BeginTransactionAsync(isolation, CancellationToken.None);
@@ -96,7 +100,9 @@ public abstract partial class SaveChangesTests
     public async Task FailedUnrelatedSaveKeepsNativePendingCallbackState()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new SaveBoundaryProbe { FailNextPayload = true };
         var callback = new SaveBoundaryCallback();
         await using var context = new SaveBoundaryContext(

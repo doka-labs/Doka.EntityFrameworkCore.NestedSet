@@ -36,8 +36,10 @@ public abstract partial class HierarchyCompositionModelTests
         var materialized = 0;
         await using DbContext context = tpt
             ? await _fixture.CreateContextAsync<TptContext>(Engine, static options => new TptContext(options),
+                cancellationToken: TestContext.Current.CancellationToken,
                 probe, TestMaterializationObserver.Instance)
             : await _fixture.CreateContextAsync<TphContext>(Engine, static options => new TphContext(options),
+                cancellationToken: TestContext.Current.CancellationToken,
                 probe, TestMaterializationObserver.Instance);
 
         TestMaterializationObserver.Instance.Register(context, _ => materialized++);
@@ -98,6 +100,7 @@ public abstract partial class HierarchyCompositionModelTests
         await using var context = await _fixture.CreateContextAsync<ConcreteTpcContext>(
             Engine,
             static options => new ConcreteTpcContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe,
             TestMaterializationObserver.Instance);
 

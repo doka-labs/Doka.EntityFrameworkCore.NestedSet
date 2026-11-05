@@ -15,8 +15,10 @@ public abstract partial class EnterpriseTests : ProviderTest
     }
 
     /// <summary>Captures all mutable structure without including application payload in comparisons.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static Task<NodeState[]> SnapshotAsync(
-        TreeContext context
+        TreeContext context,
+        CancellationToken cancellationToken
     ) => context
         .Set<TreeNode>()
         .AsNoTracking()
@@ -29,7 +31,7 @@ public abstract partial class EnterpriseTests : ProviderTest
             node.Position,
             node.Parent,
             node.Tree))
-        .ToArrayAsync(CancellationToken.None);
+        .ToArrayAsync(cancellationToken);
 
     /// <summary>Captures the canonical structure of a fixture independently of the implementation under test.</summary>
     private static NodeState[] Snapshot(
@@ -46,11 +48,13 @@ public abstract partial class EnterpriseTests : ProviderTest
         .ToArray();
 
     /// <summary>Starts a caller transaction with the provider's supported hierarchy isolation level.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static Task<IDbContextTransaction> BeginCallerAsync(
-        TreeContext context
+        TreeContext context,
+        CancellationToken cancellationToken
     ) => context.Database.BeginTransactionAsync(
         context.Database.IsSqlite() ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
-        CancellationToken.None);
+        cancellationToken);
 
     /// <summary>Stores structure by value so rollback assertions compare every persisted coordinate and link.</summary>
     private sealed record NodeState(

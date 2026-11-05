@@ -12,9 +12,13 @@ public abstract partial class GroupSupervisorTests
     ];
 
     /// <summary>Reads common session-scoped engine counters from the caller's already pinned connection.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="context">The context with an explicitly opened connection for the measured operation.</param>
     /// <returns>Complete nonnegative read counters; malformed or missing observations fail closed.</returns>
-    private static async Task<Dictionary<string, long>> ReadRankingHandlersAsync(App.UserGroupContext context)
+    private static async Task<Dictionary<string, long>> ReadRankingHandlersAsync(
+        App.UserGroupContext context,
+        CancellationToken cancellationToken
+    )
     {
         var connection = context.Database.GetDbConnection();
         if (connection.State != ConnectionState.Open)
@@ -28,9 +32,9 @@ public abstract partial class GroupSupervisorTests
         command.CommandText = "SHOW SESSION STATUS WHERE Variable_name IN ("
             + "'Handler_read_first','Handler_read_key','Handler_read_last','Handler_read_next',"
             + "'Handler_read_prev','Handler_read_rnd','Handler_read_rnd_next')";
-        await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var values = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
-        while (await reader.ReadAsync(CancellationToken.None))
+        while (await reader.ReadAsync(cancellationToken))
         {
             var name = reader.GetString(0);
             if (!long.TryParse(reader.GetString(1), NumberStyles.None, CultureInfo.InvariantCulture, out var count)
@@ -77,14 +81,15 @@ public abstract partial class GroupSupervisorTests
     }
 
     /// <summary>Retains SHOW's own request overhead separately from a fully drained physical fixture lookup.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="context">The context whose connection remains open through the actual measured command.</param>
     /// <param name="source">The existing fixture source key used by the physical calibration read.</param>
     /// <returns>Raw status-only and lookup deltas, plus the number of completely drained lookup rows.</returns>
     private static async Task<(Dictionary<string, long> Empty, Dictionary<string, long> Lookup, int Rows)>
-        CalibrateRankingHandlersAsync(App.UserGroupContext context, int source)
+        CalibrateRankingHandlersAsync(App.UserGroupContext context, int source, CancellationToken cancellationToken)
     {
-        var before = await ReadRankingHandlersAsync(context);
-        var empty = await ReadRankingHandlersAsync(context);
+        var before = await ReadRankingHandlersAsync(context, cancellationToken: cancellationToken);
+        var empty = await ReadRankingHandlersAsync(context, cancellationToken: cancellationToken);
         var entity = context.Model.FindEntityType(typeof(App.User))
             ?? throw new InvalidOperationException("The rank calibration user mapping is missing.");
 
@@ -109,15 +114,15 @@ public abstract partial class GroupSupervisorTests
         key.Value = source;
         command.Parameters.Add(key);
         var rows = 0;
-        await using (var reader = await command.ExecuteReaderAsync(CancellationToken.None))
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
         {
-            while (await reader.ReadAsync(CancellationToken.None))
+            while (await reader.ReadAsync(cancellationToken))
             {
                 rows++;
             }
         }
 
-        var after = await ReadRankingHandlersAsync(context);
+        var after = await ReadRankingHandlersAsync(context, cancellationToken: cancellationToken);
 
         return (RankingHandlerDelta(before, empty), RankingHandlerDelta(empty, after), rows);
     }

@@ -21,7 +21,7 @@ public abstract partial class NestedSetMutationFacadeTests : ProviderTest
     public async Task RootAndChildUseExactTreeIdentity()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -53,7 +53,7 @@ public abstract partial class NestedSetMutationFacadeTests : ProviderTest
     public async Task IndependentTreesKeepLocalBounds()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -77,7 +77,7 @@ public abstract partial class NestedSetMutationFacadeTests : ProviderTest
     public async Task MutationIgnoresFilterAndPublicQueryPreservesIt()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context.NestedSet<UnscopedQueryNode>();
         var root = new UnscopedQueryNode
@@ -112,7 +112,7 @@ public abstract partial class NestedSetMutationFacadeTests : ProviderTest
     public async Task DuplicateRootIsRejectedBeforeNodeWrite()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -138,7 +138,7 @@ public abstract partial class NestedSetMutationFacadeTests : ProviderTest
     public async Task MoveToTransfersSubtreeAcrossTrees()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -177,7 +177,7 @@ public abstract partial class NestedSetMutationFacadeTests : ProviderTest
     public async Task DetachCreatesIndependentTree()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -210,7 +210,7 @@ public abstract partial class NestedSetMutationFacadeTests : ProviderTest
     public async Task DeletedTreeIdCannotBeReused()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()

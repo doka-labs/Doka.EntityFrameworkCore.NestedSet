@@ -28,7 +28,10 @@ public abstract class BulkWriteBudgetTests : ProviderTest
             nameof(BulkManualNode.Left),
             nameof(BulkManualNode.Right));
 
-        await using var context = await _generated.ResetAsync(Engine, probe);
+        await using var context = await _generated.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var tree = context
             .NestedSet<BulkManualNode>()
             .ForScope(1);
@@ -68,7 +71,7 @@ public abstract class BulkWriteBudgetTests : ProviderTest
     public async Task AssignedMappedParentsNeedNoFinalizationWrites()
     {
         // Arrange
-        var database = await _assigned.ResetAsync(Engine);
+        var database = await _assigned.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new StructuralWriteProbe(
             nameof(ConstrainedNode),
             nameof(ConstrainedNode.Left),
@@ -112,7 +115,10 @@ public abstract class BulkWriteBudgetTests : ProviderTest
             nameof(BulkManualNode.Left),
             nameof(BulkManualNode.Right));
 
-        await using var context = await _generated.ResetAsync(Engine, probe);
+        await using var context = await _generated.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var tree = context
             .NestedSet<BulkManualNode>()
             .ForScope(1);
@@ -170,7 +176,10 @@ public abstract class BulkWriteBudgetTests : ProviderTest
             nameof(BulkManualNode.Left),
             nameof(BulkManualNode.Right));
 
-        await using var context = await _generated.ResetAsync(Engine, probe);
+        await using var context = await _generated.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var tree = context
             .NestedSet<BulkManualNode>()
             .ForScope(1);
@@ -219,7 +228,10 @@ public abstract class BulkWriteBudgetTests : ProviderTest
             nameof(BulkGeneratedNode.Left),
             nameof(BulkGeneratedNode.Right));
 
-        await using var context = await _generated.ResetAsync(Engine, probe);
+        await using var context = await _generated.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var tree = context
             .NestedSet<BulkGeneratedNode>()
             .ForScope(1);
@@ -254,7 +266,10 @@ public abstract class BulkWriteBudgetTests : ProviderTest
     {
         // Arrange
         var failure = new BulkRefreshFailure(nameof(BulkManualNode));
-        await using var context = await _generated.ResetAsync(Engine, failure);
+        await using var context = await _generated.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            failure);
+
         context.SavedChanges += (_, _) => failure.Inserted = true;
         var tree = context
             .NestedSet<BulkManualNode>()
@@ -290,7 +305,10 @@ public abstract class BulkWriteBudgetTests : ProviderTest
     {
         // Arrange
         var failure = new BulkRefreshFailure(nameof(BulkNavigationNode));
-        await using var context = await _generated.ResetAsync(Engine, failure);
+        await using var context = await _generated.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            failure);
+
         context.SavedChanges += (_, _) => failure.Inserted = true;
         var tree = context
             .NestedSet<BulkNavigationNode>()

@@ -22,7 +22,7 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context.MembershipMetadatas.Where(value => value.TenantId == data.TenantId
                 && value.UserId == data.Users[3] && value.FieldCode == "Route")
@@ -55,7 +55,7 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var hidden = new[] { data.Users[1], data.Users[2] };
         await context.Users.Where(user => user.TenantId == data.TenantId && Enumerable.Contains(hidden, user.Id))
@@ -78,7 +78,7 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context.Groups.Where(group => group.TenantId == data.TenantId && group.Id == data.Groups[3])
             .ExecuteUpdateAsync(setters => setters.SetProperty(group => group.Visible, false), CancellationToken.None);
@@ -111,7 +111,7 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var first = new DateOnly(2026, 10, 1);
         await context.GroupRelationPeriods.Where(period => period.TenantId == data.TenantId
@@ -143,7 +143,7 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var request = data.Request(App.SearchStart.IncludeSelf, data.Groups[6]) with
         {

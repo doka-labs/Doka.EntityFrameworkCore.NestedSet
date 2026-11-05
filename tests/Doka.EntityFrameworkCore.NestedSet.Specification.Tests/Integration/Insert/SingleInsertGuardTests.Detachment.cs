@@ -25,7 +25,8 @@ public abstract partial class SingleInsertGuardTests
         await using var database = new ModelCompatibilityDatabase();
         await using var context = await database.CreateContextAsync<SingleIdentityContext>(
             Engine,
-            static options => new SingleIdentityContext(options));
+            static options => new SingleIdentityContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         await using var transaction = callerTransaction
             ? await context.Database.BeginTransactionAsync(
@@ -109,7 +110,8 @@ public abstract partial class SingleInsertGuardTests
         await using var database = new ModelCompatibilityDatabase();
         await using var context = await database.CreateContextAsync<SingleIdentityContext>(
             Engine,
-            static options => new SingleIdentityContext(options));
+            static options => new SingleIdentityContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         await using var transaction = callerTransaction
             ? await context.Database.BeginTransactionAsync(

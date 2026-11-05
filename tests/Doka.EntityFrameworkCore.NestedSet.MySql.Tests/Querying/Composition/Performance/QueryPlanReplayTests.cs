@@ -17,13 +17,16 @@ public sealed class QueryPlanReplayTests : ProviderTest,
     public async Task CompletedReplayRetainsActualExecutionEvidence()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var context = database.CreateContext();
         var originalTimeout = context.Database.GetCommandTimeout();
         var probe = Probe("SELECT SLEEP(0.01) AS replay_value");
 
         // Act
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, probe, 0, Engine);
+        var plan = await QueryPlanTestSupport.ExplainAsync(context, probe, 0, Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Contains("query_block", plan, StringComparison.Ordinal);
@@ -36,14 +39,17 @@ public sealed class QueryPlanReplayTests : ProviderTest,
     public async Task InterruptedReplayCannotReturnPartialExecutionEvidence()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var context = database.CreateContext();
         context.Database.SetCommandTimeout(1);
         var probe = Probe("SELECT SLEEP(2) AS replay_value");
 
         // Act
         var error = await Record.ExceptionAsync(
-            () => QueryPlanTestSupport.ExplainAsync(context, probe, 0, Engine));
+            () => QueryPlanTestSupport.ExplainAsync(context, probe, 0, Engine,
+                cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         // WHY: Drivers may reject the interrupted command directly. If MySQL instead returns a

@@ -16,7 +16,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         var scope = Guid.NewGuid();
         var foreignScope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe, hidden: 3);
+        await using var context = await CreateContextAsync(scope, probe, hidden: 3,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var localTree = await context.Set<CompositionNode>()
             .Where(node => node.Scope == scope && node.Id == 1)
             .Select(node => node.TreeId)
@@ -63,7 +65,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
+        await using var context = await CreateContextAsync(scope, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = await context.Set<CompositionNode>()
             .Where(node => node.Scope == scope && node.Id == 1)
             .Select(node => node.TreeId)
@@ -122,7 +126,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
+        await using var context = await CreateContextAsync(scope, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
         var nodes = context.Set<CompositionNode>().Where(node => node.Scope == scope);
         var once = nodes.Where(node => node.Id == 3 || node.Id == 4)
@@ -164,7 +170,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
+        await using var context = await CreateContextAsync(scope, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
         var pairs = hierarchy.SelectAncestors(
             node => node.Id == 3,

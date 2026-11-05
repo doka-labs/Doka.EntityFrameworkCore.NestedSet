@@ -3,39 +3,46 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 internal static partial class CompositionCapacityProfiles
 {
     /// <summary>Reuses the existing hundred-thousand-depth fixture for selective and overlapping deep reads.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="database">The capacity case's valid persisted chain.</param>
     /// <param name="engine">The provider whose executed plans are retained.</param>
     /// <returns>The bounded grouped results and operation-only observations.</returns>
     internal static async Task<IReadOnlyList<CompositionCapacityObservation>> MeasureDeepAsync(
         TestDatabase database,
-        string engine
+        string engine,
+        CancellationToken cancellationToken
     )
     {
         var observations = new List<CompositionCapacityObservation>();
         await using var setup = database.CreateContext();
-        await SeedPayloadAsync(setup, 100_001, 100_001);
-        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(setup, engine);
-        await QueryPlanTestSupport.RefreshStatisticsAsync<UnrelatedRow>(setup, engine);
+        await SeedPayloadAsync(setup, 100_001, 100_001, cancellationToken: cancellationToken);
+        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(setup, engine,
+            cancellationToken: cancellationToken);
+        await QueryPlanTestSupport.RefreshStatisticsAsync<UnrelatedRow>(setup, engine,
+            cancellationToken: cancellationToken);
 
         foreach (var depth in new[] { 1_000, 10_000, 100_000 })
         {
             foreach (var facts in new[] { 1, 10, 100 })
             {
-                observations.Add(await MeasureDeepProfileAsync(database, engine, depth, facts, 1, "Path"));
+                observations.Add(await MeasureDeepProfileAsync(database, engine, depth, facts, 1, "Path",
+                    cancellationToken: cancellationToken));
             }
 
             // WHY: Dense acceptance and rejection are separate from full root-owner paths; a selective failing
             // value must not conceal repeated candidate scans or expensive successful completeness checks.
             foreach (var shape in new[] { "NearestAccept", "NearestReject", "RootOwner" })
             {
-                observations.Add(await MeasureDeepProfileAsync(database, engine, depth, 100, 1, shape));
+                observations.Add(await MeasureDeepProfileAsync(database, engine, depth, 100, 1, shape,
+                    cancellationToken: cancellationToken));
             }
 
             // WHY: Dense candidates including Self exercise the zero-edge fast path. Excluding Self also
             // qualifies the ordered strict-ancestor search; rejection must not fall back to the root.
             foreach (var shape in new[] { "NearestStrictAccept", "NearestStrictReject" })
             {
-                observations.Add(await MeasureDeepProfileAsync(database, engine, depth, 100, 1, shape));
+                observations.Add(await MeasureDeepProfileAsync(database, engine, depth, 100, 1, shape,
+                    cancellationToken: cancellationToken));
             }
 
             foreach (var anchors in new[] { 10, 100 })
@@ -44,7 +51,8 @@ internal static partial class CompositionCapacityProfiles
                 // inversely with depth observes C*D without silently requesting a billion direct-edge proofs.
                 var overlappingFacts = 100_000 / depth;
                 observations.Add(await MeasureDeepProfileAsync(
-                    database, engine, depth, overlappingFacts, anchors, "Overlap"));
+                    database, engine, depth, overlappingFacts, anchors, "Overlap",
+                    cancellationToken: cancellationToken));
             }
         }
 
@@ -58,7 +66,8 @@ internal static partial class CompositionCapacityProfiles
         int depth,
         int facts,
         int anchors,
-        string shape
+        string shape,
+        CancellationToken cancellationToken
     )
     {
         var planProbe = new EnterpriseProbe(captureParameterBindings: true);
@@ -100,11 +109,13 @@ internal static partial class CompositionCapacityProfiles
 
         try
         {
-            rows = await query.ToArrayAsync(CancellationToken.None);
+            rows = await query.ToArrayAsync(cancellationToken);
         }
         catch (Exception error)
         {
-            await RetainFailureAsync(context, engine, profile, planProbe, error);
+            // WHY: Failure evidence completes independently of the canceled workload and preserves its error.
+            await RetainFailureAsync(context, engine, profile, planProbe, error,
+                cancellationToken: CancellationToken.None);
 
             throw;
         }
@@ -117,11 +128,14 @@ internal static partial class CompositionCapacityProfiles
 
         try
         {
-            plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, 0, engine);
+            plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, 0, engine,
+                cancellationToken: cancellationToken);
         }
         catch (Exception error)
         {
-            await RetainFailureAsync(context, engine, profile, planProbe, error);
+            // WHY: Failure evidence completes independently of the canceled workload and preserves its error.
+            await RetainFailureAsync(context, engine, profile, planProbe, error,
+                cancellationToken: CancellationToken.None);
 
             throw;
         }
@@ -140,7 +154,7 @@ internal static partial class CompositionCapacityProfiles
             planProbe.ParameterBindings[0].Length,
             constructionCommands, materialized, tracked, buildBytes, elapsed, plan);
 
-        await WriteAsync(engine, observation, planProbe.Commands[0]);
+        await WriteAsync(engine, observation, planProbe.Commands[0], cancellationToken: cancellationToken);
 
         if (engine == "SqlServer")
         {

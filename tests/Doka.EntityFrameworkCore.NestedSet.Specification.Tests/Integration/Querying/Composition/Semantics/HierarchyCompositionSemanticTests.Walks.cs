@@ -24,7 +24,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe, chainNodes: 3);
+        await using var context = await CreateContextAsync(scope, probe, chainNodes: 3,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
         var sourceId = downward ? 1 : 3;
         IReadOnlyDictionary<int, int?> parents = new Dictionary<int, int?> { [1] = null, [2] = 1, [3] = 2 };
@@ -103,7 +105,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
+        await using var context = await CreateContextAsync(scope, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
         IReadOnlyDictionary<int, int?> parents = new Dictionary<int, int?>
         {
@@ -182,7 +186,8 @@ public abstract partial class HierarchyCompositionSemanticTests
         };
 
         var evidenceName = Engine + "-composition-up-down-up-" + requiredPaths;
-        await QueryPlanTestSupport.WriteEvidenceAsync(evidenceName, evidence);
+        await QueryPlanTestSupport.WriteEvidenceAsync(evidenceName, evidence,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         if (Engine == "MySql")
         {
@@ -200,7 +205,8 @@ public abstract partial class HierarchyCompositionSemanticTests
             evidence.Add(FormattableString.Invariant(
                 $"explain={Stopwatch.GetElapsedTime(explainStarted).TotalMilliseconds:F3}ms"));
 
-            await QueryPlanTestSupport.WriteEvidenceAsync(evidenceName, evidence);
+            await QueryPlanTestSupport.WriteEvidenceAsync(evidenceName, evidence,
+                cancellationToken: TestContext.Current.CancellationToken);
         }
 
         var executionStarted = Stopwatch.GetTimestamp();
@@ -208,7 +214,8 @@ public abstract partial class HierarchyCompositionSemanticTests
         evidence.Add(FormattableString.Invariant(
             $"execution={Stopwatch.GetElapsedTime(executionStarted).TotalMilliseconds:F3}ms"));
 
-        await QueryPlanTestSupport.WriteEvidenceAsync(evidenceName, evidence);
+        await QueryPlanTestSupport.WriteEvidenceAsync(evidenceName, evidence,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(expected,
@@ -233,7 +240,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
+        await using var context = await CreateContextAsync(scope, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
         var nodes = context.Set<CompositionNode>().Where(node => node.Scope == scope);
         var rows = nodes.Where(node => node.Id == 3)

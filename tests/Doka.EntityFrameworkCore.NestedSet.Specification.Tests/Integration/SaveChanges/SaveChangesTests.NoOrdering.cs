@@ -19,7 +19,9 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var extensions = setup
             .GetService<IDbContextOptions>()
             .Extensions
@@ -65,7 +67,9 @@ public abstract partial class SaveChangesTests
     public async Task UnorderedManualDetectionDoesNotPersistUndetectedCallbackChanges()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await setup.AddAsync(
             new OrderingMarker
             {
@@ -109,7 +113,9 @@ public abstract partial class SaveChangesTests
     public async Task UnorderedFailureRetainsNativeCallbackState()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var extensions = setup
             .GetService<IDbContextOptions>()
             .Extensions

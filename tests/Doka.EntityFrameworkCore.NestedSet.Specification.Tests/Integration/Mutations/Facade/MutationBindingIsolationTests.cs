@@ -31,7 +31,7 @@ public abstract class MutationBindingIsolationTests : ProviderTest
         // Arrange
         await using var first = await _fixture.CreateContextAsync<IsolationContext>(
             Engine,
-            static options => new IsolationContext(options));
+            static options => new IsolationContext(options), cancellationToken: TestContext.Current.CancellationToken);
 
         // WHY: This scenario requires identical metadata across distinct contexts. Supply that model explicitly
         // instead of relying on EF's bounded model cache while the full suite builds other models in parallel.
@@ -41,7 +41,7 @@ public abstract class MutationBindingIsolationTests : ProviderTest
 
         await using var second = new IsolationContext(sharedOptions);
 
-        await ResetModelAsync(first);
+        await ResetModelAsync(first, cancellationToken: TestContext.Current.CancellationToken);
         var alphaOne = first
             .NestedSet<Dictionary<string, object>>(Alpha)
             .ForScope(1);
@@ -133,14 +133,14 @@ public abstract class MutationBindingIsolationTests : ProviderTest
                 }
                 .OrderBy(row => row.Item1)
                 .ThenBy(row => row.Item2),
-            await AlphaRegistriesAsync(first));
+            await AlphaRegistriesAsync(first, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(
             new[]
             {
                 ("one", "shared", NestedSetTreeRegistryMetadata.Active),
                 ("two", "shared", NestedSetTreeRegistryMetadata.Tombstoned),
             },
-            await StringRegistriesAsync(first, Beta));
+            await StringRegistriesAsync(first, Beta, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Empty(first.ChangeTracker.Entries());
         Assert.Empty(second.ChangeTracker.Entries());
     }
@@ -153,14 +153,14 @@ public abstract class MutationBindingIsolationTests : ProviderTest
         // Arrange
         await using var first = await _fixture.CreateContextAsync<IsolationContext>(
             Engine,
-            static options => new IsolationContext(options));
+            static options => new IsolationContext(options), cancellationToken: TestContext.Current.CancellationToken);
 
         await using var alternate = await _fixture.CreateContextAsync<AlternateContext>(
             Engine,
-            static options => new AlternateContext(options));
+            static options => new AlternateContext(options), cancellationToken: TestContext.Current.CancellationToken);
 
-        await ResetModelAsync(first);
-        await ResetModelAsync(alternate);
+        await ResetModelAsync(first, cancellationToken: TestContext.Current.CancellationToken);
+        await ResetModelAsync(alternate, cancellationToken: TestContext.Current.CancellationToken);
         var integerKeys = first
             .NestedSet<Dictionary<string, object>>(Alpha)
             .ForScope(1);
@@ -206,21 +206,24 @@ public abstract class MutationBindingIsolationTests : ProviderTest
                     .InTree("detached")
                     .Nodes
                     .SingleAsync(CancellationToken.None)));
-        Assert.Equal(new[] { (1, s_tree, NestedSetTreeRegistryMetadata.Active) }, await AlphaRegistriesAsync(first));
+        Assert.Equal(new[] { (1, s_tree, NestedSetTreeRegistryMetadata.Active) }, await AlphaRegistriesAsync(first,
+            cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(
             new[]
             {
                 ("one", "detached", NestedSetTreeRegistryMetadata.Active),
                 ("one", "shared", NestedSetTreeRegistryMetadata.Active),
             },
-            await StringRegistriesAsync(alternate, Alpha));
+            await StringRegistriesAsync(alternate, Alpha, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Empty(first.ChangeTracker.Entries());
         Assert.Empty(alternate.ChangeTracker.Entries());
     }
 
     /// <summary>Completely resets only the property-bag hierarchy tables owned by the selected test model.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task ResetModelAsync(
-        DbContext context
+        DbContext context,
+        CancellationToken cancellationToken
     )
     {
         foreach (var entity in context
@@ -234,19 +237,19 @@ public abstract class MutationBindingIsolationTests : ProviderTest
             {
                 await rows.ExecuteUpdateAsync(
                     setters => setters.SetProperty(row => EF.Property<int?>(row, Parent), (int?)null),
-                    CancellationToken.None);
+                    cancellationToken);
             }
             else
             {
                 await rows.ExecuteUpdateAsync(
                     setters => setters.SetProperty(row => EF.Property<Guid?>(row, Parent), (Guid?)null),
-                    CancellationToken.None);
+                    cancellationToken);
             }
 
-            await rows.ExecuteDeleteAsync(CancellationToken.None);
+            await rows.ExecuteDeleteAsync(cancellationToken);
         }
 
-        await context.ClearNestedSetTreeRegistriesAsync(CancellationToken.None);
+        await context.ClearNestedSetTreeRegistriesAsync(cancellationToken);
     }
 
     /// <summary>Initializes explicit property-bag roles without relying on missing-indexer defaults.</summary>
@@ -287,8 +290,10 @@ public abstract class MutationBindingIsolationTests : ProviderTest
         (int)row[Depth], (long)row[Position]);
 
     /// <summary>Reads the registry owned solely by the integer-key named hierarchy.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static Task<(int Scope, Guid Tree, byte Lifecycle)[]> AlphaRegistriesAsync(
-        IsolationContext context
+        IsolationContext context,
+        CancellationToken cancellationToken
     )
     {
         var registry = NestedSetTreeRegistryMapping.For(context.Model.FindEntityType(Alpha)!).Registry;
@@ -302,13 +307,15 @@ public abstract class MutationBindingIsolationTests : ProviderTest
                 EF.Property<int>(row, NestedSetTreeRegistryMetadata.Scope),
                 EF.Property<Guid>(row, NestedSetTreeRegistryMetadata.TreeId),
                 EF.Property<byte>(row, NestedSetTreeRegistryMetadata.Lifecycle)))
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
     }
 
     /// <summary>Reads the independent registry owned solely by the Guid-key named hierarchy.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static Task<(string Scope, string Tree, byte Lifecycle)[]> StringRegistriesAsync(
         DbContext context,
-        string entityTypeName
+        string entityTypeName,
+        CancellationToken cancellationToken
     )
     {
         var registry = NestedSetTreeRegistryMapping.For(context.Model.FindEntityType(entityTypeName)!).Registry;
@@ -322,7 +329,7 @@ public abstract class MutationBindingIsolationTests : ProviderTest
                 EF.Property<string>(row, NestedSetTreeRegistryMetadata.Scope),
                 EF.Property<string>(row, NestedSetTreeRegistryMetadata.TreeId),
                 EF.Property<byte>(row, NestedSetTreeRegistryMetadata.Lifecycle)))
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
     }
 
     /// <summary>Configures shared coordinates while each exact model retains its own scalar identity roles.</summary>

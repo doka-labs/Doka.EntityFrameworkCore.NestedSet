@@ -24,7 +24,8 @@ public abstract partial class SignalReportTests
         // Own this model's database instead of changing the real sample mapping or shared fixture schema.
         await using var database = new ModelCompatibilityDatabase();
         await using var context = await CreateContextAsync<IndexedSignalLabContext>(database,
-            static options => new IndexedSignalLabContext(options), probe);
+            static options => new IndexedSignalLabContext(options), probe,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var data = await SignalReportDataset.CreateAsync(context, scenario, false, CancellationToken.None, Guid.NewGuid());
         var request = data.Request(nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any);
@@ -55,7 +56,8 @@ public abstract partial class SignalReportTests
         var probe = new SignalReportProbe();
         await using var database = new ModelCompatibilityDatabase();
         await using var context = await CreateContextAsync<IndexedSignalLabContext>(database,
-            static options => new IndexedSignalLabContext(options), probe);
+            static options => new IndexedSignalLabContext(options), probe,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
         probe.Reset();

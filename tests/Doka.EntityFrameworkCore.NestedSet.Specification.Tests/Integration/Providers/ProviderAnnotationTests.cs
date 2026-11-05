@@ -34,7 +34,8 @@ public abstract class ProviderAnnotationTests : ProviderTest
         foreach (var method in methods)
         {
             errors.AddRange(ProviderTestContract.FindSharedAnnotationErrors(method));
-            errors.AddRange(await ProviderTestContract.FindSharedDataErrorsAsync(method));
+            errors.AddRange(await ProviderTestContract.FindSharedDataErrorsAsync(method,
+                cancellationToken: TestContext.Current.CancellationToken));
         }
 
         // Assert
@@ -227,7 +228,8 @@ public abstract class ProviderAnnotationTests : ProviderTest
         // Act
         foreach (var suite in suites)
         {
-            errors.AddRange(await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, assemblyName));
+            errors.AddRange(await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, assemblyName,
+                cancellationToken: TestContext.Current.CancellationToken));
             errors.AddRange(ProviderFixtureContract.FindErrors(suite));
 
             if (!ProviderTestContract.HasLocalTestCases(suite))

@@ -3,14 +3,16 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public abstract partial class SaveChangesTests
 {
     /// <summary>Persists asymmetric nested counts so shifting outer ordinals cannot hide stale child lanes.</summary>
-    private async Task<TestDatabase> CreateComplexCompositionDatabaseAsync()
+    private async Task<TestDatabase> CreateComplexCompositionDatabaseAsync(CancellationToken cancellationToken)
     {
-        var database = await CreateComplexCallbackDatabaseAsync();
+        var database = await CreateComplexCallbackDatabaseAsync(cancellationToken: cancellationToken);
 
         try
         {
-            await using var context = await CreateComplexCallbackContextAsync(database);
-            var row = await context.Set<ComplexCallbackRow>().SingleAsync(CancellationToken.None);
+            await using var context = await CreateComplexCallbackContextAsync(database,
+                cancellationToken: cancellationToken);
+
+            var row = await context.Set<ComplexCallbackRow>().SingleAsync(cancellationToken);
             row.Items =
             [
                 NewComplexCallbackItem("first"),
@@ -18,7 +20,7 @@ public abstract partial class SaveChangesTests
                 new ComplexCallbackItem { Text = "third", Parts = [] },
             ];
 
-            await context.SaveChangesAsync(CancellationToken.None);
+            await context.SaveChangesAsync(cancellationToken);
 
             return database;
         }
@@ -39,12 +41,13 @@ public abstract partial class SaveChangesTests
     /// <summary>Separates an actual coordinated reorder from the managed insertion entry points.</summary>
     private static async Task PrepareComplexCompositionOperationAsync(
         ComplexCallbackContext context,
-        string shape
+        string shape,
+        CancellationToken cancellationToken
     )
     {
         if (shape == "coordinated")
         {
-            await PrepareComplexCallbackOrderingAsync(context);
+            await PrepareComplexCallbackOrderingAsync(context, cancellationToken: cancellationToken);
         }
     }
 
@@ -52,11 +55,12 @@ public abstract partial class SaveChangesTests
     private static Task RunComplexCompositionOperationAsync(
         ComplexCallbackContext context,
         string shape,
-        NavigationNode[] inputs
+        NavigationNode[] inputs,
+        CancellationToken cancellationToken
     )
         => shape == "coordinated"
-            ? context.SaveChangesAsync(CancellationToken.None)
-            : InsertComplexCallbackInputsAsync(context, shape, inputs);
+            ? context.SaveChangesAsync(cancellationToken)
+            : InsertComplexCallbackInputsAsync(context, shape, inputs, cancellationToken: cancellationToken);
 
     /// <summary>Combines mutations whose individual recovery can succeed while parent-child rebinding fails.</summary>
     private static void ChangeComplexComposition(ComplexCallbackRow row, string mutation)

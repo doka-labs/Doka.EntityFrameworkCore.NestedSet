@@ -31,10 +31,16 @@ public abstract partial class GroupSupervisorTests
         const int occurrences = 2 * people;
         var probe = new SupervisorCommandProbe();
         var planProbe = new EnterpriseProbe(captureParameterBindings: true);
-        await using var context = await CreateAsync(probe, planProbe);
+        await using var context = await CreateAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe);
+
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        var users = await SeedFanInAsync(context, data, people);
-        await SeedRankingOccurrencesAsync(context, data, users, profile);
+        var users = await SeedFanInAsync(context, data, people,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedRankingOccurrencesAsync(context, data, users, profile,
+            cancellationToken: TestContext.Current.CancellationToken);
         var request = data.Request(App.SearchStart.IncludeSelf, data.Groups[5]) with
         {
             Roles = new App.NoRoleFilter(), Groups = new App.AllEligibleGroups(), Matches = [],
@@ -61,8 +67,10 @@ public abstract partial class GroupSupervisorTests
         if (Engine is "MySql" or "MariaDb")
         {
             await context.Database.OpenConnectionAsync(CancellationToken.None);
-            calibration = await CalibrateRankingHandlersAsync(context, data.Users[0]);
-            handlersBefore = await ReadRankingHandlersAsync(context);
+            calibration = await CalibrateRankingHandlersAsync(context, data.Users[0],
+                cancellationToken: TestContext.Current.CancellationToken);
+            handlersBefore = await ReadRankingHandlersAsync(context,
+                cancellationToken: TestContext.Current.CancellationToken);
         }
 
         var commandIndex = planProbe.Commands.Count;
@@ -83,7 +91,8 @@ public abstract partial class GroupSupervisorTests
                 failure.Add(planProbe.Commands[commandIndex]);
                 try
                 {
-                    failure.Add(await EstimatedOriginPlanAsync(context, planProbe, commandIndex));
+                    failure.Add(await EstimatedOriginPlanAsync(context, planProbe, commandIndex,
+                        cancellationToken: TestContext.Current.CancellationToken));
                 }
                 catch (Exception captureError)
                 {
@@ -93,19 +102,22 @@ public abstract partial class GroupSupervisorTests
             }
 
             await QueryPlanTestSupport.WriteEvidenceAsync(Engine + "-usergroups-ranking-failed-" + profile,
-                failure);
+                failure, cancellationToken: TestContext.Current.CancellationToken);
 
             throw;
         }
 
         var handlerReads = handlersBefore is null ? null
-            : RankingHandlerDelta(handlersBefore, await ReadRankingHandlersAsync(context));
+            : RankingHandlerDelta(handlersBefore, await ReadRankingHandlersAsync(context,
+                cancellationToken: TestContext.Current.CancellationToken));
 
         var commandCount = probe.Commands.Count;
         var readerAdvances = probe.ReaderAdvances;
         var sql = planProbe.Commands[commandIndex];
         var commandBytes = Encoding.UTF8.GetByteCount(sql);
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, commandIndex, Engine);
+        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, commandIndex, Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await QueryPlanTestSupport.WriteEvidenceAsync(Engine + "-usergroups-ranking-native-" + profile,
         [
             $"People={people}; occurrences={occurrences}; SQL={commandBytes} B; "
@@ -118,7 +130,7 @@ public abstract partial class GroupSupervisorTests
                 .Select(parameter => parameter.ParameterName + ":" + parameter.DbType + "="
                     + JsonSerializer.Serialize(parameter.Value))),
             sql, plan,
-        ]);
+        ], cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(App.SupervisorBatchStatus.Completed, batch.Status);
@@ -187,20 +199,21 @@ public abstract partial class GroupSupervisorTests
         App.UserGroupContext context,
         App.SupervisorScenarioFixture data,
         IReadOnlyList<App.User> users,
-        string profile
+        string profile,
+        CancellationToken cancellationToken
     )
     {
         var source = data.Users[0];
         await context.UserGroupMemberships.Where(member => member.TenantId == data.TenantId
                 && Enumerable.Contains(data.Users, member.UserId) && member.UserId != source)
             .ExecuteUpdateAsync(setters => setters.SetProperty(member => member.Visible, false),
-                CancellationToken.None);
+                cancellationToken);
         var priorities = users.Select((user, index) => new { user.Id, Priority = RankPriority(profile, index) })
             .ToDictionary(row => row.Id, row => row.Priority);
 
         var near = await context.UserGroupMemberships.Where(member => member.TenantId == data.TenantId
                 && member.UserGroupId == data.Groups[5] && member.UserId != source)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         foreach (var member in near)
         {
@@ -209,12 +222,12 @@ public abstract partial class GroupSupervisorTests
             {
                 TenantId = data.TenantId, UserId = member.UserId, UserGroupId = data.Groups[4],
                 LeadershipPriority = FarRankPriority(profile, member.LeadershipPriority),
-            }, CancellationToken.None);
+            }, cancellationToken);
         }
 
-        await context.SaveChangesAsync(CancellationToken.None);
+        await context.SaveChangesAsync(cancellationToken);
         context.ChangeTracker.Clear();
-        await PrepareConsumerStatisticsAsync(context);
+        await PrepareConsumerStatisticsAsync(context, cancellationToken: cancellationToken);
     }
 
     /// <summary>Defines priorities by fixture position rather than generated user identities.</summary>

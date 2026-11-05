@@ -27,7 +27,7 @@ public sealed class BulkForestTrackerScaleTests : ProviderTest,
     public async Task IndependentForestKeepsGlobalTrackerWorkBounded()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var baseline = database.CreateContext();
         var baselineHierarchy = baseline
             .NestedSet<TreeNode>()

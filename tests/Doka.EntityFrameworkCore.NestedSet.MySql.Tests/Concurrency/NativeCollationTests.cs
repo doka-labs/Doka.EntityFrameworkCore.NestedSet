@@ -20,14 +20,18 @@ public sealed class NativeCollationTests : NativeCollationTestBase
     {
         // Arrange
         var probe = new NativeGuardProbe();
-        await using var context = await CreateInheritedScopeContextAsync(Engine, convertedKeys, true, probe);
+        await using var context = await CreateInheritedScopeContextAsync(Engine, convertedKeys, true, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var trackedScope = new BroadScope($"guard-no-pad-{root}");
         var requestedScope = new BroadScope(trackedScope.Value + " ");
         var trackedTree = Guid.NewGuid();
         var requestedTree = Guid.NewGuid();
-        await NativeTrackedIdentityGuardTestSupport.SeedBroadScopeAsync(context, trackedScope, trackedTree, root);
-        await NativeTrackedIdentityGuardTestSupport.SeedBroadScopeAsync(context, requestedScope, requestedTree, root);
+        await NativeTrackedIdentityGuardTestSupport.SeedBroadScopeAsync(context, trackedScope, trackedTree, root,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await NativeTrackedIdentityGuardTestSupport.SeedBroadScopeAsync(context, requestedScope, requestedTree, root,
+            cancellationToken: TestContext.Current.CancellationToken);
         var tracked = await context.Set<BroadScopeNode>().AsNoTracking()
             .SingleAsync(node => node.Scope == trackedScope && node.Id == root + 1, CancellationToken.None);
 

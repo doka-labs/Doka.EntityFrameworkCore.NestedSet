@@ -22,29 +22,29 @@ public class CrossTreeMoveBenchmarks : DatabaseBenchmark
     }
 
     /// <inheritdoc />
-    public override async Task PrepareAsync()
+    public override async Task PrepareAsync(CancellationToken cancellationToken)
     {
         _moved = false;
-        await base.PrepareAsync();
+        await base.PrepareAsync(cancellationToken);
     }
 
     /// <inheritdoc />
-    public override async Task VerifyAsync()
+    public override async Task VerifyAsync(CancellationToken cancellationToken)
     {
         var node = await Fixture
             .Context
             .Nodes
             .AsNoTracking()
-            .SingleAsync(value => value.Id == 1, CancellationToken.None);
+            .SingleAsync(value => value.Id == 1, cancellationToken);
 
         BenchmarkFixture.Require(
             _moved && node.ParentId == Fixture.Forest.RootKeys[1] && node.TreeId == Fixture.Forest.Imports[1].TreeId,
             "Cross-tree membership did not change.");
 
         BenchmarkFixture.Require(
-            await Fixture.Context.Nodes.CountAsync(CancellationToken.None) == Nodes,
+            await Fixture.Context.Nodes.CountAsync(cancellationToken) == Nodes,
             "Transfer changed the forest size.");
 
-        await base.VerifyAsync();
+        await base.VerifyAsync(cancellationToken);
     }
 }

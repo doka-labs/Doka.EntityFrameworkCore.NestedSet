@@ -23,7 +23,7 @@ public static class NestedSetDbContextExtensions
         this DbContext context,
         bool acceptAllChangesOnSuccess,
         Func<CancellationToken, Task<int>> saveChanges,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     ) => NestedSetSaveChanges.ExecuteAsync(context, acceptAllChangesOnSuccess, saveChanges, cancellationToken);
 
     /// <summary>Saves application changes synchronously when no asynchronous hierarchy work is required.</summary>

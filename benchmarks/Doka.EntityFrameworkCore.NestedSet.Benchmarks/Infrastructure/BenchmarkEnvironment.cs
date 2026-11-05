@@ -53,7 +53,7 @@ public sealed class BenchmarkEnvironment : IAsyncDisposable
     /// <returns>The resource owner that must outlive all generated benchmark processes.</returns>
     public static async Task<BenchmarkEnvironment> CreateAsync(
         BenchmarkRunOptions options,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -65,12 +65,12 @@ public sealed class BenchmarkEnvironment : IAsyncDisposable
 
         await BenchmarkLifecycle.InitializeAsync(
             environment,
-            async () =>
+            async token =>
             {
-                var connection = await environment.StartAsync(options.ArtifactsPath, cancellationToken);
-                environment.ServerVersion = await ReadServerVersionAsync(options.Engine, connection, cancellationToken);
+                var connection = await environment.StartAsync(options.ArtifactsPath, token);
+                environment.ServerVersion = await ReadServerVersionAsync(options.Engine, connection, token);
                 Environment.SetEnvironmentVariable(ConnectionVariable, connection);
-            });
+            }, cancellationToken: cancellationToken);
 
         return environment;
     }

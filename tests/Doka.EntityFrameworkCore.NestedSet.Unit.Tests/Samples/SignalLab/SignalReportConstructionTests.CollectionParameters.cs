@@ -68,7 +68,7 @@ public sealed partial class SignalReportConstructionTests
         // Arrange
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync(CancellationToken.None);
-        await CreateSqliteReportSchemaAsync(connection);
+        await CreateSqliteReportSchemaAsync(connection, cancellationToken: TestContext.Current.CancellationToken);
         var generated = new SqlGeneratorCounter();
         var compilations = new List<string>();
         var probe = new SignalReportProbe();
@@ -246,7 +246,7 @@ public sealed partial class SignalReportConstructionTests
         // Arrange
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync(CancellationToken.None);
-        await CreateSqliteReportSchemaAsync(connection);
+        await CreateSqliteReportSchemaAsync(connection, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new SignalReportProbe();
         var options = new DbContextOptionsBuilder<SignalLabContext>()
             .UseSqlite(
@@ -379,7 +379,7 @@ public sealed partial class SignalReportConstructionTests
         // Arrange
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync(CancellationToken.None);
-        await CreateSqliteReportSchemaAsync(connection);
+        await CreateSqliteReportSchemaAsync(connection, cancellationToken: TestContext.Current.CancellationToken);
         var generated = new SqlGeneratorCounter();
         var compilations = new List<string>();
         var probe = new SignalReportProbe();
@@ -471,8 +471,11 @@ public sealed partial class SignalReportConstructionTests
         .ToArray();
 
     /// <summary>Creates only the fixture schema before report-specific I/O observation is installed.</summary>
+    /// <param name="connection">The connection whose ownership transfers to this factory on entry.</param>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
     private static async Task CreateSqliteReportSchemaAsync(
-        SqliteConnection connection
+        SqliteConnection connection,
+        CancellationToken cancellationToken
     )
     {
         // WHY: SQLite's EnsureCreatedAsync performs its HasTables check synchronously. Schema setup belongs
@@ -484,7 +487,7 @@ public sealed partial class SignalReportConstructionTests
             .Options;
 
         await using var bootstrap = new SignalLabContext(options);
-        await bootstrap.Database.EnsureCreatedAsync(CancellationToken.None);
+        await bootstrap.Database.EnsureCreatedAsync(cancellationToken);
     }
 
     /// <summary>Wraps the installed public generator factory while preserving all actual provider services.</summary>

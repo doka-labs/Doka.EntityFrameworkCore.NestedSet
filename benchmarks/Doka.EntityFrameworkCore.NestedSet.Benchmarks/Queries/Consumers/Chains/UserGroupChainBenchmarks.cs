@@ -130,17 +130,18 @@ public class UserGroupChainBenchmarks : IDatabaseBenchmark, IAsyncDisposable
 
     /// <summary>Completes asynchronous preparation before native measurement starts.</summary>
     [IterationSetup]
-    public void Prepare() => BenchmarkLifecycle.Complete(PrepareAsync());
+    public void Prepare() => BenchmarkLifecycle.Complete(PrepareAsync(CancellationToken.None));
 
     /// <summary>Completes equivalence verification after native measurement stops.</summary>
     [IterationCleanup]
-    public void Verify() => BenchmarkLifecycle.Complete(VerifyAsync());
+    public void Verify() => BenchmarkLifecycle.Complete(VerifyAsync(CancellationToken.None));
 
     /// <summary>Seeds actual groups, users, memberships, roles, periods, and routing values outside timing.</summary>
-    public async Task PrepareAsync()
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
+    public async Task PrepareAsync(CancellationToken cancellationToken)
     {
-        await ConsumerBenchmarkDatabase.ResetAsync(Context);
-        _data = await UserGroupChainBenchmarkData.CreateAsync(Context, Nodes, Shape, Profile);
+        await ConsumerBenchmarkDatabase.ResetAsync(Context, cancellationToken);
+        _data = await UserGroupChainBenchmarkData.CreateAsync(Context, Nodes, Shape, Profile, cancellationToken);
         _result = null;
         _observation.Reset();
     }
@@ -162,7 +163,8 @@ public class UserGroupChainBenchmarks : IDatabaseBenchmark, IAsyncDisposable
     }
 
     /// <summary>Checks every unordered branch and scalar evidence against the independent orchestration.</summary>
-    public async Task VerifyAsync()
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
+    public async Task VerifyAsync(CancellationToken cancellationToken)
     {
         var result = Result;
         var expected = await UserGroupChainReference.FollowAsync(
@@ -170,7 +172,7 @@ public class UserGroupChainBenchmarks : IDatabaseBenchmark, IAsyncDisposable
             Data.Tenant,
             Request,
             !ReExpandMemberships,
-            CancellationToken.None);
+            cancellationToken);
 
         BenchmarkFixture.Require(
             Signature(result)

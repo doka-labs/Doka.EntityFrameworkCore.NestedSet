@@ -132,7 +132,8 @@ public sealed partial class ProviderTestContractTests
             .GetMethod("Probe0")!;
 
         // Act
-        var errors = await ProviderTestContract.FindSharedDataErrorsAsync(method);
+        var errors = await ProviderTestContract.FindSharedDataErrorsAsync(method,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Contains(
@@ -149,7 +150,8 @@ public sealed partial class ProviderTestContractTests
             .GetMethod("Probe0")!;
 
         // Act
-        var errors = await ProviderTestContract.FindSharedDataErrorsAsync(method);
+        var errors = await ProviderTestContract.FindSharedDataErrorsAsync(method,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Contains(errors, error => error.Contains("one provider executable 'MySql'", StringComparison.Ordinal));
@@ -168,7 +170,8 @@ public sealed partial class ProviderTestContractTests
             .GetMethod("Probe0")!;
 
         // Act
-        var errors = await ProviderTestContract.FindSharedDataErrorsAsync(method);
+        var errors = await ProviderTestContract.FindSharedDataErrorsAsync(method,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Contains(
@@ -185,7 +188,8 @@ public sealed partial class ProviderTestContractTests
             .GetMethod("Probe0")!;
 
         // Act
-        var errors = await ProviderTestContract.FindSharedDataErrorsAsync(method);
+        var errors = await ProviderTestContract.FindSharedDataErrorsAsync(method,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Contains(errors, error => error.Contains("is empty", StringComparison.Ordinal));

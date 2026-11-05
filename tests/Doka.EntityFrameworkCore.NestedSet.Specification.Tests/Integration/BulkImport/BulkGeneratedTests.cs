@@ -20,7 +20,9 @@ public abstract class BulkGeneratedTests : ProviderTest
     public async Task GeneratedParentsAndSortValuesAreResolvedInOneSave()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var saves = 0;
         context.SavedChanges += (_, _) => saves++;
         var tree = context
@@ -88,7 +90,10 @@ public abstract class BulkGeneratedTests : ProviderTest
     {
         // Arrange
         var probe = new BulkRefreshFailure("BulkGeneratedNodes");
-        await using var context = await _fixture.ResetAsync(Engine, probe);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         context.SavedChanges += (_, _) => probe.Inserted = true;
         var tree = context
             .NestedSet<BulkGeneratedNode>()
@@ -134,7 +139,10 @@ public abstract class BulkGeneratedTests : ProviderTest
     {
         // Arrange
         var probe = new BulkRefreshFailure("BulkGeneratedNodes");
-        await using var context = await _fixture.ResetAsync(Engine, probe);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         context.SavedChanges += (_, _) => probe.Inserted = true;
         var tree = context
             .NestedSet<BulkGeneratedNode>()

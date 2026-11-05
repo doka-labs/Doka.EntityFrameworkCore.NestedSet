@@ -21,7 +21,9 @@ public sealed partial class SafeMigrationTests
     )
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync(engine, qualifySchema);
+        await using var database = await CreateDatabaseAsync(engine, qualifySchema,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var chain = database.Scaffold(MigrationStage.Current, "SafeInitial");
         await using var context = database.CreateContext(MigrationStage.Current, chain.Assembly);
         var hierarchy = context
@@ -32,7 +34,7 @@ public sealed partial class SafeMigrationTests
         var beyondInt32 = (long)int.MaxValue + 1;
 
         // Act
-        await database.MigrateAsync(chain);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
         await hierarchy.InsertRootAsync(
             new MigrationNode
             {
@@ -70,9 +72,10 @@ public sealed partial class SafeMigrationTests
                 Right = beyondInt32 + 1,
                 Position = beyondInt32,
                 Payload = "large coordinates",
-            });
+            }, cancellationToken: TestContext.Current.CancellationToken);
 
-        var largeNode = (await database.ReadNodesAsync()).Single(node => node.NodeId == 43);
+        var largeNode = (await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken)).Single(node => node.NodeId == 43);
 
         // WHY: Index analysis needs the containing table; analyze after the complete migration has created it.
         var report = await context
@@ -83,10 +86,10 @@ public sealed partial class SafeMigrationTests
                 new SafeMigrationRunOptions("nested-set-fresh-index-contract"),
                 CancellationToken.None);
 
-        var indexes = await database.ReadIndexesAsync();
-        var checks = await database.ReadChecksAsync();
-        var foreignKeys = await database.ReadForeignKeysAsync();
-        var columnTypes = await database.ReadColumnTypesAsync();
+        var indexes = await database.ReadIndexesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var checks = await database.ReadChecksAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var foreignKeys = await database.ReadForeignKeysAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var columnTypes = await database.ReadColumnTypesAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(validationReport.IsValid);
@@ -124,19 +127,24 @@ public sealed partial class SafeMigrationTests
     public async Task SqliteUpgradePreservesPopulatedHierarchy()
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync("Sqlite", false);
+        await using var database = await CreateDatabaseAsync("Sqlite", false,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var baseline = database.Scaffold(MigrationStage.Baseline, "SafeBaseline");
-        await database.MigrateAsync(baseline);
-        await database.SeedAsync(MigrationStage.Baseline);
-        var before = await database.ReadNodesAsync(MigrationStage.Baseline);
+        await database.MigrateAsync(baseline, cancellationToken: TestContext.Current.CancellationToken);
+        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken, MigrationStage.Baseline);
+        var before = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            MigrationStage.Baseline);
+
         var upgrade = database.Scaffold(MigrationStage.Current, "SafeScopeKey", baseline);
         await using var context = database.CreateContext(MigrationStage.Current, upgrade.Assembly);
         var operations = GetIndexOperations(upgrade, context, 1);
 
         // Act
-        await database.MigrateAsync(upgrade);
-        var after = await database.ReadNodesAsync();
-        var indexes = await database.ReadIndexesAsync();
+        await database.MigrateAsync(upgrade, cancellationToken: TestContext.Current.CancellationToken);
+        var after = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var indexes = await database.ReadIndexesAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         AssertUpgradeIndexOperations("Sqlite", operations);
@@ -163,19 +171,30 @@ public sealed partial class SafeMigrationTests
     )
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync(engine, qualifySchema);
+        await using var database = await CreateDatabaseAsync(engine, qualifySchema,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var baseline = database.Scaffold(MigrationStage.Baseline, "SafeBaseline");
-        await database.MigrateAsync(baseline);
-        await database.SeedAsync(MigrationStage.Baseline);
+        await database.MigrateAsync(baseline, cancellationToken: TestContext.Current.CancellationToken);
+        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken, MigrationStage.Baseline);
         var upgrade = database.Scaffold(MigrationStage.Current, "SafeScopeKey", baseline);
         await using var context = database.CreateContext(MigrationStage.Current, upgrade.Assembly);
         var operations = GetUpOperations(upgrade, context, 1);
         var indexOperations = GetIndexOperations(upgrade, context, 1);
-        var indexesBefore = IndexSignatures(await database.ReadIndexesAsync());
-        var checksBefore = await database.ReadChecksAsync();
-        var columnsBefore = await database.ReadColumnTypesAsync();
-        var foreignKeysBefore = ForeignKeySignatures(await database.ReadForeignKeysAsync());
-        var nodesBefore = await database.ReadNodesAsync(MigrationStage.Baseline);
+        var indexesBefore = IndexSignatures(await database.ReadIndexesAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        var checksBefore = await database.ReadChecksAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var columnsBefore = await database.ReadColumnTypesAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var foreignKeysBefore = ForeignKeySignatures(await database.ReadForeignKeysAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        var nodesBefore = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            MigrationStage.Baseline);
+
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         // Act
@@ -186,11 +205,20 @@ public sealed partial class SafeMigrationTests
                 new SafeMigrationRunOptions("nested-set-server-upgrade"),
                 CancellationToken.None);
 
-        var indexesAfter = IndexSignatures(await database.ReadIndexesAsync());
-        var checksAfter = await database.ReadChecksAsync();
-        var columnsAfter = await database.ReadColumnTypesAsync();
-        var foreignKeysAfter = ForeignKeySignatures(await database.ReadForeignKeysAsync());
-        var nodesAfter = await database.ReadNodesAsync(MigrationStage.Baseline);
+        var indexesAfter = IndexSignatures(await database.ReadIndexesAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        var checksAfter = await database.ReadChecksAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var columnsAfter = await database.ReadColumnTypesAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var foreignKeysAfter = ForeignKeySignatures(await database.ReadForeignKeysAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        var nodesAfter = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            MigrationStage.Baseline);
+
         var historyAfter = await context.Database.GetAppliedMigrationsAsync(CancellationToken.None);
 
         // Assert
@@ -234,19 +262,25 @@ public sealed partial class SafeMigrationTests
     public async Task SqliteDowngradePreservesEarlierIndexesAndData()
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync("Sqlite", false);
+        await using var database = await CreateDatabaseAsync("Sqlite", false,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var baseline = database.Scaffold(MigrationStage.Baseline, "SafeBaseline");
-        await database.MigrateAsync(baseline);
-        var originalIndexes = IndexSignatures(await database.ReadIndexesAsync());
+        await database.MigrateAsync(baseline, cancellationToken: TestContext.Current.CancellationToken);
+        var originalIndexes = IndexSignatures(await database.ReadIndexesAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var upgrade = database.Scaffold(MigrationStage.Current, "SafeScopeKey", baseline);
-        await database.MigrateAsync(upgrade);
-        await database.SeedAsync();
-        var before = await database.ReadNodesAsync();
+        await database.MigrateAsync(upgrade, cancellationToken: TestContext.Current.CancellationToken);
+        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var before = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        await database.MigrateAsync(upgrade, baseline.MigrationIds[0]);
-        var indexes = await database.ReadIndexesAsync();
-        var after = await database.ReadNodesAsync();
+        await database.MigrateAsync(upgrade,
+            cancellationToken: TestContext.Current.CancellationToken,
+            baseline.MigrationIds[0]);
+        var indexes = await database.ReadIndexesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var after = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         AssertBaselineIndexes(indexes);
@@ -260,18 +294,22 @@ public sealed partial class SafeMigrationTests
     public async Task SqliteReapplyRestoresIndexAndPreservesData()
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync("Sqlite", false);
+        await using var database = await CreateDatabaseAsync("Sqlite", false,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var baseline = database.Scaffold(MigrationStage.Baseline, "SafeBaseline");
         var upgrade = database.Scaffold(MigrationStage.Current, "SafeScopeKey", baseline);
-        await database.MigrateAsync(upgrade);
-        await database.SeedAsync();
-        await database.MigrateAsync(upgrade, baseline.MigrationIds[0]);
-        var before = await database.ReadNodesAsync();
+        await database.MigrateAsync(upgrade, cancellationToken: TestContext.Current.CancellationToken);
+        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(upgrade,
+            cancellationToken: TestContext.Current.CancellationToken,
+            baseline.MigrationIds[0]);
+        var before = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        await database.MigrateAsync(upgrade);
-        var indexes = await database.ReadIndexesAsync();
-        var after = await database.ReadNodesAsync();
+        await database.MigrateAsync(upgrade, cancellationToken: TestContext.Current.CancellationToken);
+        var indexes = await database.ReadIndexesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var after = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         AssertCurrentIndexes("Sqlite", indexes);

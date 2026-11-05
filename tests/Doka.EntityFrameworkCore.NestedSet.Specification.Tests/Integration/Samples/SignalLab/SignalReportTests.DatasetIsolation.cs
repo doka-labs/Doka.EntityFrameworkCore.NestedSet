@@ -14,7 +14,8 @@ public abstract partial class SignalReportTests
         await using var owned = new ModelCompatibilityDatabase();
         var probe = new SignalReportProbe();
         await using var context = await CreateContextAsync<SignalLabContext>(owned,
-            static options => new SignalLabContext(options), probe);
+            static options => new SignalLabContext(options), probe,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var firstTenant = Guid.NewGuid();
         var secondTenant = Guid.NewGuid();

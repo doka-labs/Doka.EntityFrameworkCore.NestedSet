@@ -8,7 +8,7 @@ public abstract partial class ContractTests
     public async Task TrackedNodesAreRejectedWithoutClearingTracker()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new CommandProbe();
         var commands = new EnterpriseProbe();
         await using var context = database.CreateContext(probe, commands);
@@ -48,7 +48,7 @@ public abstract partial class ContractTests
     public async Task PendingChangesAreRejectedWithoutClearingTracker()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new CommandProbe();
         await using var context = database.CreateContext(probe);
         var tree = context
@@ -80,7 +80,7 @@ public abstract partial class ContractTests
     public async Task CallerTransactionRetainsOwnershipAndCanRollBackTreeMutation()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()

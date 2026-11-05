@@ -58,11 +58,13 @@ public sealed partial class AncestorIndexLifecycleTests
     )
     {
         // Arrange
-        await using var database = await AncestorIndexDatabase.CreateAsync(_fixture, engine);
+        await using var database = await AncestorIndexDatabase.CreateAsync(_fixture, engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var chain = database.Scaffold(true, "AncestorLifecycle");
-        await database.MigrateAsync(chain);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
-        await SeedAsync(context);
+        await SeedAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var hierarchy = context
             .NestedSet<MigrationNode>()
             .ForScope(7);
@@ -97,7 +99,7 @@ public sealed partial class AncestorIndexLifecycleTests
                 throw new ArgumentOutOfRangeException(nameof(operation));
         }
 
-        var persisted = await ReadStatesAsync(context);
+        var persisted = await ReadStatesAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var first = await hierarchy
             .InTree(11)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
@@ -140,11 +142,13 @@ public sealed partial class AncestorIndexLifecycleTests
     )
     {
         // Arrange
-        await using var database = await AncestorIndexDatabase.CreateAsync(_fixture, engine);
+        await using var database = await AncestorIndexDatabase.CreateAsync(_fixture, engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var chain = database.Scaffold(true, "AncestorRebuild");
-        await database.MigrateAsync(chain);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
-        await SeedAsync(context);
+        await SeedAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var root = await context
             .Set<MigrationNode>()
             .SingleAsync(x => x.NodeId == 1, CancellationToken.None);
@@ -173,7 +177,7 @@ public sealed partial class AncestorIndexLifecycleTests
             .InTree(11)
             .RebuildAsync(CancellationToken.None);
 
-        var persisted = await ReadStatesAsync(context);
+        var persisted = await ReadStatesAsync(context, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.False(before);
@@ -199,13 +203,14 @@ public sealed partial class AncestorIndexLifecycleTests
         await using var database = await AncestorIndexDatabase.CreateAsync(
             _fixture,
             engine,
+            cancellationToken: TestContext.Current.CancellationToken,
             options => options.AddInterceptors(failure));
 
         var chain = database.Scaffold(true, "AncestorRollback");
-        await database.MigrateAsync(chain);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
-        await SeedAsync(context);
-        var before = await ReadStatesAsync(context);
+        await SeedAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        var before = await ReadStatesAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         failure.Armed = true;
 
         // Act
@@ -214,7 +219,7 @@ public sealed partial class AncestorIndexLifecycleTests
             .ForScope(7)
             .InsertChildAsync(new MigrationNode { NodeId = 5 }, 4, CancellationToken.None));
 
-        var persisted = await ReadStatesAsync(context);
+        var persisted = await ReadStatesAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var tracked = ReadTrackedStates(context);
 
         // Assert
@@ -244,11 +249,13 @@ public sealed partial class AncestorIndexLifecycleTests
     )
     {
         // Arrange
-        await using var database = await AncestorIndexDatabase.CreateAsync(_fixture, engine);
+        await using var database = await AncestorIndexDatabase.CreateAsync(_fixture, engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var chain = database.Scaffold(true, "AncestorTrackedSave");
-        await database.MigrateAsync(chain);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
-        await SeedAsync(context);
+        await SeedAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var rows = await context
             .Set<MigrationNode>()
             .OrderBy(x => x.NodeId)
@@ -259,7 +266,7 @@ public sealed partial class AncestorIndexLifecycleTests
 
         // Act
         await context.SaveChangesAsync(CancellationToken.None);
-        var persisted = await ReadStatesAsync(context);
+        var persisted = await ReadStatesAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var tracked = ReadTrackedStates(context);
         int[] expectedBranches = crossTree ? [2, 4] : [1];
 
@@ -288,25 +295,26 @@ public sealed partial class AncestorIndexLifecycleTests
         await using var database = await AncestorIndexDatabase.CreateAsync(
             _fixture,
             engine,
+            cancellationToken: TestContext.Current.CancellationToken,
             options => options.AddInterceptors(failure));
 
         var chain = database.Scaffold(true, "AncestorParentRollback");
-        await database.MigrateAsync(chain);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
-        await SeedAsync(context);
+        await SeedAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var rows = await context
             .Set<MigrationNode>()
             .OrderBy(x => x.NodeId)
             .ToArrayAsync(CancellationToken.None);
 
-        var before = await ReadStatesAsync(context);
+        var before = await ReadStatesAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var moved = rows.Single(x => x.NodeId == 2);
         moved.ParentId = 4;
         failure.Armed = true;
 
         // Act
         var exception = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
-        var persisted = await ReadStatesAsync(context);
+        var persisted = await ReadStatesAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var tracked = ReadTrackedStates(context);
 
         // Assert
@@ -331,9 +339,11 @@ public sealed partial class AncestorIndexLifecycleTests
     )
     {
         // Arrange
-        await using var database = await AncestorIndexDatabase.CreateAsync(_fixture, engine);
+        await using var database = await AncestorIndexDatabase.CreateAsync(_fixture, engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var chain = database.Scaffold(true, "AncestorInt64Edge");
-        await database.MigrateAsync(chain);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
         var leaf = new MigrationNode
         {
             NodeId = 61,
@@ -353,10 +363,12 @@ public sealed partial class AncestorIndexLifecycleTests
         };
 
         // Act
-        await database.PhysicalDatabase.InsertNodeDirectlyAsync(leaf);
-        await database.PhysicalDatabase.InsertNodeDirectlyAsync(branch);
+        await database.PhysicalDatabase.InsertNodeDirectlyAsync(leaf,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await database.PhysicalDatabase.InsertNodeDirectlyAsync(branch,
+            cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
-        var rows = await ReadStatesAsync(context);
+        var rows = await ReadStatesAsync(context, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal([false, true], rows.Select(x => x.Flag));
@@ -364,29 +376,35 @@ public sealed partial class AncestorIndexLifecycleTests
     }
 
     /// <summary>Creates two tracked trees, including one leaf root and a three-level branch.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
     private static async Task SeedAsync(
-        AncestorIndexContext context
+        AncestorIndexContext context,
+        CancellationToken cancellationToken
     )
     {
         var hierarchy = context
             .NestedSet<MigrationNode>()
             .ForScope(7);
 
-        await hierarchy.InsertRootAsync(new MigrationNode { NodeId = 1 }, 11, CancellationToken.None);
-        await hierarchy.InsertChildAsync(new MigrationNode { NodeId = 2 }, 1, CancellationToken.None);
-        await hierarchy.InsertChildAsync(new MigrationNode { NodeId = 3 }, 2, CancellationToken.None);
-        await hierarchy.InsertRootAsync(new MigrationNode { NodeId = 4 }, 12, CancellationToken.None);
+        await hierarchy.InsertRootAsync(new MigrationNode { NodeId = 1 }, 11, cancellationToken);
+        await hierarchy.InsertChildAsync(new MigrationNode { NodeId = 2 }, 1, cancellationToken);
+        await hierarchy.InsertChildAsync(new MigrationNode { NodeId = 3 }, 2, cancellationToken);
+        await hierarchy.InsertRootAsync(new MigrationNode { NodeId = 4 }, 12, cancellationToken);
     }
 
     /// <summary>Reads database values without identity resolution hiding stale tracker values.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
     private static Task<FlagState[]> ReadStatesAsync(
-        AncestorIndexContext context
+        AncestorIndexContext context,
+        CancellationToken cancellationToken
     ) => context
         .Set<MigrationNode>()
         .AsNoTracking()
         .OrderBy(x => x.NodeId)
         .Select(x => new FlagState(x.NodeId, x.Left, x.Right, EF.Property<bool>(x, AncestorIndexContext.FlagProperty)))
-        .ToArrayAsync(CancellationToken.None);
+        .ToArrayAsync(cancellationToken);
 
     /// <summary>Captures generated shadow sidecars without any database I/O.</summary>
     private static FlagState[] ReadTrackedStates(

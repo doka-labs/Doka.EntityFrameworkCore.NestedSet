@@ -38,29 +38,34 @@ public abstract partial class AncestorIndexQueryTests
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
         await using var context = await _fixture.CreateContextAsync<AncestorIndexMappedContext>(Engine,
-            static options => new AncestorIndexMappedContext(options), probe);
+            static options => new AncestorIndexMappedContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
 
         var query = shape switch
         {
             "shadow" => await SeedMappedQueryAsync(context, tree, scope, first, includeSelf,
-                static _ => new CompositionShadowNode()),
+                static _ => new CompositionShadowNode(), cancellationToken: TestContext.Current.CancellationToken),
             "converted" => await SeedMappedQueryAsync(context, tree, scope, first, includeSelf,
-                static _ => new CompositionConvertedNode()),
+                static _ => new CompositionConvertedNode(), cancellationToken: TestContext.Current.CancellationToken),
             "binary" => await SeedMappedQueryAsync(context, tree, scope, first, includeSelf,
-                static _ => new BinaryNode()),
+                static _ => new BinaryNode(), cancellationToken: TestContext.Current.CancellationToken),
             "alternate" => await SeedMappedQueryAsync(context, tree, scope, first, includeSelf,
-                depth => new CompositeKeyNode { RowId = first + 100 + depth }),
+                depth => new CompositeKeyNode { RowId = first + 100 + depth },
+                cancellationToken: TestContext.Current.CancellationToken),
             "fields" => await SeedMappedQueryAsync(context, tree, scope, first, includeSelf,
-                static _ => new FieldNode()),
-            "named" => await SeedNamedQueriesAsync(context, tree, scope, first, includeSelf),
+                static _ => new FieldNode(), cancellationToken: TestContext.Current.CancellationToken),
+            "named" => await SeedNamedQueriesAsync(context, tree, scope, first, includeSelf,
+                cancellationToken: TestContext.Current.CancellationToken),
             "tph" => await SeedMappedQueryAsync<InheritanceNode>(context, tree, scope, first, includeSelf,
-                static depth => depth == 1 ? new TphMetricNode() : new TphFolderNode()),
+                static depth => depth == 1 ? new TphMetricNode() : new TphFolderNode(),
+                cancellationToken: TestContext.Current.CancellationToken),
             "tpc" => await SeedMappedQueryAsync(context, tree, scope, first, includeSelf,
-                static _ => new TpcFolderNode()),
+                static _ => new TpcFolderNode(), cancellationToken: TestContext.Current.CancellationToken),
             "table-split" => await SeedMappedQueryAsync(context, tree, scope, first, includeSelf,
-                static _ => new TableSplitNode()),
+                static _ => new TableSplitNode(), cancellationToken: TestContext.Current.CancellationToken),
             "entity-split" => await SeedMappedQueryAsync(context, tree, scope, first, includeSelf,
-                static _ => new EntitySplitNode()),
+                static _ => new EntitySplitNode(), cancellationToken: TestContext.Current.CancellationToken),
             _ => throw new ArgumentOutOfRangeException(nameof(shape)),
         };
 
@@ -90,10 +95,13 @@ public abstract partial class AncestorIndexQueryTests
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
         await using var context = await _fixture.CreateContextAsync<AncestorIndexTptQueryContext>(Engine,
-            static options => new AncestorIndexTptQueryContext(options), probe);
+            static options => new AncestorIndexTptQueryContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
 
         var query = await SeedMappedQueryAsync<InheritanceNode>(context, tree, scope, first, includeSelf,
-            static depth => depth == 1 ? new TptMetricNode() : new TptFolderNode());
+            static depth => depth == 1 ? new TptMetricNode() : new TptFolderNode(),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         int[] expected = includeSelf ? [0, 1, 2] : [0, 1];
         probe.Reset();
@@ -114,11 +122,14 @@ public abstract partial class AncestorIndexQueryTests
         Guid tree,
         Guid scope,
         int first,
-        bool includeSelf
+        bool includeSelf,
+        CancellationToken cancellationToken
     )
     {
         await SeedMappedQueryAsync(context, tree, scope, first, includeSelf,
-            static _ => new Dictionary<string, object?>(), AncestorIndexMappedContext.Second);
+            static _ => new Dictionary<string, object?>(),
+            cancellationToken: cancellationToken,
+            AncestorIndexMappedContext.Second);
 
         // WHY: Equal keys, TreeId and coordinates challenge exact named mapping identity. Different
         // stored depths make accidentally reading the other physical table observable in the result.
@@ -126,10 +137,12 @@ public abstract partial class AncestorIndexQueryTests
             .Where(node => EF.Property<Guid>(node, NestedSetPropertyRoles.TreeId) == tree)
             .ExecuteUpdateAsync(setters => setters.SetProperty(
                 node => EF.Property<int>(node, NestedSetPropertyRoles.Depth),
-                node => EF.Property<int>(node, NestedSetPropertyRoles.Depth) + 10), CancellationToken.None);
+                node => EF.Property<int>(node, NestedSetPropertyRoles.Depth) + 10), cancellationToken);
 
         return await SeedMappedQueryAsync(context, tree, scope, first, includeSelf,
-            static _ => new Dictionary<string, object?>(), AncestorIndexMappedContext.First);
+            static _ => new Dictionary<string, object?>(),
+            cancellationToken: cancellationToken,
+            AncestorIndexMappedContext.First);
     }
 
     /// <summary>Assigns exact finalized mapped roles, including shadow and converter-backed values, before tracking.</summary>
@@ -140,6 +153,7 @@ public abstract partial class AncestorIndexQueryTests
         int first,
         bool includeSelf,
         Func<int, TEntity> create,
+        CancellationToken cancellationToken,
         string? name = null
     )
         where TEntity : class
@@ -174,10 +188,10 @@ public abstract partial class AncestorIndexQueryTests
                 entry.Property(scopeProperty.Name).CurrentValue = scopeProperty.ClrType == typeof(Guid) ? scope : first;
             }
 
-            await set.AddAsync(entity, CancellationToken.None);
+            await set.AddAsync(entity, cancellationToken);
         }
 
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
         context.ChangeTracker.Clear();
         var hierarchy = name is null ? context.NestedSet<TEntity>() : context.NestedSet<TEntity>(name);
 

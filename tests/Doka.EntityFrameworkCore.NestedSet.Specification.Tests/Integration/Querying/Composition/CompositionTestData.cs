@@ -9,6 +9,7 @@ internal static class CompositionTestData
         string engine,
         Guid scope,
         CompositionCommandProbe probe,
+        CancellationToken cancellationToken,
         int? hidden = null,
         int? closed = null,
         EnterpriseProbe? planProbe = null,
@@ -19,6 +20,7 @@ internal static class CompositionTestData
         var context = await fixture.CreateContextAsync<CompositionContext>(
             engine,
             static options => new CompositionContext(options),
+            cancellationToken: cancellationToken,
             planProbe is null
                 ? [probe, TestMaterializationObserver.Instance]
                 : [probe, planProbe, TestMaterializationObserver.Instance]);
@@ -41,8 +43,8 @@ internal static class CompositionTestData
                 ];
 
             // WHY: Every case has its own scope, so stable oracle keys can coexist without reset races.
-            await context.AddRangeAsync(nodes, CancellationToken.None);
-            await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+            await context.AddRangeAsync(nodes, cancellationToken);
+            await context.SavePrecomputedHierarchyAsync(cancellationToken);
             context.ChangeTracker.Clear();
             probe.Reset();
 

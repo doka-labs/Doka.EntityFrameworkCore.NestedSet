@@ -34,8 +34,9 @@ internal static class OrderingLockTestSupport
 
     /// <summary>Starts the transaction required by the provider's write-lock contract.</summary>
     internal static Task<IDbContextTransaction> BeginAsync(
-        OrderingLockContext context
+        OrderingLockContext context,
+        CancellationToken cancellationToken
     ) => context.Database.BeginTransactionAsync(
         context.Database.IsSqlite() ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
-        CancellationToken.None);
+        cancellationToken);
 }

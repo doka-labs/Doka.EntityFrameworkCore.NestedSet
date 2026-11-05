@@ -43,12 +43,15 @@ public abstract partial class AncestorIndexWorkTestBase
         await using var context = await database.CreateContextAsync<AncestorIndexQueryContext>(
             Engine,
             static options => new AncestorIndexQueryContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             commands,
             capture);
 
-        await SeedAsync(context, scope, tree, forest: false, dense: chain);
+        await SeedAsync(context, scope, tree, forest: false, dense: chain,
+            cancellationToken: TestContext.Current.CancellationToken);
         var selected = chain ? new[] { 1_001, 1_002 } : [20, 30];
-        await SeedConsumerFactsAsync(context, scope, selected);
+        await SeedConsumerFactsAsync(context, scope, selected,
+            cancellationToken: TestContext.Current.CancellationToken);
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         var label = matches ? "selected" : "missing";
 
@@ -56,7 +59,8 @@ public abstract partial class AncestorIndexWorkTestBase
         var profile = $"fact-selection-chain-{chain}-inclusive-{inclusive}-matches-{matches}";
 
         // Act
-        var observation = await ObserveConsumerFactsAsync(context, commands, capture, Build, expected, profile);
+        var observation = await ObserveConsumerFactsAsync(context, commands, capture, Build, expected, profile,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         AssertConsumerFacts(observation, matches ? selected.Length : 0);
@@ -123,12 +127,14 @@ public abstract partial class AncestorIndexWorkTestBase
         await using var context = await database.CreateContextAsync<AncestorIndexQueryContext>(
             Engine,
             static options => new AncestorIndexQueryContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             commands,
             capture);
 
-        await SeedAsync(context, scope, tree, forest: false);
+        await SeedAsync(context, scope, tree, forest: false, cancellationToken: TestContext.Current.CancellationToken);
         int[] selected = [20, 30];
-        await SeedConsumerFactsAsync(context, scope, selected);
+        await SeedConsumerFactsAsync(context, scope, selected,
+            cancellationToken: TestContext.Current.CancellationToken);
         context.AddRange(
             new CompositionNavigationItem
             {
@@ -162,7 +168,7 @@ public abstract partial class AncestorIndexWorkTestBase
             Build,
             expected,
             profile,
-            factRows: 14);
+            factRows: 14, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         AssertConsumerFacts(observation, selected.Length);
@@ -240,15 +246,18 @@ public abstract partial class AncestorIndexWorkTestBase
         await using var context = await database.CreateContextAsync<AncestorIndexQueryContext>(
             Engine,
             static options => new AncestorIndexQueryContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             commands,
             capture);
 
-        await SeedAsync(context, scope, tree, forest: false, nodes: nodes);
+        await SeedAsync(context, scope, tree, forest: false, nodes: nodes,
+            cancellationToken: TestContext.Current.CancellationToken);
         var selected = Enumerable
             .Range(2, sources)
             .ToArray();
 
-        await SeedConsumerFactsAsync(context, scope, selected);
+        await SeedConsumerFactsAsync(context, scope, selected,
+            cancellationToken: TestContext.Current.CancellationToken);
         await context.Database.OpenConnectionAsync(CancellationToken.None);
 
         var expected = ExpectedConsumerPairs(selected, chain: false, inclusive);
@@ -265,7 +274,7 @@ public abstract partial class AncestorIndexWorkTestBase
             population: nodes,
             readWarmups: 0,
             measuredReads: 1,
-            factRows: (4 * sources) + 4);
+            factRows: (4 * sources) + 4, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         AssertConsumerFacts(observation, sources);
@@ -377,10 +386,16 @@ public abstract partial class AncestorIndexWorkTestBase
         (pair, fact) => new ConsumerFactPair(fact.Id, pair.Source, pair.Owner, pair.Distance));
 
     /// <summary>Seeds duplicate selection facts and distinct output occurrences without hierarchy payload.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="scope">The hierarchy scope used by the scenario.</param>
+    /// <param name="selected">The selected synthetic node identifiers.</param>
+    /// <param name="unrelatedNode">The unrelated node used to seed decoy facts.</param>
     private static async Task SeedConsumerFactsAsync(
         AncestorIndexQueryContext context,
         Guid scope,
         int[] selected,
+        CancellationToken cancellationToken,
         int unrelatedNode = 99
     )
     {
@@ -450,10 +465,10 @@ public abstract partial class AncestorIndexWorkTestBase
                 Label = "owner",
             });
 
-        await context.SaveChangesAsync(CancellationToken.None);
+        await context.SaveChangesAsync(cancellationToken);
         context.ChangeTracker.Clear();
         const string analyze = "ANALYZE TABLE `AncestorIndexQueryItems`";
-        await context.Database.ExecuteSqlRawAsync(analyze, CancellationToken.None);
+        await context.Database.ExecuteSqlRawAsync(analyze, cancellationToken);
     }
 
     /// <summary>Derives occurrences and distances from the parent rule rather than stored bounds.</summary>
@@ -498,6 +513,17 @@ public abstract partial class AncestorIndexWorkTestBase
         .ToArray();
 
     /// <summary>Observes fixed warmup and complete reads; elapsed values are evidence, never gates.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="commands">The command observation counters.</param>
+    /// <param name="capture">The command and materialization capture.</param>
+    /// <param name="build">The query factory used for construction and execution observations.</param>
+    /// <param name="expected">The independently derived expected results.</param>
+    /// <param name="profile">The selected synthetic workload profile.</param>
+    /// <param name="population">The expected physical hierarchy population.</param>
+    /// <param name="readWarmups">The fixed number of unmeasured warmup reads.</param>
+    /// <param name="measuredReads">The fixed number of complete reads inside the observation window.</param>
+    /// <param name="factRows">The expected number of synthetic consumer fact rows.</param>
     private async Task<ConsumerFactObservation> ObserveConsumerFactsAsync(
         AncestorIndexQueryContext context,
         CompositionCommandProbe commands,
@@ -505,6 +531,7 @@ public abstract partial class AncestorIndexWorkTestBase
         Func<AncestorIndexQueryContext, IQueryable<ConsumerFactPair>> build,
         ConsumerFactPair[] expected,
         string profile,
+        CancellationToken cancellationToken,
         int population = Nodes,
         int readWarmups = 3,
         int measuredReads = 5,
@@ -527,7 +554,7 @@ public abstract partial class AncestorIndexWorkTestBase
             .CreateCommand();
 
         versionCommand.CommandText = "SELECT VERSION()";
-        var nativeVersion = (string)(await versionCommand.ExecuteScalarAsync(CancellationToken.None))!;
+        var nativeVersion = (string)(await versionCommand.ExecuteScalarAsync(cancellationToken))!;
         var providerAssembly = context
             .GetService<IRelationalConnection>()
             .GetType()
@@ -539,9 +566,9 @@ public abstract partial class AncestorIndexWorkTestBase
             .GetType()
             .Assembly;
 
-        var providerBytes = await File.ReadAllBytesAsync(providerAssembly.Location, CancellationToken.None);
-        var nestedSetBytes = await File.ReadAllBytesAsync(nestedSetAssembly.Location, CancellationToken.None);
-        var adapterBytes = await File.ReadAllBytesAsync(adapterAssembly.Location, CancellationToken.None);
+        var providerBytes = await File.ReadAllBytesAsync(providerAssembly.Location, cancellationToken);
+        var nestedSetBytes = await File.ReadAllBytesAsync(nestedSetAssembly.Location, cancellationToken);
+        var adapterBytes = await File.ReadAllBytesAsync(adapterAssembly.Location, cancellationToken);
         var providerHash = Convert.ToHexStringLower(SHA256.HashData(providerBytes));
         var nestedSetHash = Convert.ToHexStringLower(SHA256.HashData(nestedSetBytes));
         var adapterHash = Convert.ToHexStringLower(SHA256.HashData(adapterBytes));
@@ -551,12 +578,12 @@ public abstract partial class AncestorIndexWorkTestBase
         var physicalNodes = await context
             .Set<CompositionNavigationNode>()
             .IgnoreQueryFilters()
-            .LongCountAsync(CancellationToken.None);
+            .LongCountAsync(cancellationToken);
 
-        var physicalFacts = await context.Set<CompositionNavigationItem>().LongCountAsync(CancellationToken.None);
+        var physicalFacts = await context.Set<CompositionNavigationItem>().LongCountAsync(cancellationToken);
         Assert.Equal(population, physicalNodes);
         Assert.Equal(factRows, physicalFacts);
-        var physicalTables = await ConsumerPhysicalTablesAsync(context);
+        var physicalTables = await ConsumerPhysicalTablesAsync(context, cancellationToken: cancellationToken);
         Assert.Equal(physicalNodes, physicalTables[0].LogicalRowCount);
         Assert.Equal(physicalFacts, physicalTables[1].LogicalRowCount);
         var observedUtc = DateTimeOffset.UtcNow;
@@ -581,7 +608,8 @@ public abstract partial class AncestorIndexWorkTestBase
 
         for (var warmup = 0; warmup < readWarmups; warmup++)
         {
-            actual = await ReadConsumerFactsAsync(context, capture, query, profile);
+            actual = await ReadConsumerFactsAsync(context, capture, query, profile,
+                cancellationToken: cancellationToken);
             RequireConsumerOracle(actual, expected);
             ClearConsumerCapture(commands, capture);
         }
@@ -592,8 +620,10 @@ public abstract partial class AncestorIndexWorkTestBase
         var hasOrderedJoin = NestedSetProviderCapabilities.Resolve(context)
             .OrderedJoinMethod is not null;
 
-        var traversalsBefore = await NativeTraversalCounterAsync(context);
-        var indexAttemptsBefore = await MariaSessionCounterAsync(context, "Handler_icp_attempts");
+        var traversalsBefore = await NativeTraversalCounterAsync(context, cancellationToken: cancellationToken);
+        var indexAttemptsBefore = await MariaSessionCounterAsync(context, "Handler_icp_attempts",
+            cancellationToken: cancellationToken);
+
         var reads = new ConsumerReadSample[measuredReads];
 
         // WHY: Process-wide allocation includes provider, reader, materialization and observers across async
@@ -603,7 +633,8 @@ public abstract partial class AncestorIndexWorkTestBase
             profileEvents.BeginRead(Engine, profile, "observed", sample);
             var allocatedBefore = GC.GetTotalAllocatedBytes(precise: true);
             var started = Stopwatch.GetTimestamp();
-            actual = await ReadConsumerFactsAsync(context, capture, query, profile);
+            actual = await ReadConsumerFactsAsync(context, capture, query, profile,
+                cancellationToken: cancellationToken);
             var elapsed = Stopwatch.GetElapsedTime(started);
             var allocated = GC.GetTotalAllocatedBytes(precise: true) - allocatedBefore;
             profileEvents.EndRead(Engine, profile, "observed", sample);
@@ -613,8 +644,12 @@ public abstract partial class AncestorIndexWorkTestBase
 
         var commandCount = commands.CommandCount;
         var sql = capture.Commands[0];
-        var traversals = await NativeTraversalCounterAsync(context) - traversalsBefore;
-        var indexAttempts = await MariaSessionCounterAsync(context, "Handler_icp_attempts") - indexAttemptsBefore;
+        var traversals = await NativeTraversalCounterAsync(context,
+            cancellationToken: cancellationToken) - traversalsBefore;
+
+        var indexAttempts = await MariaSessionCounterAsync(context, "Handler_icp_attempts",
+            cancellationToken: cancellationToken) - indexAttemptsBefore;
+
         var summary = new
         {
             Engine,
@@ -652,12 +687,14 @@ public abstract partial class AncestorIndexWorkTestBase
         var serialized = JsonSerializer.Serialize(summary, s_consumerEvidenceJson);
         await QueryPlanTestSupport.WriteEvidenceAsync(
             Engine + "-ancestor-consumer-" + profile + "-completed",
-            [serialized, sql]);
+            [serialized, sql], cancellationToken: cancellationToken);
 
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, capture, 0, Engine);
+        var plan = await QueryPlanTestSupport.ExplainAsync(context, capture, 0, Engine,
+            cancellationToken: cancellationToken);
+
         await QueryPlanTestSupport.WriteEvidenceAsync(
             Engine + "-ancestor-consumer-" + profile,
-            [serialized, sql, plan]);
+            [serialized, sql, plan], cancellationToken: cancellationToken);
 
         var work = Engine == "MySql" ? DensePathNativeWork.MySql(plan) : DensePathNativeWork.MariaDb(plan);
         await ObserveConsumerReadsWithoutCaptureAsync(
@@ -667,7 +704,7 @@ public abstract partial class AncestorIndexWorkTestBase
             expected,
             profile,
             readWarmups,
-            measuredReads);
+            measuredReads, cancellationToken: cancellationToken);
 
         return new ConsumerFactObservation(
             profile,
@@ -691,22 +728,30 @@ public abstract partial class AncestorIndexWorkTestBase
     }
 
     /// <summary>Preserves the actual command and planning diagnostic if a complete native read fails.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="capture">The command and materialization capture.</param>
+    /// <param name="query">The composed provider query to execute.</param>
+    /// <param name="profile">The selected synthetic workload profile.</param>
     private async Task<ConsumerFactPair[]> ReadConsumerFactsAsync(
         AncestorIndexQueryContext context,
         EnterpriseProbe capture,
         IQueryable<ConsumerFactPair> query,
-        string profile
+        string profile,
+        CancellationToken cancellationToken
     )
     {
         try
         {
-            return await query.ToArrayAsync(CancellationToken.None);
+            return await query.ToArrayAsync(cancellationToken);
         }
         catch (Exception exception)
         {
             await QueryPlanTestSupport.WriteEvidenceAsync(
                 Engine + "-ancestor-consumer-" + profile + "-failure",
-                [exception.ToString(), .. capture.Commands, await FailurePlanAsync(context, capture)]);
+                [exception.ToString(), .. capture.Commands, await FailurePlanAsync(context, capture,
+                    cancellationToken: cancellationToken)],
+                cancellationToken: cancellationToken);
 
             throw;
         }

@@ -5,14 +5,16 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public abstract partial class SaveChangesTests
 {
     /// <summary>Seeds deterministic JSON through EF with empty materialization-time collection initializers.</summary>
-    private async Task<TestDatabase> CreateComplexCallbackDatabaseAsync()
+    private async Task<TestDatabase> CreateComplexCallbackDatabaseAsync(CancellationToken cancellationToken)
     {
-        var database = await TestDatabase.CreateAsync(Engine);
+        var database = await TestDatabase.CreateAsync(Engine, cancellationToken: cancellationToken);
 
         try
         {
-            await using var context = await CreateComplexCallbackContextAsync(database);
-            await context.GetService<IRelationalDatabaseCreator>().CreateTablesAsync(CancellationToken.None);
+            await using var context = await CreateComplexCallbackContextAsync(database,
+                cancellationToken: cancellationToken);
+
+            await context.GetService<IRelationalDatabaseCreator>().CreateTablesAsync(cancellationToken);
             var owner = new NavigationScopeOwner { Value = "owner" };
             var row = new ComplexCallbackRow
             {
@@ -22,15 +24,15 @@ public abstract partial class SaveChangesTests
             };
 
             await context.AddRangeAsync([owner, new NavigationScopeOwner { Value = "other owner" },
-                new NavigationNote { Id = 1, Value = "sentinel" }, row], CancellationToken.None);
+                new NavigationNote { Id = 1, Value = "sentinel" }, row], cancellationToken);
 
-            await context.SaveChangesAsync(CancellationToken.None);
+            await context.SaveChangesAsync(cancellationToken);
             var tree = context.NestedSet<NavigationNode>().ForScope(owner.Id);
             await tree.InsertRootAsync(new NavigationNode { Id = 1, Name = "Root" }, s_treeId,
-                CancellationToken.None);
+                cancellationToken);
 
-            await tree.InsertChildAsync(new NavigationNode { Id = 2, Name = "Alpha" }, 1, CancellationToken.None);
-            await tree.InsertChildAsync(new NavigationNode { Id = 3, Name = "Bravo" }, 1, CancellationToken.None);
+            await tree.InsertChildAsync(new NavigationNode { Id = 2, Name = "Alpha" }, 1, cancellationToken);
+            await tree.InsertChildAsync(new NavigationNode { Id = 3, Name = "Bravo" }, 1, cancellationToken);
 
             return database;
         }
@@ -45,9 +47,10 @@ public abstract partial class SaveChangesTests
     /// <summary>Creates the isolated ordinary-row model through the existing provider options.</summary>
     private static async Task<ComplexCallbackContext> CreateComplexCallbackContextAsync(
         TestDatabase database,
+        CancellationToken cancellationToken,
         params IInterceptor[] interceptors
     )
-        => new(await SaveSemanticsFixture.OptionsAsync(database, interceptors));
+        => new(await SaveSemanticsFixture.OptionsAsync(database, cancellationToken: cancellationToken, interceptors));
 
     /// <summary>Supplies explicit seed values without causing EF materialization to append duplicates.</summary>
     private static ComplexCallbackItem NewComplexCallbackItem(string text)
@@ -58,19 +61,25 @@ public abstract partial class SaveChangesTests
         => [new() { Text = "part one" }, new() { Text = "part two" }];
 
     /// <summary>Loads the ordinary row and sentinel without creating pending facade writes.</summary>
-    private static async Task<ComplexCallbackGraph> LoadComplexCallbackGraphAsync(ComplexCallbackContext context)
+    private static async Task<ComplexCallbackGraph> LoadComplexCallbackGraphAsync(
+        ComplexCallbackContext context,
+        CancellationToken cancellationToken
+    )
     {
-        var row = await context.Set<ComplexCallbackRow>().SingleAsync(CancellationToken.None);
-        var sentinel = await context.Set<NavigationNote>().SingleAsync(CancellationToken.None);
+        var row = await context.Set<ComplexCallbackRow>().SingleAsync(cancellationToken);
+        var sentinel = await context.Set<NavigationNote>().SingleAsync(cancellationToken);
         context.ChangeTracker.AutoDetectChangesEnabled = false;
 
         return new ComplexCallbackGraph(context.Entry(row), context.Entry(sentinel));
     }
 
     /// <summary>Authorizes one existing hierarchy order change independently of ordinary complex payload.</summary>
-    private static async Task PrepareComplexCallbackOrderingAsync(ComplexCallbackContext context)
+    private static async Task PrepareComplexCallbackOrderingAsync(
+        ComplexCallbackContext context,
+        CancellationToken cancellationToken
+    )
     {
-        var node = await context.Set<NavigationNode>().SingleAsync(value => value.Id == 2, CancellationToken.None);
+        var node = await context.Set<NavigationNode>().SingleAsync(value => value.Id == 2, cancellationToken);
         node.Name = "Zulu";
         context.Entry(node).Property(value => value.Name).IsModified = true;
     }
@@ -224,10 +233,15 @@ public abstract partial class SaveChangesTests
     }
 
     /// <summary>Reads real stored payload independently of the tested tracker and its nullable CLR graph.</summary>
-    private static async Task<ComplexCallbackStoredRow> ReadComplexCallbackRowAsync(TestDatabase database)
+    private static async Task<ComplexCallbackStoredRow> ReadComplexCallbackRowAsync(
+        TestDatabase database,
+        CancellationToken cancellationToken
+    )
     {
-        await using var verification = await CreateComplexCallbackContextAsync(database);
-        var row = await verification.Set<ComplexCallbackRow>().AsNoTracking().SingleAsync(CancellationToken.None);
+        await using var verification = await CreateComplexCallbackContextAsync(database,
+            cancellationToken: cancellationToken);
+
+        var row = await verification.Set<ComplexCallbackRow>().AsNoTracking().SingleAsync(cancellationToken);
 
         return new ComplexCallbackStoredRow(row.Label, row.Version, row.Address?.Text,
             row.Items is null ? null : string.Join("|", row.Items.Select(item => item.Text + ":"
@@ -236,31 +250,41 @@ public abstract partial class SaveChangesTests
     }
 
     /// <summary>Advances only the independent application token to provoke genuine optimistic concurrency.</summary>
-    private static async Task ChangeComplexCallbackVersionAsync(TestDatabase database)
+    private static async Task ChangeComplexCallbackVersionAsync(
+        TestDatabase database,
+        CancellationToken cancellationToken
+    )
     {
-        await using var external = await CreateComplexCallbackContextAsync(database);
+        await using var external = await CreateComplexCallbackContextAsync(database,
+            cancellationToken: cancellationToken);
+
         var sql = external.GetService<ISqlGenerationHelper>();
         var update = $"UPDATE {sql.DelimitIdentifier("ComplexCallbackRows")} "
             + $"SET {sql.DelimitIdentifier("Version")} = {{0}} WHERE {sql.DelimitIdentifier("Id")} = {{1}}";
 
-        await external.Database.ExecuteSqlRawAsync(update, [8, 1], CancellationToken.None);
+        await external.Database.ExecuteSqlRawAsync(update, [8, 1], cancellationToken);
     }
 
     /// <summary>Executes each managed insertion form without registering hierarchy inputs before preflight.</summary>
-    private static Task InsertComplexCallbackInputsAsync(DbContext context, string shape, NavigationNode[] inputs)
+    private static Task InsertComplexCallbackInputsAsync(
+        DbContext context,
+        string shape,
+        NavigationNode[] inputs,
+        CancellationToken cancellationToken
+    )
     {
         var tree = context.NestedSet<NavigationNode>().ForScope(1);
 
         return shape switch
         {
-            "single" => tree.InsertChildAsync(inputs[0], 1, CancellationToken.None),
+            "single" => tree.InsertChildAsync(inputs[0], 1, cancellationToken),
             "subtree" => tree.InsertSubtreeAsync(PreparedOwnerBranch(inputs, 0, inputs.Length), 1,
-                CancellationToken.None),
+                cancellationToken),
             "forest" => tree.InsertForestAsync(
                 [new NestedSetTreeImport<NavigationNode, Guid>(s_manualFirstImportTree,
                         PreparedOwnerBranch(inputs, 0, inputs.Length / 2)),
                     new NestedSetTreeImport<NavigationNode, Guid>(s_manualSecondImportTree,
-                        PreparedOwnerBranch(inputs, inputs.Length / 2, inputs.Length / 2))], CancellationToken.None),
+                        PreparedOwnerBranch(inputs, inputs.Length / 2, inputs.Length / 2))], cancellationToken),
             _ => throw new ArgumentOutOfRangeException(nameof(shape)),
         };
     }

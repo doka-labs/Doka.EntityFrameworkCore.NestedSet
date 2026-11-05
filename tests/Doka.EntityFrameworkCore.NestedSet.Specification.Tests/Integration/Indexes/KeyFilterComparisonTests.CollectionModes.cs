@@ -49,6 +49,7 @@ public abstract partial class KeyFilterComparisonTests
                 Left = 1,
                 Right = 2,
             },
+            cancellationToken: TestContext.Current.CancellationToken,
             Engine == "PostgreSql" ? null : static value => value.ToLowerInvariant()),
         "Binary" => CompareCollectionModeAsync<BinaryNode, byte[]>(
             Engine,
@@ -62,7 +63,7 @@ public abstract partial class KeyFilterComparisonTests
                 TreeId = Guid.NewGuid(),
                 Left = 1,
                 Right = 2,
-            }),
+            }, cancellationToken: TestContext.Current.CancellationToken),
         _ => throw new ArgumentOutOfRangeException(nameof(key)),
     };
 
@@ -77,27 +78,29 @@ public abstract partial class KeyFilterComparisonTests
     /// <param name="createKey">Creates distinct native values with independent binary storage.</param>
     /// <param name="createNode">Creates valid independent leaf trees using the actual fixture mapping.</param>
     /// <param name="alias">An optional case alias supported by the existing principal key's native collation.</param>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private async Task CompareCollectionModeAsync<TEntity, TKey>(
         string engine,
         ParameterTranslationMode mode,
         bool includeExisting,
         Func<int, TKey> createKey,
         Func<TKey, TEntity> createNode,
+        CancellationToken cancellationToken,
         Func<TKey, TKey>? alias = null
     )
         where TEntity : class
         where TKey : notnull
     {
         // Arrange
-        var database = await _fixture.ResetAsync(engine);
+        var database = await _fixture.ResetAsync(engine, cancellationToken: cancellationToken);
         await using var setup = database.CreateContext();
 
         foreach (var index in Enumerable.Range(1, 3))
         {
-            await setup.AddAsync(createNode(createKey(index)), CancellationToken.None);
+            await setup.AddAsync(createNode(createKey(index)), cancellationToken);
         }
 
-        await setup.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await setup.SavePrecomputedHierarchyAsync(cancellationToken);
         var probe = new EnterpriseProbe();
         var providerOptions = ModelCompatibilityDatabase.Options<TreeContext>(
             engine,
@@ -126,7 +129,7 @@ public abstract partial class KeyFilterComparisonTests
             .Set<TEntity>()
             .Where(NestedSetKeyFilter<TEntity>.Matches(keyProperty, requested))
             .Select(node => EF.Property<TKey>(node, "Id"))
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         // Assert
         Assert.Equal(includeExisting ? 1 : 0, found.Length);

@@ -7,7 +7,8 @@ internal static partial class CompositionCapacityProfiles
         TestDatabase database,
         string engine,
         int nodes,
-        bool balanced
+        bool balanced,
+        CancellationToken cancellationToken
     )
     {
         var observations = new List<CompositionCapacityObservation>();
@@ -27,11 +28,13 @@ internal static partial class CompositionCapacityProfiles
 
             try
             {
-                rows = await query.ToArrayAsync(CancellationToken.None);
+                rows = await query.ToArrayAsync(cancellationToken);
             }
             catch (Exception error)
             {
-                await RetainFailureAsync(context, engine, profile, planProbe, error);
+                // WHY: Failure evidence completes independently of the canceled workload and preserves its error.
+                await RetainFailureAsync(context, engine, profile, planProbe, error,
+                    cancellationToken: CancellationToken.None);
 
                 throw;
             }
@@ -44,11 +47,14 @@ internal static partial class CompositionCapacityProfiles
 
             try
             {
-                plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, 0, engine);
+                plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, 0, engine,
+                    cancellationToken: cancellationToken);
             }
             catch (Exception error)
             {
-                await RetainFailureAsync(context, engine, profile, planProbe, error);
+                // WHY: Failure evidence completes independently of the canceled workload and preserves its error.
+                await RetainFailureAsync(context, engine, profile, planProbe, error,
+                    cancellationToken: CancellationToken.None);
 
                 throw;
             }
@@ -63,7 +69,7 @@ internal static partial class CompositionCapacityProfiles
                 constructionCommands, materialized, tracked, buildBytes, elapsed, plan);
 
             observations.Add(observation);
-            await WriteAsync(engine, observation, planProbe.Commands[0]);
+            await WriteAsync(engine, observation, planProbe.Commands[0], cancellationToken: cancellationToken);
 
             if (engine == "SqlServer")
             {

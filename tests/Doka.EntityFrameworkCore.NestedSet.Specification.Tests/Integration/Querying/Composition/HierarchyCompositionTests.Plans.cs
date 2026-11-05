@@ -16,7 +16,9 @@ public abstract partial class HierarchyCompositionTests
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
         var planProbe = new EnterpriseProbe(captureParameterBindings: true);
-        await using var context = await CreateContextAsync(scope, probe, planProbe: planProbe);
+        await using var context = await CreateContextAsync(scope, probe, planProbe: planProbe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
         var commandIndex = planProbe.Commands.Count;
         IQueryable<int> query;
@@ -67,10 +69,12 @@ public abstract partial class HierarchyCompositionTests
         // Act
         var rows = await query.ToArrayAsync(CancellationToken.None);
         var queryCommands = probe.CommandCount;
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, commandIndex, Engine);
+        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, commandIndex, Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await QueryPlanTestSupport.WriteEvidenceAsync(
             Engine + "-composition-" + shape,
-            [planProbe.Commands[commandIndex], plan]);
+            [planProbe.Commands[commandIndex], plan], cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEmpty(rows);

@@ -22,8 +22,12 @@ public abstract partial class OrderingComplexConcurrencyTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.PrepareAsync(Engine, PrepareAsync);
-        await using var context = new ComplexConcurrencyContext(await SaveSemanticsFixture.OptionsAsync(database));
+        var database = await _fixture.PrepareAsync(Engine, PrepareAsync,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using var context = new ComplexConcurrencyContext(await SaveSemanticsFixture.OptionsAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var nodes = await context
             .Set<ComplexConcurrencyNode>()
             .OrderBy(node => node.Id)
@@ -55,7 +59,9 @@ public abstract partial class OrderingComplexConcurrencyTests : ProviderTest
         Assert.Equal(
             acceptChanges ? EntityState.Unchanged : EntityState.Modified,
             context.Entry(nodes[0]).State);
-        await using var verification = new ComplexConcurrencyContext(await SaveSemanticsFixture.OptionsAsync(database));
+        await using var verification = new ComplexConcurrencyContext(await SaveSemanticsFixture.OptionsAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Equal(
             10,
             await verification
@@ -70,8 +76,12 @@ public abstract partial class OrderingComplexConcurrencyTests : ProviderTest
     public async Task PayloadSaveAfterRenameUsesFinalComplexConcurrencyToken()
     {
         // Arrange
-        var database = await _fixture.PrepareAsync(Engine, PrepareAsync);
-        await using var context = new ComplexConcurrencyContext(await SaveSemanticsFixture.OptionsAsync(database));
+        var database = await _fixture.PrepareAsync(Engine, PrepareAsync,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using var context = new ComplexConcurrencyContext(await SaveSemanticsFixture.OptionsAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var node = await context
             .Set<ComplexConcurrencyNode>()
             .SingleAsync(value => value.Id == 1, CancellationToken.None);
@@ -85,7 +95,9 @@ public abstract partial class OrderingComplexConcurrencyTests : ProviderTest
 
         // Assert
         Assert.Null(failure);
-        await using var verification = new ComplexConcurrencyContext(await SaveSemanticsFixture.OptionsAsync(database));
+        await using var verification = new ComplexConcurrencyContext(await SaveSemanticsFixture.OptionsAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Equal(
             "later application update",
             await verification
@@ -100,8 +112,12 @@ public abstract partial class OrderingComplexConcurrencyTests : ProviderTest
     public async Task OrderedInsertionReturnsFinalComplexConcurrencyToken()
     {
         // Arrange
-        var database = await _fixture.PrepareAsync(Engine, PrepareAsync);
-        await using var context = new ComplexConcurrencyContext(await SaveSemanticsFixture.OptionsAsync(database));
+        var database = await _fixture.PrepareAsync(Engine, PrepareAsync,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using var context = new ComplexConcurrencyContext(await SaveSemanticsFixture.OptionsAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var tree = context
             .NestedSet<ComplexConcurrencyNode>()
             .ForScope(1);
@@ -132,21 +148,24 @@ public abstract partial class OrderingComplexConcurrencyTests : ProviderTest
     /// </summary>
     private static async Task PrepareAsync(
         TestDatabase database,
-        bool firstUse
+        bool firstUse,
+        CancellationToken cancellationToken
     )
     {
-        await using var context = new ComplexConcurrencyContext(await SaveSemanticsFixture.OptionsAsync(database));
+        await using var context = new ComplexConcurrencyContext(await SaveSemanticsFixture.OptionsAsync(database,
+            cancellationToken: cancellationToken));
+
         if (firstUse)
         {
             await context
                 .GetService<IRelationalDatabaseCreator>()
-                .CreateTablesAsync(CancellationToken.None);
+                .CreateTablesAsync(cancellationToken);
         }
         else
         {
             await context
                 .Set<ComplexConcurrencyNode>()
-                .ExecuteDeleteAsync(CancellationToken.None);
+                .ExecuteDeleteAsync(cancellationToken);
         }
 
         var tree = context
@@ -160,7 +179,7 @@ public abstract partial class OrderingComplexConcurrencyTests : ProviderTest
                 Name = "Root",
             },
             Guid.NewGuid(),
-            CancellationToken.None);
+            cancellationToken);
 
         await tree.InsertChildAsync(
             new ComplexConcurrencyNode
@@ -169,7 +188,7 @@ public abstract partial class OrderingComplexConcurrencyTests : ProviderTest
                 Name = "Alpha",
             },
             10,
-            CancellationToken.None);
+            cancellationToken);
 
         await tree.InsertChildAsync(
             new ComplexConcurrencyNode
@@ -178,6 +197,6 @@ public abstract partial class OrderingComplexConcurrencyTests : ProviderTest
                 Name = "Bravo",
             },
             10,
-            CancellationToken.None);
+            cancellationToken);
     }
 }

@@ -23,7 +23,9 @@ public abstract partial class HierarchyCompositionModelTests
         var probe = new CompositionCommandProbe();
         var materialized = 0;
         await using var context = await _fixture.CreateContextAsync<TptContext>(Engine,
-            static options => new TptContext(options), probe, TestMaterializationObserver.Instance);
+            static options => new TptContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe, TestMaterializationObserver.Instance);
 
         TestMaterializationObserver.Instance.Register(context, _ => materialized++);
 

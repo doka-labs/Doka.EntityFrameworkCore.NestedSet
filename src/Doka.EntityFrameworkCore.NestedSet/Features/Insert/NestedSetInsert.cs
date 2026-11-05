@@ -36,7 +36,7 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
     /// <returns>A task that completes after the owned commit or caller savepoint release.</returns>
     internal Task InsertRootAsync(
         TEntity entity,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     ) => InsertAsync(entity, default, null, cancellationToken, automatic: true);
 
     /// <summary>Inserts a child using the configured automatic rule or the last sibling position.</summary>
@@ -47,7 +47,7 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
     internal Task InsertChildAsync(
         TEntity entity,
         TKey parent,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     ) => InsertAsync(entity, parent, NestedSetPlacement.LastChild, cancellationToken, automatic: true);
 
     /// <summary>Inserts a child at the first sibling position when manual placement is permitted.</summary>
@@ -58,7 +58,7 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
     internal Task InsertAsFirstChildAsync(
         TEntity entity,
         TKey parent,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     ) => InsertAsync(entity, parent, NestedSetPlacement.FirstChild, cancellationToken);
 
     /// <summary>Inserts a child at the last sibling position when manual placement is permitted.</summary>
@@ -69,7 +69,7 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
     internal Task InsertAsLastChildAsync(
         TEntity entity,
         TKey parent,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     ) => InsertAsync(entity, parent, NestedSetPlacement.LastChild, cancellationToken);
 
     /// <summary>Inserts a sibling immediately before an existing non-root node.</summary>
@@ -80,7 +80,7 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
     internal Task InsertBeforeAsync(
         TEntity entity,
         TKey sibling,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     ) => InsertAsync(entity, sibling, NestedSetPlacement.Before, cancellationToken);
 
     /// <summary>Inserts a sibling immediately after an existing non-root node.</summary>
@@ -91,7 +91,7 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
     internal Task InsertAfterAsync(
         TEntity entity,
         TKey sibling,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     ) => InsertAsync(entity, sibling, NestedSetPlacement.After, cancellationToken);
 
     /// <summary>Inserts a detached node and restores its CLR state if the write fails.</summary>

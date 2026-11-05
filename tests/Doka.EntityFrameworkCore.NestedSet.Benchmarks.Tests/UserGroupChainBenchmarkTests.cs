@@ -51,14 +51,14 @@ public sealed class UserGroupChainBenchmarkTests
         // Arrange
         await using var benchmark = Create(profile, reexpand);
         benchmark.Initialize();
-        await benchmark.PrepareAsync();
+        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
         var hops = UserGroupChainBenchmarkData.Dimensions(profile).Hops;
 
         // Act
-        await ExecuteAsync(benchmark, reference);
+        await ExecuteAsync(benchmark, reference, TestContext.Current.CancellationToken);
 
         // Assert
-        await benchmark.VerifyAsync();
+        await benchmark.VerifyAsync(TestContext.Current.CancellationToken);
         var branch = Assert.Single(benchmark.Result.Branches);
         Assert.Equal(SupervisorChainStatus.ReachedRequestedHop, branch.Status);
         Assert.Equal(hops, branch.Hops.Count);
@@ -88,15 +88,15 @@ public sealed class UserGroupChainBenchmarkTests
         // Arrange
         await using var benchmark = Create(profile, reexpand: true);
         benchmark.Initialize();
-        await benchmark.PrepareAsync();
+        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
         var (hops, fanout) = UserGroupChainBenchmarkData.Dimensions(profile);
         var expected = (int)Math.Pow(fanout, hops);
 
         // Act
-        await ExecuteAsync(benchmark, reference);
+        await ExecuteAsync(benchmark, reference, TestContext.Current.CancellationToken);
 
         // Assert
-        await benchmark.VerifyAsync();
+        await benchmark.VerifyAsync(TestContext.Current.CancellationToken);
         Assert.True(benchmark.Result.Complete);
         Assert.Equal(expected, benchmark.Result.Branches.Count);
         Assert.All(benchmark.Result.Branches, branch =>
@@ -128,13 +128,13 @@ public sealed class UserGroupChainBenchmarkTests
         // Arrange
         await using var benchmark = Create(profile);
         benchmark.Initialize();
-        await benchmark.PrepareAsync();
+        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
 
         // Act
-        await ExecuteAsync(benchmark, reference);
+        await ExecuteAsync(benchmark, reference, TestContext.Current.CancellationToken);
 
         // Assert
-        await benchmark.VerifyAsync();
+        await benchmark.VerifyAsync(TestContext.Current.CancellationToken);
         var branch = Assert.Single(benchmark.Result.Branches);
         Assert.Equal(expected, branch.Status.ToString());
         Assert.Equal(expected != "LimitExceeded", benchmark.Result.Complete);
@@ -157,13 +157,13 @@ public sealed class UserGroupChainBenchmarkTests
         // Arrange
         await using var benchmark = Create(BenchmarkChainProfile.RoutingSwitch, currentRouting: current);
         benchmark.Initialize();
-        await benchmark.PrepareAsync();
+        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
 
         // Act
-        await ExecuteAsync(benchmark, reference);
+        await ExecuteAsync(benchmark, reference, TestContext.Current.CancellationToken);
 
         // Assert
-        await benchmark.VerifyAsync();
+        await benchmark.VerifyAsync(TestContext.Current.CancellationToken);
         var branch = Assert.Single(benchmark.Result.Branches);
         Assert.Equal(SupervisorChainStatus.ReachedRequestedHop, branch.Status);
         Assert.Equal(benchmark.Data.People[1 + (4 * 2) + (current ? 1 : 0)],
@@ -186,13 +186,13 @@ public sealed class UserGroupChainBenchmarkTests
         // Arrange
         await using var benchmark = Create(BenchmarkChainProfile.ReExpansion, reexpand);
         benchmark.Initialize();
-        await benchmark.PrepareAsync();
+        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
 
         // Act
-        await ExecuteAsync(benchmark, reference);
+        await ExecuteAsync(benchmark, reference, TestContext.Current.CancellationToken);
 
         // Assert
-        await benchmark.VerifyAsync();
+        await benchmark.VerifyAsync(TestContext.Current.CancellationToken);
         Assert.Equal(reexpand, benchmark.Result.Branches.SelectMany(branch => branch.Hops)
             .Any(hop => hop.Number > 1 && hop.Evidence.StartGroupId == benchmark.Data.Groups[9]));
     }
@@ -204,7 +204,7 @@ public sealed class UserGroupChainBenchmarkTests
         // Arrange
         await using var benchmark = Create(BenchmarkChainProfile.Ambiguous);
         benchmark.Initialize();
-        await benchmark.PrepareAsync();
+        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
         var request = benchmark.Request with { MaxResultRows = 2 };
 
         // Act
@@ -230,7 +230,7 @@ public sealed class UserGroupChainBenchmarkTests
         // Arrange
         await using var benchmark = Create(BenchmarkChainProfile.Hops4Fanout2);
         benchmark.Initialize();
-        await benchmark.PrepareAsync();
+        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
         var preferred = Enumerable
             .Range(0, 8)
             .Select(level => benchmark.Data.People[1 + (level * 2)])
@@ -284,7 +284,7 @@ public sealed class UserGroupChainBenchmarkTests
         // Arrange
         await using var benchmark = Create(BenchmarkChainProfile.Hops4Fanout2);
         benchmark.Initialize();
-        await benchmark.PrepareAsync();
+        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
         var request = benchmark.Request with
         {
             Steps = benchmark
@@ -321,7 +321,7 @@ public sealed class UserGroupChainBenchmarkTests
         // Arrange
         await using var benchmark = Create(BenchmarkChainProfile.Hops4Fanout1);
         benchmark.Initialize();
-        await benchmark.PrepareAsync();
+        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
         var request = visited
             ? benchmark.Request with { MaxVisitedStates = 1 }
             : benchmark.Request with { MaxResultRows = 1 };
@@ -353,7 +353,7 @@ public sealed class UserGroupChainBenchmarkTests
         // Arrange
         await using var benchmark = Create(BenchmarkChainProfile.Hops2Fanout1);
         benchmark.Initialize();
-        await benchmark.PrepareAsync();
+        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
         var request = missingUser
             ? benchmark.Request with { SourceUserId = int.MaxValue }
             : benchmark.Request with { StartGroupId = benchmark.Data.Groups[0] };
@@ -383,7 +383,7 @@ public sealed class UserGroupChainBenchmarkTests
         // Arrange
         await using var benchmark = Create(BenchmarkChainProfile.Hops2Fanout1);
         benchmark.Initialize();
-        await benchmark.PrepareAsync();
+        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
         var request = benchmark.Request with
         {
             Steps = benchmark
@@ -414,7 +414,7 @@ public sealed class UserGroupChainBenchmarkTests
         // Arrange
         await using var benchmark = Create(BenchmarkChainProfile.Hops2Fanout1);
         benchmark.Initialize();
-        await benchmark.PrepareAsync();
+        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
         await using var transaction = await benchmark.Context.Database.BeginTransactionAsync(
             IsolationLevel.Serializable,
             CancellationToken.None);
@@ -440,7 +440,7 @@ public sealed class UserGroupChainBenchmarkTests
         // Arrange
         await using var benchmark = Create(BenchmarkChainProfile.Hops2Fanout1);
         benchmark.Initialize();
-        await benchmark.PrepareAsync();
+        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 
@@ -465,10 +465,10 @@ public sealed class UserGroupChainBenchmarkTests
         // Arrange
         await using var benchmark = Create(BenchmarkChainProfile.Hops2Fanout1);
         benchmark.Initialize();
-        await benchmark.PrepareAsync();
+        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
 
         // Act
-        var error = await Record.ExceptionAsync(benchmark.VerifyAsync);
+        var error = await Record.ExceptionAsync(() => benchmark.VerifyAsync(TestContext.Current.CancellationToken));
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);
@@ -491,8 +491,18 @@ public sealed class UserGroupChainBenchmarkTests
     };
 
     /// <summary>Selects exactly one timed operation for each independently arranged test case.</summary>
+    /// <param name="benchmark">The prepared benchmark whose actual workload is selected.</param>
+    /// <param name="reference">Whether to execute the reference workload.</param>
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
     private static Task ExecuteAsync(
         UserGroupChainBenchmarks benchmark,
-        bool reference
-    ) => reference ? benchmark.Reference() : benchmark.Api();
+        bool reference,
+        CancellationToken cancellationToken
+    )
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // WHY: Functional verification dispatches the exact BDN entrypoints; their measured signatures are fixed.
+        return reference ? benchmark.Reference() : benchmark.Api();
+    }
 }

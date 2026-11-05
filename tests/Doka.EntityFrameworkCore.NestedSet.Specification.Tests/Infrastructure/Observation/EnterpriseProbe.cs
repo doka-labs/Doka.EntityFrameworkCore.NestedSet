@@ -70,7 +70,7 @@ public sealed class EnterpriseProbe : DbCommandInterceptor
         CancellationToken cancellationToken = default
     )
     {
-        await InspectAsync(command);
+        await InspectAsync(command, cancellationToken: cancellationToken);
 
         return result;
     }
@@ -99,18 +99,22 @@ public sealed class EnterpriseProbe : DbCommandInterceptor
         CancellationToken cancellationToken = default
     )
     {
-        await InspectAsync(command);
+        await InspectAsync(command, cancellationToken: cancellationToken);
 
         return result;
     }
 
     /// <summary>Records command shape and fails only after an earlier repair batch has executed.</summary>
     /// <param name="command">The command about to execute.</param>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     /// <returns>A task that completes after inspection and any cancellation callbacks.</returns>
     private async ValueTask InspectAsync(
-        DbCommand command
+        DbCommand command,
+        CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         Commands.Add(command.CommandText);
         ParameterValues.Add(
             command

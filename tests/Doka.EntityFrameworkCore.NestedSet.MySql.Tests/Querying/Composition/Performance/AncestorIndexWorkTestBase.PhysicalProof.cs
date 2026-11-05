@@ -10,13 +10,19 @@ public abstract partial class AncestorIndexWorkTestBase
     {
         // Arrange
         await using var firstDatabase = new ModelCompatibilityDatabase();
-        await using var first = await ConsumerProofContextAsync(firstDatabase, s_consumerScope);
-        var expected = await ConsumerPhysicalTablesAsync(first);
+        await using var first = await ConsumerProofContextAsync(firstDatabase, s_consumerScope,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var expected = await ConsumerPhysicalTablesAsync(first,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var secondDatabase = new ModelCompatibilityDatabase();
-        await using var second = await ConsumerProofContextAsync(secondDatabase, s_consumerScope);
+        await using var second = await ConsumerProofContextAsync(secondDatabase, s_consumerScope,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        var actual = await ConsumerPhysicalTablesAsync(second);
+        var actual = await ConsumerPhysicalTablesAsync(second,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         _output.WriteLine(
@@ -46,14 +52,20 @@ public abstract partial class AncestorIndexWorkTestBase
     {
         // Arrange
         await using var firstDatabase = new ModelCompatibilityDatabase();
-        await using var first = await ConsumerProofContextAsync(firstDatabase, s_consumerScope);
-        var expected = await ConsumerPhysicalTablesAsync(first);
+        await using var first = await ConsumerProofContextAsync(firstDatabase, s_consumerScope,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var expected = await ConsumerPhysicalTablesAsync(first,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var secondDatabase = new ModelCompatibilityDatabase();
         var otherScope = new Guid("63636363-6363-6363-6363-636363636363");
-        await using var second = await ConsumerProofContextAsync(secondDatabase, otherScope);
+        await using var second = await ConsumerProofContextAsync(secondDatabase, otherScope,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        var actual = await ConsumerPhysicalTablesAsync(second);
+        var actual = await ConsumerPhysicalTablesAsync(second,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         _output.WriteLine(
@@ -90,13 +102,18 @@ public abstract partial class AncestorIndexWorkTestBase
     {
         // Arrange
         await using var database = new ModelCompatibilityDatabase();
-        await using var context = await ConsumerProofContextAsync(database, s_consumerScope);
-        var before = await ConsumerPhysicalTablesAsync(context);
+        await using var context = await ConsumerProofContextAsync(database, s_consumerScope,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var before = await ConsumerPhysicalTablesAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var mutation = ConsumerProofMutation(column);
 
         // Act
         await context.Database.ExecuteSqlRawAsync(mutation.Change, CancellationToken.None);
-        var after = await ConsumerPhysicalTablesAsync(context);
+        var after = await ConsumerPhysicalTablesAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         _output.WriteLine(
@@ -130,15 +147,21 @@ public abstract partial class AncestorIndexWorkTestBase
     {
         // Arrange
         await using var database = new ModelCompatibilityDatabase();
-        await using var context = await ConsumerProofContextAsync(database, s_consumerScope);
-        var original = await ConsumerPhysicalTablesAsync(context);
+        await using var context = await ConsumerProofContextAsync(database, s_consumerScope,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var original = await ConsumerPhysicalTablesAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var mutation = ConsumerProofMutation(column);
         await context.Database.ExecuteSqlRawAsync(mutation.Change, CancellationToken.None);
-        var changed = await ConsumerPhysicalTablesAsync(context);
+        var changed = await ConsumerPhysicalTablesAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         await context.Database.ExecuteSqlRawAsync(mutation.Restore, CancellationToken.None);
-        var restored = await ConsumerPhysicalTablesAsync(context);
+        var restored = await ConsumerPhysicalTablesAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         _output.WriteLine(
@@ -158,20 +181,26 @@ public abstract partial class AncestorIndexWorkTestBase
     }
 
     /// <summary>Owns a small foreign-key-valid seed until its caller receives the ready context.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="database">The isolated database used by the scenario.</param>
+    /// <param name="scope">The hierarchy scope used by the scenario.</param>
     private async Task<AncestorIndexQueryContext> ConsumerProofContextAsync(
         ModelCompatibilityDatabase database,
-        Guid scope
+        Guid scope,
+        CancellationToken cancellationToken
     )
     {
         var context = await database.CreateContextAsync<AncestorIndexQueryContext>(
             Engine,
-            static options => new AncestorIndexQueryContext(options));
+            static options => new AncestorIndexQueryContext(options), cancellationToken: cancellationToken);
 
         try
         {
-            await SeedAsync(context, scope, s_consumerTree, forest: false, nodes: 8);
-            await SeedConsumerFactsAsync(context, scope, [2, 3], unrelatedNode: 8);
-            await context.Database.OpenConnectionAsync(CancellationToken.None);
+            await SeedAsync(context, scope, s_consumerTree, forest: false, nodes: 8,
+                cancellationToken: cancellationToken);
+            await SeedConsumerFactsAsync(context, scope, [2, 3], unrelatedNode: 8,
+                cancellationToken: cancellationToken);
+            await context.Database.OpenConnectionAsync(cancellationToken);
 
             return context;
         }

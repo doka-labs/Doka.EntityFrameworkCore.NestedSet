@@ -9,8 +9,10 @@ public sealed class BulkIntervalRefreshFixture : IAsyncLifetime
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
     /// <summary>Returns a cleared generated-value context on the selected real relational engine.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     public async Task<BulkIntervalRefreshContext> ResetAsync(
         string engine,
+        CancellationToken cancellationToken,
         params IInterceptor[] interceptors
     )
     {
@@ -18,7 +20,7 @@ public sealed class BulkIntervalRefreshFixture : IAsyncLifetime
 
         if (create)
         {
-            database = await TestDatabase.CreateAsync(engine);
+            database = await TestDatabase.CreateAsync(engine, cancellationToken: cancellationToken);
             _databases.Add(engine, database);
         }
 
@@ -38,29 +40,29 @@ public sealed class BulkIntervalRefreshFixture : IAsyncLifetime
             {
                 await setup
                     .GetService<IRelationalDatabaseCreator>()
-                    .CreateTablesAsync(CancellationToken.None);
+                    .CreateTablesAsync(cancellationToken);
             }
 
             await setup
                 .Set<BulkIntervalNode>()
                 .ExecuteUpdateAsync(
                     setters => setters.SetProperty(node => node.ParentId, (int?)null),
-                    CancellationToken.None);
+                    cancellationToken);
 
             await setup
                 .Set<BulkIntervalNode>()
-                .ExecuteDeleteAsync(CancellationToken.None);
+                .ExecuteDeleteAsync(cancellationToken);
 
             await setup
                 .Set<BulkStageTextNode>()
-                .ExecuteDeleteAsync(CancellationToken.None);
+                .ExecuteDeleteAsync(cancellationToken);
 
             await setup
                 .Set<BulkStageBinaryParent>()
-                .ExecuteDeleteAsync(CancellationToken.None);
+                .ExecuteDeleteAsync(cancellationToken);
 
             // WHY: Fresh import cases must not inherit active identities or tombstones from a previous case.
-            await NestedSetTestInfrastructure.ClearRegistriesAsync(setup, CancellationToken.None);
+            await NestedSetTestInfrastructure.ClearRegistriesAsync(setup, cancellationToken);
         }
 
         return new BulkIntervalRefreshContext(options.AddInterceptors(interceptors).Options);

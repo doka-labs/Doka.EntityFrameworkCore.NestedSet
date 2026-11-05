@@ -54,10 +54,14 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var assigned = operation != "add";
-        await SeedPayloadOwnersAsync(database, assigned);
-        await using var context = await CreateNavigationContextAsync(database, wrapped);
+        await SeedPayloadOwnersAsync(database, assigned, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateNavigationContextAsync(database, wrapped,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var node = await context.Set<NavigationNode>().SingleAsync(value => value.Id == 2, CancellationToken.None);
         var owners = await context.Set<NavigationPayloadOwner>().Include(value => value.Nodes)
             .Where(value => value.Scope == node.Scope).ToArrayAsync(CancellationToken.None);
@@ -72,8 +76,10 @@ public abstract partial class SaveChangesTests
         await context.AddAsync(new NavigationNote { Id = 2 }, CancellationToken.None);
 
         // Act
-        await SaveNavigationAsync(context, synchronous);
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        await SaveNavigationAsync(context, synchronous, cancellationToken: TestContext.Current.CancellationToken);
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var stored = await verification.Set<NavigationNode>().Where(value => value.Id == 2)
             .Select(value => new
             {
@@ -129,10 +135,16 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedPayloadOwnersAsync(database, assigned: true);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedPayloadOwnersAsync(database, assigned: true,
+            cancellationToken: TestContext.Current.CancellationToken);
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped, probe);
+        await using var context = await CreateNavigationContextAsync(database, wrapped,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var node = await context.Set<NavigationNode>().SingleAsync(value => value.Id == 2, CancellationToken.None);
         var next = await context.Set<NavigationPayloadOwner>().Include(value => value.Nodes)
             .SingleAsync(value => value.Scope != node.Scope, CancellationToken.None);
@@ -152,8 +164,12 @@ public abstract partial class SaveChangesTests
         await context.AddAsync(new NavigationNote { Id = 2 }, CancellationToken.None);
 
         // Act
-        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(context, synchronous));
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(context, synchronous,
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var stored = await verification.Set<NavigationNode>().Where(value => value.Id == 2)
             .Select(value => new { value.Scope, value.PayloadOwnerId, value.ParentId })
             .SingleAsync(CancellationToken.None);
@@ -171,30 +187,36 @@ public abstract partial class SaveChangesTests
     }
 
     /// <summary>Creates ordinary principals; only these overlap tests populate the optional payload relation.</summary>
-    private static async Task SeedPayloadOwnersAsync(TestDatabase database, bool assigned)
+    private static async Task SeedPayloadOwnersAsync(
+        TestDatabase database,
+        bool assigned,
+        CancellationToken cancellationToken
+    )
     {
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true);
+        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: cancellationToken);
+
         var scope = await context.Set<NavigationNode>().Where(value => value.Id == 2)
-            .Select(value => value.Scope).SingleAsync(CancellationToken.None);
+            .Select(value => value.Scope).SingleAsync(cancellationToken);
 
         var otherScope = await context.Set<NavigationScopeOwner>().Where(value => value.Id != scope)
-            .Select(value => value.Id).SingleAsync(CancellationToken.None);
+            .Select(value => value.Id).SingleAsync(cancellationToken);
 
         await context.AddRangeAsync(
             [
                 new NavigationPayloadOwner { Scope = scope, Id = 1 },
                 new NavigationPayloadOwner { Scope = scope, Id = 2 },
                 new NavigationPayloadOwner { Scope = otherScope, Id = 2 },
-            ], CancellationToken.None);
+            ], cancellationToken);
 
-        await context.SaveChangesAsync(CancellationToken.None);
+        await context.SaveChangesAsync(cancellationToken);
 
         if (assigned)
         {
             // WHY: Seed the ordinary FK directly so relationship-change behavior is exercised only in Act.
             await context.Set<NavigationNode>().Where(value => value.Id == 2)
                 .ExecuteUpdateAsync(setters => setters.SetProperty(value => value.PayloadOwnerId, (int?)1),
-                    CancellationToken.None);
+                    cancellationToken);
         }
     }
 

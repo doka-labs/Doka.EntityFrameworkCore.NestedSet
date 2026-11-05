@@ -8,9 +8,9 @@ public abstract partial class ContractTests
     public async Task BinaryKeysUseValueEqualityForValidation()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
-        await SeedBinaryHierarchyAsync(context);
+        await SeedBinaryHierarchyAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var tree = context
             .NestedSet<BinaryNode>()
             .ForScope(1);
@@ -30,9 +30,9 @@ public abstract partial class ContractTests
     public async Task BinaryKeysUseValueEqualityForRebuild()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
-        await SeedBinaryHierarchyAsync(context);
+        await SeedBinaryHierarchyAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var tree = context
             .NestedSet<BinaryNode>()
             .ForScope(1);
@@ -69,9 +69,9 @@ public abstract partial class ContractTests
     public async Task BinaryKeysUseValueEqualityForDescendants()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
-        await SeedBinaryHierarchyAsync(context);
+        await SeedBinaryHierarchyAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var tree = context
             .NestedSet<BinaryNode>()
             .ForScope(1);
@@ -94,9 +94,9 @@ public abstract partial class ContractTests
     public async Task BinaryKeysUseValueEqualityForMove()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
-        await SeedBinaryHierarchyAsync(context);
+        await SeedBinaryHierarchyAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var tree = context
             .NestedSet<BinaryNode>()
             .ForScope(1);
@@ -121,9 +121,9 @@ public abstract partial class ContractTests
     public async Task BinaryKeysUseValueEqualityForChildren()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
-        await SeedBinaryHierarchyAsync(context);
+        await SeedBinaryHierarchyAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var tree = context
             .NestedSet<BinaryNode>()
             .ForScope(1);

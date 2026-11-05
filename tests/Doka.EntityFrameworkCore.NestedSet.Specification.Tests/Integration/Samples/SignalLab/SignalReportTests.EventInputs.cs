@@ -15,7 +15,9 @@ public abstract partial class SignalReportTests
         // Arrange
         var port = Enum.Parse<CapturePort>(portName);
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
         var first = AddObservation(context, data, port, SignalReportDataset.PulseChannel,
             MeasurementGranularity.Daily, 7);
@@ -51,7 +53,9 @@ public abstract partial class SignalReportTests
         // Arrange
         var port = Enum.Parse<CapturePort>(portName);
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
         AddObservation(context, data, port, SignalReportDataset.SweepChannel, MeasurementGranularity.Daily, 700);
         AddObservation(context, data, port, SignalReportDataset.PulseChannel, MeasurementGranularity.Monthly, 900);

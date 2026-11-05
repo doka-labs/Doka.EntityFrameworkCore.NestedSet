@@ -26,26 +26,26 @@ public class OrderingBenchmarks : DatabaseBenchmark
     }
 
     /// <inheritdoc />
-    public override async Task PrepareAsync()
+    public override async Task PrepareAsync(CancellationToken cancellationToken)
     {
         _key = 0;
-        await base.PrepareAsync();
+        await base.PrepareAsync(cancellationToken);
     }
 
     /// <inheritdoc />
-    public override async Task VerifyAsync()
+    public override async Task VerifyAsync(CancellationToken cancellationToken)
     {
         var node = await Fixture
             .Context
             .Nodes
             .AsNoTracking()
-            .SingleAsync(value => value.Id == _key, CancellationToken.None);
+            .SingleAsync(value => value.Id == _key, cancellationToken);
 
         BenchmarkFixture.Require(node is { Name: "000-first", Position: 0 }, "Configured ordering did not occur.");
         BenchmarkFixture.Require(
-            await Fixture.Context.Nodes.CountAsync(CancellationToken.None) == _expected,
+            await Fixture.Context.Nodes.CountAsync(cancellationToken) == _expected,
             "Ordering changed the node count.");
 
-        await base.VerifyAsync();
+        await base.VerifyAsync(cancellationToken);
     }
 }

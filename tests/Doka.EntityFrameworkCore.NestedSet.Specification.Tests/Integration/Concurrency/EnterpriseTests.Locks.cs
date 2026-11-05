@@ -14,11 +14,13 @@ public abstract partial class EnterpriseTests
     public async Task DifferentScopeCommitsWhileFirstCallerHoldsTreeLock()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var first = database.CreateContext();
         var probe = new EnterpriseProbe();
         await using var second = database.CreateContext((IInterceptor)probe);
-        await using var transaction = await BeginCallerAsync(first);
+        await using var transaction = await BeginCallerAsync(first,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var firstTree = first
             .NestedSet<ConcurrentNode>()
             .ForScope(1);
@@ -81,11 +83,13 @@ public abstract partial class EnterpriseTests
     public async Task SameTreeReservationRemainsLockedUntilCallerCommit()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var first = database.CreateContext();
         var probe = new RegistryLockProbe();
         await using var second = database.CreateContext(probe);
-        await using var transaction = await BeginCallerAsync(first);
+        await using var transaction = await BeginCallerAsync(first,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var firstTree = first
             .NestedSet<ConcurrentNode>()
             .ForScope(1);
@@ -129,9 +133,11 @@ public abstract partial class EnterpriseTests
     public async Task SameTreeContenderTimesOutAtRegistryBeforeReadingStructure()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var first = database.CreateContext();
-        await using var transaction = await BeginCallerAsync(first);
+        await using var transaction = await BeginCallerAsync(first,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var firstTree = first
             .NestedSet<ConcurrentNode>()
             .ForScope(1);
@@ -207,7 +213,7 @@ public abstract partial class EnterpriseTests
     public async Task FirstMutationCreatesRegistryWithoutDomainAnchor()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<ConcurrentNode>()
@@ -247,7 +253,7 @@ public abstract partial class EnterpriseTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var pending = Enumerable

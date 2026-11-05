@@ -52,7 +52,9 @@ qualification.
 The current shipped API files record the stable `10.2.0` contract: Core is
 unchanged, the common EF API includes query composition and optional registry
 naming, and each adapter owns its native callback. The removed options-level registration is absent from the
-current contract. All unshipped files are ready for subsequent changes. The
+current contract. The common EF unshipped file separately records the upcoming
+source-breaking removal of owned cancellation defaults. The published baseline
+and the version policy above remain the release-review reference. The
 two original package IDs retain SDK compatibility validation against the
 published `10.0.0` baseline with only the approved registration removal
 suppressed. Historical declarations remain in the original release tag. The

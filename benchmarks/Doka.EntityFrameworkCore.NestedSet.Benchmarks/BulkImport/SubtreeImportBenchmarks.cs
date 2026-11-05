@@ -19,32 +19,36 @@ public class SubtreeImportBenchmarks : DatabaseBenchmark
     }
 
     /// <inheritdoc />
-    public override async Task PrepareAsync()
+    public override async Task PrepareAsync(
+        CancellationToken cancellationToken
+    )
     {
         _imported = false;
-        await base.PrepareAsync();
+        await base.PrepareAsync(cancellationToken);
         var branch = BenchmarkForest.Build(new BenchmarkScenario(Math.Max(10, Nodes / 10), Shape, 1, 0), Nodes);
         _branch = branch.Imports[0].Root;
     }
 
     /// <inheritdoc />
-    public override async Task VerifyAsync()
+    public override async Task VerifyAsync(
+        CancellationToken cancellationToken
+    )
     {
         BenchmarkFixture.Require(
             _imported
-            && await Fixture.Context.Nodes.CountAsync(CancellationToken.None) == Nodes + Math.Max(10, Nodes / 10),
+            && await Fixture.Context.Nodes.CountAsync(cancellationToken) == Nodes + Math.Max(10, Nodes / 10),
             "Subtree import count is incorrect.");
 
         var root = await Fixture
             .Context
             .Nodes
             .AsNoTracking()
-            .SingleAsync(node => node.Id == Nodes + 1, CancellationToken.None);
+            .SingleAsync(node => node.Id == Nodes + 1, cancellationToken);
 
         BenchmarkFixture.Require(
             root.ParentId == 1 && root.TreeId == Fixture.Forest.Imports[0].TreeId,
             "Imported branch escaped its destination tree.");
 
-        await base.VerifyAsync();
+        await base.VerifyAsync(cancellationToken);
     }
 }

@@ -14,7 +14,9 @@ public abstract partial class GroupSupervisorTests
     public async Task SampleMigrationChainCreatesTypedSupervisorSchema()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine, static _ => Task.CompletedTask);
+        await using var database = await TestDatabase.CreateAsync(Engine, static (_, _) => Task.CompletedTask,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         await using var context = CreateUserGroupMigrationContext(source.Database.GetConnectionString()!);
 
@@ -49,7 +51,9 @@ public abstract partial class GroupSupervisorTests
     public async Task SupervisorMigrationPreservesExistingApplicationDataAndGrants()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine, static _ => Task.CompletedTask);
+        await using var database = await TestDatabase.CreateAsync(Engine, static (_, _) => Task.CompletedTask,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         await using var context = CreateUserGroupMigrationContext(source.Database.GetConnectionString()!);
         var initial = context.Database.GetMigrations().First();
@@ -177,7 +181,9 @@ public abstract partial class GroupSupervisorTests
     public async Task MigratedSupervisorSchemaRunsTheActualSampleScenario()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine, static _ => Task.CompletedTask);
+        await using var database = await TestDatabase.CreateAsync(Engine, static (_, _) => Task.CompletedTask,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         await using var context = CreateUserGroupMigrationContext(source.Database.GetConnectionString()!);
         await context.Database.MigrateAsync(CancellationToken.None);

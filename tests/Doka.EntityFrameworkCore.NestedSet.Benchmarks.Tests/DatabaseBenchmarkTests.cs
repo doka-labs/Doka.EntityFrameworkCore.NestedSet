@@ -80,7 +80,10 @@ public sealed class DatabaseBenchmarkTests
     {
         // Arrange
         var scenario = new BenchmarkScenario(32, shape, trees, 3);
-        await using var prepared = await PreparedBenchmark.CreateAsync(type, scenario);
+        await using var prepared = await PreparedBenchmark.CreateAsync(
+            type,
+            scenario,
+            TestContext.Current.CancellationToken);
         var feature = BindFeature(prepared.Benchmark, methodName);
         var expected = ExpectedForest(scenario);
         var queryKeys = type == typeof(QueryBenchmarks) ? ExpectedQueryKeys(expected, methodName, scenario) : null;
@@ -98,7 +101,7 @@ public sealed class DatabaseBenchmarkTests
         await feature();
 
         // Assert
-        await prepared.Benchmark.VerifyAsync();
+        await prepared.Benchmark.VerifyAsync(TestContext.Current.CancellationToken);
         var nodes = await prepared
             .Fixture
             .Context
@@ -144,10 +147,11 @@ public sealed class DatabaseBenchmarkTests
         // Arrange
         await using var prepared = await PreparedBenchmark.CreateAsync(
             type,
-            new BenchmarkScenario(32, BenchmarkShape.Balanced, 2, 0));
+            new BenchmarkScenario(32, BenchmarkShape.Balanced, 2, 0), TestContext.Current.CancellationToken);
 
         // Act
-        var error = await Record.ExceptionAsync(prepared.Benchmark.VerifyAsync);
+        var error = await Record.ExceptionAsync(
+            () => prepared.Benchmark.VerifyAsync(TestContext.Current.CancellationToken));
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);
@@ -169,7 +173,7 @@ public sealed class DatabaseBenchmarkTests
         // Arrange
         await using var prepared = await PreparedBenchmark.CreateAsync(
             typeof(QueryBenchmarks),
-            new BenchmarkScenario(32, BenchmarkShape.Balanced, 2, 0));
+            new BenchmarkScenario(32, BenchmarkShape.Balanced, 2, 0), TestContext.Current.CancellationToken);
 
         var benchmark = (QueryBenchmarks)prepared.Benchmark;
         await benchmark.CompleteTree();
@@ -197,7 +201,7 @@ public sealed class DatabaseBenchmarkTests
         }
 
         // Act
-        var error = await Record.ExceptionAsync(benchmark.VerifyAsync);
+        var error = await Record.ExceptionAsync(() => benchmark.VerifyAsync(TestContext.Current.CancellationToken));
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);
@@ -210,7 +214,7 @@ public sealed class DatabaseBenchmarkTests
         // Arrange
         await using var prepared = await PreparedBenchmark.CreateAsync(
             typeof(InsertBenchmarks),
-            new BenchmarkScenario(32, BenchmarkShape.Wide, 1, 0));
+            new BenchmarkScenario(32, BenchmarkShape.Wide, 1, 0), TestContext.Current.CancellationToken);
 
         var benchmark = (InsertBenchmarks)prepared.Benchmark;
         await benchmark.FirstChild();
@@ -222,7 +226,7 @@ public sealed class DatabaseBenchmarkTests
             .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.Position, 1000), CancellationToken.None);
 
         // Act
-        var error = await Record.ExceptionAsync(benchmark.VerifyAsync);
+        var error = await Record.ExceptionAsync(() => benchmark.VerifyAsync(TestContext.Current.CancellationToken));
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);
@@ -235,7 +239,7 @@ public sealed class DatabaseBenchmarkTests
         // Arrange
         await using var prepared = await PreparedBenchmark.CreateAsync(
             typeof(ValidationBenchmarks),
-            new BenchmarkScenario(32, BenchmarkShape.Deep, 1, 0));
+            new BenchmarkScenario(32, BenchmarkShape.Deep, 1, 0), TestContext.Current.CancellationToken);
 
         var benchmark = (ValidationBenchmarks)prepared.Benchmark;
         await benchmark.Full();
@@ -246,7 +250,7 @@ public sealed class DatabaseBenchmarkTests
             CancellationToken.None);
 
         // Act
-        var error = await Record.ExceptionAsync(benchmark.VerifyAsync);
+        var error = await Record.ExceptionAsync(() => benchmark.VerifyAsync(TestContext.Current.CancellationToken));
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);
@@ -258,14 +262,17 @@ public sealed class DatabaseBenchmarkTests
     {
         // Arrange
         var scenario = new BenchmarkScenario(32, BenchmarkShape.Balanced, 2, 3);
-        await using var prepared = await PreparedBenchmark.CreateAsync(typeof(InsertBenchmarks), scenario);
+        await using var prepared = await PreparedBenchmark.CreateAsync(
+            typeof(InsertBenchmarks),
+            scenario,
+            TestContext.Current.CancellationToken);
         var benchmark = (InsertBenchmarks)prepared.Benchmark;
-        var registryBefore = await ReadRegistryAsync(prepared.Fixture.Context);
+        var registryBefore = await ReadRegistryAsync(prepared.Fixture.Context, TestContext.Current.CancellationToken);
         await benchmark.Root();
-        await benchmark.VerifyAsync();
+        await benchmark.VerifyAsync(TestContext.Current.CancellationToken);
 
         // Act
-        await benchmark.PrepareAsync();
+        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
 
         // Assert
         var actual = await prepared
@@ -276,7 +283,9 @@ public sealed class DatabaseBenchmarkTests
             .ToListAsync(CancellationToken.None);
 
         AssertExpectedForest(ExpectedForest(scenario), actual);
-        Assert.Equal(registryBefore, await ReadRegistryAsync(prepared.Fixture.Context));
+        Assert.Equal(
+            registryBefore,
+            await ReadRegistryAsync(prepared.Fixture.Context, TestContext.Current.CancellationToken));
         Assert.Equal(
             3,
             prepared
@@ -298,18 +307,18 @@ public sealed class DatabaseBenchmarkTests
         // Arrange
         await using var prepared = await PreparedBenchmark.CreateAsync(
             typeof(InsertBenchmarks),
-            new BenchmarkScenario(32, BenchmarkShape.Wide, 2, 0));
+            new BenchmarkScenario(32, BenchmarkShape.Wide, 2, 0), TestContext.Current.CancellationToken);
 
         var benchmark = (InsertBenchmarks)prepared.Benchmark;
         await benchmark.Root();
-        await benchmark.VerifyAsync();
-        await benchmark.PrepareAsync();
+        await benchmark.VerifyAsync(TestContext.Current.CancellationToken);
+        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
 
         // Act
         await benchmark.Root();
 
         // Assert
-        await benchmark.VerifyAsync();
+        await benchmark.VerifyAsync(TestContext.Current.CancellationToken);
         var inserted = await prepared
             .Fixture
             .Context
@@ -676,8 +685,11 @@ public sealed class DatabaseBenchmarkTests
     /// <summary>
     /// Reads registry identities and tombstone state from the provider's actual infrastructure table.
     /// </summary>
+    /// <param name="context">The context used for the benchmark data and verification reads.</param>
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
     private static async Task<string[]> ReadRegistryAsync(
-        BenchmarkContext context
+        BenchmarkContext context,
+        CancellationToken cancellationToken
     )
     {
         var entity = context
@@ -692,9 +704,9 @@ public sealed class DatabaseBenchmarkTests
             .CreateCommand();
 
         command.CommandText = $"SELECT * FROM \"{table}\" ORDER BY \"TreeId\"";
-        await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var rows = new List<string>();
-        while (await reader.ReadAsync(CancellationToken.None))
+        while (await reader.ReadAsync(cancellationToken))
         {
             rows.Add(
                 string.Join("|", Enumerable.Range(0, reader.FieldCount).Select(index => reader.GetValue(index).ToString())));
@@ -725,9 +737,14 @@ public sealed class DatabaseBenchmarkTests
 
         internal BenchmarkFixture Fixture => Benchmark.Fixture;
 
+        /// <summary>Creates an independently owned benchmark fixture.</summary>
+        /// <param name="type">The benchmark implementation type.</param>
+        /// <param name="scenario">The complete isolated fixture population.</param>
+        /// <param name="cancellationToken">The caller's cancellation token for the operation.</param>
         internal static async Task<PreparedBenchmark> CreateAsync(
             Type type,
-            BenchmarkScenario scenario
+            BenchmarkScenario scenario,
+            CancellationToken cancellationToken
         )
         {
             var benchmark = (DatabaseBenchmark)(Activator.CreateInstance(type)
@@ -740,11 +757,11 @@ public sealed class DatabaseBenchmarkTests
             var prepared = new PreparedBenchmark(benchmark);
             await BenchmarkLifecycle.InitializeAsync(
                 prepared,
-                async () =>
+                async token =>
                 {
                     benchmark.Initialize();
-                    await benchmark.PrepareAsync();
-                });
+                    await benchmark.PrepareAsync(token);
+                }, cancellationToken);
 
             return prepared;
         }

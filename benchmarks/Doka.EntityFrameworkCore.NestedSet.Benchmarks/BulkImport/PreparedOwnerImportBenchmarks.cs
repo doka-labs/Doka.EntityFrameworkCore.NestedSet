@@ -71,28 +71,32 @@ public class PreparedOwnerImportBenchmarks : IDatabaseBenchmark, IAsyncDisposabl
 
     /// <summary>Completes setup before timing and allocation observations begin.</summary>
     [IterationSetup]
-    public void Prepare() => BenchmarkLifecycle.Complete(PrepareAsync());
+    public void Prepare() => BenchmarkLifecycle.Complete(PrepareAsync(CancellationToken.None));
 
     /// <summary>Completes functional and follow-up-save checks outside the observation window.</summary>
     [IterationCleanup]
-    public void Verify() => BenchmarkLifecycle.Complete(VerifyAsync());
+    public void Verify() => BenchmarkLifecycle.Complete(VerifyAsync(CancellationToken.None));
 
     /// <summary>Creates identical persisted rows and detached plans for all three owner states.</summary>
-    public async Task PrepareAsync()
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
+    public async Task PrepareAsync(
+        CancellationToken cancellationToken
+    )
     {
         _completed = ImportOperation.None;
         _owner = null;
         Context.ChangeTracker.AutoDetectChangesEnabled = true;
         Context.ChangeTracker.Clear();
-        await ConsumerBenchmarkDatabase.ResetAsync(Context);
+        await ConsumerBenchmarkDatabase.ResetAsync(Context, cancellationToken);
         await Context.Owners.AddAsync(
             new PreparedOwner
             {
                 Id = 1,
                 Payload = "original",
             },
-            CancellationToken.None);
-        await Context.SaveChangesAsync(CancellationToken.None);
+            cancellationToken);
+
+        await Context.SaveChangesAsync(cancellationToken);
         Context.ChangeTracker.Clear();
         await Context
             .NestedSet<PreparedOwnerNode>()
@@ -104,14 +108,14 @@ public class PreparedOwnerImportBenchmarks : IDatabaseBenchmark, IAsyncDisposabl
                     Name = "Seed",
                 },
                 s_seedTree,
-                CancellationToken.None);
+                cancellationToken);
 
         Context.ChangeTracker.Clear();
         Context.ChangeTracker.AutoDetectChangesEnabled = false;
 
         if (OwnerMode != PreparedOwnerMode.Untracked)
         {
-            _owner = await Context.Owners.SingleAsync(CancellationToken.None);
+            _owner = await Context.Owners.SingleAsync(cancellationToken);
         }
 
         _inputs = Enumerable
@@ -167,7 +171,10 @@ public class PreparedOwnerImportBenchmarks : IDatabaseBenchmark, IAsyncDisposabl
     }
 
     /// <summary>Checks exact persisted topology, owner reuse, full validation, and an ordinary marked save.</summary>
-    public async Task VerifyAsync()
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
+    public async Task VerifyAsync(
+        CancellationToken cancellationToken
+    )
     {
         BenchmarkFixture.Require(_completed != ImportOperation.None, "The prepared-owner import did not execute.");
         BenchmarkFixture.Require(
@@ -178,7 +185,7 @@ public class PreparedOwnerImportBenchmarks : IDatabaseBenchmark, IAsyncDisposabl
             .Nodes
             .AsNoTracking()
             .OrderBy(node => node.Id)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         BenchmarkFixture.Require(rows.Length == Nodes + 1, "The import persisted an unexpected row count.");
         var split = (Nodes + 1) / 2;
@@ -217,7 +224,7 @@ public class PreparedOwnerImportBenchmarks : IDatabaseBenchmark, IAsyncDisposabl
                 .NestedSet<PreparedOwnerNode>()
                 .ForScope(1)
                 .InTree(treeId)
-                .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+                .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken);
 
             BenchmarkFixture.Require(report.IsValid, "The imported hierarchy failed full validation.");
         }
@@ -233,19 +240,19 @@ public class PreparedOwnerImportBenchmarks : IDatabaseBenchmark, IAsyncDisposabl
                 "The owner lost or duplicated an imported input reference.");
         }
 
-        _owner ??= await Context.Owners.SingleAsync(CancellationToken.None);
+        _owner ??= await Context.Owners.SingleAsync(cancellationToken);
         Context
             .Entry(_owner)
             .Property(owner => owner.Payload)
             .CurrentValue = "following save";
 
-        await Context.SaveChangesAsync(CancellationToken.None);
+        await Context.SaveChangesAsync(cancellationToken);
 
         var payload = await Context
             .Owners
             .AsNoTracking()
             .Select(owner => owner.Payload)
-            .SingleAsync(CancellationToken.None);
+            .SingleAsync(cancellationToken);
 
         BenchmarkFixture.Require(
             payload == "following save" && !Context.ChangeTracker.AutoDetectChangesEnabled && _detectionPasses == 0,

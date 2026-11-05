@@ -20,7 +20,10 @@ preview/11.x are registered inactive. This procedure activates none of them.
 
 The source uses `VersionPrefix=10.2.0` without a prerelease suffix and the
 `## 10.2.0 (2026-11-03)` changelog entry. The reviewed stable APIs are recorded
-in all six shipped baselines; their unshipped files contain no pending changes.
+in all six shipped baselines. The common EF unshipped file now records the
+upcoming required-cancellation signatures; these are source-breaking changes
+from the published `10.2.0` contract. Complete version review and promote the
+accepted declarations during the next stable preparation before qualification.
 SDK package validation still compares the two original packages with `10.0.0`
 and retains only the approved options-registration removal exception. The
 historical `10.1.0` registration transition is documented in the

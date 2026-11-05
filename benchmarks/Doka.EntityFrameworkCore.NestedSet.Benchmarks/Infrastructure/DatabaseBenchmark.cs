@@ -61,17 +61,21 @@ public abstract class DatabaseBenchmark : IDatabaseBenchmark
 
     /// <summary>Fully completes asynchronous setup before BDN starts timing or allocation observation.</summary>
     [IterationSetup]
-    public void Prepare() => BenchmarkLifecycle.Complete(PrepareAsync());
+    public void Prepare() => BenchmarkLifecycle.Complete(PrepareAsync(CancellationToken.None));
 
     /// <summary>Fully completes result verification after BDN finishes timing and allocation observation.</summary>
     [IterationCleanup]
-    public void Verify() => BenchmarkLifecycle.Complete(VerifyAsync());
+    public void Verify() => BenchmarkLifecycle.Complete(VerifyAsync(CancellationToken.None));
 
     /// <summary>Prepares fresh state; diagnostic and functional test execution uses the same lifecycle.</summary>
-    public virtual Task PrepareAsync() => Fixture.ResetAsync(Seed, CancellationToken.None);
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
+    public virtual Task PrepareAsync(
+        CancellationToken cancellationToken
+    ) => Fixture.ResetAsync(Seed, cancellationToken);
 
     /// <summary>Validates every remaining tree; feature families add independent effect assertions.</summary>
-    public virtual Task VerifyAsync() => Fixture.ValidateAsync(CancellationToken.None);
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
+    public virtual Task VerifyAsync(CancellationToken cancellationToken) => Fixture.ValidateAsync(cancellationToken);
 
     /// <summary>Releases the child-owned context after all iterations and diagnostic passes.</summary>
     [GlobalCleanup]

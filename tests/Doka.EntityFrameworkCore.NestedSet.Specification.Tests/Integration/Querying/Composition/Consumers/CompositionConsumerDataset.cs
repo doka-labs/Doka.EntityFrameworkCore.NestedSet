@@ -28,26 +28,27 @@ internal sealed record CompositionConsumerDataset(int Nodes, bool Deep, int[] Fa
 
     /// <summary>Seeds bounded consumer payload beside shared read-only structural views.</summary>
     internal static async Task<CompositionConsumerDataset> CreateAsync(
-        TestDatabase database, string engine, int nodes, bool deep)
+        TestDatabase database, string engine, int nodes, bool deep,
+        CancellationToken cancellationToken)
     {
         await using var source = database.CreateContext();
         var connection = source.Database.GetConnectionString()!;
-        await CompositionConsumerModel.CreateViewsAsync(source, true);
-        await CompositionConsumerModel.CreateViewsAsync(source, false);
+        await CompositionConsumerModel.CreateViewsAsync(source, true, cancellationToken: cancellationToken);
+        await CompositionConsumerModel.CreateViewsAsync(source, false, cancellationToken: cancellationToken);
         await using var signals = new CompositionCapacitySignalLabContext(
             ModelCompatibilityDatabase.Options<CompositionCapacitySignalLabContext>(engine, connection));
 
         await using var groups = new CompositionCapacityGroupContext(
             ModelCompatibilityDatabase.Options<CompositionCapacityGroupContext>(engine, connection));
 
-        await CompositionConsumerModel.CreatePayloadAsync(signals, true);
-        await CompositionConsumerModel.CreatePayloadAsync(groups, false);
+        await CompositionConsumerModel.CreatePayloadAsync(signals, true, cancellationToken: cancellationToken);
+        await CompositionConsumerModel.CreatePayloadAsync(groups, false, cancellationToken: cancellationToken);
 
         if (engine == "SqlServer")
         {
             // WHY: Snapshot is an explicit prerequisite of the real sample orchestration, not a silent runtime ALTER.
             await source.Database.ExecuteSqlRawAsync(
-                "ALTER DATABASE CURRENT SET ALLOW_SNAPSHOT_ISOLATION ON", CancellationToken.None);
+                "ALTER DATABASE CURRENT SET ALLOW_SNAPSHOT_ISOLATION ON", cancellationToken);
         }
 
         // WHY: The shared deep profile already varies 1/10/100 generic facts. Two actual consumer facts
@@ -57,16 +58,20 @@ internal sealed record CompositionConsumerDataset(int Nodes, bool Deep, int[] Fa
                 .Distinct().Order().ToArray();
 
         var data = new CompositionConsumerDataset(nodes, deep, facts);
-        await data.SeedSignalsAsync(signals);
-        await data.SeedGroupsAsync(groups);
-        await RefreshStatisticsAsync(signals, engine);
-        await RefreshStatisticsAsync(groups, engine);
+        await data.SeedSignalsAsync(signals, cancellationToken: cancellationToken);
+        await data.SeedGroupsAsync(groups, cancellationToken: cancellationToken);
+        await RefreshStatisticsAsync(signals, engine, cancellationToken: cancellationToken);
+        await RefreshStatisticsAsync(groups, engine, cancellationToken: cancellationToken);
 
         return data;
     }
 
     /// <summary>Prepares payload estimates outside measurement, as the generic fixture does.</summary>
-    private static async Task RefreshStatisticsAsync(DbContext context, string engine)
+    private static async Task RefreshStatisticsAsync(
+        DbContext context,
+        string engine,
+        CancellationToken cancellationToken
+    )
     {
         var sql = context.GetService<ISqlGenerationHelper>();
 
@@ -88,7 +93,7 @@ internal sealed record CompositionConsumerDataset(int Nodes, bool Deep, int[] Fa
                 _ => "ANALYZE " + name,
             };
 
-            await context.Database.ExecuteSqlRawAsync(statement, CancellationToken.None);
+            await context.Database.ExecuteSqlRawAsync(statement, cancellationToken);
         }
     }
 
@@ -147,7 +152,10 @@ internal sealed record CompositionConsumerDataset(int Nodes, bool Deep, int[] Fa
     internal static int SourceUser(int origins) => 100_000 + origins;
 
     /// <summary>Creates the sample's real typed catalogs and at most 1,200 physical fact rows.</summary>
-    private async Task SeedSignalsAsync(CompositionCapacitySignalLabContext context)
+    private async Task SeedSignalsAsync(
+        CompositionCapacitySignalLabContext context,
+        CancellationToken cancellationToken
+    )
     {
         var tenant = CompositionConsumerModel.Tenant;
         var type = CompositionConsumerModel.Identity(1);
@@ -217,12 +225,12 @@ internal sealed record CompositionConsumerDataset(int Nodes, bool Deep, int[] Fa
             }
         }
 
-        await context.SaveChangesAsync(CancellationToken.None);
+        await context.SaveChangesAsync(cancellationToken);
         context.ChangeTracker.Clear();
     }
 
     /// <summary>Seeds four source populations, one roleholder, and sixteen real scalar routing fields.</summary>
-    private async Task SeedGroupsAsync(CompositionCapacityGroupContext context)
+    private async Task SeedGroupsAsync(CompositionCapacityGroupContext context, CancellationToken cancellationToken)
     {
         var tenant = CompositionConsumerModel.Tenant;
         context.GroupTypes.Add(new GroupApp.GroupType { TenantId = tenant, Id = 1, Name = "Capacity" });
@@ -248,7 +256,7 @@ internal sealed record CompositionConsumerDataset(int Nodes, bool Deep, int[] Fa
 
         // WHY: These few independent user roots are unrelated to the measured group hierarchy. Fixture seeding
         // supplies canonical coordinates once; the consumer's actual query/save code remains unchanged.
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
 
         context.UserGroupMemberships.Add(new GroupApp.UserGroupMembership
         {
@@ -315,7 +323,7 @@ internal sealed record CompositionConsumerDataset(int Nodes, bool Deep, int[] Fa
             }
         }
 
-        await context.SaveChangesAsync(CancellationToken.None);
+        await context.SaveChangesAsync(cancellationToken);
         context.ChangeTracker.Clear();
     }
 }

@@ -30,8 +30,12 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await using var context = await CreateNavigationContextAsync(database, wrapped);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using var context = await CreateNavigationContextAsync(database, wrapped,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var root = await context.Set<NavigationNode>().Include(node => node.Children)
             .SingleAsync(node => node.Id == 1, CancellationToken.None);
 
@@ -54,7 +58,9 @@ public abstract partial class SaveChangesTests
         // WHY: The synchronous variants exercise the explicitly synchronous application save boundary.
         // ReSharper disable once MethodHasAsyncOverload
         var saved = synchronous ? context.SaveChanges() : await context.SaveChangesAsync(CancellationToken.None);
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var storedNotes = await verification.Set<NavigationNote>().OrderBy(value => value.Id)
             .Select(value => value.Value).ToArrayAsync(CancellationToken.None);
 
@@ -97,9 +103,14 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped, probe);
+        await using var context = await CreateNavigationContextAsync(database, wrapped,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var node = await context.Set<NavigationNode>().SingleAsync(value => value.Id == 2, CancellationToken.None);
         var note = await context.Set<NavigationNote>().SingleAsync(CancellationToken.None);
         var otherScope = await context.Set<NavigationScopeOwner>().Where(value => value.Id != node.Scope)
@@ -111,8 +122,12 @@ public abstract partial class SaveChangesTests
         note.Value = "ordinary change";
 
         // Act
-        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(context, synchronous));
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(context, synchronous,
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var after = await verification.Set<NavigationNode>().Where(value => value.Id == 2)
             .Select(value => new
             {
@@ -169,9 +184,14 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped, probe);
+        await using var context = await CreateNavigationContextAsync(database, wrapped,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var owner = await context.Set<NavigationScopeOwner>().Include(value => value.Nodes)
             .SingleAsync(value => value.Value == "owner", CancellationToken.None);
 
@@ -195,8 +215,12 @@ public abstract partial class SaveChangesTests
             .Select(entry => entry.EntityState).ToArray();
 
         // Act
-        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(context, synchronous));
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(context, synchronous,
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var after = await verification.Set<NavigationNode>().OrderBy(node => node.Id).Select(node => new
         {
             node.Id,
@@ -231,8 +255,12 @@ public abstract partial class SaveChangesTests
     public async Task ManualHierarchyWorkPreservesUnmarkedPayload(bool facade)
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var note = await context.Set<NavigationNote>().SingleAsync(CancellationToken.None);
         var nodeQuery = context.Set<NavigationNode>().AsQueryable();
 
@@ -263,7 +291,9 @@ public abstract partial class SaveChangesTests
             await context.SaveChangesAsync(CancellationToken.None);
         }
 
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var storedNote = await verification.Set<NavigationNote>().Select(value => value.Value)
             .SingleAsync(CancellationToken.None);
 

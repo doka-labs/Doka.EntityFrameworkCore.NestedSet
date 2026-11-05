@@ -9,15 +9,19 @@ public abstract partial class NativeTrackedIdentityGuardTests
     {
         // Arrange
         var probe = new NativeGuardProbe();
-        await using var context = await CreateAliasContextAsync(Engine, probe);
+        await using var context = await CreateAliasContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var affected = Guid
             .NewGuid()
             .ToString("N");
 
-        await SeedTreeAsync(context, affected, root, 1);
-        await SeedTreeAsync(context, Guid.NewGuid().ToString("N"), root + 10, 1);
-        var node = await ReadNodeAsync(context, root + 11);
+        await SeedTreeAsync(context, affected, root, 1, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedTreeAsync(context, Guid.NewGuid().ToString("N"), root + 10, 1,
+            cancellationToken: TestContext.Current.CancellationToken);
+        var node = await ReadNodeAsync(context, root + 11, cancellationToken: TestContext.Current.CancellationToken);
         var tracked = context.Entry(node);
         tracked.Property(nameof(BroadTreeIdNode.TreeId)).CurrentValue = null;
         context.Attach(node);

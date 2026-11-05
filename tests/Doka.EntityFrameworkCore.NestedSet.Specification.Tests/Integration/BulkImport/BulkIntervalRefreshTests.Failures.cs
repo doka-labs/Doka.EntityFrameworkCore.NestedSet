@@ -26,10 +26,10 @@ public abstract partial class BulkIntervalRefreshTests
     )
     {
         // Arrange
-        var database = await _assigned.ResetAsync(Engine);
+        var database = await _assigned.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new BulkIntervalRefreshProbe(nameof(TreeNode));
         await using var context = database.CreateContext(probe);
-        await SeedAssignedAsync(context);
+        await SeedAssignedAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var nodes = AssignedNodes();
         var mutation = MutationSql(context, failure);
         probe.BeforeRefresh = (command, token) => MutateAsync(command, mutation, nodes[^1].NodeId, token);
@@ -78,10 +78,10 @@ public abstract partial class BulkIntervalRefreshTests
     public async Task CallerTransactionRetainsEarlierWorkWhenRefreshFindsAnUnexpectedRow()
     {
         // Arrange
-        var database = await _assigned.ResetAsync(Engine);
+        var database = await _assigned.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new BulkIntervalRefreshProbe(nameof(TreeNode));
         await using var context = database.CreateContext(probe);
-        await SeedAssignedAsync(context);
+        await SeedAssignedAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         await using var transaction = await context.Database.BeginTransactionAsync(
             context.Database.IsSqlite() ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
             CancellationToken.None);
@@ -152,7 +152,10 @@ public abstract partial class BulkIntervalRefreshTests
             },
         };
 
-        await using var context = await _generated.ResetAsync(Engine, probe);
+        await using var context = await _generated.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         context.SavedChanges += (_, _) => probe.Inserted = true;
         var tree = context
             .NestedSet<BulkIntervalNode>()

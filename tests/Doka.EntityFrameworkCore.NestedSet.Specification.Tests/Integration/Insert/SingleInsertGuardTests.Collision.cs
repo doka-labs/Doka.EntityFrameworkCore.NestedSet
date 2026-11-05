@@ -12,7 +12,7 @@ public abstract partial class SingleInsertGuardTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         await using var transaction = callerTransaction
             ? await context.Database.BeginTransactionAsync(
@@ -34,7 +34,8 @@ public abstract partial class SingleInsertGuardTests
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
 
         // Act
-        var rejected = await FailSingleIdentityCollisionAsync(context);
+        var rejected = await FailSingleIdentityCollisionAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // WHY: Async completion can resume this observer inside the producer's exception stack. Yield once
         // so those active frames finish before measuring references held by the live context.
@@ -81,10 +82,12 @@ public abstract partial class SingleInsertGuardTests
     }
 
     /// <summary>Releases test callbacks and strong input references after the failed scalar collision.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static async Task<(WeakReference Input, bool OriginalError, bool Restored)>
         FailSingleIdentityCollisionAsync(
-            DbContext context
+            DbContext context,
+            CancellationToken cancellationToken
         )
     {
         var treeId = Guid.NewGuid();
@@ -107,7 +110,7 @@ public abstract partial class SingleInsertGuardTests
                 return context
                     .NestedSet<TreeNode>()
                     .ForScope(1)
-                    .InsertRootAsync(input, Guid.Empty, CancellationToken.None);
+                    .InsertRootAsync(input, Guid.Empty, cancellationToken);
             });
         }
         finally

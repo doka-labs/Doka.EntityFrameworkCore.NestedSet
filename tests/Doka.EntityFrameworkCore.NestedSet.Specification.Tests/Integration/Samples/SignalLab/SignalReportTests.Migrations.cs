@@ -13,7 +13,9 @@ public abstract partial class SignalReportTests
     public async Task SampleMigrationChainCreatesTypedReportingSchema()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine, static _ => Task.CompletedTask);
+        await using var database = await TestDatabase.CreateAsync(Engine, static (_, _) => Task.CompletedTask,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         await using var context = CreateMigrationContext(source.Database.GetConnectionString()!);
 
@@ -36,7 +38,9 @@ public abstract partial class SignalReportTests
     public async Task ReportingMigrationPreservesExistingInstrumentData()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine, static _ => Task.CompletedTask);
+        await using var database = await TestDatabase.CreateAsync(Engine, static (_, _) => Task.CompletedTask,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         await using var context = CreateMigrationContext(source.Database.GetConnectionString()!);
         var initial = context.Database.GetMigrations().First();

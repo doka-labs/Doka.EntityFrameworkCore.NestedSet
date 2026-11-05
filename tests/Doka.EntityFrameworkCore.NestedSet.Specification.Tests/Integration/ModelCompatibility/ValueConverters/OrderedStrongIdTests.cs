@@ -22,10 +22,12 @@ public abstract class OrderedStrongIdTests : ProviderTest
         const int children = 2200;
         await using var context = await _fixture.CreateContextAsync<StrictStrongIdContext>(
             Engine,
-            static options => new StrictStrongIdContext(options));
+            static options => new StrictStrongIdContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        var treeId = await SeedAsync(context, 1, children);
-        var tracked = await RenameReversedAsync(context, treeId, 1, children);
+        var treeId = await SeedAsync(context, 1, children, cancellationToken: TestContext.Current.CancellationToken);
+        var tracked = await RenameReversedAsync(context, treeId, 1, children,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         await context.SaveNestedSetChangesAsync(
@@ -34,7 +36,8 @@ public abstract class OrderedStrongIdTests : ProviderTest
             CancellationToken.None);
 
         // Assert
-        await AssertReversedAsync(context, treeId, tracked, 1, children);
+        await AssertReversedAsync(context, treeId, tracked, 1, children,
+            cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Manual-placement reorder keeps rule order when one tree's changes span key batches.</summary>
@@ -44,14 +47,18 @@ public abstract class OrderedStrongIdTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<PlacedStrongIdContext>(
             Engine,
-            static options => new PlacedStrongIdContext(options));
+            static options => new PlacedStrongIdContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // WHY: Both trees need more than one key batch in total; each placement depends on the rule
         // predecessor, so a wrong order across batches leaves a node after the wrong sibling.
-        var small = await SeedAsync(context, 1, 40);
-        var large = await SeedAsync(context, 1000, 150);
-        var smallNodes = await RenameReversedAsync(context, small, 1, 40);
-        var largeNodes = await RenameReversedAsync(context, large, 1000, 150);
+        var small = await SeedAsync(context, 1, 40, cancellationToken: TestContext.Current.CancellationToken);
+        var large = await SeedAsync(context, 1000, 150, cancellationToken: TestContext.Current.CancellationToken);
+        var smallNodes = await RenameReversedAsync(context, small, 1, 40,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var largeNodes = await RenameReversedAsync(context, large, 1000, 150,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         await context.SaveNestedSetChangesAsync(
@@ -60,15 +67,19 @@ public abstract class OrderedStrongIdTests : ProviderTest
             CancellationToken.None);
 
         // Assert
-        await AssertReversedAsync(context, small, smallNodes, 1, 40);
-        await AssertReversedAsync(context, large, largeNodes, 1000, 150);
+        await AssertReversedAsync(context, small, smallNodes, 1, 40,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await AssertReversedAsync(context, large, largeNodes, 1000, 150,
+            cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Stores one root and its children in ascending rule order with precomputed bounds.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task<Guid> SeedAsync(
         DbContext context,
         int root,
-        int children
+        int children,
+        CancellationToken cancellationToken
     )
     {
         var treeId = Guid.NewGuid();
@@ -98,24 +109,26 @@ public abstract class OrderedStrongIdTests : ProviderTest
                 });
         }
 
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
         context.ChangeTracker.Clear();
 
         return treeId;
     }
 
     /// <summary>Tracks every child and renames it so the configured rule reverses the sibling order.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task<OrderedStrongIdNode[]> RenameReversedAsync(
         DbContext context,
         Guid treeId,
         int root,
-        int children
+        int children,
+        CancellationToken cancellationToken
     )
     {
         var tracked = await context
             .Set<OrderedStrongIdNode>()
             .Where(node => node.TreeId == treeId && node.Depth == 1)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         foreach (var node in tracked)
         {
@@ -126,12 +139,14 @@ public abstract class OrderedStrongIdTests : ProviderTest
     }
 
     /// <summary>Checks persisted order, refreshed tracked coordinates, and full tree validity.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task AssertReversedAsync(
         DbContext context,
         Guid treeId,
         OrderedStrongIdNode[] tracked,
         int root,
-        int children
+        int children,
+        CancellationToken cancellationToken
     )
     {
         var ordered = await context
@@ -140,7 +155,7 @@ public abstract class OrderedStrongIdTests : ProviderTest
             .Where(node => node.TreeId == treeId && node.Depth == 1)
             .OrderBy(node => node.Left)
             .Select(node => node.Id)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         Assert.Equal(
             Enumerable
@@ -160,7 +175,7 @@ public abstract class OrderedStrongIdTests : ProviderTest
         var report = await context
             .NestedSet<OrderedStrongIdNode>()
             .InTree(treeId)
-            .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+            .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken);
 
         Assert.True(report.IsValid);
     }

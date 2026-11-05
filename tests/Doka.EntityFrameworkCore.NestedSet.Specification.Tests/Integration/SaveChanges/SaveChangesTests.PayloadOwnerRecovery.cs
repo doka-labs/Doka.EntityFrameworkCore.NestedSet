@@ -16,16 +16,26 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedPayloadOwnersAsync(database, assigned: true);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedPayloadOwnersAsync(database, assigned: true,
+            cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();
         var (failure, expectedError) = CreatePayloadOwnerRecoveryFailure(hierarchyFailure);
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, callback, failure);
+        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            callback, failure);
+
         ArmPayloadOwnerHierarchyFailure(context, failure);
-        var graph = await PreparePayloadOwnerRecoveryAsync(context);
+        var graph = await PreparePayloadOwnerRecoveryAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var nodeBefore = CapturePlannedParentState(context).Single(entry => ReferenceEquals(entry.Entity, graph.Node));
         var membersBefore = PayloadOwnerNativeMembers(context, graph.Target);
-        var storedBefore = await ReadPreparedOwnerStoreAsync(database);
+        var storedBefore = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         callback.OnSaving = _ =>
         {
             callback.OnSaving = null;
@@ -36,8 +46,12 @@ public abstract partial class SaveChangesTests
         var error = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
         var nodeAfter = CapturePlannedParentState(context).Single(entry => ReferenceEquals(entry.Entity, graph.Node));
         var membersAfter = PayloadOwnerNativeMembers(context, graph.Target);
-        var storedAfter = await ReadPreparedOwnerStoreAsync(database);
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        var storedAfter = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var storedOwner = await verification.Set<NavigationNode>().Where(node => node.Id == graph.Node.Id)
             .Select(node => node.PayloadOwnerId).SingleAsync(CancellationToken.None);
 
@@ -65,22 +79,35 @@ public abstract partial class SaveChangesTests
     public async Task PayloadOwnerPreexistingNativeBaselineSurvivesRollback(bool publicCurrentValue)
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedPayloadOwnersAsync(database, assigned: true);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedPayloadOwnersAsync(database, assigned: true,
+            cancellationToken: TestContext.Current.CancellationToken);
         var failure = new PlannedParentFailure();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, failure);
-        var graph = await PreparePayloadOwnerRecoveryAsync(context);
+        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            failure);
+
+        var graph = await PreparePayloadOwnerRecoveryAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         StagePayloadOwnerWrite(graph, publicCurrentValue);
         var before = CapturePlannedParentState(context);
         var membersBefore = PayloadOwnerNativeMembers(context, graph.Target);
-        var storedBefore = await ReadPreparedOwnerStoreAsync(database);
+        var storedBefore = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var error = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
         var after = CapturePlannedParentState(context);
         var membersAfter = PayloadOwnerNativeMembers(context, graph.Target);
-        var storedAfter = await ReadPreparedOwnerStoreAsync(database);
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        var storedAfter = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var storedOwner = await verification.Set<NavigationNode>().Where(node => node.Id == graph.Node.Id)
             .Select(node => node.PayloadOwnerId).SingleAsync(CancellationToken.None);
 
@@ -110,13 +137,21 @@ public abstract partial class SaveChangesTests
     public async Task PayloadOwnerCallbackRollbackAllowsIndependentRetry(bool hierarchyFailure, string retryPolicy)
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedPayloadOwnersAsync(database, assigned: true);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedPayloadOwnersAsync(database, assigned: true,
+            cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();
         var (failure, expectedError) = CreatePayloadOwnerRecoveryFailure(hierarchyFailure);
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, callback, failure);
+        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            callback, failure);
+
         ArmPayloadOwnerHierarchyFailure(context, failure);
-        var graph = await PreparePayloadOwnerRecoveryAsync(context);
+        var graph = await PreparePayloadOwnerRecoveryAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         callback.OnSaving = _ =>
         {
             callback.OnSaving = null;
@@ -141,8 +176,12 @@ public abstract partial class SaveChangesTests
         // Act
         var retryError = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
         var savedMembers = PayloadOwnerNativeMembers(context, graph.Target);
-        var stored = await ReadPreparedOwnerStoreAsync(database);
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        var stored = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var storedOwner = await verification.Set<NavigationNode>().Where(node => node.Id == graph.Node.Id)
             .Select(node => node.PayloadOwnerId).SingleAsync(CancellationToken.None);
 
@@ -169,15 +208,25 @@ public abstract partial class SaveChangesTests
     public async Task PayloadOwnerCallbackRollbackRejectsDetachedFollowup(bool hierarchyFailure)
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedPayloadOwnersAsync(database, assigned: true);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedPayloadOwnersAsync(database, assigned: true,
+            cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();
         var probe = new NavigationWriteProbe();
         var (failure, expectedError) = CreatePayloadOwnerRecoveryFailure(hierarchyFailure);
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, callback, failure, probe);
+        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            callback, failure, probe);
+
         ArmPayloadOwnerHierarchyFailure(context, failure);
-        var graph = await PreparePayloadOwnerRecoveryAsync(context);
-        var storedBefore = await ReadPreparedOwnerStoreAsync(database);
+        var graph = await PreparePayloadOwnerRecoveryAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var storedBefore = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         callback.OnSaving = _ =>
         {
             callback.OnSaving = null;
@@ -193,8 +242,12 @@ public abstract partial class SaveChangesTests
 
         // Act
         var error = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
-        var storedAfter = await ReadPreparedOwnerStoreAsync(database);
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        var storedAfter = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var storedOwner = await verification.Set<NavigationNode>().Where(node => node.Id == graph.Node.Id)
             .Select(node => node.PayloadOwnerId).SingleAsync(CancellationToken.None);
 
@@ -212,13 +265,16 @@ public abstract partial class SaveChangesTests
     }
 
     /// <summary>Prepares a marked ordering candidate without assigning its ordinary payload relationship.</summary>
-    private static async Task<PayloadOwnerRecoveryGraph> PreparePayloadOwnerRecoveryAsync(DbContext context)
+    private static async Task<PayloadOwnerRecoveryGraph> PreparePayloadOwnerRecoveryAsync(
+        DbContext context,
+        CancellationToken cancellationToken
+    )
     {
-        var node = await context.Set<NavigationNode>().SingleAsync(value => value.Id == 2, CancellationToken.None);
+        var node = await context.Set<NavigationNode>().SingleAsync(value => value.Id == 2, cancellationToken);
         var owners = await context.Set<NavigationPayloadOwner>().Include(value => value.Nodes)
-            .Where(value => value.Scope == node.Scope).ToArrayAsync(CancellationToken.None);
+            .Where(value => value.Scope == node.Scope).ToArrayAsync(cancellationToken);
 
-        var note = await context.Set<NavigationNote>().SingleAsync(CancellationToken.None);
+        var note = await context.Set<NavigationNote>().SingleAsync(cancellationToken);
         context.ChangeTracker.AutoDetectChangesEnabled = false;
         var entry = context.Entry(node);
         var name = entry.Property(value => value.Name);

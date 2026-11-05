@@ -22,7 +22,8 @@ public abstract partial class AncestorIndexQueryTests
         var scope = Guid.NewGuid();
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, tree, probe, foreignTrees: true);
+        await using var context = await CreateContextAsync(scope, tree, probe, foreignTrees: true,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         if (shape is "hidden-source" or "hidden-owner")
         {
@@ -83,7 +84,9 @@ public abstract partial class AncestorIndexQueryTests
         var scope = Guid.NewGuid();
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, tree, probe);
+        await using var context = await CreateContextAsync(scope, tree, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var source = shape == "equal-nonleaf" ? 2 : 3;
         var owner = CreateNode(scope, tree, 4);
         owner.ParentId = null;
@@ -126,7 +129,9 @@ public abstract partial class AncestorIndexQueryTests
         var scope = Guid.NewGuid();
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, tree, probe);
+        await using var context = await CreateContextAsync(scope, tree, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNavigationNode>().ForScope(scope).InTree(tree);
         var pairs = includeSelf
             ? hierarchy.SelectAncestorsOrSelf(node => node.Id == 3,

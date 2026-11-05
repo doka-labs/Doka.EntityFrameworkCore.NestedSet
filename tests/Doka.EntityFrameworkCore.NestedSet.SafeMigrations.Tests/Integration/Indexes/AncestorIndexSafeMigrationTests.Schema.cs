@@ -5,13 +5,16 @@ namespace Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests;
 public sealed partial class AncestorIndexSafeMigrationTests
 {
     /// <summary>Reads generated values without relying on tracked entity state.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
     private static Task<bool[]> ReadFlagsAsync(
-        AncestorIndexContext context
+        AncestorIndexContext context,
+        CancellationToken cancellationToken
     ) => context
         .Set<MigrationNode>()
         .OrderBy(node => node.NodeId)
         .Select(node => EF.Property<bool>(node, AncestorIndexContext.FlagProperty))
-        .ToArrayAsync(CancellationToken.None);
+        .ToArrayAsync(cancellationToken);
 
     /// <summary>Checks every replayed operation rather than only the additive index.</summary>
     private static void AssertMatchingReplay(
@@ -84,12 +87,16 @@ public sealed partial class AncestorIndexSafeMigrationTests
     }
 
     /// <summary>Reads the actual engine definition, including columns SQLite omits from table_info.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="engine">The selected database engine.</param>
     private async Task<GeneratedColumnSchema> ReadGeneratedColumnAsync(
         AncestorIndexContext context,
-        string engine
+        string engine,
+        CancellationToken cancellationToken
     )
     {
-        await context.Database.OpenConnectionAsync(CancellationToken.None);
+        await context.Database.OpenConnectionAsync(cancellationToken);
         await using var command = context
             .Database
             .GetDbConnection()
@@ -120,8 +127,8 @@ public sealed partial class AncestorIndexSafeMigrationTests
 
         AddCatalogParameters(command, context, engine);
         AddParameter(command, "@column", AncestorIndexContext.FlagColumn);
-        await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
-        if (!await reader.ReadAsync(CancellationToken.None))
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
         {
             throw new InvalidOperationException("The expected physical generated column is missing.");
         }
@@ -132,7 +139,7 @@ public sealed partial class AncestorIndexSafeMigrationTests
             Convert.ToBoolean(reader.GetValue(2), CultureInfo.InvariantCulture),
             reader.GetString(3));
 
-        if (await reader.ReadAsync(CancellationToken.None))
+        if (await reader.ReadAsync(cancellationToken))
         {
             throw new InvalidOperationException("The generated-column catalog lookup was not unique.");
         }
@@ -143,12 +150,16 @@ public sealed partial class AncestorIndexSafeMigrationTests
     }
 
     /// <summary>Checks that preflight did not create the pending application table.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="engine">The selected database engine.</param>
     private static async Task<int> ReadHierarchyTableCountAsync(
         AncestorIndexContext context,
-        string engine
+        string engine,
+        CancellationToken cancellationToken
     )
     {
-        await context.Database.OpenConnectionAsync(CancellationToken.None);
+        await context.Database.OpenConnectionAsync(cancellationToken);
         await using var command = context
             .Database
             .GetDbConnection()
@@ -159,18 +170,22 @@ public sealed partial class AncestorIndexSafeMigrationTests
             : "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_NAME = @table AND TABLE_SCHEMA = @schema";
 
         AddCatalogParameters(command, context, engine);
-        var count = await command.ExecuteScalarAsync(CancellationToken.None);
+        var count = await command.ExecuteScalarAsync(cancellationToken);
 
         return Convert.ToInt32(count, CultureInfo.InvariantCulture);
     }
 
     /// <summary>Detects any physical flag created by a supposedly read-only populated preflight.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="engine">The selected database engine.</param>
     private static async Task<int> ReadGeneratedColumnCountAsync(
         AncestorIndexContext context,
-        string engine
+        string engine,
+        CancellationToken cancellationToken
     )
     {
-        await context.Database.OpenConnectionAsync(CancellationToken.None);
+        await context.Database.OpenConnectionAsync(cancellationToken);
         await using var command = context
             .Database
             .GetDbConnection()
@@ -183,7 +198,7 @@ public sealed partial class AncestorIndexSafeMigrationTests
 
         AddCatalogParameters(command, context, engine);
         AddParameter(command, "@column", AncestorIndexContext.FlagColumn);
-        var count = await command.ExecuteScalarAsync(CancellationToken.None);
+        var count = await command.ExecuteScalarAsync(cancellationToken);
 
         return Convert.ToInt32(count, CultureInfo.InvariantCulture);
     }

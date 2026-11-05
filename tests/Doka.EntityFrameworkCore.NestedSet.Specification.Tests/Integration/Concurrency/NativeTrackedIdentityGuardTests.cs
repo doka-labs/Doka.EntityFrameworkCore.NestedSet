@@ -26,10 +26,12 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
         await using DbContext context = scopedKey
             ? await _fixture.CreateContextAsync<ScopedScopeAliasContext>(
                 Engine,
-                static options => new ScopedScopeAliasContext(options))
+                static options => new ScopedScopeAliasContext(options),
+                cancellationToken: TestContext.Current.CancellationToken)
             : await _fixture.CreateContextAsync<ScalarScopeAliasContext>(
                 Engine,
-                static options => new ScalarScopeAliasContext(options));
+                static options => new ScalarScopeAliasContext(options),
+                cancellationToken: TestContext.Current.CancellationToken);
 
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var scope = $"guard-scope-{root}";
@@ -86,11 +88,13 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
     public async Task NativeTreeAliasCannotLeaveAffectedTrackedStructureStale()
     {
         // Arrange
-        await using var context = await CreateAliasContextAsync(Engine);
+        await using var context = await CreateAliasContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var treeId = $"guard-tree-{root}";
-        await SeedTreeAsync(context, treeId, root, 1);
-        var alias = await ReadNodeAsync(context, root + 1);
+        await SeedTreeAsync(context, treeId, root, 1, cancellationToken: TestContext.Current.CancellationToken);
+        var alias = await ReadNodeAsync(context, root + 1, cancellationToken: TestContext.Current.CancellationToken);
         alias.TreeId = new BroadTreeId(treeId.ToUpperInvariant());
         context.Attach(alias);
         var before = (alias.Left, alias.Right, alias.Depth, alias.Position, alias.ParentId);
@@ -119,14 +123,15 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadGuardTreeContext>(
             Engine,
-            static options => new BroadGuardTreeContext(options));
+            static options => new BroadGuardTreeContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var first = $"GUARD-{root}";
         var second = first.ToLowerInvariant();
-        await SeedTreeAsync(context, first, root, 1);
-        await SeedTreeAsync(context, second, root + 10, 1);
-        var tracked = await ReadNodeAsync(context, root + 11);
+        await SeedTreeAsync(context, first, root, 1, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedTreeAsync(context, second, root + 10, 1, cancellationToken: TestContext.Current.CancellationToken);
+        var tracked = await ReadNodeAsync(context, root + 11, cancellationToken: TestContext.Current.CancellationToken);
         context.Attach(tracked);
         var before = (tracked.TreeId.Value, tracked.Left, tracked.Right, tracked.Depth, tracked.Position);
 
@@ -159,11 +164,14 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
     {
         // Arrange
         var probe = new NativeGuardProbe();
-        await using var context = await CreateAliasContextAsync(Engine, probe);
+        await using var context = await CreateAliasContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var treeId = $"guard-exact-{root}";
-        await SeedTreeAsync(context, treeId, root, 1);
-        var tracked = await ReadNodeAsync(context, root + 1);
+        await SeedTreeAsync(context, treeId, root, 1, cancellationToken: TestContext.Current.CancellationToken);
+        var tracked = await ReadNodeAsync(context, root + 1, cancellationToken: TestContext.Current.CancellationToken);
         context.Attach(tracked);
         probe.Armed = true;
 
@@ -184,12 +192,16 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
     {
         // Arrange
         var probe = new NativeGuardProbe();
-        await using var context = await CreateAliasContextAsync(Engine, probe);
+        await using var context = await CreateAliasContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var affectedTree = $"guard-affected-{root}";
         var otherTree = $"guard-other-{root}";
-        await SeedTreeAsync(context, affectedTree, root, 1);
-        await SeedTreeAsync(context, otherTree, root + 100, 64);
+        await SeedTreeAsync(context, affectedTree, root, 1, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedTreeAsync(context, otherTree, root + 100, 64,
+            cancellationToken: TestContext.Current.CancellationToken);
         var tracked = await context
             .Set<BroadTreeIdNode>()
             .Where(node => node.Id >= root + 100 && node.Id <= root + 164)
@@ -223,15 +235,18 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
     {
         // Arrange
         var probe = new NativeGuardProbe();
-        await using var context = await CreateAliasContextAsync(Engine, probe);
+        await using var context = await CreateAliasContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var affectedTree = $"guard-callback-{root}";
         var otherTree = $"guard-unaffected-{root}";
-        await SeedTreeAsync(context, affectedTree, root, 1);
-        await SeedTreeAsync(context, otherTree, root + 10, 1);
-        var affected = await ReadNodeAsync(context, root + 1);
+        await SeedTreeAsync(context, affectedTree, root, 1, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedTreeAsync(context, otherTree, root + 10, 1, cancellationToken: TestContext.Current.CancellationToken);
+        var affected = await ReadNodeAsync(context, root + 1, cancellationToken: TestContext.Current.CancellationToken);
         affected.TreeId = new BroadTreeId(affectedTree.ToUpperInvariant());
-        var other = await ReadNodeAsync(context, root + 11);
+        var other = await ReadNodeAsync(context, root + 11, cancellationToken: TestContext.Current.CancellationToken);
         context.Attach(other);
         probe.BeforeNativeRead = () =>
         {
@@ -261,7 +276,8 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
                 .Set<BroadTreeIdNode>()
                 .AsNoTracking()
                 .CountAsync(node => node.Id >= root && node.Id <= root + 1, CancellationToken.None));
-        Assert.Equal("Child-000", (await ReadNodeAsync(context, root + 11)).Name);
+        Assert.Equal("Child-000", (await ReadNodeAsync(context, root + 11,
+            cancellationToken: TestContext.Current.CancellationToken)).Name);
         Assert.Equal(attachAffectedAlias ? EntityState.Unchanged : EntityState.Modified, context.Entry(other).State);
     }
 
@@ -271,11 +287,14 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
     {
         // Arrange
         var probe = new NativeGuardProbe();
-        await using var context = await CreateAliasContextAsync(Engine, probe);
+        await using var context = await CreateAliasContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var treeId = $"guard-lock-{root}";
-        await SeedTreeAsync(context, treeId, root, 1);
-        var alias = await ReadNodeAsync(context, root + 1);
+        await SeedTreeAsync(context, treeId, root, 1, cancellationToken: TestContext.Current.CancellationToken);
+        var alias = await ReadNodeAsync(context, root + 1, cancellationToken: TestContext.Current.CancellationToken);
         probe.RegistryTable = NestedSetTreeRegistryMapping.For(context.Model.FindEntityType(typeof(BroadTreeIdNode))!).Store.Name;
         probe.AfterRegistryRead = () => context.Attach(alias);
         probe.Armed = true;
@@ -304,16 +323,20 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
     public async Task PersistedMembershipRejectsAnExternallyMovedTrackedNode()
     {
         // Arrange
-        await using var context = await CreateAliasContextAsync(Engine);
+        await using var context = await CreateAliasContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var source = $"guard-source-{root}";
         var target = $"guard-target-{root}";
-        await SeedTreeAsync(context, source, root, 1);
-        await SeedTreeAsync(context, target, root + 10, 0);
-        var stale = await ReadNodeAsync(context, root + 1);
+        await SeedTreeAsync(context, source, root, 1, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedTreeAsync(context, target, root + 10, 0, cancellationToken: TestContext.Current.CancellationToken);
+        var stale = await ReadNodeAsync(context, root + 1, cancellationToken: TestContext.Current.CancellationToken);
         context.Attach(stale);
         var before = (stale.TreeId.Value, stale.ParentId, stale.Left, stale.Right, stale.Depth, stale.Position);
-        await using var writer = await CreateAliasContextAsync(Engine);
+        await using var writer = await CreateAliasContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await writer
             .NestedSet<BroadTreeIdNode>()
             .MoveToAsync(root + 1, root + 10, CancellationToken.None);
@@ -329,7 +352,8 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
         Assert.Equal(
             before,
             (stale.TreeId.Value, stale.ParentId, stale.Left, stale.Right, stale.Depth, stale.Position));
-        Assert.Equal(target, (await ReadNodeAsync(context, root + 1)).TreeId.Value);
+        Assert.Equal(target, (await ReadNodeAsync(context, root + 1,
+            cancellationToken: TestContext.Current.CancellationToken)).TreeId.Value);
         Assert.Equal(
             2,
             await context
@@ -350,7 +374,10 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
     {
         // Arrange
         var probe = new NativeGuardProbe();
-        await using var context = await CreateAliasContextAsync(Engine, probe);
+        await using var context = await CreateAliasContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var entityType = context.Model.FindEntityType(typeof(BroadTreeIdNode))!;
         probe.Armed = true;
 
@@ -393,10 +420,14 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
     {
         // Arrange
         var probe = new NativeGuardProbe();
-        await using var context = await CreateAliasContextAsync(Engine, probe);
+        await using var context = await CreateAliasContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         await using var foreign = await _fixture.CreateContextAsync<BroadGuardTreeContext>(
             Engine,
-            static options => new BroadGuardTreeContext(options));
+            static options => new BroadGuardTreeContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var executor = new NestedSetMutationExecutor<BroadTreeIdNode, int, BroadTreeId, NestedSetNoScope>(
             context,
@@ -425,20 +456,25 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
     }
 
     /// <summary>Creates the case-insensitive TreeId model with observers local to this operation.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private Task<AliasGuardTreeContext> CreateAliasContextAsync(
         string engine,
+        CancellationToken cancellationToken,
         params IInterceptor[] interceptors
     ) => _fixture.CreateContextAsync<AliasGuardTreeContext>(
         engine,
         static options => new AliasGuardTreeContext(options),
+        cancellationToken: cancellationToken,
         interceptors);
 
     /// <summary>Imports one root with independent keys and clears only arrangement-owned tracking.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task SeedTreeAsync(
         DbContext context,
         string treeId,
         int root,
-        int children
+        int children,
+        CancellationToken cancellationToken
     )
     {
         var branches = Enumerable
@@ -463,19 +499,21 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
             .NestedSet<BroadTreeIdNode>()
             .InsertForestAsync(
                 [new NestedSetTreeImport<BroadTreeIdNode, BroadTreeId>(new BroadTreeId(treeId), branch)],
-                CancellationToken.None);
+                cancellationToken);
 
         context.ChangeTracker.Clear();
     }
 
     /// <summary>Reads an independent entity snapshot without triggering identity-map alias handling.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static Task<BroadTreeIdNode> ReadNodeAsync(
         DbContext context,
-        int id
+        int id,
+        CancellationToken cancellationToken
     ) => context
         .Set<BroadTreeIdNode>()
         .AsNoTracking()
-        .SingleAsync(node => node.Id == id, CancellationToken.None);
+        .SingleAsync(node => node.Id == id, cancellationToken);
 
     /// <summary>Maps native identity equality independently from the model's value comparer.</summary>
     private abstract class GuardTreeContext(DbContextOptions options) : DbContext(options)

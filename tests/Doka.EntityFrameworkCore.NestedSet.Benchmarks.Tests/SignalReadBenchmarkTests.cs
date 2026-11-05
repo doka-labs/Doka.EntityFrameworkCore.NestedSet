@@ -50,7 +50,9 @@ public sealed class SignalReadBenchmarkTests
             await benchmark.SetupAsync();
             var observation = ((IDatabaseBenchmark)benchmark).Observation;
             var preparationCommands = observation.Commands;
-            var writesBefore = await ReadConnectionWritesAsync(benchmark.Context);
+        var writesBefore = await ReadConnectionWritesAsync(
+            benchmark.Context,
+            TestContext.Current.CancellationToken);
             var reports = new SignalReportCell[3][];
 
             // Act
@@ -72,7 +74,9 @@ public sealed class SignalReadBenchmarkTests
             Assert.Equal(0, preparationCommands);
             Assert.Equal(diagnostics ? 6 : 0, observation.Commands);
             Assert.Equal(0, observation.Updates);
-            Assert.Equal(writesBefore, await ReadConnectionWritesAsync(benchmark.Context));
+        Assert.Equal(
+            writesBefore,
+            await ReadConnectionWritesAsync(benchmark.Context, TestContext.Current.CancellationToken));
             Assert.Empty(benchmark.Context.ChangeTracker.Entries());
             Assert.All(reports, report =>
             {
@@ -223,8 +227,11 @@ public sealed class SignalReadBenchmarkTests
     }
 
     /// <summary>Detects any persisted write on this SQLite connection without retaining entity histories.</summary>
+    /// <param name="context">The context used for the benchmark data and verification reads.</param>
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
     private static async Task<long> ReadConnectionWritesAsync(
-        SignalLabContext context
+        SignalLabContext context,
+        CancellationToken cancellationToken
     )
     {
         // WHY: A repeated report could preserve cardinality while modifying values. SQLite's cumulative
@@ -235,7 +242,7 @@ public sealed class SignalReadBenchmarkTests
             .CreateCommand();
 
         command.CommandText = "SELECT total_changes()";
-        var value = await command.ExecuteScalarAsync(CancellationToken.None);
+        var value = await command.ExecuteScalarAsync(cancellationToken);
 
         return Convert.ToInt64(value, CultureInfo.InvariantCulture);
     }

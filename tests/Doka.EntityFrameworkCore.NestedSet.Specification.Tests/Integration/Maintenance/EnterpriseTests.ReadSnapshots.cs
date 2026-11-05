@@ -11,7 +11,7 @@ public abstract partial class EnterpriseTests
     public async Task ValidationSnapshotSurvivesConcurrentDeleteBetweenReads()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
         await setup.AddRangeAsync(
             [
@@ -69,9 +69,10 @@ public abstract partial class EnterpriseTests
     public async Task ValidationPreservesCallerSerializableTransaction()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(3));
+        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(3),
+            cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         await using var transaction = await context.Database.BeginTransactionAsync(
             IsolationLevel.Serializable,

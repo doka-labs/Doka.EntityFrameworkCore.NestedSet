@@ -18,7 +18,9 @@ public abstract class SingleInsertExactValueTests : ProviderTest
     public async Task ComparerEqualOriginalValuesDoNotBlockSingleInsertion()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await context.AddAsync(
             new BulkStageTextNode
             {
@@ -71,7 +73,9 @@ public abstract class SingleInsertExactValueTests : ProviderTest
     )
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await context.AddAsync(
             new BulkStageTextNode
             {
@@ -129,7 +133,9 @@ public abstract class SingleInsertExactValueTests : ProviderTest
     public async Task SharedInitialScopeArrayCannotMutateSingleInsertionService()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         byte[] scope = [1];
         var tree = context
             .NestedSet<BulkStageBinaryScope>()
@@ -162,7 +168,9 @@ public abstract class SingleInsertExactValueTests : ProviderTest
     public async Task FailedSingleInsertionRestoresMutableOriginalKey()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = context
             .NestedSet<BulkStageBinaryParent>()
             .ForScope(1);

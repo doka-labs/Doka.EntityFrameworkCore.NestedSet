@@ -10,7 +10,8 @@ public sealed partial class SqliteQueryPlanTests
         await using var models = new ModelCompatibilityDatabase();
         await using var setup = await models.CreateContextAsync<CompositeKeyContext>(
             Engine,
-            static options => new CompositeKeyContext(options));
+            static options => new CompositeKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var treeId = Guid.NewGuid();
         var excludedTree = Guid.NewGuid();
@@ -27,6 +28,7 @@ public sealed partial class SqliteQueryPlanTests
         await using var context = await models.CreateContextAsync<CompositeKeyContext>(
             Engine,
             static options => new CompositeKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var store = new Storage.NestedSetStore<CompositeKeyNode, int, Guid, int>(
@@ -69,10 +71,12 @@ public sealed partial class SqliteQueryPlanTests
                 (actual.TreeId, actual.ParentNodeKey, actual.Name));
         }
 
-        var plan = await ExplainAsync(context, probe, 0);
+        var plan = await ExplainAsync(context, probe, 0, cancellationToken: TestContext.Current.CancellationToken);
         AssertPointKeyPlan(plan, entity, nameof(CompositeKeyNode.NodeKey), nameof(CompositeKeyNode.TenantId));
-        await QueryPlanTestSupport.WriteEvidenceAsync("Sqlite-composite-repair-point-plan", plan);
-        await QueryPlanTestSupport.WriteEvidenceAsync("Sqlite-composite-repair-update", [probe.Commands[0]]);
+        await QueryPlanTestSupport.WriteEvidenceAsync("Sqlite-composite-repair-point-plan", plan,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await QueryPlanTestSupport.WriteEvidenceAsync("Sqlite-composite-repair-update", [probe.Commands[0]],
+            cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Seeks converted unscoped keys while rejecting keys that belong to another tree.</summary>
@@ -83,7 +87,8 @@ public sealed partial class SqliteQueryPlanTests
         await using var models = new ModelCompatibilityDatabase();
         await using var setup = await models.CreateContextAsync<StrictStrongIdContext>(
             Engine,
-            static options => new StrictStrongIdContext(options));
+            static options => new StrictStrongIdContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var treeId = Guid.NewGuid();
         var excludedTree = Guid.NewGuid();
@@ -99,6 +104,7 @@ public sealed partial class SqliteQueryPlanTests
         await using var context = await models.CreateContextAsync<StrictStrongIdContext>(
             Engine,
             static options => new StrictStrongIdContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var store = new Storage.NestedSetStore<OrderedStrongIdNode, StrongNodeId, Guid, Mapping.NestedSetNoScope>(
@@ -146,10 +152,12 @@ public sealed partial class SqliteQueryPlanTests
                 (actual.TreeId, actual.ParentId, actual.Name));
         }
 
-        var plan = await ExplainAsync(context, probe, 0);
+        var plan = await ExplainAsync(context, probe, 0, cancellationToken: TestContext.Current.CancellationToken);
         AssertPointKeyPlan(plan, entity, nameof(OrderedStrongIdNode.Id));
-        await QueryPlanTestSupport.WriteEvidenceAsync("Sqlite-converted-unscoped-repair-point-plan", plan);
-        await QueryPlanTestSupport.WriteEvidenceAsync("Sqlite-converted-unscoped-repair-update", [probe.Commands[0]]);
+        await QueryPlanTestSupport.WriteEvidenceAsync("Sqlite-converted-unscoped-repair-point-plan", plan,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await QueryPlanTestSupport.WriteEvidenceAsync("Sqlite-converted-unscoped-repair-update", [probe.Commands[0]],
+            cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Preserves exact membership when a mapped table collides with the internal query alias.</summary>
@@ -160,7 +168,8 @@ public sealed partial class SqliteQueryPlanTests
         await using var models = new ModelCompatibilityDatabase();
         await using var setup = await models.CreateContextAsync<MembershipCollisionContext>(
             Engine,
-            static options => new MembershipCollisionContext(options));
+            static options => new MembershipCollisionContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var treeId = Guid.NewGuid();
         var nodes = new[]
@@ -199,6 +208,7 @@ public sealed partial class SqliteQueryPlanTests
         await using var context = await models.CreateContextAsync<MembershipCollisionContext>(
             Engine,
             static options => new MembershipCollisionContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var store = new Storage.NestedSetStore<TreeNode, int, Guid, int>(
@@ -234,7 +244,8 @@ public sealed partial class SqliteQueryPlanTests
                 .Skip(1)
                 .Select(node => (node.NodeId, node.Tree, node.TreeId, node.Start, node.End)));
         Assert.All(persisted.Skip(1), node => Assert.Equal((0, 0L), (node.Depth, node.Position)));
-        await QueryPlanTestSupport.WriteEvidenceAsync("Sqlite-membership-alias-update", [probe.Commands[0]]);
+        await QueryPlanTestSupport.WriteEvidenceAsync("Sqlite-membership-alias-update", [probe.Commands[0]],
+            cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Creates a canonical scoped star with independent row and scalar node identities.</summary>

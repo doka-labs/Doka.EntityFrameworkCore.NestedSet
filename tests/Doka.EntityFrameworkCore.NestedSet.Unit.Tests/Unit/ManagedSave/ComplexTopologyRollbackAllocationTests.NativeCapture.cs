@@ -17,7 +17,7 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
     )
     {
         // Arrange
-        await WarmAsync();
+        await WarmAsync(cancellationToken: TestContext.Current.CancellationToken);
         await using var context = new TopologyContext();
         var payload = CreatePayload(rows);
         var entry = context.Attach(payload);

@@ -27,7 +27,9 @@ public sealed class BulkOwnedGeneratedTests : ProviderTest,
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var probe = new BulkRefreshFailure("OwnedGeneratedImportNodes");
         var options = new DbContextOptionsBuilder<OwnedGeneratedContext>()
@@ -129,7 +131,9 @@ public sealed class BulkOwnedGeneratedTests : ProviderTest,
     public async Task SuccessfulImportReturnsOwnedDefaultsAndCollectionIdentities()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<OwnedGeneratedContext>()
             .ConfigureTestWarnings()
@@ -177,7 +181,9 @@ public sealed class BulkOwnedGeneratedTests : ProviderTest,
     public async Task RestoredOwnedIdentitiesAllowImportRetryAcrossPayloadWaves()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var probe = new BulkRefreshFailure("OwnedGeneratedImportNodes");
         var options = new DbContextOptionsBuilder<OwnedGeneratedContext>()

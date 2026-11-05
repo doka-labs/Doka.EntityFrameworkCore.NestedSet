@@ -148,13 +148,18 @@ Both facades expose immediate asynchronous operations:
 
 `InsertRootAsync` and `DetachAsTreeAsync` require an explicit never-used
 TreeId. Child, sibling, and anchor-based operations resolve the complete tree
-identity in the database. Every async method accepts a `CancellationToken`.
+identity in the database. Every owned async operation requires an explicit
+`CancellationToken`; forward the caller's token or deliberately pass
+`CancellationToken.None`. Actual EF/.NET overrides and interface implementations
+retain their upstream optional signatures. Removing the default is source-breaking:
+older binaries keep the same method signatures, but recompiled callers must now
+supply the argument.
 
 `NestedSetBranch<TEntity>` is an immutable adjacency input for one detached
 branch. `NestedSetTreeImport<TEntity, TTreeId>` pairs one root branch with its
 explicit TreeId for `InsertForestAsync`.
 
-`PurgeTreeIdAsync(treeId)` is an explicit administrative operation. It accepts
+`PurgeTreeIdAsync(treeId, cancellationToken)` is an explicit administrative operation. It accepts
 only an existing tombstone with no remaining nodes, removes that registry row
 atomically, and thereby permits deliberate later TreeId reuse. Applications
 must authorize purge separately and retain any required business audit before

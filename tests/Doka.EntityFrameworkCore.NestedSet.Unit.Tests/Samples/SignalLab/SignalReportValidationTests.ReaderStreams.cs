@@ -39,11 +39,12 @@ public sealed partial class SignalReportValidationTests
                 return ValueTask.FromResult(true);
             }
 
-            return CompleteAsync();
+            return CompleteAsync(cancellationToken);
         }
 
         /// <summary>Preserves asynchronous EOF cancellation and failure before successful completion.</summary>
-        private async ValueTask<bool> CompleteAsync()
+        /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
+        private async ValueTask<bool> CompleteAsync(CancellationToken cancellationToken)
         {
             if (probe.CancelAfterRows is not null)
             {
@@ -51,6 +52,7 @@ public sealed partial class SignalReportValidationTests
             }
 
             cancellationToken.ThrowIfCancellationRequested();
+
             if (probe.ReadFailure is not null)
             {
                 throw probe.ReadFailure;

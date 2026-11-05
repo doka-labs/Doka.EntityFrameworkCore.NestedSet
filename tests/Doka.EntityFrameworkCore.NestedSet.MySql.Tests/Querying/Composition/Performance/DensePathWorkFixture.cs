@@ -11,24 +11,31 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
 internal static class DensePathWorkFixture
 {
     /// <summary>Creates the independent adjacency plan and bounded payload used by one native work case.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="scenario">The selected deterministic workload scenario.</param>
+    /// <param name="engine">The selected database engine.</param>
     internal static async Task SeedAsync(
         TreeContext context,
         DensePathWorkScenario scenario,
-        string engine
+        string engine,
+        CancellationToken cancellationToken
     )
     {
-        await CapacitySeed.SeedAsync(context, scenario.Nodes, deep: !scenario.Branches);
+        await CapacitySeed.SeedAsync(context, scenario.Nodes, deep: !scenario.Branches,
+            cancellationToken: cancellationToken);
 
         if (scenario.Branches)
         {
-            await ArrangeBranchesAsync(context, scenario.Nodes);
+            await ArrangeBranchesAsync(context, scenario.Nodes, cancellationToken: cancellationToken);
         }
 
         if (scenario.Branches
             || scenario.Forest)
         {
-            await CloneAsync(context, scenario.Nodes, 1, DensePathWorkScenario.OtherTree);
-            await CloneAsync(context, scenario.Nodes, 3, Guid.Empty);
+            await CloneAsync(context, scenario.Nodes, 1, DensePathWorkScenario.OtherTree,
+                cancellationToken: cancellationToken);
+            await CloneAsync(context, scenario.Nodes, 3, Guid.Empty, cancellationToken: cancellationToken);
         }
 
         if (scenario is { Forest: true, Branches: false })
@@ -40,7 +47,7 @@ internal static class DensePathWorkFixture
                 .Where(node => node.Tree == 1 && node.TreeId == DensePathWorkScenario.OtherTree)
                 .ExecuteUpdateAsync(
                     setters => setters.SetProperty(node => node.Payload, "clear"),
-                    CancellationToken.None);
+                    cancellationToken);
         }
 
         if (scenario.DenseFailures)
@@ -54,7 +61,7 @@ internal static class DensePathWorkFixture
                     && node.NodeId % 2 == 0)
                 .ExecuteUpdateAsync(
                     setters => setters.SetProperty(node => node.Payload, "blocked"),
-                    CancellationToken.None);
+                    cancellationToken);
         }
 
         if (scenario.ExtraFailure is { } failure)
@@ -64,7 +71,7 @@ internal static class DensePathWorkFixture
                 .Where(node => node.NodeId == failure)
                 .ExecuteUpdateAsync(
                     setters => setters.SetProperty(node => node.Payload, "blocked"),
-                    CancellationToken.None);
+                    cancellationToken);
         }
 
         if (scenario.Branches)
@@ -81,7 +88,7 @@ internal static class DensePathWorkFixture
                 .Where(node => Enumerable.Contains(uppers, node.NodeId))
                 .ExecuteUpdateAsync(
                     setters => setters.SetProperty(node => node.Payload, "upper"),
-                    CancellationToken.None);
+                    cancellationToken);
 
             await context
                 .Set<UnrelatedRow>()
@@ -93,24 +100,30 @@ internal static class DensePathWorkFixture
                             Id = pair.Lower,
                             Value = "fact",
                         }),
-                    CancellationToken.None);
+                    cancellationToken);
 
-            await context.SaveChangesAsync(CancellationToken.None);
+            await context.SaveChangesAsync(cancellationToken);
             context.ChangeTracker.Clear();
         }
         else
         {
-            await CopyPayloadAsync(context, scenario.StoredNodes);
+            await CopyPayloadAsync(context, scenario.StoredNodes, cancellationToken: cancellationToken);
         }
 
-        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(context, engine);
-        await QueryPlanTestSupport.RefreshStatisticsAsync<UnrelatedRow>(context, engine);
+        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(context, engine,
+            cancellationToken: cancellationToken);
+        await QueryPlanTestSupport.RefreshStatisticsAsync<UnrelatedRow>(context, engine,
+            cancellationToken: cancellationToken);
     }
 
     /// <summary>Transforms the existing wide fixture into one hundred disjoint chains under its root.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="nodes">The number of synthetic hierarchy nodes.</param>
     private static async Task ArrangeBranchesAsync(
         TreeContext context,
-        int nodes
+        int nodes,
+        CancellationToken cancellationToken
     )
     {
         var map = Mapping(context);
@@ -129,15 +142,21 @@ internal static class DensePathWorkFixture
             + $"WHERE {id} > 1 AND {id} <= {nodes}";
 
         // WHY: DIV is the two owned engines' integer operator; no floating division or CLR tree buffer is involved.
-        await context.Database.ExecuteSqlRawAsync(statement, CancellationToken.None);
+        await context.Database.ExecuteSqlRawAsync(statement, cancellationToken);
     }
 
     /// <summary>Creates overlapping coordinates with an independently registered scope/tree identity.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="nodes">The number of synthetic hierarchy nodes.</param>
+    /// <param name="scope">The hierarchy scope used by the scenario.</param>
+    /// <param name="tree">The complete tree identity used by the scenario.</param>
     private static async Task CloneAsync(
         TreeContext context,
         int nodes,
         int scope,
-        Guid tree
+        Guid tree,
+        CancellationToken cancellationToken
     )
     {
         var offset = scope == 1 ? nodes : 2 * nodes;
@@ -151,13 +170,13 @@ internal static class DensePathWorkFixture
                     Payload = "blocked",
                 },
                 tree,
-                CancellationToken.None);
+                cancellationToken);
 
         context.ChangeTracker.Clear();
         await context
             .Set<TreeNode>()
             .Where(node => node.NodeId == offset + 1)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.End, 2L * nodes), CancellationToken.None);
+            .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.End, 2L * nodes), cancellationToken);
 
         var map = Mapping(context);
         var names = new[]
@@ -193,13 +212,17 @@ internal static class DensePathWorkFixture
             .CreateParameter(command, "tree", tree, nullable: false);
 
         // WHY: Mapped native bindings retain Doka's binary GUID encoding for the printable-byte second TreeId.
-        await context.Database.ExecuteSqlRawAsync(statement, new object[] { parameter }, CancellationToken.None);
+        await context.Database.ExecuteSqlRawAsync(statement, new object[] { parameter }, cancellationToken);
     }
 
     /// <summary>Retains the original chain payload layout using one native copy rather than tracked entities.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="nodes">The number of synthetic hierarchy nodes.</param>
     private static async Task CopyPayloadAsync(
         TreeContext context,
-        int nodes
+        int nodes,
+        CancellationToken cancellationToken
     )
     {
         var map = Mapping(context);
@@ -213,7 +236,7 @@ internal static class DensePathWorkFixture
             + $"SELECT {id}, 'fact' FROM {map.Table} "
             + $"WHERE {id} <= {nodes.ToString(CultureInfo.InvariantCulture)}";
 
-        await context.Database.ExecuteSqlRawAsync(statement, CancellationToken.None);
+        await context.Database.ExecuteSqlRawAsync(statement, cancellationToken);
     }
 
     /// <summary>Resolves exact physical identifiers once for each bounded native fixture operation.</summary>

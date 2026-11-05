@@ -13,7 +13,8 @@ public abstract partial class AncestorIndexQueryTests
         var first = Interlocked.Add(ref s_mappingIdentity, 10);
         var tree = Guid.NewGuid();
         await using var context = await _fixture.CreateContextAsync<AncestorIndexMappedContext>(Engine,
-            static options => new AncestorIndexMappedContext(options));
+            static options => new AncestorIndexMappedContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<Dictionary<string, object?>>(AncestorIndexMappedContext.First);
         await hierarchy.InsertRootAsync(Bag(first, "root"), tree, CancellationToken.None);
@@ -60,7 +61,8 @@ public abstract partial class AncestorIndexQueryTests
         var first = Interlocked.Add(ref s_mappingIdentity, 10);
         var tree = Guid.NewGuid();
         await using var context = await _fixture.CreateContextAsync<AncestorIndexMappedContext>(Engine,
-            static options => new AncestorIndexMappedContext(options));
+            static options => new AncestorIndexMappedContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<Dictionary<string, object?>>(AncestorIndexMappedContext.First);
         await hierarchy.InsertRootAsync(Bag(first, "before"), tree, CancellationToken.None);
@@ -96,7 +98,9 @@ public abstract partial class AncestorIndexQueryTests
         var tree = Guid.NewGuid();
         var failure = new BagSaveFailure();
         await using var context = await _fixture.CreateContextAsync<AncestorIndexMappedContext>(Engine,
-            static options => new AncestorIndexMappedContext(options), failure);
+            static options => new AncestorIndexMappedContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            failure);
 
         var hierarchy = context.NestedSet<Dictionary<string, object?>>(AncestorIndexMappedContext.First);
         var root = Bag(first, "root");

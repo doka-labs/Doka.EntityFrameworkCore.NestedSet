@@ -47,7 +47,8 @@ public abstract partial class KeyFilterComparisonTests : ProviderTest
     ) => representation switch
     {
         "Int32" =>
-            CompareSeededAsync<TreeNode, int>(representation, nameof(TreeNode.NodeId), count, static value => value),
+            CompareSeededAsync<TreeNode, int>(representation, nameof(TreeNode.NodeId), count, static value => value,
+                cancellationToken: TestContext.Current.CancellationToken),
         "Guid" => CompareSeededAsync<GuidNode, Guid>(
             representation,
             nameof(GuidNode.Id),
@@ -63,31 +64,34 @@ public abstract partial class KeyFilterComparisonTests : ProviderTest
                 0,
                 0,
                 0,
-                0)),
+                0), cancellationToken: TestContext.Current.CancellationToken),
         "Binary" => CompareSeededAsync<BinaryNode, byte[]>(
             representation,
             nameof(BinaryNode.Id),
             count,
-            BitConverter.GetBytes),
+            BitConverter.GetBytes, cancellationToken: TestContext.Current.CancellationToken),
         "String" => CompareSeededAsync<TextNode, string>(
             representation,
             nameof(TextNode.Id),
             count,
-            static value => $"Node-{value:D4}".ToLowerInvariant()),
+            static value => $"Node-{value:D4}".ToLowerInvariant(),
+            cancellationToken: TestContext.Current.CancellationToken),
         _ => throw new ArgumentOutOfRangeException(nameof(representation)),
     };
 
     /// <summary>Runs one comparison against a shared immutable seed with a fresh context and observer.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private async Task CompareSeededAsync<TEntity, TKey>(
         string representation,
         string property,
         int count,
-        Func<int, TKey> createKey
+        Func<int, TKey> createKey,
+        CancellationToken cancellationToken
     )
         where TEntity : class
     {
         // Arrange
-        var database = await _fixture.ComparisonAsync(Engine);
+        var database = await _fixture.ComparisonAsync(Engine, cancellationToken: cancellationToken);
         var keys = Enumerable
             .Range(0, count)
             .Select(index => createKey((index * 4) + 1))
@@ -105,7 +109,7 @@ public abstract partial class KeyFilterComparisonTests : ProviderTest
             Engine,
             property,
             keys,
-            evidence);
+            evidence, cancellationToken: cancellationToken);
 
         _fixture.RecordEvidence(representation, count, evidence);
 
@@ -119,13 +123,15 @@ public abstract partial class KeyFilterComparisonTests : ProviderTest
     /// <summary>
     /// Warms each shape once, records a second execution, and retains its generated SQL and native plan.
     /// </summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task<(string[] Equality, string[] Contains, string[] Production)> CompareAsync<TEntity, TKey>(
         DbContext context,
         EnterpriseProbe probe,
         string engine,
         string property,
         TKey[] keys,
-        List<string> evidence
+        List<string> evidence,
+        CancellationToken cancellationToken
     )
         where TEntity : class
     {
@@ -149,13 +155,13 @@ public abstract partial class KeyFilterComparisonTests : ProviderTest
         {
             await queries[index]
                 .Select(node => EF.Property<TKey>(node, property))
-                .ToArrayAsync(CancellationToken.None);
+                .ToArrayAsync(cancellationToken);
 
             var commandIndex = probe.Commands.Count;
             var start = Stopwatch.GetTimestamp();
             var rows = await queries[index]
                 .Select(node => EF.Property<TKey>(node, property))
-                .ToArrayAsync(CancellationToken.None);
+                .ToArrayAsync(cancellationToken);
 
             var elapsed = Stopwatch.GetElapsedTime(start)
                 .TotalMilliseconds;
@@ -164,7 +170,9 @@ public abstract partial class KeyFilterComparisonTests : ProviderTest
                 .Order(StringComparer.Ordinal)
                 .ToArray();
 
-            var plan = await QueryPlanTestSupport.ExplainAsync(context, probe, commandIndex, engine);
+            var plan = await QueryPlanTestSupport.ExplainAsync(context, probe, commandIndex, engine,
+                cancellationToken: cancellationToken);
+
             var shape = index == 0
                 ? "equality"
                 : index == 1

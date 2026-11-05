@@ -68,14 +68,15 @@ public class SignalReportingBenchmarks : IDatabaseBenchmark, IAsyncDisposable
         // WHY: Reports do not mutate their fixture. Resetting it per iteration forces single invocations,
         // preventing BenchmarkDotNet from amortizing timer overhead across sufficiently long iterations.
         Initialize();
-        await PrepareAsync();
+        await PrepareAsync(CancellationToken.None);
     }
 
     /// <summary>Prepares the real catalog, three fact tables, metadata and direct-edge periods.</summary>
-    public async Task PrepareAsync()
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
+    public async Task PrepareAsync(CancellationToken cancellationToken)
     {
-        await ConsumerBenchmarkDatabase.ResetAsync(Context);
-        var data = await SignalBenchmarkData.CreateAsync(Context, Nodes, Shape);
+        await ConsumerBenchmarkDatabase.ResetAsync(Context, cancellationToken);
+        var data = await SignalBenchmarkData.CreateAsync(Context, Nodes, Shape, cancellationToken);
         _request = data.Request(NearestMetadata ? TagOwnerMode.Nearest : TagOwnerMode.Any);
 
         if (IrrelevantChoices > 0)
@@ -96,7 +97,7 @@ public class SignalReportingBenchmarks : IDatabaseBenchmark, IAsyncDisposable
                     });
             }
 
-            await Context.SaveChangesAsync(CancellationToken.None);
+            await Context.SaveChangesAsync(cancellationToken);
             Context.ChangeTracker.Clear();
         }
 
@@ -121,17 +122,18 @@ public class SignalReportingBenchmarks : IDatabaseBenchmark, IAsyncDisposable
         // WHY: The API takes an owned snapshot on each read. The reference must pay for the same request
         // validation and copying inside its measured invocation rather than consuming setup-only work.
         var request = SignalReportValidation.Snapshot(input);
-        _result = await ReadReferenceAsync(Context, request);
+        _result = await ReadReferenceAsync(Context, request, CancellationToken.None);
     }
 
     /// <summary>Rejects unexecuted operations and unequal cells, including missing-versus-zero distinctions.</summary>
-    public async Task VerifyAsync()
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
+    public async Task VerifyAsync(CancellationToken cancellationToken)
     {
         var actual = Result;
         var request = _validated ?? throw new InvalidOperationException("Prepare the SignalLab request first.");
-        var expected = await ReadReferenceAsync(Context, request);
+        var expected = await ReadReferenceAsync(Context, request, cancellationToken);
         var input = _request ?? throw new InvalidOperationException("Prepare the SignalLab request first.");
-        var api = await SignalReportBuilder.ReadAsync(Context, input, CancellationToken.None);
+        var api = await SignalReportBuilder.ReadAsync(Context, input, cancellationToken);
 
         BenchmarkFixture.Require(
             Normalize(actual)
@@ -157,7 +159,7 @@ public class SignalReportingBenchmarks : IDatabaseBenchmark, IAsyncDisposable
     {
         try
         {
-            await VerifyAsync();
+            await VerifyAsync(CancellationToken.None);
         }
         finally
         {
@@ -184,9 +186,13 @@ public class SignalReportingBenchmarks : IDatabaseBenchmark, IAsyncDisposable
     CommandObservation IDatabaseBenchmark.Observation => _observation;
 
     /// <summary>Uses the sample's exact read-transaction and catalog-validation contract in the reference.</summary>
+    /// <param name="context">The context used for the benchmark data and verification reads.</param>
+    /// <param name="request">The validated request and complete result contract.</param>
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
     private static Task<SignalReportCell[]> ReadReferenceAsync(
         SignalLabContext context,
-        ValidatedSignalReport request
+        ValidatedSignalReport request,
+        CancellationToken cancellationToken
     ) => ReadSnapshot.RunAsync(
         context,
         async token =>
@@ -203,7 +209,7 @@ public class SignalReportingBenchmarks : IDatabaseBenchmark, IAsyncDisposable
 
             return SignalReportValidation.CreateGrid(request, totals);
         },
-        CancellationToken.None);
+        cancellationToken);
 
     /// <summary>Compares unordered SQL report cells without imposing a measured presentation sort.</summary>
     private static IEnumerable<SignalReportCell> Normalize(

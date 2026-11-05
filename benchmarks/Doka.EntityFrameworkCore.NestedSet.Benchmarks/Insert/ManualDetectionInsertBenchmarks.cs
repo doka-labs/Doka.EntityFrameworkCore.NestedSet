@@ -47,13 +47,13 @@ public class ManualDetectionInsertBenchmarks : DatabaseBenchmark
     }
 
     /// <inheritdoc />
-    public override async Task PrepareAsync()
+    public override async Task PrepareAsync(CancellationToken cancellationToken)
     {
         _completed = InsertOperation.None;
 
         // WHY: Setup must not inherit the previous measured iteration's setting while rebuilding the catalog.
         Fixture.Context.ChangeTracker.AutoDetectChangesEnabled = true;
-        await base.PrepareAsync();
+        await base.PrepareAsync(cancellationToken);
 
         _branch = BenchmarkForest.Build(new BenchmarkScenario(10, BenchmarkShape.Balanced, 1, 0), Nodes);
         _imports =
@@ -65,7 +65,7 @@ public class ManualDetectionInsertBenchmarks : DatabaseBenchmark
     }
 
     /// <inheritdoc />
-    public override async Task VerifyAsync()
+    public override async Task VerifyAsync(CancellationToken cancellationToken)
     {
         BenchmarkFixture.Require(_completed != InsertOperation.None, "The measured insertion did not execute.");
         BenchmarkFixture.Require(
@@ -75,20 +75,20 @@ public class ManualDetectionInsertBenchmarks : DatabaseBenchmark
         var expectedCount = Nodes + (_completed == InsertOperation.Single ? 1 : 10);
 
         BenchmarkFixture.Require(
-            await Fixture.Context.Nodes.CountAsync(CancellationToken.None) == expectedCount,
+            await Fixture.Context.Nodes.CountAsync(cancellationToken) == expectedCount,
             "The measured insertion persisted an unexpected node count.");
 
         var saved = await Fixture
             .Context
             .Nodes
             .AsNoTracking()
-            .SingleAsync(value => value.Id == Nodes + 1, CancellationToken.None);
+            .SingleAsync(value => value.Id == Nodes + 1, cancellationToken);
 
         BenchmarkFixture.Require(
             _completed == InsertOperation.Forest ? saved.ParentId is null : saved.ParentId == 1,
             "The facade-planned insertion escaped its destination.");
 
-        await base.VerifyAsync();
+        await base.VerifyAsync(cancellationToken);
     }
 
     /// <summary>Distinguishes actual insert effects from a valid-looking benchmark no-op.</summary>

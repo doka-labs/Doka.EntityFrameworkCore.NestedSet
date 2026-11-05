@@ -25,7 +25,7 @@ public abstract partial class InsertionCleanupTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         using var cancellation = new CancellationTokenSource();
         var probe = new InsertionFailureProbe(cancel ? cancellation : null);
         await using var context = database.CreateContext(probe);
@@ -105,7 +105,7 @@ public abstract partial class InsertionCleanupTests : ProviderTest
     public async Task BulkWaveDetachFailureRollsBackAndRestoresAllInputs()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var root = new TreeNode
         {

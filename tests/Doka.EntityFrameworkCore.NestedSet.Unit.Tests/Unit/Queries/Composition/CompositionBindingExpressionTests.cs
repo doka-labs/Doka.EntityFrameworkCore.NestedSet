@@ -129,7 +129,7 @@ public sealed partial class CompositionBindingExpressionTests(
             .UseInternalServiceProvider(services)
             .Options);
 
-        await SeedBindingsAsync(context);
+        await SeedBindingsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var entity = context.Model.FindEntityType(CompositionGuardContext.ScopedMapping)!;
         var mutations = new NestedSetMutationBinding<CompositionGuardNode>(context, entity);
         var original = new NestedSetQuery<CompositionGuardNode>(context, entity)
@@ -179,7 +179,7 @@ public sealed partial class CompositionBindingExpressionTests(
             .UseInternalServiceProvider(services)
             .Options);
 
-        await SeedBindingsAsync(context);
+        await SeedBindingsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var entity = context.Model.FindEntityType(CompositionGuardContext.ScopedMapping)!;
         var mutations = new NestedSetMutationBinding<CompositionGuardNode>(context, entity);
         var original = new NestedSetQuery<CompositionGuardNode>(context, entity)
@@ -317,17 +317,20 @@ public sealed partial class CompositionBindingExpressionTests(
     }
 
     /// <summary>Seeds identical coordinates in independent scopes and trees without hierarchy mutations.</summary>
+    /// <param name="context">The context used by this fixture operation.</param>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
     private static async Task SeedBindingsAsync(
-        CompositionGuardContext context
+        CompositionGuardContext context,
+        CancellationToken cancellationToken
     )
     {
-        await context.Database.EnsureCreatedAsync(CancellationToken.None);
+        await context.Database.EnsureCreatedAsync(cancellationToken);
         await context
             .Set<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
             .AddRangeAsync(
                 [Node(1, 11, Guid.Empty), Node(2, 22, Guid.Empty), Node(3, 11, OtherTree)],
-                CancellationToken.None);
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+                cancellationToken);
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
         context.ChangeTracker.Clear();
     }
 

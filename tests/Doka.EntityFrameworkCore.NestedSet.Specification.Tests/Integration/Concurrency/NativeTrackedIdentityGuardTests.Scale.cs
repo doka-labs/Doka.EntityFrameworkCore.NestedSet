@@ -35,21 +35,33 @@ public abstract partial class NativeTrackedIdentityGuardTests
         {
             // Arrange
             var probe = new NativeGuardProbe();
-            await using var context = await CreateNativeScaleContextAsync(Engine, guidKeys, probe);
+            await using var context = await CreateNativeScaleContextAsync(Engine, guidKeys,
+                cancellationToken: TestContext.Current.CancellationToken,
+                probe);
+
             var root = NativeTrackedIdentityGuardTestSupport.NextRoot(NativeCandidateCount + 1000);
             var affectedTree = Guid.NewGuid();
             var otherTree = Guid.NewGuid();
-            await SeedNativeScaleAsync(context, guidKeys, affectedTree, root, 1);
-            await SeedNativeScaleAsync(context, guidKeys, otherTree, root + 100, NativeCandidateCount - 1);
-            await TrackNativeScaleAsync(context, guidKeys, otherTree);
-            await using var baseline = await CreateNativeScaleContextAsync(Engine, guidKeys);
+            await SeedNativeScaleAsync(context, guidKeys, affectedTree, root, 1,
+                cancellationToken: TestContext.Current.CancellationToken);
+            await SeedNativeScaleAsync(context, guidKeys, otherTree, root + 100, NativeCandidateCount - 1,
+                cancellationToken: TestContext.Current.CancellationToken);
+            await TrackNativeScaleAsync(context, guidKeys, otherTree,
+                cancellationToken: TestContext.Current.CancellationToken);
+            await using var baseline = await CreateNativeScaleContextAsync(Engine, guidKeys,
+                cancellationToken: TestContext.Current.CancellationToken);
+
             var warmTree = Guid.NewGuid();
             var baselineTree = Guid.NewGuid();
             var baselineOtherTree = Guid.NewGuid();
-            await SeedNativeScaleAsync(baseline, guidKeys, warmTree, root - 10, 0);
-            await SeedNativeScaleAsync(baseline, guidKeys, baselineTree, root - 20, 0);
-            await SeedNativeScaleAsync(baseline, guidKeys, baselineOtherTree, root - 30, 0);
-            await TrackNativeScaleAsync(baseline, guidKeys, baselineOtherTree);
+            await SeedNativeScaleAsync(baseline, guidKeys, warmTree, root - 10, 0,
+                cancellationToken: TestContext.Current.CancellationToken);
+            await SeedNativeScaleAsync(baseline, guidKeys, baselineTree, root - 20, 0,
+                cancellationToken: TestContext.Current.CancellationToken);
+            await SeedNativeScaleAsync(baseline, guidKeys, baselineOtherTree, root - 30, 0,
+                cancellationToken: TestContext.Current.CancellationToken);
+            await TrackNativeScaleAsync(baseline, guidKeys, baselineOtherTree,
+                cancellationToken: TestContext.Current.CancellationToken);
             await DeleteNativeScaleAsync(baseline, guidKeys, warmTree, CancellationToken.None);
             var baselineBefore = GC.GetTotalAllocatedBytes(precise: true);
             await DeleteNativeScaleAsync(baseline, guidKeys, baselineTree, CancellationToken.None);
@@ -103,13 +115,19 @@ public abstract partial class NativeTrackedIdentityGuardTests
         {
             // Arrange
             var probe = new NativeGuardProbe();
-            await using var context = await CreateNativeScaleContextAsync(Engine, guidKeys, probe);
+            await using var context = await CreateNativeScaleContextAsync(Engine, guidKeys,
+                cancellationToken: TestContext.Current.CancellationToken,
+                probe);
+
             var root = NativeTrackedIdentityGuardTestSupport.NextRoot(NativeCandidateCount + 1000);
             var affectedTree = Guid.NewGuid();
             var otherTree = Guid.NewGuid();
-            await SeedNativeScaleAsync(context, guidKeys, affectedTree, root, 1);
-            await SeedNativeScaleAsync(context, guidKeys, otherTree, root + 100, NativeCandidateCount - 1);
-            await TrackNativeScaleAsync(context, guidKeys, otherTree);
+            await SeedNativeScaleAsync(context, guidKeys, affectedTree, root, 1,
+                cancellationToken: TestContext.Current.CancellationToken);
+            await SeedNativeScaleAsync(context, guidKeys, otherTree, root + 100, NativeCandidateCount - 1,
+                cancellationToken: TestContext.Current.CancellationToken);
+            await TrackNativeScaleAsync(context, guidKeys, otherTree,
+                cancellationToken: TestContext.Current.CancellationToken);
 
             if (guidKeys)
             {
@@ -124,7 +142,9 @@ public abstract partial class NativeTrackedIdentityGuardTests
             }
             else
             {
-                var stale = await ReadNodeAsync(context, root + 1);
+                var stale = await ReadNodeAsync(context, root + 1,
+                    cancellationToken: TestContext.Current.CancellationToken);
+
                 stale.TreeId = new BroadTreeId(otherTree.ToString("N"));
                 context.Attach(stale);
             }
@@ -149,7 +169,8 @@ public abstract partial class NativeTrackedIdentityGuardTests
                     .Entries()
                     .Count());
             Assert.All(context.ChangeTracker.Entries(), entry => Assert.Equal(EntityState.Unchanged, entry.State));
-            Assert.Equal(2, await CountNativeScaleTreeAsync(context, guidKeys, affectedTree));
+            Assert.Equal(2, await CountNativeScaleTreeAsync(context, guidKeys, affectedTree,
+                cancellationToken: TestContext.Current.CancellationToken));
         }
 
         /// <summary>Converted NodeKeys fit one bounded scalar probe beyond the former 64-key limit.</summary>
@@ -161,13 +182,16 @@ public abstract partial class NativeTrackedIdentityGuardTests
             await using var context = await _fixture.CreateContextAsync<ConvertedKeyGuardContext>(
                 Engine,
                 static options => new ConvertedKeyGuardContext(options),
+                cancellationToken: TestContext.Current.CancellationToken,
                 probe);
 
             var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
             var affectedTree = $"guard-converted-{root}";
             var otherTree = $"guard-converted-other-{root}";
-            await SeedTreeAsync(context, affectedTree, root, 1);
-            await SeedTreeAsync(context, otherTree, root + 100, 64);
+            await SeedTreeAsync(context, affectedTree, root, 1,
+                cancellationToken: TestContext.Current.CancellationToken);
+            await SeedTreeAsync(context, otherTree, root + 100, 64,
+                cancellationToken: TestContext.Current.CancellationToken);
             var otherId = new BroadTreeId(otherTree);
             var tracked = await context
                 .Set<BroadTreeIdNode>()
@@ -201,7 +225,10 @@ public abstract partial class NativeTrackedIdentityGuardTests
         {
             // Arrange
             var probe = new NativeGuardProbe();
-            await using var context = await CreateNativeScaleContextAsync(Engine, guidKeys, probe);
+            await using var context = await CreateNativeScaleContextAsync(Engine, guidKeys,
+                cancellationToken: TestContext.Current.CancellationToken,
+                probe);
+
             var root = NativeTrackedIdentityGuardTestSupport.NextRoot(NativeCandidateCount + 1000);
             var otherTree = Guid.NewGuid();
             var requestedTrees = Enumerable
@@ -209,9 +236,12 @@ public abstract partial class NativeTrackedIdentityGuardTests
                 .Select(_ => Guid.NewGuid())
                 .ToArray();
 
-            await SeedNativeScaleAsync(context, guidKeys, otherTree, root + 100, NativeCandidateCount - 1);
-            await SeedNativeRequestTreesAsync(context, guidKeys, requestedTrees, root);
-            await TrackNativeScaleAsync(context, guidKeys, otherTree);
+            await SeedNativeScaleAsync(context, guidKeys, otherTree, root + 100, NativeCandidateCount - 1,
+                cancellationToken: TestContext.Current.CancellationToken);
+            await SeedNativeRequestTreesAsync(context, guidKeys, requestedTrees, root,
+                cancellationToken: TestContext.Current.CancellationToken);
+            await TrackNativeScaleAsync(context, guidKeys, otherTree,
+                cancellationToken: TestContext.Current.CancellationToken);
             probe.Armed = true;
 
             // Act
@@ -245,7 +275,10 @@ public abstract partial class NativeTrackedIdentityGuardTests
         {
             // Arrange
             var probe = new NativeGuardProbe();
-            await using var context = await CreateNativeScaleContextAsync(Engine, guidKeys, probe);
+            await using var context = await CreateNativeScaleContextAsync(Engine, guidKeys,
+                cancellationToken: TestContext.Current.CancellationToken,
+                probe);
+
             var root = NativeTrackedIdentityGuardTestSupport.NextRoot(NativeCandidateCount + 1000);
             var otherTree = Guid.NewGuid();
             var requestedTrees = Enumerable
@@ -253,9 +286,12 @@ public abstract partial class NativeTrackedIdentityGuardTests
                 .Select(_ => Guid.NewGuid())
                 .ToArray();
 
-            await SeedNativeScaleAsync(context, guidKeys, otherTree, root + 100, NativeCandidateCount - 1);
-            await SeedNativeRequestTreesAsync(context, guidKeys, requestedTrees, root);
-            await TrackNativeScaleAsync(context, guidKeys, otherTree);
+            await SeedNativeScaleAsync(context, guidKeys, otherTree, root + 100, NativeCandidateCount - 1,
+                cancellationToken: TestContext.Current.CancellationToken);
+            await SeedNativeRequestTreesAsync(context, guidKeys, requestedTrees, root,
+                cancellationToken: TestContext.Current.CancellationToken);
+            await TrackNativeScaleAsync(context, guidKeys, otherTree,
+                cancellationToken: TestContext.Current.CancellationToken);
 
             if (guidKeys)
             {
@@ -270,7 +306,9 @@ public abstract partial class NativeTrackedIdentityGuardTests
             }
             else
             {
-                var stale = await ReadNodeAsync(context, root + 64);
+                var stale = await ReadNodeAsync(context, root + 64,
+                    cancellationToken: TestContext.Current.CancellationToken);
+
                 stale.TreeId = new BroadTreeId(otherTree.ToString("N"));
                 context.Attach(stale);
             }
@@ -303,17 +341,22 @@ public abstract partial class NativeTrackedIdentityGuardTests
                     .Entries()
                     .Count());
             Assert.All(context.ChangeTracker.Entries(), entry => Assert.Equal(EntityState.Unchanged, entry.State));
-            Assert.Equal(1, await CountNativeScaleTreeAsync(context, guidKeys, requestedTrees[0]));
-            Assert.Equal(1, await CountNativeScaleTreeAsync(context, guidKeys, requestedTrees[64]));
-            Assert.Equal(NativeCandidateCount, await CountNativeScaleTreeAsync(context, guidKeys, otherTree));
+            Assert.Equal(1, await CountNativeScaleTreeAsync(context, guidKeys, requestedTrees[0],
+                cancellationToken: TestContext.Current.CancellationToken));
+            Assert.Equal(1, await CountNativeScaleTreeAsync(context, guidKeys, requestedTrees[64],
+                cancellationToken: TestContext.Current.CancellationToken));
+            Assert.Equal(NativeCandidateCount, await CountNativeScaleTreeAsync(context, guidKeys, otherTree,
+                cancellationToken: TestContext.Current.CancellationToken));
         }
 
         /// <summary>Reserves the independent requested trees before arranging the large tracker.</summary>
+        /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
         private static async Task SeedNativeRequestTreesAsync(
             DbContext context,
             bool guidKeys,
             Guid[] treeIds,
-            int firstKey
+            int firstKey,
+            CancellationToken cancellationToken
         )
         {
             if (guidKeys)
@@ -334,7 +377,7 @@ public abstract partial class NativeTrackedIdentityGuardTests
 
                 await context
                     .NestedSet<NativeGuidGuardNode>()
-                    .InsertForestAsync(trees, CancellationToken.None);
+                    .InsertForestAsync(trees, cancellationToken);
             }
             else
             {
@@ -354,7 +397,7 @@ public abstract partial class NativeTrackedIdentityGuardTests
 
                 await context
                     .NestedSet<BroadTreeIdNode>()
-                    .InsertForestAsync(trees, CancellationToken.None);
+                    .InsertForestAsync(trees, cancellationToken);
             }
 
             context.ChangeTracker.Clear();
@@ -400,9 +443,11 @@ public abstract partial class NativeTrackedIdentityGuardTests
         }
 
         /// <summary>Creates only the concrete key model requested by the provider theory.</summary>
+        /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
         private async Task<DbContext> CreateNativeScaleContextAsync(
             string engine,
             bool guidKeys,
+            CancellationToken cancellationToken,
             params IInterceptor[] interceptors
         )
         {
@@ -411,27 +456,32 @@ public abstract partial class NativeTrackedIdentityGuardTests
                 return await _fixture.CreateContextAsync<NativeGuidGuardContext>(
                     engine,
                     static options => new NativeGuidGuardContext(options),
+                    cancellationToken: cancellationToken,
                     interceptors);
             }
 
             return await _fixture.CreateContextAsync<AliasGuardTreeContext>(
                 engine,
                 static options => new AliasGuardTreeContext(options),
+                cancellationToken: cancellationToken,
                 interceptors);
         }
 
         /// <summary>Imports native-key candidates without repeated per-node facade operations.</summary>
+        /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
         private static async Task SeedNativeScaleAsync(
             DbContext context,
             bool guidKeys,
             Guid treeId,
             int root,
-            int children
+            int children,
+            CancellationToken cancellationToken
         )
         {
             if (!guidKeys)
             {
-                await SeedTreeAsync(context, treeId.ToString("N"), root, children);
+                await SeedTreeAsync(context, treeId.ToString("N"), root, children,
+                    cancellationToken: cancellationToken);
 
                 return;
             }
@@ -458,16 +508,18 @@ public abstract partial class NativeTrackedIdentityGuardTests
                 .NestedSet<NativeGuidGuardNode>()
                 .InsertForestAsync(
                     [new NestedSetTreeImport<NativeGuidGuardNode, Guid>(treeId, branch)],
-                    CancellationToken.None);
+                    cancellationToken);
 
             context.ChangeTracker.Clear();
         }
 
         /// <summary>Tracks the complete unrelated tree in provider-defined row order.</summary>
+        /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
         private static async Task TrackNativeScaleAsync(
             DbContext context,
             bool guidKeys,
-            Guid treeId
+            Guid treeId,
+            CancellationToken cancellationToken
         )
         {
             if (guidKeys)
@@ -476,7 +528,7 @@ public abstract partial class NativeTrackedIdentityGuardTests
                     .Set<NativeGuidGuardNode>()
                     .Where(node => node.TreeId == treeId)
                     .OrderBy(node => node.Left)
-                    .ToArrayAsync(CancellationToken.None);
+                    .ToArrayAsync(cancellationToken);
 
                 return;
             }
@@ -486,7 +538,7 @@ public abstract partial class NativeTrackedIdentityGuardTests
                 .Set<BroadTreeIdNode>()
                 .Where(node => node.TreeId == converted)
                 .OrderBy(node => node.Left)
-                .ToArrayAsync(CancellationToken.None);
+                .ToArrayAsync(cancellationToken);
         }
 
         /// <summary>Deletes through the public hierarchy API with the model's exact TreeId type.</summary>
@@ -504,10 +556,12 @@ public abstract partial class NativeTrackedIdentityGuardTests
                 .DeleteTreeAsync(new BroadTreeId(treeId.ToString("N")), cancellationToken);
 
         /// <summary>Counts persisted affected rows without reusing the tracked stale identity.</summary>
+        /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
         private static Task<int> CountNativeScaleTreeAsync(
             DbContext context,
             bool guidKeys,
-            Guid treeId
+            Guid treeId,
+            CancellationToken cancellationToken
         )
         {
             if (guidKeys)
@@ -516,14 +570,14 @@ public abstract partial class NativeTrackedIdentityGuardTests
                     .NestedSet<NativeGuidGuardNode>()
                     .InTree(treeId)
                     .Nodes
-                    .CountAsync(CancellationToken.None);
+                    .CountAsync(cancellationToken);
             }
 
             return context
                 .NestedSet<BroadTreeIdNode>()
                 .InTree(new BroadTreeId(treeId.ToString("N")))
                 .Nodes
-                .CountAsync(CancellationToken.None);
+                .CountAsync(cancellationToken);
         }
 
         /// <summary>Uses disjoint deterministic Guid keys for repeatable setup without identity collisions.</summary>

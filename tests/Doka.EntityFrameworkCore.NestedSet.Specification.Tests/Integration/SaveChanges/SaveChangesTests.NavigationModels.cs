@@ -3,29 +3,31 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public abstract partial class SaveChangesTests
 {
     /// <summary>Creates an isolated navigation model through the existing real-provider database lifecycle.</summary>
-    private async Task<TestDatabase> CreateNavigationDatabaseAsync()
+    private async Task<TestDatabase> CreateNavigationDatabaseAsync(CancellationToken cancellationToken)
     {
-        var database = await TestDatabase.CreateAsync(Engine);
+        var database = await TestDatabase.CreateAsync(Engine, cancellationToken: cancellationToken);
 
         try
         {
-            await using var context = await CreateNavigationContextAsync(database, wrapped: true);
-            await context.GetService<IRelationalDatabaseCreator>().CreateTablesAsync(CancellationToken.None);
+            await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+                cancellationToken: cancellationToken);
+
+            await context.GetService<IRelationalDatabaseCreator>().CreateTablesAsync(cancellationToken);
             var owner = new NavigationScopeOwner { Value = "owner" };
             await context.AddRangeAsync(
                 [owner, new NavigationScopeOwner { Value = "other owner" }, new NavigationNote { Id = 1 }],
-                CancellationToken.None);
+                cancellationToken);
 
-            await context.SaveChangesAsync(CancellationToken.None);
+            await context.SaveChangesAsync(cancellationToken);
             var hierarchy = context.NestedSet<NavigationNode>().ForScope(owner.Id);
             await hierarchy.InsertRootAsync(new NavigationNode { Id = 1, Name = "Root" }, s_treeId,
-                CancellationToken.None);
+                cancellationToken);
 
             await hierarchy.InsertChildAsync(new NavigationNode { Id = 2, Name = "Alpha" }, 1,
-                CancellationToken.None);
+                cancellationToken);
 
             await hierarchy.InsertChildAsync(new NavigationNode { Id = 3, Name = "Bravo" }, 1,
-                CancellationToken.None);
+                cancellationToken);
 
             return database;
         }
@@ -39,6 +41,7 @@ public abstract partial class SaveChangesTests
     }
 
     /// <summary>Reuses the selected provider while choosing its coordinated or ordinary save boundary.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="database">The isolated database owned by this test.</param>
     /// <param name="wrapped">Whether to use NestedSetDbContext's save overrides.</param>
     /// <param name="interceptors">Observers scoped to this context.</param>
@@ -46,10 +49,13 @@ public abstract partial class SaveChangesTests
     private static async Task<DbContext> CreateNavigationContextAsync(
         TestDatabase database,
         bool wrapped,
+        CancellationToken cancellationToken,
         params IInterceptor[] interceptors
     )
     {
-        var options = await SaveSemanticsFixture.OptionsAsync(database, interceptors);
+        var options = await SaveSemanticsFixture.OptionsAsync(database,
+            cancellationToken: cancellationToken,
+            interceptors);
 
         return wrapped ? new NavigationSaveContext(options) : new NavigationPlainContext(options);
     }
@@ -57,7 +63,11 @@ public abstract partial class SaveChangesTests
     /// <summary>
     ///     Chooses the exact synchronous or asynchronous application boundary requested by one test case.
     /// </summary>
-    private static Task<int> SaveNavigationAsync(DbContext context, bool synchronous)
+    private static Task<int> SaveNavigationAsync(
+        DbContext context,
+        bool synchronous,
+        CancellationToken cancellationToken
+    )
     {
         if (synchronous)
         {
@@ -66,7 +76,7 @@ public abstract partial class SaveChangesTests
             return Task.FromResult(context.SaveChanges());
         }
 
-        return context.SaveChangesAsync(CancellationToken.None);
+        return context.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>Maps parent and scope navigations independently of the scalar-only ordering fixture.</summary>

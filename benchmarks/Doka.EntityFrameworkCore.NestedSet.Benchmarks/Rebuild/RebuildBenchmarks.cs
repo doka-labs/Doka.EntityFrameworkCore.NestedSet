@@ -21,10 +21,10 @@ public class RebuildBenchmarks : DatabaseBenchmark
     }
 
     /// <inheritdoc />
-    public override async Task PrepareAsync()
+    public override async Task PrepareAsync(CancellationToken cancellationToken)
     {
         _rebuilt = false;
-        await base.PrepareAsync();
+        await base.PrepareAsync(cancellationToken);
 
         // WHY: Preserve adjacency and local CHECK invariants while forcing real bounds, depth and position repair.
         await Fixture.Context.Nodes.ExecuteUpdateAsync(
@@ -33,29 +33,29 @@ public class RebuildBenchmarks : DatabaseBenchmark
                 .SetProperty(node => node.Right, node => node.Right + (Nodes * 2L))
                 .SetProperty(node => node.Depth, node => node.Depth + 1)
                 .SetProperty(node => node.Position, node => node.Position + 2),
-            CancellationToken.None);
+            cancellationToken);
 
         Fixture.Counter.Reset();
     }
 
     /// <inheritdoc />
-    public override async Task VerifyAsync()
+    public override async Task VerifyAsync(CancellationToken cancellationToken)
     {
         var roots = await Fixture
             .Context
             .Nodes
             .AsNoTracking()
             .Where(node => node.ParentId == null)
-            .ToListAsync(CancellationToken.None);
+            .ToListAsync(cancellationToken);
 
         BenchmarkFixture.Require(
             _rebuilt && roots.Count == Trees && roots.All(node => node is { Left: 1, Depth: 0, Position: 0 }),
             "Rebuild remained a no-op.");
 
         BenchmarkFixture.Require(
-            await Fixture.Context.Nodes.CountAsync(CancellationToken.None) == Nodes,
+            await Fixture.Context.Nodes.CountAsync(cancellationToken) == Nodes,
             "Repair changed the forest size.");
 
-        await base.VerifyAsync();
+        await base.VerifyAsync(cancellationToken);
     }
 }

@@ -9,7 +9,9 @@ public abstract partial class OrderingTests
     public async Task ParentChangesApplyDependenciesBeforeTheirSources(bool reverseTracking)
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<OrderingNode>().ForScope(1);
         var treeId = Guid.NewGuid();
         await hierarchy.InsertRootAsync(Node(1, "Root"), treeId, CancellationToken.None);
@@ -29,7 +31,9 @@ public abstract partial class OrderingTests
         await context.SaveChangesAsync(CancellationToken.None);
 
         // Assert
-        await using var verification = await _fixture.CreateContextAsync(Engine);
+        await using var verification = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var nodes = await verification.Set<OrderingNode>()
             .OrderBy(node => node.Left)
             .ToArrayAsync(CancellationToken.None);
@@ -38,7 +42,7 @@ public abstract partial class OrderingTests
         Assert.Equal(4, nodes.Single(node => node.Id == 3).ParentId);
         Assert.Equal(2, nodes.Single(node => node.Id == 4).ParentId);
         Assert.Equal(3, nodes.Single(node => node.Id == 3).Depth);
-        await AssertForestAsync(verification);
+        await AssertForestAsync(verification, cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Orders dependent Parent changes even when their destination changes trees first.</summary>
@@ -46,7 +50,9 @@ public abstract partial class OrderingTests
     public async Task ParentChangesFollowTargetAcrossTrees()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<OrderingNode>().ForScope(1);
         var firstTree = Guid.NewGuid();
         var secondTree = Guid.NewGuid();
@@ -68,7 +74,9 @@ public abstract partial class OrderingTests
         await context.SaveChangesAsync(CancellationToken.None);
 
         // Assert
-        await using var verification = await _fixture.CreateContextAsync(Engine);
+        await using var verification = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var nodes = await verification.Set<OrderingNode>()
             .OrderBy(node => node.Id)
             .ToArrayAsync(CancellationToken.None);
@@ -94,7 +102,9 @@ public abstract partial class OrderingTests
     public async Task ParentChangesResolveNestedDependencyChain()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<OrderingNode>().ForScope(1);
         await hierarchy.InsertRootAsync(Node(1, "Root"), Guid.NewGuid(), CancellationToken.None);
         await hierarchy.InsertChildAsync(Node(2, "A"), 1, CancellationToken.None);
@@ -115,14 +125,16 @@ public abstract partial class OrderingTests
         await context.SaveChangesAsync(CancellationToken.None);
 
         // Assert
-        await using var verification = await _fixture.CreateContextAsync(Engine);
+        await using var verification = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var nodes = await verification.Set<OrderingNode>()
             .OrderBy(node => node.Left)
             .ToArrayAsync(CancellationToken.None);
 
         Assert.Equal([1, 2, 5, 4, 3], nodes.Select(node => node.Id));
         Assert.Equal([0, 1, 2, 3, 4], nodes.Select(node => node.Depth));
-        await AssertForestAsync(verification);
+        await AssertForestAsync(verification, cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Rejects a cyclic final Parent plan and rolls back the accompanying payload update.</summary>
@@ -130,7 +142,9 @@ public abstract partial class OrderingTests
     public async Task CyclicParentPlanRollsBackPayload()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<OrderingNode>().ForScope(1);
         await hierarchy.InsertRootAsync(Node(1, "Root"), Guid.NewGuid(), CancellationToken.None);
         await hierarchy.InsertChildAsync(Node(2, "A"), 1, CancellationToken.None);
@@ -150,7 +164,9 @@ public abstract partial class OrderingTests
 
         // Assert
         Assert.Equal(NestedSetErrorCode.CycleDetected, Assert.IsType<NestedSetException>(failure).Code);
-        await using var verification = await _fixture.CreateContextAsync(Engine);
+        await using var verification = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var nodes = await verification.Set<OrderingNode>()
             .Where(node => node.Id == 2 || node.Id == 3)
             .OrderBy(node => node.Id)
@@ -165,7 +181,9 @@ public abstract partial class OrderingTests
     public async Task ParentChangeMovesTrackedSubtree()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<OrderingNode>().ForScope(1);
         var treeId = Guid.NewGuid();
         await hierarchy.InsertRootAsync(Node(1, "Root"), treeId, CancellationToken.None);
@@ -183,7 +201,9 @@ public abstract partial class OrderingTests
 
         // Assert
         Assert.Equal(0, saved);
-        await using var verification = await _fixture.CreateContextAsync(Engine);
+        await using var verification = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var nodes = await verification.Set<OrderingNode>()
             .OrderBy(node => node.Left)
             .ToArrayAsync(CancellationToken.None);
@@ -195,7 +215,7 @@ public abstract partial class OrderingTests
         Assert.Equal(2, nodes.Single(node => node.Id == 2).Depth);
         Assert.Equal(3, nodes.Single(node => node.Id == 4).Depth);
         Assert.All(nodes, node => Assert.Equal(treeId, node.TreeId));
-        await AssertForestAsync(verification);
+        await AssertForestAsync(verification, cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Moves a tracked subtree between trees and updates every descendant TreeId atomically.</summary>
@@ -203,7 +223,9 @@ public abstract partial class OrderingTests
     public async Task ParentChangeMovesTrackedSubtreeAcrossTrees()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<OrderingNode>().ForScope(1);
         var sourceTreeId = Guid.NewGuid();
         var targetTreeId = Guid.NewGuid();
@@ -222,7 +244,9 @@ public abstract partial class OrderingTests
 
         // Assert
         Assert.Equal(0, saved);
-        await using var verification = await _fixture.CreateContextAsync(Engine);
+        await using var verification = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var nodes = await verification.Set<OrderingNode>()
             .OrderBy(node => node.Id)
             .ToArrayAsync(CancellationToken.None);
@@ -246,7 +270,9 @@ public abstract partial class OrderingTests
     public async Task ParentChangeToNullRequiresExplicitDetach()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<OrderingNode>().ForScope(1);
         var treeId = Guid.NewGuid();
         await hierarchy.InsertRootAsync(Node(1, "Root"), treeId, CancellationToken.None);
@@ -277,7 +303,9 @@ public abstract partial class OrderingTests
     public async Task ParentChangeRejectsCycle()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<OrderingNode>().ForScope(1);
         var treeId = Guid.NewGuid();
         await hierarchy.InsertRootAsync(Node(1, "Root"), treeId, CancellationToken.None);
@@ -311,14 +339,19 @@ public abstract partial class OrderingTests
     public async Task ParentChangeRollsBackWithPayloadAndCanRetry()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = setup.NestedSet<OrderingNode>().ForScope(1);
         var treeId = Guid.NewGuid();
         await hierarchy.InsertRootAsync(Node(1, "Root"), treeId, CancellationToken.None);
         await hierarchy.InsertChildAsync(Node(2, "Alpha"), 1, CancellationToken.None);
         await hierarchy.InsertChildAsync(Node(3, "Bravo"), 1, CancellationToken.None);
         var probe = new OrderingSaveProbe { FailAfterPayload = true };
-        await using var context = await _fixture.CreateContextAsync(Engine, "Strict", probe);
+        await using var context = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "Strict", probe);
+
         var changed = await context.Set<OrderingNode>()
             .SingleAsync(node => node.Id == 2, CancellationToken.None);
 
@@ -333,13 +366,15 @@ public abstract partial class OrderingTests
         // Assert
         Assert.IsType<OrderingInjectedException>(failure);
         Assert.Null(retryFailure);
-        await using var verification = await _fixture.CreateContextAsync(Engine);
+        await using var verification = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var persisted = await verification.Set<OrderingNode>()
             .SingleAsync(node => node.Id == 2, CancellationToken.None);
 
         Assert.Equal(3, persisted.ParentId);
         Assert.Equal("moved payload", persisted.Payload);
         Assert.Equal(EntityState.Unchanged, context.Entry(changed).State);
-        await AssertForestAsync(verification);
+        await AssertForestAsync(verification, cancellationToken: TestContext.Current.CancellationToken);
     }
 }

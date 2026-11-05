@@ -22,9 +22,14 @@ public sealed class WideRowsetLockTests : ProviderTest,
     public async Task RequestedTreesAboveParameterLimitUseOneJsonRowset()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new OrderingLockProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine, probe);
+        await using var context = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var mapping = Mapping.NestedSetMapping<OrderingLockNode<int, FirstLockHierarchy>, int, int>.For(
             context,
             context.Model.FindEntityType(typeof(OrderingLockNode<int, FirstLockHierarchy>))!);

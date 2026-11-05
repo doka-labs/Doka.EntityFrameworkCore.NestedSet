@@ -12,7 +12,9 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 7, false, CancellationToken.None, Guid.NewGuid());
         await context.TagValues.Where(value => value.TenantId == data.TenantId
                 && value.NodeId == SignalReportDataset.Id(3) && value.FieldCode == "ModuleClass")
@@ -47,7 +49,9 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 7, false, CancellationToken.None, Guid.NewGuid());
         await context.TagValues.Where(value => value.TenantId == data.TenantId
                 && value.NodeId == SignalReportDataset.Id(3) && value.FieldCode == "ModuleClass")

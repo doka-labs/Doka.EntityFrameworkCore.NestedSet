@@ -13,7 +13,8 @@ public sealed partial class QueryPlanReplayTests
 
         // Act
         var error = await Record.ExceptionAsync(() =>
-            QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer"));
+            QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer",
+                cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         Assert.Same(failure, error);
@@ -40,7 +41,8 @@ public sealed partial class QueryPlanReplayTests
 
         // Act
         var error = await Record.ExceptionAsync(() =>
-            QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer"));
+            QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer",
+                cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);
@@ -59,7 +61,8 @@ public sealed partial class QueryPlanReplayTests
 
         // Act
         var error = await Record.ExceptionAsync(() =>
-            QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer"));
+            QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer",
+                cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);
@@ -85,7 +88,8 @@ public sealed partial class QueryPlanReplayTests
 
         // Act
         var error = await Record.ExceptionAsync(() =>
-            QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer"));
+            QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer",
+                cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         Assert.Same(failure, error);

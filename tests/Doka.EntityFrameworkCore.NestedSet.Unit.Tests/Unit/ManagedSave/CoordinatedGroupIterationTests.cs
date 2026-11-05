@@ -8,7 +8,7 @@ public sealed partial class CoordinatedGroupIterationTests
     public async Task ParentChangesApplyToEveryHierarchyOwner()
     {
         // Arrange
-        await using var context = await CreateContextAsync();
+        await using var context = await CreateContextAsync(cancellationToken: TestContext.Current.CancellationToken);
         var first = await context
             .Set<GroupNode<FirstOwner>>()
             .SingleAsync(node => node.Id == 2, CancellationToken.None);
@@ -35,8 +35,10 @@ public sealed partial class CoordinatedGroupIterationTests
             context.Entry(first).State);
         Assert.Equal(EntityState.Unchanged,
             context.Entry(second).State);
-        await AssertMovedTreeAsync<FirstOwner>(context, "Moved first");
-        await AssertMovedTreeAsync<SecondOwner>(context, "Moved second");
+        await AssertMovedTreeAsync<FirstOwner>(context, "Moved first",
+            cancellationToken: TestContext.Current.CancellationToken);
+        await AssertMovedTreeAsync<SecondOwner>(context, "Moved second",
+            cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>A payload failure restores both pending parent changes and rolls back both physical trees.</summary>
@@ -44,7 +46,7 @@ public sealed partial class CoordinatedGroupIterationTests
     public async Task PayloadFailureRestoresEveryHierarchyOwner()
     {
         // Arrange
-        await using var context = await CreateContextAsync();
+        await using var context = await CreateContextAsync(cancellationToken: TestContext.Current.CancellationToken);
         var first = await context
             .Set<GroupNode<FirstOwner>>()
             .SingleAsync(node => node.Id == 2, CancellationToken.None);
@@ -91,21 +93,25 @@ public sealed partial class CoordinatedGroupIterationTests
                 .Property(node => node.ParentId)
                 .OriginalValue);
         Assert.Null(context.Database.CurrentTransaction);
-        await AssertOriginalTreeAsync<FirstOwner>(context);
-        await AssertOriginalTreeAsync<SecondOwner>(context);
+        await AssertOriginalTreeAsync<FirstOwner>(context, cancellationToken: TestContext.Current.CancellationToken);
+        await AssertOriginalTreeAsync<SecondOwner>(context, cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Verifies database geometry rather than returning the tracked objects that the save refreshed.</summary>
+    /// <param name="context">The context used by this fixture operation.</param>
+    /// <param name="expectedName">The expected persisted payload of the moved node.</param>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
     private static async Task AssertMovedTreeAsync<TOwner>(
         GroupContext context,
-        string expectedName
+        string expectedName,
+        CancellationToken cancellationToken
     )
     {
         var nodes = await context
             .Set<GroupNode<TOwner>>()
             .AsNoTracking()
             .OrderBy(node => node.Left)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         Assert.Equal([1, 3, 2], nodes.Select(node => node.Id));
         Assert.Equal([0, 1, 2], nodes.Select(node => node.Depth));
@@ -122,15 +128,18 @@ public sealed partial class CoordinatedGroupIterationTests
     }
 
     /// <summary>Reads the original sibling layout after the complete coordinated transaction rolls back.</summary>
+    /// <param name="context">The context used by this fixture operation.</param>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
     private static async Task AssertOriginalTreeAsync<TOwner>(
-        GroupContext context
+        GroupContext context,
+        CancellationToken cancellationToken
     )
     {
         var nodes = await context
             .Set<GroupNode<TOwner>>()
             .AsNoTracking()
             .OrderBy(node => node.Left)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         Assert.Equal([1, 3, 2], nodes.Select(node => node.Id));
         Assert.Equal([0, 1, 1], nodes.Select(node => node.Depth));

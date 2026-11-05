@@ -28,9 +28,14 @@ public abstract class OrderingLockTests : ProviderTest
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new OrderingLockProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine, probe);
+        await using var context = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var firstScope = reverseScopes ? 1 : 2;
         var secondScope = reverseScopes ? 2 : 1;
         var first = OrderingLockTestSupport.Request<int, FirstLockHierarchy>(
@@ -40,7 +45,8 @@ public abstract class OrderingLockTests : ProviderTest
 
         var second = OrderingLockTestSupport.Request<int, SecondLockHierarchy>(context, secondScope, s_secondTreeId);
         INestedSetTreeLockRequest[] requests = [first, second, second, first];
-        await using var transaction = await OrderingLockTestSupport.BeginAsync(context);
+        await using var transaction = await OrderingLockTestSupport.BeginAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         await NestedSetTreeLocks.AcquireAsync(context, requests, CancellationToken.None);
@@ -61,14 +67,24 @@ public abstract class OrderingLockTests : ProviderTest
     public async Task ConcurrentSavesLockTreesWithoutInvertingDatabaseOrder()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedPairAsync<int, FirstLockHierarchy>(setup, 1, OrderingLockTestSupport.FirstTreeId, 10);
-        await SeedPairAsync<int, FirstLockHierarchy>(setup, 2, s_secondTreeId, 20);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedPairAsync<int, FirstLockHierarchy>(setup, 1, OrderingLockTestSupport.FirstTreeId, 10,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await SeedPairAsync<int, FirstLockHierarchy>(setup, 2, s_secondTreeId, 20,
+            cancellationToken: TestContext.Current.CancellationToken);
         var barrier = Engine == "Sqlite" ? null : new OrderingLockBarrier();
         var firstProbe = new OrderingLockProbe { FirstAnchorBarrier = barrier };
         var secondProbe = new OrderingLockProbe { FirstAnchorBarrier = barrier };
-        await using var first = await _fixture.CreateContextAsync(Engine, firstProbe);
-        await using var second = await _fixture.CreateContextAsync(Engine, secondProbe);
+        await using var first = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            firstProbe);
+
+        await using var second = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            secondProbe);
+
         var firstSecondTree = await first
             .Set<OrderingLockNode<int, FirstLockHierarchy>>()
             .SingleAsync(node => node.Id == 22, CancellationToken.None);
@@ -101,9 +117,13 @@ public abstract class OrderingLockTests : ProviderTest
         Assert.Equal(s_integerScopes, IntegerRegistryScopes(secondProbe));
         Assert.Single(OrderingLockTestSupport.CanonicalQueries(firstProbe));
         Assert.Single(OrderingLockTestSupport.CanonicalQueries(secondProbe));
-        await using var verification = await _fixture.CreateContextAsync(Engine);
-        await AssertPairAsync<int, FirstLockHierarchy>(verification, 1, OrderingLockTestSupport.FirstTreeId, 10);
-        await AssertPairAsync<int, FirstLockHierarchy>(verification, 2, s_secondTreeId, 20);
+        await using var verification = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await AssertPairAsync<int, FirstLockHierarchy>(verification, 1, OrderingLockTestSupport.FirstTreeId, 10,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await AssertPairAsync<int, FirstLockHierarchy>(verification, 2, s_secondTreeId, 20,
+            cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Verifies a missing tree registry rejects a coordinated save before domain payload SQL.</summary>
@@ -111,11 +131,18 @@ public abstract class OrderingLockTests : ProviderTest
     public async Task MissingTreeRegistryRejectsSaveBeforePayloadUpdate()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedPairAsync<int, FirstLockHierarchy>(setup, 1, OrderingLockTestSupport.FirstTreeId, 10);
-        await DeleteRegistryAsync(setup, 1, OrderingLockTestSupport.FirstTreeId);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedPairAsync<int, FirstLockHierarchy>(setup, 1, OrderingLockTestSupport.FirstTreeId, 10,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await DeleteRegistryAsync(setup, 1, OrderingLockTestSupport.FirstTreeId,
+            cancellationToken: TestContext.Current.CancellationToken);
         var probe = new OrderingLockProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine, probe);
+        await using var context = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var child = await context
             .Set<OrderingLockNode<int, FirstLockHierarchy>>()
             .SingleAsync(node => node.Id == 12, CancellationToken.None);
@@ -132,7 +159,9 @@ public abstract class OrderingLockTests : ProviderTest
         Assert.Equal("The selected tree has no active registry row.", error.Message);
         Assert.Empty(probe.PayloadUpdates);
         Assert.Equal(EntityState.Modified, context.Entry(child).State);
-        await using var verification = await _fixture.CreateContextAsync(Engine);
+        await using var verification = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         Assert.Equal(
             "Alpha",
             await verification
@@ -147,9 +176,14 @@ public abstract class OrderingLockTests : ProviderTest
     public async Task BinaryScopeRequestsUseContentEqualityAndTypedTransport()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new OrderingLockProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine, probe);
+        await using var context = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         NestedSetTreeLockRequest<Guid, byte[]>[] requests =
         [
             OrderingLockTestSupport.Request<byte[], FirstLockHierarchy>(
@@ -170,7 +204,8 @@ public abstract class OrderingLockTests : ProviderTest
                 OrderingLockTestSupport.FirstTreeId),
         ];
 
-        await using var transaction = await OrderingLockTestSupport.BeginAsync(context);
+        await using var transaction = await OrderingLockTestSupport.BeginAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         await NestedSetTreeLocks.AcquireAsync(context, requests, CancellationToken.None);
@@ -195,9 +230,14 @@ public abstract class OrderingLockTests : ProviderTest
         // Arrange
         var caseInsensitive = Engine != "PostgreSql";
 
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new OrderingLockProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine, probe);
+        await using var context = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         NestedSetTreeLockRequest<Guid, string>[] requests =
         [
             OrderingLockTestSupport.Request<string, FirstLockHierarchy>(
@@ -218,7 +258,8 @@ public abstract class OrderingLockTests : ProviderTest
                 OrderingLockTestSupport.FirstTreeId),
         ];
 
-        await using var transaction = await OrderingLockTestSupport.BeginAsync(context);
+        await using var transaction = await OrderingLockTestSupport.BeginAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         await NestedSetTreeLocks.AcquireAsync(context, requests, CancellationToken.None);
@@ -241,15 +282,22 @@ public abstract class OrderingLockTests : ProviderTest
     public async Task CanceledAcquisitionDoesNotIssueAnyDatabaseCommand()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new OrderingLockProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine, probe);
+        await using var context = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var request = OrderingLockTestSupport.Request<int, FirstLockHierarchy>(
             context,
             1,
             OrderingLockTestSupport.FirstTreeId);
 
-        await using var transaction = await OrderingLockTestSupport.BeginAsync(context);
+        await using var transaction = await OrderingLockTestSupport.BeginAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 
@@ -266,7 +314,8 @@ public abstract class OrderingLockTests : ProviderTest
         OrderingLockContext context,
         TScope scope,
         Guid treeId,
-        int start
+        int start,
+        CancellationToken cancellationToken
     )
         where TScope : notnull
     {
@@ -282,7 +331,7 @@ public abstract class OrderingLockTests : ProviderTest
                 Name = "Root",
             },
             treeId,
-            CancellationToken.None);
+            cancellationToken);
 
         await hierarchy.InsertChildAsync(
             new OrderingLockNode<TScope, THierarchy>
@@ -292,14 +341,15 @@ public abstract class OrderingLockTests : ProviderTest
                 Name = "Alpha"
             },
             start + 1,
-            CancellationToken.None);
+            cancellationToken);
     }
 
     /// <summary>Removes one infrastructure row to prove coordinated saves require an active registry.</summary>
     private static async Task DeleteRegistryAsync(
         OrderingLockContext context,
         int scope,
-        Guid treeId
+        Guid treeId,
+        CancellationToken cancellationToken
     )
     {
         var entityType = context.Model.FindEntityType(typeof(OrderingLockNode<int, FirstLockHierarchy>))!;
@@ -308,7 +358,7 @@ public abstract class OrderingLockTests : ProviderTest
         var deleted = await context
             .Set<NestedSetTreeRegistry>(registry.Name)
             .Where(row => EF.Property<int>(row, "Scope") == scope && EF.Property<Guid>(row, "TreeId") == treeId)
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(cancellationToken);
 
         Assert.Equal(1, deleted);
     }
@@ -318,7 +368,8 @@ public abstract class OrderingLockTests : ProviderTest
         OrderingLockContext context,
         TScope scope,
         Guid treeId,
-        int start
+        int start,
+        CancellationToken cancellationToken
     )
         where TScope : notnull
     {
@@ -327,7 +378,7 @@ public abstract class OrderingLockTests : ProviderTest
             .ForScope(scope)
             .InTree(treeId)
             .Nodes
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         Assert.Equal([start + 1, start + 2], nodes.Select(node => node.Id));
         Assert.Equal(["Root", "Zulu"], nodes.Select(node => node.Name));

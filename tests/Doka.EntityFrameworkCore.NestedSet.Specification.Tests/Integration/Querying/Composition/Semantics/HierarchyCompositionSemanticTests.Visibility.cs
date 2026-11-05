@@ -20,7 +20,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe, hidden: 3);
+        await using var context = await CreateContextAsync(scope, probe, hidden: 3,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
 
         // Act
@@ -52,7 +54,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe, hidden: 2);
+        await using var context = await CreateContextAsync(scope, probe, hidden: 2,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
 
         // Act
@@ -79,7 +83,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
+        await using var context = await CreateContextAsync(scope, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
         var pairs = hierarchy.SelectAncestors(
             node => node.Id == 3,
@@ -114,7 +120,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe, hidden: 2);
+        await using var context = await CreateContextAsync(scope, probe, hidden: 2,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
 
         // Act
@@ -148,7 +156,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
+        await using var context = await CreateContextAsync(scope, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
         var first = hierarchy.SelectAncestors(node => node.Id == 3,
                 (source, pivot, distance) => new { Source = source, Pivot = pivot })
@@ -185,7 +195,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe, hidden: 2);
+        await using var context = await CreateContextAsync(scope, probe, hidden: 2,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
         var source = context.Set<CompositionNode>().Where(node => node.Scope == scope && node.Id == 3);
 
@@ -221,7 +233,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe, hidden: 2);
+        await using var context = await CreateContextAsync(scope, probe, hidden: 2,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
         var up = hierarchy.SelectAncestors(source => source.Id == 3,
                 (source, pivot, distance) => new { Source = source, Pivot = pivot, UpDistance = distance })

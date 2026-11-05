@@ -10,10 +10,12 @@ internal static class MappingDeleteTestSupport
     internal static int NextSequence() => Interlocked.Increment(ref s_sequence);
 
     /// <summary>Seeds an identified subtree and an unrelated tree using the common key allocator.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     internal static async Task<MappingDeleteScenario> SeedAsync<TNode>(
         DbContext context,
         Func<int, string, TNode> create,
-        Func<DbContext, int, Task>? seedExtra
+        Func<DbContext, int, Task>? seedExtra,
+        CancellationToken cancellationToken
     )
         where TNode : class
     {
@@ -21,11 +23,11 @@ internal static class MappingDeleteTestSupport
         var targetTree = Guid.NewGuid();
         var otherTree = Guid.NewGuid();
         var seed = 100_000 + (NextSequence() * 10);
-        await hierarchy.InsertRootAsync(create(seed, "Root"), targetTree, CancellationToken.None);
-        await hierarchy.InsertChildAsync(create(seed + 1, "Branch"), seed, CancellationToken.None);
-        await hierarchy.InsertChildAsync(create(seed + 2, "Leaf"), seed + 1, CancellationToken.None);
-        await hierarchy.InsertChildAsync(create(seed + 3, "Sibling"), seed, CancellationToken.None);
-        await hierarchy.InsertRootAsync(create(seed + 4, "Other"), otherTree, CancellationToken.None);
+        await hierarchy.InsertRootAsync(create(seed, "Root"), targetTree, cancellationToken);
+        await hierarchy.InsertChildAsync(create(seed + 1, "Branch"), seed, cancellationToken);
+        await hierarchy.InsertChildAsync(create(seed + 2, "Leaf"), seed + 1, cancellationToken);
+        await hierarchy.InsertChildAsync(create(seed + 3, "Sibling"), seed, cancellationToken);
+        await hierarchy.InsertRootAsync(create(seed + 4, "Other"), otherTree, cancellationToken);
 
         if (seedExtra is not null)
         {
@@ -36,22 +38,24 @@ internal static class MappingDeleteTestSupport
     }
 
     /// <summary>Counts physical mapping fragments inside one deletion case's allocated key range.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     internal static async Task<long> CountRowsAsync(
         DbContext context,
         string table,
         int seed,
+        CancellationToken cancellationToken,
         int lastOffset = 4
     )
     {
         var sql = context.GetService<ISqlGenerationHelper>();
         var connection = context.Database.GetDbConnection();
-        await context.Database.OpenConnectionAsync(CancellationToken.None);
+        await context.Database.OpenConnectionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = $"SELECT COUNT(*) FROM {sql.DelimitIdentifier(table)} "
             + $"WHERE {sql.DelimitIdentifier("Id")} BETWEEN {seed} AND {seed + lastOffset}";
 
         return Convert.ToInt64(
-            await command.ExecuteScalarAsync(CancellationToken.None),
+            await command.ExecuteScalarAsync(cancellationToken),
             CultureInfo.InvariantCulture);
     }
 }

@@ -27,8 +27,8 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await SeedExistingTreeAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedExistingTreeAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();
         await using var context = database.CreateContext(callback);
         var tracked = await context
@@ -75,8 +75,8 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await SeedExistingTreeAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedExistingTreeAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();
         var failure = new FailAfterSave();
         await using var context = database.CreateContext(callback, failure);
@@ -124,8 +124,8 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
     public async Task CallbackStructureWriteToUnaffectedTreeIsRejected()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await SeedExistingTreeAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedExistingTreeAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();
         await using var context = database.CreateContext(callback);
         var tracked = await context
@@ -161,7 +161,8 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
     public async Task CallbackOrderingWriteToUnaffectedTreeIsRejected()
     {
         // Arrange
-        await using (var setup = await _orderingFixture.ResetAsync(Engine))
+        await using (var setup = await _orderingFixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken))
         {
             var existing = setup
                 .NestedSet<OrderingNode>()
@@ -178,7 +179,10 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
         }
 
         var callback = new SaveBoundaryCallback();
-        await using var context = await _orderingFixture.CreateContextAsync(Engine, "Strict", callback);
+        await using var context = await _orderingFixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "Strict", callback);
+
         var tracked = await context
             .Set<OrderingNode>()
             .SingleAsync(node => node.Id == 10, CancellationToken.None);
@@ -200,7 +204,9 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
 
         // Assert
         Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(error).Code);
-        await using var verification = await _orderingFixture.CreateContextAsync(Engine);
+        await using var verification = await _orderingFixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         Assert.Equal(1, await verification.Set<OrderingNode>().CountAsync(CancellationToken.None));
         Assert.Equal(
             "stored",
@@ -212,8 +218,10 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
     }
 
     /// <summary>Creates one unaffected root before a managed insertion begins.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task SeedExistingTreeAsync(
-        TestDatabase database
+        TestDatabase database,
+        CancellationToken cancellationToken
     )
     {
         await using var setup = database.CreateContext();
@@ -228,7 +236,7 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
                 Payload = "stored",
             },
             s_existingTree,
-            CancellationToken.None);
+            cancellationToken);
     }
 
     /// <summary>Raises one deterministic failure after EF accepted the insertion batch.</summary>

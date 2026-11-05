@@ -3,38 +3,43 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public abstract partial class SaveChangesTests
 {
     /// <summary>Seeds complex values through EF rather than provider-specific JSON SQL.</summary>
-    private async Task<TestDatabase> CreateComplexPeerRecoveryDatabaseAsync(string shape)
+    private async Task<TestDatabase> CreateComplexPeerRecoveryDatabaseAsync(
+        string shape,
+        CancellationToken cancellationToken
+    )
     {
-        var database = await TestDatabase.CreateAsync(Engine);
+        var database = await TestDatabase.CreateAsync(Engine, cancellationToken: cancellationToken);
 
         try
         {
-            await using var context = await CreateComplexPeerRecoveryContextAsync(database, shape);
-            await context.GetService<IRelationalDatabaseCreator>().CreateTablesAsync(CancellationToken.None);
+            await using var context = await CreateComplexPeerRecoveryContextAsync(database, shape,
+                cancellationToken: cancellationToken);
+
+            await context.GetService<IRelationalDatabaseCreator>().CreateTablesAsync(cancellationToken);
             var tree = context.NestedSet<ComplexPeerRecoveryNode>();
-            await tree.InsertRootAsync(NewComplexPeerNode(shape, 1, "Root"), s_treeId, CancellationToken.None);
-            await tree.InsertChildAsync(NewComplexPeerNode(shape, 2, "Alpha"), 1, CancellationToken.None);
-            await tree.InsertChildAsync(NewComplexPeerNode(shape, 3, "Bravo"), 1, CancellationToken.None);
+            await tree.InsertRootAsync(NewComplexPeerNode(shape, 1, "Root"), s_treeId, cancellationToken);
+            await tree.InsertChildAsync(NewComplexPeerNode(shape, 2, "Alpha"), 1, cancellationToken);
+            await tree.InsertChildAsync(NewComplexPeerNode(shape, 3, "Bravo"), 1, cancellationToken);
 
             if (shape != "owned")
             {
                 // WHY: Ordinary peers are not facade inputs. EF serializes their complex values when
                 // they are added to their already persisted, tracked principal rows.
-                var nodes = await context.Set<ComplexPeerRecoveryNode>().ToArrayAsync(CancellationToken.None);
+                var nodes = await context.Set<ComplexPeerRecoveryNode>().ToArrayAsync(cancellationToken);
 
                 foreach (var node in nodes)
                 {
                     var payload = NewComplexPeerPayload(node.Id);
                     payload.Node = node;
-                    await context.AddAsync(payload, CancellationToken.None);
+                    await context.AddAsync(payload, cancellationToken);
                 }
 
-                await context.SaveChangesAsync(CancellationToken.None);
+                await context.SaveChangesAsync(cancellationToken);
             }
 
             // WHY: EF appends materialized collection items to a constructor-created list. Seed values belong
             // in the factory, not the entity initializer; verify the physical JSON contains exactly two items.
-            var stored = await ReadComplexPeerStoreAsync(database, shape);
+            var stored = await ReadComplexPeerStoreAsync(database, shape, cancellationToken: cancellationToken);
             Assert.All(stored.Rows, row => Assert.Equal("first|second", row.Items));
 
             return database;
@@ -68,20 +73,26 @@ public abstract partial class SaveChangesTests
     private static async Task<ComplexPeerRecoveryContext> CreateComplexPeerRecoveryContextAsync(
         TestDatabase database,
         string shape,
+        CancellationToken cancellationToken,
         params IInterceptor[] interceptors
     )
     {
-        var options = new DbContextOptionsBuilder(await SaveSemanticsFixture.OptionsAsync(database, interceptors))
+        var options = new DbContextOptionsBuilder(await SaveSemanticsFixture.OptionsAsync(database,
+            cancellationToken: cancellationToken,
+            interceptors))
             .ReplaceService<IModelCacheKeyFactory, TestModelCacheKeyFactory>().Options;
 
         return new ComplexPeerRecoveryContext(options, shape);
     }
 
     /// <summary>Marks only the order property while retaining a genuinely unchanged complex peer.</summary>
-    private static async Task<ComplexPeerGraph> PrepareComplexPeerRecoveryAsync(ComplexPeerRecoveryContext context)
+    private static async Task<ComplexPeerGraph> PrepareComplexPeerRecoveryAsync(
+        ComplexPeerRecoveryContext context,
+        CancellationToken cancellationToken
+    )
     {
         var node = await context.Set<ComplexPeerRecoveryNode>().Include(value => value.Details)
-            .SingleAsync(value => value.Id == 2, CancellationToken.None);
+            .SingleAsync(value => value.Id == 2, cancellationToken);
 
         context.ChangeTracker.AutoDetectChangesEnabled = false;
         var entry = context.Entry(node);
@@ -214,18 +225,24 @@ public abstract partial class SaveChangesTests
     }
 
     /// <summary>Reads complex payload and a full tree validation in an independent context.</summary>
-    private static async Task<ComplexPeerStore> ReadComplexPeerStoreAsync(TestDatabase database, string shape)
+    private static async Task<ComplexPeerStore> ReadComplexPeerStoreAsync(
+        TestDatabase database,
+        string shape,
+        CancellationToken cancellationToken
+    )
     {
-        await using var verification = await CreateComplexPeerRecoveryContextAsync(database, shape);
+        await using var verification = await CreateComplexPeerRecoveryContextAsync(database, shape,
+            cancellationToken: cancellationToken);
+
         var nodes = await verification.Set<ComplexPeerRecoveryNode>().AsNoTracking().Include(node => node.Details)
-            .OrderBy(node => node.Id).ToArrayAsync(CancellationToken.None);
+            .OrderBy(node => node.Id).ToArrayAsync(cancellationToken);
 
         var rows = nodes.Select(node => new ComplexPeerStoredRow(node.Id, node.Name, node.TreeId, node.ParentId,
             node.Left, node.Right, node.Depth, node.Position, node.Details!.Address?.Text,
             string.Join("|", node.Details.Items.Select(item => item.Text)))).ToArray();
 
         var validation = await verification.NestedSet<ComplexPeerRecoveryNode>().InTree(s_treeId)
-            .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+            .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken);
 
         return new ComplexPeerStore(rows, validation.TotalIssueCount);
     }

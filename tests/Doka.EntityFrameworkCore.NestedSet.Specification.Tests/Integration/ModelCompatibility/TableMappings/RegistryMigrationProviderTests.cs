@@ -22,7 +22,9 @@ public abstract class RegistryMigrationProviderTests : ProviderTest
     public async Task LegacyRegistryRenamePreservesLifecycleRows()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.Model.FindEntityType(typeof(OrderingNode))!;
         var registryName = (string)hierarchy.FindAnnotation(NestedSetAnnotationNames.TreeRegistryEntity)!.Value!;
 
@@ -69,10 +71,10 @@ public abstract class RegistryMigrationProviderTests : ProviderTest
         }
 
         await context.SaveChangesAsync(CancellationToken.None);
-        await RenameAsync(context, newName, oldName, schema);
+        await RenameAsync(context, newName, oldName, schema, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        await RenameAsync(context, oldName, newName, schema);
+        await RenameAsync(context, oldName, newName, schema, cancellationToken: TestContext.Current.CancellationToken);
         var rows = await context
             .Set<NestedSetTreeRegistry>(registryName)
             .Select(row => new
@@ -92,11 +94,13 @@ public abstract class RegistryMigrationProviderTests : ProviderTest
     }
 
     /// <summary>Executes the same EF RenameTable operation an application migration uses.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task RenameAsync(
         DbContext context,
         string from,
         string to,
-        string? schema
+        string? schema,
+        CancellationToken cancellationToken
     )
     {
         var migration = new MigrationBuilder(context.Database.ProviderName!);
@@ -110,7 +114,7 @@ public abstract class RegistryMigrationProviderTests : ProviderTest
 
         foreach (var command in commands)
         {
-            await command.ExecuteNonQueryAsync(connection, cancellationToken: CancellationToken.None);
+            await command.ExecuteNonQueryAsync(connection, cancellationToken: cancellationToken);
         }
     }
 }

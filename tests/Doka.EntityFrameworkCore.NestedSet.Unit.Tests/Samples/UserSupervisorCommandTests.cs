@@ -15,7 +15,8 @@ public sealed class UserSupervisorCommandTests
         // Act
         var result = await RunAsync(
             directory.DirectoryPath,
-            ["--provider", "sqlite", "--scenario", "supervisors", "--details"]);
+            ["--provider", "sqlite", "--scenario", "supervisors", "--details"],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(0, result.ExitCode);
@@ -41,12 +42,15 @@ public sealed class UserSupervisorCommandTests
     {
         // Arrange
         await using var directory = new SampleLifecycleDirectory();
-        await SeedAsync(directory.DirectoryPath, ["--provider", "sqlite", "--scenario", "supervisors"]);
+        await SeedAsync(directory.DirectoryPath, ["--provider", "sqlite", "--scenario", "supervisors"],
+            cancellationToken: TestContext.Current.CancellationToken);
         var databasePath = Path.Combine(directory.DirectoryPath, "nestedset_sample_usergroups.sqlite");
         var before = await File.ReadAllBytesAsync(databasePath, CancellationToken.None);
 
         // Act
-        var result = await RunAsync(directory.DirectoryPath, ["--provider", "sqlite", "--inspect", "--details"]);
+        var result = await RunAsync(directory.DirectoryPath, ["--provider", "sqlite", "--inspect", "--details"],
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var after = await File.ReadAllBytesAsync(databasePath, CancellationToken.None);
 
         // Assert
@@ -70,7 +74,8 @@ public sealed class UserSupervisorCommandTests
         await using var directory = new SampleLifecycleDirectory();
 
         // Act
-        var result = await RunAsync(directory.DirectoryPath, ["--provider", "sqlite"]);
+        var result = await RunAsync(directory.DirectoryPath, ["--provider", "sqlite"],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(0, result.ExitCode);
@@ -188,6 +193,25 @@ public sealed class UserSupervisorCommandTests
         Assert.IsType<InvalidOperationException>(associationError);
     }
 
+    /// <summary>The sample command wrapper preserves caller cancellation before creating a child or database.</summary>
+    [Fact]
+    public async Task SampleRunnerDoesNotStartForCanceledTokenAsync()
+    {
+        // Arrange
+        await using var directory = new SampleLifecycleDirectory();
+        using var stop = new CancellationTokenSource();
+        await stop.CancelAsync();
+
+        // Act
+        var error = await Record.ExceptionAsync(() => RunAsync(directory.DirectoryPath,
+            ["--provider", "sqlite"], stop.Token));
+
+        // Assert
+        Assert.Equal(stop.Token,
+            Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
+        Assert.False(Directory.Exists(directory.DirectoryPath));
+    }
+
     /// <summary>Failure to launch retains its native error without attempting to reap an unstarted process.</summary>
     [Fact]
     public async Task RunnerPreservesStartFailureAsync()
@@ -212,12 +236,16 @@ public sealed class UserSupervisorCommandTests
     /// <summary>Starts only the already-built sample assembly and returns its captured process result.</summary>
     /// <param name="directory">A test-owned directory for the sample's fixed SQLite filename.</param>
     /// <param name="arguments">The exact console options for one invocation.</param>
+    /// <param name="cancellationToken">The caller's token, linked with the independent command deadline.</param>
     /// <returns>The exit code and separate standard streams.</returns>
     private static async Task<(int ExitCode, string Output, string Error)> RunAsync(
         string directory,
-        IReadOnlyList<string> arguments
+        IReadOnlyList<string> arguments,
+        CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var startInfo = new ProcessStartInfo("dotnet")
         {
             RedirectStandardOutput = true,
@@ -237,9 +265,18 @@ public sealed class UserSupervisorCommandTests
         using var process = new Process();
         process.StartInfo = startInfo;
 
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(60));
 
-        return await RunAsync(process, timeout.Token);
+        try
+        {
+            return await RunAsync(process, timeout.Token);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // WHY: The child is already reaped; expose the caller's identity rather than the linked deadline token.
+            throw new OperationCanceledException(cancellationToken);
+        }
     }
 
     /// <summary>
@@ -374,12 +411,14 @@ public sealed class UserSupervisorCommandTests
     /// <param name="directory">A test-owned directory for the sample's fixed SQLite filename.</param>
     /// <param name="arguments">The console options that produce the seed database.</param>
     /// <returns>A task that completes when a successful prior run is available for inspection.</returns>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
     private static async Task SeedAsync(
         string directory,
-        IReadOnlyList<string> arguments
+        IReadOnlyList<string> arguments,
+        CancellationToken cancellationToken
     )
     {
-        var result = await RunAsync(directory, arguments);
+        var result = await RunAsync(directory, arguments, cancellationToken: cancellationToken);
 
         if (result.ExitCode != 0)
         {

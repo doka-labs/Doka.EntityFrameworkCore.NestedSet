@@ -14,8 +14,10 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();
         var factory = new PooledDbContextFactory<SaveBoundaryContext>(
             SaveBoundaryTestSupport.Options(setup, callback).Options,

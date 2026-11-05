@@ -33,7 +33,9 @@ public abstract partial class HierarchyCompositionSemanticTests
             .Concat(DensePathDecoys(local, scope, Guid.NewGuid(), 5_000)).ToArray();
 
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateLongPathContextAsync(scope, 7, all, probe);
+        await using var context = await CreateLongPathContextAsync(scope, 7, all, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await context.AddRangeAsync(LongDays().Select(day => new CompositionInputOne
         {
             Scope = scope,
@@ -68,7 +70,7 @@ public abstract partial class HierarchyCompositionSemanticTests
             _ => throw new ArgumentOutOfRangeException(nameof(filter)),
         };
 
-        var actualRows = await ReadLongRowsAsync(query);
+        var actualRows = await ReadLongRowsAsync(query, cancellationToken: TestContext.Current.CancellationToken);
         var actual = actualRows.OrderBy(row => row.Origin).ThenBy(row => row.Node).ThenBy(row => row.Day).ToArray();
 
         // Assert

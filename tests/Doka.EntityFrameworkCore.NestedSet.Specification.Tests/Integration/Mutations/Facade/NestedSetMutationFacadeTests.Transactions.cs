@@ -7,10 +7,11 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task ApplicationTransactionRollbackIsAtomic()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        await ExecuteApplicationTransactionAsync(database, commit: false);
+        await ExecuteApplicationTransactionAsync(database, commit: false,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         await using var verification = database.CreateContext();
@@ -29,10 +30,11 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task ApplicationTransactionCommitIsAtomic()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        await ExecuteApplicationTransactionAsync(database, commit: true);
+        await ExecuteApplicationTransactionAsync(database, commit: true,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         await using var verification = database.CreateContext();
@@ -51,15 +53,17 @@ public abstract partial class NestedSetMutationFacadeTests
     }
 
     /// <summary>Executes the complete caller-owned transaction used by commit and rollback assertions.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task ExecuteApplicationTransactionAsync(
         TestDatabase database,
-        bool commit
+        bool commit,
+        CancellationToken cancellationToken
     )
     {
         await using var context = database.CreateContext();
         var isolation = context.Database.IsSqlite() ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted;
 
-        await using var transaction = await context.Database.BeginTransactionAsync(isolation, CancellationToken.None);
+        await using var transaction = await context.Database.BeginTransactionAsync(isolation, cancellationToken);
         context.Add(
             new UnrelatedRow
             {
@@ -67,19 +71,20 @@ public abstract partial class NestedSetMutationFacadeTests
                 Value = "payload",
             });
 
-        await context.SaveChangesAsync(CancellationToken.None);
+        await context.SaveChangesAsync(cancellationToken);
         await context
             .NestedSet<TreeNode>()
             .ForScope(7)
-            .InsertRootAsync(new TreeNode { NodeId = 1 }, s_firstTree, CancellationToken.None);
+            .InsertRootAsync(new TreeNode { NodeId = 1 }, s_firstTree, cancellationToken);
 
         if (commit)
         {
-            await transaction.CommitAsync(CancellationToken.None);
+            await transaction.CommitAsync(cancellationToken);
 
             return;
         }
 
+        // WHY: Rollback must release every earlier write even when cancellation ended the caller's operation.
         await transaction.RollbackAsync(CancellationToken.None);
     }
 }

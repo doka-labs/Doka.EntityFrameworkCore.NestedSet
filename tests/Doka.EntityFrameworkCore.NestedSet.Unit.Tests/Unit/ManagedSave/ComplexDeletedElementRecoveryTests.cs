@@ -24,7 +24,9 @@ public sealed partial class ComplexDeletedElementRecoveryTests
     )
     {
         // Arrange
-        await using var context = await CreateAsync(NewPayload(1, NewOuter("Stored", middles, tips)));
+        await using var context = await CreateAsync(NewPayload(1, NewOuter("Stored", middles, tips)),
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var payload = await context
             .Set<Payload>()
             .SingleAsync(CancellationToken.None);
@@ -57,7 +59,7 @@ public sealed partial class ComplexDeletedElementRecoveryTests
         Assert.Empty(restoredItems);
         Assert.Equal(before, restoredLanes);
         Assert.Equal(EntityState.Deleted, restoredState);
-        Assert.Equal("[]", await StoredRowsAsync(context));
+        Assert.Equal("[]", await StoredRowsAsync(context, cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Retires an Added child whose Deleted owner has no list position for EF's ordinal path.</summary>
@@ -70,7 +72,9 @@ public sealed partial class ComplexDeletedElementRecoveryTests
     )
     {
         // Arrange
-        await using var context = await CreateAsync(NewPayload(2, NewOuter("Stored", 1, 1)));
+        await using var context = await CreateAsync(NewPayload(2, NewOuter("Stored", 1, 1)),
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var payload = await context
             .Set<Payload>()
             .SingleAsync(CancellationToken.None);
@@ -97,7 +101,8 @@ public sealed partial class ComplexDeletedElementRecoveryTests
         Assert.Same(owner, Assert.Single(restoredRows));
         Assert.Equal(before, restoredLanes);
         Assert.Equal(EntityState.Added, restoredState);
-        Assert.Contains("Pending", await StoredRowsAsync(context));
+        Assert.Contains("Pending", await StoredRowsAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Addresses each retiring entry through its own instance after a callback shifted its ordinal.</summary>
@@ -105,7 +110,9 @@ public sealed partial class ComplexDeletedElementRecoveryTests
     public async Task NestedInsertionBeforeRemovedOwnerRetiresThroughLiveOrdinals()
     {
         // Arrange
-        await using var context = await CreateAsync(NewPayload(3, NewOuter("Stored", 1, 2)));
+        await using var context = await CreateAsync(NewPayload(3, NewOuter("Stored", 1, 2)),
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var payload = await context
             .Set<Payload>()
             .SingleAsync(CancellationToken.None);
@@ -137,7 +144,9 @@ public sealed partial class ComplexDeletedElementRecoveryTests
     public async Task CallbackEntityDeletionKeepsCapturedLaneLengths()
     {
         // Arrange
-        await using var context = await CreateAsync(NewPayload(4, NewOuter("Stored", 1, 1)));
+        await using var context = await CreateAsync(NewPayload(4, NewOuter("Stored", 1, 1)),
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var payload = await context
             .Set<Payload>()
             .SingleAsync(CancellationToken.None);
@@ -170,7 +179,9 @@ public sealed partial class ComplexDeletedElementRecoveryTests
     )
     {
         // Arrange
-        await using var context = await CreateAsync(NewPayload(5, NewOuter("Stored", 1, 1)));
+        await using var context = await CreateAsync(NewPayload(5, NewOuter("Stored", 1, 1)),
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var payload = await context
             .Set<Payload>()
             .SingleAsync(CancellationToken.None);
@@ -203,7 +214,9 @@ public sealed partial class ComplexDeletedElementRecoveryTests
     public async Task PendingAddedElementBelowDeletedEntityRestoresItsScalars()
     {
         // Arrange
-        await using var context = await CreateAsync(NewPayload(7, NewOuter("Stored", 0, 0)));
+        await using var context = await CreateAsync(NewPayload(7, NewOuter("Stored", 0, 0)),
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var payload = await context
             .Set<Payload>()
             .SingleAsync(CancellationToken.None);
@@ -236,7 +249,9 @@ public sealed partial class ComplexDeletedElementRecoveryTests
     )
     {
         // Arrange
-        await using var context = await CreateAsync(NewPayload(8, NewOuter("Stored", middles, 2)));
+        await using var context = await CreateAsync(NewPayload(8, NewOuter("Stored", middles, 2)),
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var payload = await context
             .Set<Payload>()
             .SingleAsync(CancellationToken.None);
@@ -269,7 +284,7 @@ public sealed partial class ComplexDeletedElementRecoveryTests
         {
             Id = 6,
             Marker = "Stored",
-        });
+        }, cancellationToken: TestContext.Current.CancellationToken);
 
         var payload = await context
             .Set<Payload>()
@@ -296,10 +311,13 @@ public sealed partial class ComplexDeletedElementRecoveryTests
     }
 
     /// <summary>Creates a persisted single-row store and a fresh context sharing that connection.</summary>
+    /// <param name="seed">The independent payload persisted before the recovery scenario.</param>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
     private static Task<DeletedContext> CreateAsync(
-        Payload seed
+        Payload seed,
+        CancellationToken cancellationToken
     )
-        => CreateAsync(seed, new SqliteConnection("Data Source=:memory:"));
+        => CreateAsync(seed, new SqliteConnection("Data Source=:memory:"), cancellationToken: cancellationToken);
 
     /// <summary>Owns the supplied connection until initialization transfers it to the returned context.</summary>
     /// <param name="seed">The single payload to persist before recovery begins.</param>
@@ -308,20 +326,22 @@ public sealed partial class ComplexDeletedElementRecoveryTests
     /// <exception cref="AggregateException">
     /// Initialization and cleanup both fail; the initialization error is first.
     /// </exception>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
     private static async Task<DeletedContext> CreateAsync(
         Payload seed,
-        SqliteConnection connection
+        SqliteConnection connection,
+        CancellationToken cancellationToken
     )
     {
         try
         {
-            await connection.OpenAsync(CancellationToken.None);
+            await connection.OpenAsync(cancellationToken);
 
             await using (var context = new DeletedContext(connection, ownsConnection: false))
             {
-                await context.Database.EnsureCreatedAsync(CancellationToken.None);
+                await context.Database.EnsureCreatedAsync(cancellationToken);
                 context.Add(seed);
-                await context.SaveChangesAsync(CancellationToken.None);
+                await context.SaveChangesAsync(cancellationToken);
             }
 
             return new DeletedContext(connection, ownsConnection: true);
@@ -342,8 +362,11 @@ public sealed partial class ComplexDeletedElementRecoveryTests
     }
 
     /// <summary>Reads stored JSON without tracking anything or reusing the context's change tracker.</summary>
+    /// <param name="context">The context used by this fixture operation.</param>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
     private static async Task<string> StoredRowsAsync(
-        DeletedContext context
+        DeletedContext context,
+        CancellationToken cancellationToken
     )
     {
         await using var command = context
@@ -353,7 +376,7 @@ public sealed partial class ComplexDeletedElementRecoveryTests
 
         command.CommandText = "SELECT \"Rows\" FROM \"Payload\"";
 
-        return (string)(await command.ExecuteScalarAsync(CancellationToken.None))!;
+        return (string)(await command.ExecuteScalarAsync(cancellationToken))!;
     }
 
     /// <summary>Observes both cached native lanes at every level, including holes, independent of recovery.</summary>

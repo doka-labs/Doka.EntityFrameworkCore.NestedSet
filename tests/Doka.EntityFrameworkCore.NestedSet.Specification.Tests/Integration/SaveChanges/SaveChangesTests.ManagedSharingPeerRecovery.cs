@@ -18,12 +18,19 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var database = await CreateManagedSharingDatabaseAsync(shape);
+        await using var database = await CreateManagedSharingDatabaseAsync(shape,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var callback = new SaveBoundaryCallback();
         var failure = new PlannedParentFailure();
         IInterceptor[] interceptors = concurrency ? [callback] : [callback, failure];
-        await using var context = await CreateManagedSharingContextAsync(database, shape, interceptors);
-        var graph = await PrepareManagedSharingGraphAsync(context);
+        await using var context = await CreateManagedSharingContextAsync(database, shape,
+            cancellationToken: TestContext.Current.CancellationToken,
+            interceptors);
+
+        var graph = await PrepareManagedSharingGraphAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         NavigationNode[] inputs = bulk
             ? [new NavigationNode { Id = 101, Name = "Inserted" },
                 new NavigationNode { Id = 102, Name = "Child" }]
@@ -43,17 +50,26 @@ public abstract partial class SaveChangesTests
 
         if (concurrency)
         {
-            await ChangeManagedSharingVersionAsync(database, shape);
+            await ChangeManagedSharingVersionAsync(database, shape,
+                cancellationToken: TestContext.Current.CancellationToken);
         }
 
-        var storedBefore = await ReadManagedSharingRowAsync(database, shape);
-        var hierarchyBefore = await ReadPreparedOwnerStoreAsync(database);
+        var storedBefore = await ReadManagedSharingRowAsync(database, shape,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchyBefore = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        var error = await Record.ExceptionAsync(() => InsertManagedSharingShapeAsync(context, inputs, bulk));
+        var error = await Record.ExceptionAsync(() => InsertManagedSharingShapeAsync(context, inputs, bulk,
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var after = CaptureManagedSharingState(context, graph);
-        var storedAfter = await ReadManagedSharingRowAsync(database, shape);
-        var hierarchyAfter = await ReadPreparedOwnerStoreAsync(database);
+        var storedAfter = await ReadManagedSharingRowAsync(database, shape,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchyAfter = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(pending);
@@ -87,11 +103,18 @@ public abstract partial class SaveChangesTests
     public async Task ManagedSharingRollbackAllowsExplicitWriteRetry(string shape, bool bulk)
     {
         // Arrange
-        await using var database = await CreateManagedSharingDatabaseAsync(shape);
+        await using var database = await CreateManagedSharingDatabaseAsync(shape,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var callback = new SaveBoundaryCallback();
         var failure = new PlannedParentFailure();
-        await using var context = await CreateManagedSharingContextAsync(database, shape, callback, failure);
-        var graph = await PrepareManagedSharingGraphAsync(context);
+        await using var context = await CreateManagedSharingContextAsync(database, shape,
+            cancellationToken: TestContext.Current.CancellationToken,
+            callback, failure);
+
+        var graph = await PrepareManagedSharingGraphAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         NavigationNode[] inputs = bulk
             ? [new NavigationNode { Id = 101, Name = "Inserted" },
                 new NavigationNode { Id = 102, Name = "Child" }]
@@ -105,17 +128,24 @@ public abstract partial class SaveChangesTests
             pending = CaptureManagedSharingState(current, graph);
         };
 
-        var hierarchyBefore = await ReadPreparedOwnerStoreAsync(database);
+        var hierarchyBefore = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var detections = 0;
         context.ChangeTracker.DetectedAllChanges += (_, _) => detections++;
         // WHY: A failed insertion leaves explicit callback writes pending. Ordinary save is their supported retry.
-        var firstError = await Record.ExceptionAsync(() => InsertManagedSharingShapeAsync(context, inputs, bulk));
+        var firstError = await Record.ExceptionAsync(() => InsertManagedSharingShapeAsync(context, inputs, bulk,
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var afterFailure = CaptureManagedSharingState(context, graph);
 
         // Act
         var retryError = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
-        var storedAfter = await ReadManagedSharingRowAsync(database, shape);
-        var hierarchyAfter = await ReadPreparedOwnerStoreAsync(database);
+        var storedAfter = await ReadManagedSharingRowAsync(database, shape,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchyAfter = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(pending);
@@ -147,10 +177,17 @@ public abstract partial class SaveChangesTests
     public async Task ManagedSharingSuccessPersistsOnlyExplicitCallbackWrites(string shape, bool bulk, bool reverse)
     {
         // Arrange
-        await using var database = await CreateManagedSharingDatabaseAsync(shape);
+        await using var database = await CreateManagedSharingDatabaseAsync(shape,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var callback = new SaveBoundaryCallback();
-        await using var context = await CreateManagedSharingContextAsync(database, shape, callback);
-        var graph = await PrepareManagedSharingGraphAsync(context);
+        await using var context = await CreateManagedSharingContextAsync(database, shape,
+            cancellationToken: TestContext.Current.CancellationToken,
+            callback);
+
+        var graph = await PrepareManagedSharingGraphAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         NavigationNode[] inputs = bulk
             ? [new NavigationNode { Id = 101, Name = "Inserted" },
                 new NavigationNode { Id = 102, Name = "Child" }]
@@ -162,14 +199,21 @@ public abstract partial class SaveChangesTests
             StageManagedSharingCallback(graph, reverse);
         };
 
-        var hierarchyBefore = await ReadPreparedOwnerStoreAsync(database);
+        var hierarchyBefore = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var detections = 0;
         context.ChangeTracker.DetectedAllChanges += (_, _) => detections++;
 
         // Act
-        var error = await Record.ExceptionAsync(() => InsertManagedSharingShapeAsync(context, inputs, bulk));
-        var storedAfter = await ReadManagedSharingRowAsync(database, shape);
-        var hierarchyAfter = await ReadPreparedOwnerStoreAsync(database);
+        var error = await Record.ExceptionAsync(() => InsertManagedSharingShapeAsync(context, inputs, bulk,
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        var storedAfter = await ReadManagedSharingRowAsync(database, shape,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchyAfter = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Null(error);

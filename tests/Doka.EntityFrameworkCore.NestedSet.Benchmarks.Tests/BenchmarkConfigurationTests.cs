@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Perfolizer.Mathematics.OutlierDetection;
 using BenchmarkRunMode = BenchmarkDotNet.Jobs.RunMode;
 
@@ -6,6 +7,32 @@ namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests;
 /// <summary>Guards process isolation, one-operation iterations and observational export contracts.</summary>
 public sealed class BenchmarkConfigurationTests
 {
+    /// <summary>Owned benchmark operations require explicit cancellation while EF overrides keep their contract.</summary>
+    [Fact]
+    public void OwnedBenchmarkTokensAreRequired()
+    {
+        // Arrange
+        var assembly = typeof(BenchmarkRunOptions).Assembly;
+        const BindingFlags members = BindingFlags.Public | BindingFlags.NonPublic
+            | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly;
+
+        // Act
+        var optional = assembly
+            .GetTypes()
+            .SelectMany(type => type.GetMethods(members))
+            // WHY: Compiler-generated base-call bridges can copy an EF override's optional token metadata.
+            .Where(method => !method.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false))
+            .Where(method => method.GetBaseDefinition().DeclaringType!.Assembly == assembly)
+            .SelectMany(method => method.GetParameters())
+            .Where(parameter => parameter.ParameterType == typeof(CancellationToken)
+                && (parameter.IsOptional || parameter.HasDefaultValue))
+            .Select(parameter => $"{parameter.Member.DeclaringType}.{parameter.Member.Name}: {parameter.Name}")
+            .ToArray();
+
+        // Assert
+        Assert.Empty(optional);
+    }
+
     /// <summary>Database mutations use one invocation and no unrolling against each restored state.</summary>
     [Fact]
     public void DatabaseJobRunsOncePerIteration()

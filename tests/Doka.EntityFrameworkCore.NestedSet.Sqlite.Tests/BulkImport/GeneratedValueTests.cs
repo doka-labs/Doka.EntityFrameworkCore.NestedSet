@@ -20,7 +20,9 @@ public sealed class GeneratedValueTests : ProviderTest,
     public async Task ImportedNodeCanBeAttachedAndSavedWithRefreshedConcurrencyToken()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = context
             .NestedSet<BulkGeneratedNode>()
             .ForScope(7);
@@ -74,7 +76,9 @@ public sealed class GeneratedValueTests : ProviderTest,
     public async Task ImportedComplexPayloadReflectsFinalGeneratedValues()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = context
             .NestedSet<BulkGeneratedNode>()
             .ForScope(7);

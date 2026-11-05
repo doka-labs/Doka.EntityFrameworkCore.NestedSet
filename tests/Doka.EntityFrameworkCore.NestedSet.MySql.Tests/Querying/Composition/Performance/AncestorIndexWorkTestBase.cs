@@ -53,10 +53,12 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
         await using var context = await _fixture.CreateContextAsync<AncestorIndexQueryContext>(
             Engine,
             static options => new AncestorIndexQueryContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             commands,
             capture);
 
-        await SeedAsync(context, scope, tree, forest, dense: chain);
+        await SeedAsync(context, scope, tree, forest, dense: chain,
+            cancellationToken: TestContext.Current.CancellationToken);
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         var selected = chain
             ? [1_001]
@@ -129,8 +131,12 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
             .Single(index => index.Properties.Any(property => property.Name == flag))
             .GetDatabaseName()!;
 
-        var traversalsBefore = await NativeTraversalCounterAsync(context);
-        var indexAttemptsBefore = await MariaSessionCounterAsync(context, "Handler_icp_attempts");
+        var traversalsBefore = await NativeTraversalCounterAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var indexAttemptsBefore = await MariaSessionCounterAsync(context, "Handler_icp_attempts",
+            cancellationToken: TestContext.Current.CancellationToken);
+
         commands.Reset();
         capture.Commands.Clear();
         capture.ParameterValues.Clear();
@@ -147,7 +153,7 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
         }
         catch (Exception exception)
         {
-            // WHY: A native timeout must retain its actual statement even when no executed plan can complete.
+            // WHY: Failure evidence must finish independently of caller cancellation and retain the native statement.
             await QueryPlanTestSupport.WriteEvidenceAsync(
                 Engine
                 + $"-ancestor-index-failure-forest-{forest}-chain-{chain}-sources-{sources}-inclusive-{inclusive}",
@@ -157,17 +163,22 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
                     ?? exception.GetType()
                         .Name,
                     .. capture.Commands,
-                    await FailurePlanAsync(context, capture),
-                ]);
+                    await FailurePlanAsync(context, capture, cancellationToken: CancellationToken.None),
+                ], cancellationToken: CancellationToken.None);
 
             throw;
         }
 
         var commandCount = commands.CommandCount;
         var sql = capture.Commands.Single();
-        var indexAttempts = await MariaSessionCounterAsync(context, "Handler_icp_attempts") - indexAttemptsBefore;
-        var traversals = await NativeTraversalCounterAsync(context) - traversalsBefore;
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, capture, 0, Engine);
+        var indexAttempts = await MariaSessionCounterAsync(context, "Handler_icp_attempts",
+            cancellationToken: TestContext.Current.CancellationToken) - indexAttemptsBefore;
+
+        var traversals = await NativeTraversalCounterAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken) - traversalsBefore;
+
+        var plan = await QueryPlanTestSupport.ExplainAsync(context, capture, 0, Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // WHY: Optimized ancestor work is bounded by selected nodes and their actual outputs.
         // A provider without the optional public binding retains its separately labeled legacy scan budget.
@@ -182,7 +193,7 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
                 + $"budget={budget}; resultRows={actual.Length}; indexAttempts={indexAttempts}; traversals={traversals}",
                 sql,
                 plan,
-            ]);
+            ], cancellationToken: TestContext.Current.CancellationToken);
 
         var work = Engine == "MySql" ? DensePathNativeWork.MySql(plan) : DensePathNativeWork.MariaDb(plan);
 
@@ -237,10 +248,12 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
         await using var context = await _fixture.CreateContextAsync<AncestorIndexQueryContext>(
             Engine,
             static options => new AncestorIndexQueryContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             commands,
             capture);
 
-        await SeedAsync(context, scope, tree, forest: false, dense: true);
+        await SeedAsync(context, scope, tree, forest: false, dense: true,
+            cancellationToken: TestContext.Current.CancellationToken);
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         var selected = Enumerable
             .Range(1_001, sources)
@@ -294,8 +307,12 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
         // WHY: One bit per expected source/owner pair detects duplicates and omissions while the
         // independent chain formula checks identity and distance without retaining result objects.
         var seen = new BitArray(checked((int)expected));
-        var traversalsBefore = await NativeTraversalCounterAsync(context);
-        var temporaryBefore = await MariaSessionCounterAsync(context, "Handler_tmp_write");
+        var traversalsBefore = await NativeTraversalCounterAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var temporaryBefore = await MariaSessionCounterAsync(context, "Handler_tmp_write",
+            cancellationToken: TestContext.Current.CancellationToken);
+
         commands.Reset();
         capture.Commands.Clear();
         capture.ParameterValues.Clear();
@@ -330,8 +347,11 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
 
         var commandCount = commands.CommandCount;
         var sql = capture.Commands.Single();
-        var temporaryAfter = await MariaSessionCounterAsync(context, "Handler_tmp_write");
-        var traversals = await NativeTraversalCounterAsync(context) - traversalsBefore;
+        var temporaryAfter = await MariaSessionCounterAsync(context, "Handler_tmp_write",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var traversals = await NativeTraversalCounterAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken) - traversalsBefore;
 
         // WHY: Executed-plan collection is an independent query. Its timeout must not erase
         // the complete streamed oracle result or the original session-work observations.
@@ -343,9 +363,11 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
                 + $"expected={expected}; actual={count}; commands={commandCount}; traversals={traversals}; "
                 + $"temporaryWrites={temporaryAfter - temporaryBefore}",
                 sql,
-            ]);
+            ], cancellationToken: TestContext.Current.CancellationToken);
 
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, capture, 0, Engine);
+        var plan = await QueryPlanTestSupport.ExplainAsync(context, capture, 0, Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var temporaryWork = Engine == "MariaDb"
             ? temporaryAfter - temporaryBefore
             : hasOptimizedPath
@@ -363,7 +385,7 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
                 + $"actual={count}; temporaryWork={temporaryWork}; budget={budget}; traversals={traversals}",
                 sql,
                 plan,
-            ]);
+            ], cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         _output.WriteLine($"Binding={hasBinding}; orderedJoin={hasOrderedJoin}; optimized={hasOptimizedPath}; "
@@ -382,18 +404,20 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
     }
 
     /// <summary>Counts supported native handler-row traversals, including repeated reads of derived and physical rows.</summary>
-    private static async Task<long> NativeTraversalCounterAsync(DbContext context)
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    private static async Task<long> NativeTraversalCounterAsync(DbContext context, CancellationToken cancellationToken)
     {
         await using var command = context.Database.GetDbConnection().CreateCommand();
         command.CommandText = "SHOW SESSION STATUS WHERE Variable_name IN "
             + "('Handler_read_first','Handler_read_key','Handler_read_last','Handler_read_next',"
             + "'Handler_read_prev','Handler_read_rnd','Handler_read_rnd_next')";
 
-        await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         long total = 0;
         var counters = 0;
 
-        while (await reader.ReadAsync(CancellationToken.None))
+        while (await reader.ReadAsync(cancellationToken))
         {
             total = checked(total + Convert.ToInt64(reader.GetValue(1), CultureInfo.InvariantCulture));
             counters++;
@@ -405,7 +429,14 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
     }
 
     /// <summary>Retains a planning-only diagnostic without repeating a timed-out native statement.</summary>
-    private static async Task<string> FailurePlanAsync(DbContext context, EnterpriseProbe capture)
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="capture">The command and materialization capture.</param>
+    private static async Task<string> FailurePlanAsync(
+        DbContext context,
+        EnterpriseProbe capture,
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -421,8 +452,8 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
                 command.Parameters.Add(parameter);
             }
 
-            await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
-            await reader.ReadAsync(CancellationToken.None);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            await reader.ReadAsync(cancellationToken);
 
             return reader.GetString(0);
         }
@@ -435,7 +466,14 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
     }
 
     /// <summary>Reads a native session-work counter on the same open measured connection.</summary>
-    private async Task<long> MariaSessionCounterAsync(DbContext context, string name)
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="name">The synthetic object or scenario name.</param>
+    private async Task<long> MariaSessionCounterAsync(
+        DbContext context,
+        string name,
+        CancellationToken cancellationToken
+    )
     {
         if (Engine != "MariaDb")
         {
@@ -452,9 +490,9 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
         parameter.ParameterName = "name";
         parameter.Value = name;
         command.Parameters.Add(parameter);
-        await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
-        if (!await reader.ReadAsync(CancellationToken.None))
+        if (!await reader.ReadAsync(cancellationToken))
         {
             throw new InvalidOperationException("MariaDB did not expose the requested native work counter.");
         }
@@ -478,11 +516,21 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
     }
 
     /// <summary>Seeds independently derived stars or chains without tracking a population of CLR entities.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="scope">The hierarchy scope used by the scenario.</param>
+    /// <param name="tree">The complete tree identity used by the scenario.</param>
+    /// <param name="forest">Whether the input spans multiple independent trees.</param>
+    /// <param name="dense">Whether the requested anchors cover the dense path.</param>
+    /// <param name="branching">The deterministic branch factor.</param>
+    /// <param name="balanced">Whether the synthetic hierarchy branches instead of forming a chain.</param>
+    /// <param name="nodes">The number of synthetic hierarchy nodes.</param>
     private static async Task SeedAsync(
         AncestorIndexQueryContext context,
         Guid scope,
         Guid tree,
         bool forest,
+        CancellationToken cancellationToken,
         bool dense = false,
         bool branching = false,
         bool balanced = false,
@@ -615,12 +663,12 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
             await context.Database.ExecuteSqlRawAsync(
                 sql.ToString(),
                 [scopeParameter, treeParameter],
-                CancellationToken.None);
+                cancellationToken);
         }
 
         var analyze = "ANALYZE TABLE " + table;
 
-        await context.Database.ExecuteSqlRawAsync(analyze, CancellationToken.None);
+        await context.Database.ExecuteSqlRawAsync(analyze, cancellationToken);
 
         return;
 

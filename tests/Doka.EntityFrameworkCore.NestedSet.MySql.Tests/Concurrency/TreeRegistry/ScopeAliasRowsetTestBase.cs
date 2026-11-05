@@ -21,7 +21,7 @@ public abstract class ScopeAliasRowsetTestBase : ProviderTest
     public async Task RowsetRejectsDatabaseEqualScopeAliases(int count)
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var entityType = context.Model.FindEntityType(typeof(TextNode))!;
         var requests = Enumerable.Range(0, count - 2)

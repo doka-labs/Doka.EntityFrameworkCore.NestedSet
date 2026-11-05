@@ -32,22 +32,30 @@ public sealed partial class AncestorIndexSafeMigrationTests : IClassFixture<Migr
     )
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync(engine);
+        await using var database = await CreateDatabaseAsync(engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var chain = database.Scaffold(true, "AncestorSafeInitial");
 
         // WHY: Index replay also has to work on an ordinary EF-created schema; it must not depend on
         // the optional adapter having created the table or adjusted SQLite's generated-column facets.
         var ordinary = database.Scaffold(true, "AncestorOrdinaryInitial", enableIntegration: false);
-        await database.MigrateAsync(ordinary, enableIntegration: false);
-        await database.PhysicalDatabase.SeedAsync();
+        await database.MigrateAsync(ordinary, enableIntegration: false,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await database.PhysicalDatabase.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext(assembly: chain.Assembly);
         var operation = AncestorOperation(chain, context);
-        var before = await database.PhysicalDatabase.ReadNodesAsync();
-        var indexesBefore = IndexSignatures(await database.PhysicalDatabase.ReadIndexesAsync());
+        var before = await database.PhysicalDatabase.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var indexesBefore = IndexSignatures(await database.PhysicalDatabase.ReadIndexesAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         // Act
-        await SafeMigrationTestServices.ExecuteOperationsAsync(context, [operation]);
+        await SafeMigrationTestServices.ExecuteOperationsAsync(context, [operation],
+            cancellationToken: TestContext.Current.CancellationToken);
         var report = await context
             .GetService<ISafeMigrationRunner>()
             .AnalyzeAsync(
@@ -56,8 +64,12 @@ public sealed partial class AncestorIndexSafeMigrationTests : IClassFixture<Migr
                 new SafeMigrationRunOptions("nested-set-ancestor-index-replay"),
                 CancellationToken.None);
 
-        var after = await database.PhysicalDatabase.ReadNodesAsync();
-        var indexesAfter = IndexSignatures(await database.PhysicalDatabase.ReadIndexesAsync());
+        var after = await database.PhysicalDatabase.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var indexesAfter = IndexSignatures(await database.PhysicalDatabase.ReadIndexesAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var historyAfter = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         // Assert
@@ -87,17 +99,25 @@ public sealed partial class AncestorIndexSafeMigrationTests : IClassFixture<Migr
     )
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync(engine);
+        await using var database = await CreateDatabaseAsync(engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var chain = database.Scaffold(true, "AncestorSafeInitial");
         var ordinary = database.Scaffold(true, "AncestorOrdinaryInitial", enableIntegration: false);
-        await database.MigrateAsync(ordinary, enableIntegration: false);
-        await database.PhysicalDatabase.SeedAsync();
+        await database.MigrateAsync(ordinary, enableIntegration: false,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await database.PhysicalDatabase.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext(assembly: chain.Assembly);
         var operation = AncestorOperation(chain, context);
         var definition = ((EnsureIndexIntent)operation.Intent).Definition;
-        await SafeMigrationTestServices.IntroduceIndexDriftAsync(context, definition, "entry_depth");
-        var before = await database.PhysicalDatabase.ReadNodesAsync();
-        var indexesBefore = IndexSignatures(await database.PhysicalDatabase.ReadIndexesAsync());
+        await SafeMigrationTestServices.IntroduceIndexDriftAsync(context, definition, "entry_depth",
+            cancellationToken: TestContext.Current.CancellationToken);
+        var before = await database.PhysicalDatabase.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var indexesBefore = IndexSignatures(await database.PhysicalDatabase.ReadIndexesAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         // Act
@@ -110,10 +130,15 @@ public sealed partial class AncestorIndexSafeMigrationTests : IClassFixture<Migr
                 CancellationToken.None);
 
         var exception = await Record.ExceptionAsync(() =>
-            SafeMigrationTestServices.ExecuteOperationsAsync(context, [operation]));
+            SafeMigrationTestServices.ExecuteOperationsAsync(context, [operation],
+                cancellationToken: TestContext.Current.CancellationToken));
 
-        var after = await database.PhysicalDatabase.ReadNodesAsync();
-        var indexesAfter = IndexSignatures(await database.PhysicalDatabase.ReadIndexesAsync());
+        var after = await database.PhysicalDatabase.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var indexesAfter = IndexSignatures(await database.PhysicalDatabase.ReadIndexesAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var historyAfter = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         // Assert
@@ -141,12 +166,18 @@ public sealed partial class AncestorIndexSafeMigrationTests : IClassFixture<Migr
     )
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync(engine);
+        await using var database = await CreateDatabaseAsync(engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var initial = database.Scaffold(false, "AOrdinarySafeInitial");
-        await database.MigrateAsync(initial, false);
-        await database.PhysicalDatabase.SeedAsync();
-        var before = await database.PhysicalDatabase.ReadNodesAsync();
-        var indexesBefore = IndexSignatures(await database.PhysicalDatabase.ReadIndexesAsync());
+        await database.MigrateAsync(initial, cancellationToken: TestContext.Current.CancellationToken, false);
+        await database.PhysicalDatabase.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var before = await database.PhysicalDatabase.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var indexesBefore = IndexSignatures(await database.PhysicalDatabase.ReadIndexesAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var upgrade = database.Scaffold(true, "BAddSafeAncestorIndex", initial);
         await using var context = database.CreateContext(assembly: upgrade.Assembly);
         var operations = upgrade
@@ -154,7 +185,8 @@ public sealed partial class AncestorIndexSafeMigrationTests : IClassFixture<Migr
             .UpOperations
             .ToArray();
 
-        var generatedColumnsBefore = await ReadGeneratedColumnCountAsync(context, engine);
+        var generatedColumnsBefore = await ReadGeneratedColumnCountAsync(context, engine,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var preflight = await context
@@ -164,19 +196,32 @@ public sealed partial class AncestorIndexSafeMigrationTests : IClassFixture<Migr
                 new SafeMigrationRunOptions("nested-set-populated-ancestor-upgrade"),
                 CancellationToken.None);
 
-        var afterPreflight = await database.PhysicalDatabase.ReadNodesAsync();
-        var indexesAfterPreflight = IndexSignatures(await database.PhysicalDatabase.ReadIndexesAsync());
+        var afterPreflight = await database.PhysicalDatabase.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var indexesAfterPreflight = IndexSignatures(await database.PhysicalDatabase.ReadIndexesAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var historyAfterPreflight =
             (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
-        var generatedColumnsAfterPreflight = await ReadGeneratedColumnCountAsync(context, engine);
-        await database.MigrateAsync(upgrade);
-        var after = await database.PhysicalDatabase.ReadNodesAsync();
-        var flags = await ReadFlagsAsync(context);
-        var schema = await ReadGeneratedColumnAsync(context, engine);
-        var indexes = await database.PhysicalDatabase.ReadIndexesAsync();
+        var generatedColumnsAfterPreflight = await ReadGeneratedColumnCountAsync(context, engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await database.MigrateAsync(upgrade, cancellationToken: TestContext.Current.CancellationToken);
+        var after = await database.PhysicalDatabase.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var flags = await ReadFlagsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        var schema = await ReadGeneratedColumnAsync(context, engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var indexes = await database.PhysicalDatabase.ReadIndexesAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var history = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
-        await SafeMigrationTestServices.ExecuteOperationsAsync(context, operations);
+        await SafeMigrationTestServices.ExecuteOperationsAsync(context, operations,
+            cancellationToken: TestContext.Current.CancellationToken);
         var report = await context
             .GetService<ISafeMigrationRunner>()
             .AnalyzeAsync(
@@ -185,10 +230,16 @@ public sealed partial class AncestorIndexSafeMigrationTests : IClassFixture<Migr
                 new SafeMigrationRunOptions("nested-set-populated-ancestor-replay"),
                 CancellationToken.None);
 
-        var afterReplay = await database.PhysicalDatabase.ReadNodesAsync();
-        var flagsAfterReplay = await ReadFlagsAsync(context);
-        var schemaAfterReplay = await ReadGeneratedColumnAsync(context, engine);
-        var indexesAfterReplay = IndexSignatures(await database.PhysicalDatabase.ReadIndexesAsync());
+        var afterReplay = await database.PhysicalDatabase.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var flagsAfterReplay = await ReadFlagsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        var schemaAfterReplay = await ReadGeneratedColumnAsync(context, engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var indexesAfterReplay = IndexSignatures(await database.PhysicalDatabase.ReadIndexesAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var historyAfterReplay = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         // Assert
@@ -230,7 +281,9 @@ public sealed partial class AncestorIndexSafeMigrationTests : IClassFixture<Migr
     )
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync(engine);
+        await using var database = await CreateDatabaseAsync(engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var chain = database.Scaffold(true, "AncestorSafeInitial");
         await using var context = database.CreateContext(assembly: chain.Assembly);
 
@@ -242,23 +295,32 @@ public sealed partial class AncestorIndexSafeMigrationTests : IClassFixture<Migr
                 new SafeMigrationRunOptions("nested-set-fresh-ancestor-column"),
                 CancellationToken.None);
 
-        var tablesAfterPreflight = await ReadHierarchyTableCountAsync(context, engine);
+        var tablesAfterPreflight = await ReadHierarchyTableCountAsync(context, engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var historyAfterPreflight =
             (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
-        await database.MigrateAsync(chain);
-        await database.PhysicalDatabase.SeedAsync();
-        var beforeReplay = await database.PhysicalDatabase.ReadNodesAsync();
-        var flags = await ReadFlagsAsync(context);
-        var schema = await ReadGeneratedColumnAsync(context, engine);
-        var indexes = await database.PhysicalDatabase.ReadIndexesAsync();
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
+        await database.PhysicalDatabase.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var beforeReplay = await database.PhysicalDatabase.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var flags = await ReadFlagsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        var schema = await ReadGeneratedColumnAsync(context, engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var indexes = await database.PhysicalDatabase.ReadIndexesAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var history = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
         var operations = chain
             .GetMigration(context, 0)
             .UpOperations
             .ToArray();
 
-        await SafeMigrationTestServices.ExecuteOperationsAsync(context, operations);
+        await SafeMigrationTestServices.ExecuteOperationsAsync(context, operations,
+            cancellationToken: TestContext.Current.CancellationToken);
         var replay = await context
             .GetService<ISafeMigrationRunner>()
             .AnalyzeAsync(
@@ -267,10 +329,16 @@ public sealed partial class AncestorIndexSafeMigrationTests : IClassFixture<Migr
                 new SafeMigrationRunOptions("nested-set-fresh-ancestor-replay"),
                 CancellationToken.None);
 
-        var afterReplay = await database.PhysicalDatabase.ReadNodesAsync();
-        var flagsAfterReplay = await ReadFlagsAsync(context);
-        var schemaAfterReplay = await ReadGeneratedColumnAsync(context, engine);
-        var indexesAfterReplay = IndexSignatures(await database.PhysicalDatabase.ReadIndexesAsync());
+        var afterReplay = await database.PhysicalDatabase.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var flagsAfterReplay = await ReadFlagsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        var schemaAfterReplay = await ReadGeneratedColumnAsync(context, engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var indexesAfterReplay = IndexSignatures(await database.PhysicalDatabase.ReadIndexesAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var historyAfterReplay = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         // Assert
@@ -302,10 +370,13 @@ public sealed partial class AncestorIndexSafeMigrationTests : IClassFixture<Migr
     public async Task OrdinarySqliteComputedFacetsRejectGuardedTableReplayWithoutMutation()
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync("Sqlite");
+        await using var database = await CreateDatabaseAsync("Sqlite",
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var chain = database.Scaffold(true, "AncestorOrdinaryInitial", enableIntegration: false);
-        await database.MigrateAsync(chain, enableIntegration: false);
-        await database.PhysicalDatabase.SeedAsync();
+        await database.MigrateAsync(chain, enableIntegration: false,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await database.PhysicalDatabase.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
         var guarded = database.Scaffold(true, "AncestorSafeInitial");
         await using var context = database.CreateContext(assembly: guarded.Assembly);
         var operation = Assert.Single(
@@ -315,9 +386,15 @@ public sealed partial class AncestorIndexSafeMigrationTests : IClassFixture<Migr
                 .OfType<SafeMigrationOperation>(),
             value => value.Intent is EnsureTableIntent { Definition.Table: MigrationContext.TableName });
 
-        var before = await database.PhysicalDatabase.ReadNodesAsync();
-        var schemaBefore = await ReadGeneratedColumnAsync(context, "Sqlite");
-        var indexesBefore = IndexSignatures(await database.PhysicalDatabase.ReadIndexesAsync());
+        var before = await database.PhysicalDatabase.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var schemaBefore = await ReadGeneratedColumnAsync(context, "Sqlite",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var indexesBefore = IndexSignatures(await database.PhysicalDatabase.ReadIndexesAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         // Act
@@ -330,11 +407,18 @@ public sealed partial class AncestorIndexSafeMigrationTests : IClassFixture<Migr
                 CancellationToken.None);
 
         var exception = await Record.ExceptionAsync(() =>
-            SafeMigrationTestServices.ExecuteOperationsAsync(context, [operation]));
+            SafeMigrationTestServices.ExecuteOperationsAsync(context, [operation],
+                cancellationToken: TestContext.Current.CancellationToken));
 
-        var after = await database.PhysicalDatabase.ReadNodesAsync();
-        var schemaAfter = await ReadGeneratedColumnAsync(context, "Sqlite");
-        var indexesAfter = IndexSignatures(await database.PhysicalDatabase.ReadIndexesAsync());
+        var after = await database.PhysicalDatabase.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var schemaAfter = await ReadGeneratedColumnAsync(context, "Sqlite",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var indexesAfter = IndexSignatures(await database.PhysicalDatabase.ReadIndexesAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var historyAfter = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         // Assert
@@ -354,11 +438,15 @@ public sealed partial class AncestorIndexSafeMigrationTests : IClassFixture<Migr
     }
 
     /// <summary>Configures both provider-specific adapter registration paths on an isolated database.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="engine">The selected database engine.</param>
     private Task<AncestorIndexDatabase> CreateDatabaseAsync(
-        string engine
+        string engine,
+        CancellationToken cancellationToken
     ) => AncestorIndexDatabase.CreateAsync(
         _fixture,
         engine,
+        cancellationToken: cancellationToken,
         options => SafeMigrationTestServices.ConfigureOptions(options, engine),
         SafeMigrationTestServices.ConfigureDesignServices);
 

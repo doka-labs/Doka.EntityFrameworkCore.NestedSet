@@ -19,14 +19,19 @@ public abstract partial class AncestorIndexQueryTests
         var probe = new CompositionCommandProbe();
         await using DbContext context = tpt
             ? await _fixture.CreateContextAsync<AncestorIndexTptQueryContext>(Engine,
-                static options => new AncestorIndexTptQueryContext(options), probe)
+                static options => new AncestorIndexTptQueryContext(options),
+                cancellationToken: TestContext.Current.CancellationToken,
+                probe)
             : await _fixture.CreateContextAsync<AncestorIndexMappedContext>(Engine,
-                static options => new AncestorIndexMappedContext(options), probe);
+                static options => new AncestorIndexMappedContext(options),
+                cancellationToken: TestContext.Current.CancellationToken,
+                probe);
 
         await SeedMappedQueryAsync<InheritanceNode>(context, tree, scope, first, includeSelf,
             depth => tpt
                 ? depth == 1 ? new TptMetricNode() : new TptFolderNode()
-                : depth == 1 ? new TphMetricNode() : new TphFolderNode());
+                : depth == 1 ? new TphMetricNode() : new TphFolderNode(),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<InheritanceNode>().InTree(tree);
         var query = includeSelf

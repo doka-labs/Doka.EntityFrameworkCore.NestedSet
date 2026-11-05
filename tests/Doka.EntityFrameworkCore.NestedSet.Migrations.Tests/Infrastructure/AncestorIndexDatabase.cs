@@ -31,15 +31,17 @@ public sealed class AncestorIndexDatabase : IAsyncDisposable
     /// <param name="engine">The actual provider engine.</param>
     /// <param name="configureOptions">Optional SafeMigrations runtime registration.</param>
     /// <param name="configureDesignServices">Optional SafeMigrations design-time registration.</param>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
     /// <returns>The isolated ancestor-index migration database.</returns>
     public static async Task<AncestorIndexDatabase> CreateAsync(
         MigrationFixture fixture,
         string engine,
+        CancellationToken cancellationToken,
         Action<DbContextOptionsBuilder>? configureOptions = null,
         Action<IServiceCollection, DbContext>? configureDesignServices = null
     )
     {
-        var database = await fixture.CreateDatabaseAsync(engine);
+        var database = await fixture.CreateDatabaseAsync(engine, cancellationToken: cancellationToken);
         await using var context = database.CreateContext();
         var connection = context.Database.GetConnectionString()
             ?? throw new InvalidOperationException("The migration fixture did not configure a connection string.");
@@ -181,9 +183,11 @@ public sealed class AncestorIndexDatabase : IAsyncDisposable
     /// <param name="adoptIndex">Whether the equivalent index belongs to the application.</param>
     /// <param name="enableIntegration">Whether optional runtime adapters participate.</param>
     /// <param name="splitStructure">Whether structural properties occupy a secondary split fragment.</param>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
     /// <returns>A task that completes when the provider migration finishes.</returns>
     public async Task MigrateAsync(
         MigrationChain chain,
+        CancellationToken cancellationToken,
         bool enabled = true,
         string? target = null,
         bool adoptIndex = false,
@@ -200,7 +204,7 @@ public sealed class AncestorIndexDatabase : IAsyncDisposable
 
         await context
             .GetService<IMigrator>()
-            .MigrateAsync(target, CancellationToken.None);
+            .MigrateAsync(target, cancellationToken);
     }
 
     /// <inheritdoc />

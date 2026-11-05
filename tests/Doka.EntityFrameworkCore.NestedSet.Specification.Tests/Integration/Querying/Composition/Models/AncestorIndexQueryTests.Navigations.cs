@@ -13,7 +13,9 @@ public abstract partial class AncestorIndexQueryTests
         var scope = Guid.NewGuid();
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, tree, probe);
+        await using var context = await CreateContextAsync(scope, tree, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNavigationNode>().ForScope(scope).InTree(tree);
         int[] expected = includeSelf ? [1, 2, 3] : [1, 2];
         string[] sourceTags = ["tag-3-1", "tag-3-2"];
@@ -70,7 +72,9 @@ public abstract partial class AncestorIndexQueryTests
         var scope = Guid.NewGuid();
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, tree, probe);
+        await using var context = await CreateContextAsync(scope, tree, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNavigationNode>().ForScope(scope).InTree(tree);
         int[] expected = includeSelf ? [1, 2, 3] : [1, 2];
         var query = includeSelf

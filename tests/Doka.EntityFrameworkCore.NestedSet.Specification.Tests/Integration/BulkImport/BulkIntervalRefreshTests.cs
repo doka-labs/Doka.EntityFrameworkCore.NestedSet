@@ -28,10 +28,10 @@ public abstract partial class BulkIntervalRefreshTests : ProviderTest
     public async Task AssignedSubtreeUsesOneScopedScalarRefresh()
     {
         // Arrange
-        var database = await _assigned.ResetAsync(Engine);
+        var database = await _assigned.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new BulkIntervalRefreshProbe(nameof(TreeNode));
         await using var context = database.CreateContext(probe);
-        await SeedAssignedAsync(context);
+        await SeedAssignedAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         context.SavedChanges += (_, _) => probe.Inserted = true;
         var tree = context
             .NestedSet<TreeNode>()
@@ -89,7 +89,10 @@ public abstract partial class BulkIntervalRefreshTests : ProviderTest
     {
         // Arrange
         var probe = new BulkIntervalRefreshProbe(nameof(BulkIntervalNode));
-        await using var context = await _generated.ResetAsync(Engine, probe);
+        await using var context = await _generated.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var parent = new BulkIntervalNode
         {
             Scope = 1,
@@ -185,7 +188,10 @@ public abstract partial class BulkIntervalRefreshTests : ProviderTest
     {
         // Arrange
         var probe = new BulkIntervalRefreshProbe("BulkGeneratedNodes");
-        await using var context = await _ordered.ResetAsync(Engine, probe);
+        await using var context = await _ordered.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var tree = context
             .NestedSet<BulkGeneratedNode>()
             .ForScope(1);
@@ -262,8 +268,10 @@ public abstract partial class BulkIntervalRefreshTests : ProviderTest
         .ToArray();
 
     /// <summary>Seeds one root with a neighboring child and an independently valid overlapping scoped tree.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task SeedAssignedAsync(
-        TreeContext context
+        TreeContext context,
+        CancellationToken cancellationToken
     )
     {
         await context.AddRangeAsync(
@@ -301,9 +309,9 @@ public abstract partial class BulkIntervalRefreshTests : ProviderTest
                     Depth = 1,
                 },
             ],
-            CancellationToken.None);
+            cancellationToken);
 
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
         context.ChangeTracker.Clear();
     }
 }

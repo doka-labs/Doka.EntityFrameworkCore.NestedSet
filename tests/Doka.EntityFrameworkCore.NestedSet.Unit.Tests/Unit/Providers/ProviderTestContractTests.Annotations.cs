@@ -128,7 +128,8 @@ public sealed partial class ProviderTestContractTests
         var suite = CreateNeutralProbe(attributes, parameterName: data ? "payload" : null, inherited: inherited);
 
         // Act
-        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, AssemblyName("Sqlite"));
+        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, AssemblyName("Sqlite"),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var error = Assert.Single(errors);
@@ -188,7 +189,8 @@ public sealed partial class ProviderTestContractTests
             .GetMethod("Probe0")!;
 
         // Act
-        var errors = await ProviderTestContract.FindSharedDataErrorsAsync(method);
+        var errors = await ProviderTestContract.FindSharedDataErrorsAsync(method,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(invalid, errors.Count > 0);

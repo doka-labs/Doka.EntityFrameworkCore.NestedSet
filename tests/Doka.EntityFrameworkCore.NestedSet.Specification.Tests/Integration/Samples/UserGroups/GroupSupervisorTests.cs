@@ -31,7 +31,7 @@ public abstract partial class GroupSupervisorTests : ProviderTest
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var request = data.Request(self ? App.SearchStart.IncludeSelf : App.SearchStart.ParentsOnly);
         probe.Enabled = true;
@@ -73,7 +73,7 @@ public abstract partial class GroupSupervisorTests : ProviderTest
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var request = data.Request(group: data.Groups[5]);
         var selection = App.SupervisorSelection.RequireUnique;
@@ -130,7 +130,7 @@ public abstract partial class GroupSupervisorTests : ProviderTest
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var request = data.Request(group: data.Groups[5]);
         if (shape == "hidden")
@@ -161,14 +161,17 @@ public abstract partial class GroupSupervisorTests : ProviderTest
     }
 
     /// <summary>Builds the real sample model within the already owned provider database.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="probe">The command and materialization observer for the consumer operation.</param>
     /// <param name="planProbe">An optional observer for provider query plans.</param>
     private Task<App.UserGroupContext> CreateAsync(
         SupervisorCommandProbe probe,
+        CancellationToken cancellationToken,
         EnterpriseProbe? planProbe = null
     )
         => _fixture.CreateContextAsync<App.UserGroupContext>(
             Engine,
             options => new App.UserGroupContext(options),
+            cancellationToken: cancellationToken,
             planProbe is null ? [probe] : [probe, planProbe]);
 }

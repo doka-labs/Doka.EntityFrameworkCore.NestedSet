@@ -21,7 +21,8 @@ public abstract class OffsetScopeTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<OffsetScopeContext>(
             Engine,
-            static options => new OffsetScopeContext(options));
+            static options => new OffsetScopeContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var firstScope = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
         var secondScope = firstScope.ToOffset(TimeSpan.FromHours(2));

@@ -13,7 +13,9 @@ public abstract partial class AncestorIndexQueryTests
         var scope = Guid.NewGuid();
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, tree, probe);
+        await using var context = await CreateContextAsync(scope, tree, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var source = context.Set<CompositionNavigationNode>().Where(node => node.Scope == scope && node.Id == 3);
         probe.Reset();
 
@@ -38,9 +40,12 @@ public abstract partial class AncestorIndexQueryTests
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
         await using var context = await _fixture.CreateContextAsync<AncestorIndexMappedContext>(Engine,
-            static options => new AncestorIndexMappedContext(options), probe);
+            static options => new AncestorIndexMappedContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
 
-        await SeedNamedQueriesAsync(context, tree, scope, first, includeSelf: true);
+        await SeedNamedQueriesAsync(context, tree, scope, first, includeSelf: true,
+            cancellationToken: TestContext.Current.CancellationToken);
         var hierarchy = context.NestedSet<Dictionary<string, object?>>(AncestorIndexMappedContext.First).InTree(tree);
         var foreign = context.NestedSet<Dictionary<string, object?>>(AncestorIndexMappedContext.Second).InTree(tree);
         var pairs = foreign.SelectAncestors(node => EF.Property<int>(node, NestedSetPropertyRoles.Depth) == 12,

@@ -1,5 +1,28 @@
 # Upgrade NestedSet packages
 
+## Upcoming change: explicit cancellation tokens
+
+Owned asynchronous operations require an explicit `CancellationToken` in the
+upcoming API contract. Source calls that previously omitted the argument must
+pass the operation's token. For entry points with no cancellation source, use
+`CancellationToken.None` deliberately:
+
+```csharp
+await hierarchy.InsertRootAsync(root, treeId, cancellationToken);
+await hierarchy.InTree(treeId).PlanRebuildAsync(CancellationToken.None);
+```
+
+The parameter still accepts None; the change requires an explicit choice rather
+than a cancelable token. Tokens keep their identity through execution, and
+pre-cancellation, rollback and retry guarantees are unchanged. The binary method
+signatures remain compatible with already compiled callers. The published
+`10.2.0` API baseline retains its historical optional parameters; the required
+signatures are recorded separately as unshipped changes.
+
+Actual EF/.NET overrides and interface implementations preserve the upstream
+optional parameter contract. Calls made through those base types and interfaces
+therefore remain optional; this exception does not apply to owned methods.
+
 ## Upgrade from 10.1.0 to 10.2.0
 
 `10.2.0` is an additive update on .NET/EF Core 10. Update all selected NestedSet

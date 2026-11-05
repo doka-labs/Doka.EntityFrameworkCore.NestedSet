@@ -21,7 +21,8 @@ public abstract class CompositeKeyTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<CompositeKeyContext>(
             Engine,
-            static options => new CompositeKeyContext(options));
+            static options => new CompositeKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context
             .NestedSet<CompositeKeyNode>()
@@ -76,7 +77,8 @@ public abstract class CompositeKeyTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<CompositeKeyContext>(
             Engine,
-            static options => new CompositeKeyContext(options));
+            static options => new CompositeKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var first = context
             .NestedSet<CompositeKeyNode>()
@@ -168,7 +170,8 @@ public abstract class CompositeKeyTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<CompositeKeyContext>(
             Engine,
-            static options => new CompositeKeyContext(options));
+            static options => new CompositeKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var first = context
             .NestedSet<CompositeKeyNode>()

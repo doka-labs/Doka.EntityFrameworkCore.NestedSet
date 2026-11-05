@@ -23,12 +23,16 @@ public sealed partial class SqliteQueryPlanTests : ProviderTest,
     public async Task RepairBatchQueryPlanUsesScopeAndNodeKeyConstraint()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var setup = database.CreateContext();
 
         // WHY: Fresh databases have no ANALYZE statistics. Repair must still seek its 64 keys instead of
         // traversing the entire tree for every batch, as it would during a large first-time rebuild.
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(4097), true);
+        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(4097),
+            cancellationToken: TestContext.Current.CancellationToken,
+            true);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
         var tree = context
@@ -45,9 +49,13 @@ public sealed partial class SqliteQueryPlanTests : ProviderTest,
             && command.Contains(nameof(TreeNode), StringComparison.Ordinal));
 
         Assert.InRange(commandIndex, 0, probe.Commands.Count - 1);
-        var plan = await ExplainAsync(setup, probe, commandIndex);
-        await QueryPlanTestSupport.WriteEvidenceAsync("Sqlite-typed-repair-plan", plan);
-        await QueryPlanTestSupport.WriteEvidenceAsync("Sqlite-typed-repair-update", [probe.Commands[commandIndex]]);
+        var plan = await ExplainAsync(setup, probe, commandIndex,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await QueryPlanTestSupport.WriteEvidenceAsync("Sqlite-typed-repair-plan", plan,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await QueryPlanTestSupport.WriteEvidenceAsync("Sqlite-typed-repair-update", [probe.Commands[commandIndex]],
+            cancellationToken: TestContext.Current.CancellationToken);
         AssertPointKeyPlan(plan, setup.Model.FindEntityType(typeof(TreeNode))!,
             nameof(TreeNode.NodeId), nameof(TreeNode.Tree));
     }
@@ -61,8 +69,9 @@ public sealed partial class SqliteQueryPlanTests : ProviderTest,
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await WriteAmplificationTestSupport.SeedAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await WriteAmplificationTestSupport.SeedAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext(probe);
         var service = context
@@ -123,13 +132,18 @@ public sealed partial class SqliteQueryPlanTests : ProviderTest,
     }
 
     /// <summary>Explains an observed SQLite command without executing its writes a second time.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="probe">The scenario-specific observation probe.</param>
+    /// <param name="commandIndex">The captured command selected for inspection.</param>
     private static async Task<List<string>> ExplainAsync(
         DbContext context,
         EnterpriseProbe probe,
-        int commandIndex
+        int commandIndex,
+        CancellationToken cancellationToken
     )
     {
-        await context.Database.OpenConnectionAsync(CancellationToken.None);
+        await context.Database.OpenConnectionAsync(cancellationToken);
         await using var command = context
             .Database
             .GetDbConnection()
@@ -148,9 +162,9 @@ public sealed partial class SqliteQueryPlanTests : ProviderTest,
         }
 
         var details = new List<string>();
-        await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
-        while (await reader.ReadAsync(CancellationToken.None))
+        while (await reader.ReadAsync(cancellationToken))
         {
             details.Add(reader.GetString(3));
         }

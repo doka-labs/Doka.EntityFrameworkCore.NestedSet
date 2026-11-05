@@ -65,7 +65,9 @@ public sealed class EngineMemberDataAttribute : MemberDataAttributeBase
     {
         var engine = EngineTestSelection.ResolveEngine(testMethod.ReflectedType!);
         var includeMember = EngineTestSelection.AppliesToEngine(engine, ExcludedEngines, Reason);
-        var rows = await GetSourceData(testMethod, disposalTracker).ConfigureAwait(false);
+        var rows = await GetSourceData(testMethod, disposalTracker,
+            cancellationToken: TestContext.Current.CancellationToken).ConfigureAwait(false);
+
         var included = new List<ITheoryDataRow>(rows.Count);
 
         foreach (var row in rows)
@@ -84,11 +86,17 @@ public sealed class EngineMemberDataAttribute : MemberDataAttributeBase
     }
 
     /// <summary>Reads unfiltered rows once so guards can inspect every explicit exclusion.</summary>
+    /// <param name="testMethod">The concrete reflected theory method.</param>
+    /// <param name="disposalTracker">The runner's owner for data-row resources.</param>
+    /// <param name="cancellationToken">The caller's token checked before framework data dispatch.</param>
     public ValueTask<IReadOnlyCollection<ITheoryDataRow>> GetSourceData(
         MethodInfo testMethod,
-        DisposalTracker disposalTracker
+        DisposalTracker disposalTracker,
+        CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         // WHY: Inherited static factories belong to the concrete reflected suite unless MemberType overrides it.
         MemberType ??= testMethod.ReflectedType;
 

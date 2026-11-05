@@ -21,10 +21,12 @@ public abstract partial class AncestorIndexWorkTestBase
         await using var context = await _fixture.CreateContextAsync<AncestorIndexQueryContext>(
             Engine,
             static options => new AncestorIndexQueryContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             commands,
             capture);
 
-        await SeedAsync(context, scope, tree, forest: false, branching: true);
+        await SeedAsync(context, scope, tree, forest: false, branching: true,
+            cancellationToken: TestContext.Current.CancellationToken);
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         var selected = Enumerable
             .Range(0, sources)
@@ -73,8 +75,12 @@ public abstract partial class AncestorIndexWorkTestBase
                 node => Enumerable.Contains(selected, node.Id),
                 (node, owner, distance) => new Pair(node.Id, owner.Id, distance));
 
-        var traversalsBefore = await NativeTraversalCounterAsync(context);
-        var indexAttemptsBefore = await MariaSessionCounterAsync(context, "Handler_icp_attempts");
+        var traversalsBefore = await NativeTraversalCounterAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var indexAttemptsBefore = await MariaSessionCounterAsync(context, "Handler_icp_attempts",
+            cancellationToken: TestContext.Current.CancellationToken);
+
         commands.Reset();
         capture.Commands.Clear();
         capture.ParameterValues.Clear();
@@ -103,8 +109,12 @@ public abstract partial class AncestorIndexWorkTestBase
 
         var commandCount = commands.CommandCount;
         var sql = capture.Commands.Single();
-        var indexAttempts = await MariaSessionCounterAsync(context, "Handler_icp_attempts") - indexAttemptsBefore;
-        var traversals = await NativeTraversalCounterAsync(context) - traversalsBefore;
+        var indexAttempts = await MariaSessionCounterAsync(context, "Handler_icp_attempts",
+            cancellationToken: TestContext.Current.CancellationToken) - indexAttemptsBefore;
+
+        var traversals = await NativeTraversalCounterAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken) - traversalsBefore;
+
         var completedRead = $"CompletedRows={count}; expectedRows={expected}; commands={commandCount}; "
             + $"sourceBinding={hasBinding}; orderedJoin={hasOrderedJoin}; optimized={hasOptimizedPath}; "
             + $"indexAttempts={indexAttempts}; traversals={traversals}.";
@@ -114,13 +124,14 @@ public abstract partial class AncestorIndexWorkTestBase
         _output.WriteLine(completedRead);
         await QueryPlanTestSupport.WriteEvidenceAsync(
             Engine + "-ancestor-index-multi-branch-inclusive-completed-read",
-            [completedRead, sql]);
+            [completedRead, sql], cancellationToken: TestContext.Current.CancellationToken);
 
         string plan;
 
         try
         {
-            plan = await Specifications.QueryPlanTestSupport.ExplainAsync(context, capture, 0, Engine);
+            plan = await Specifications.QueryPlanTestSupport.ExplainAsync(context, capture, 0, Engine,
+                cancellationToken: TestContext.Current.CancellationToken);
         }
         catch (Exception exception)
         {
@@ -131,8 +142,8 @@ public abstract partial class AncestorIndexWorkTestBase
                     exception.GetType().FullName
                     ?? exception.GetType().Name,
                     sql,
-                    await FailurePlanAsync(context, capture)
-                ]);
+                    await FailurePlanAsync(context, capture, cancellationToken: TestContext.Current.CancellationToken)
+                ], cancellationToken: TestContext.Current.CancellationToken);
 
             throw;
         }
@@ -157,7 +168,7 @@ public abstract partial class AncestorIndexWorkTestBase
                 + $"materializedOutput={work.MaterializedOutput}; unknownMaterializedOutputs={work.UnknownMaterializedOutputs}",
                 sql,
                 plan,
-            ]);
+            ], cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         _output.WriteLine($"Rows={count}; binding={hasBinding}; orderedJoin={hasOrderedJoin}; "

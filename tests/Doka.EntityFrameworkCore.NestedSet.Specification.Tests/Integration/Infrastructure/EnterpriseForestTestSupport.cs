@@ -39,14 +39,16 @@ internal static class EnterpriseForestTestSupport
         .ToArray();
 
     /// <summary>Persists fixture data and releases setup-owned tracker entries before an observed operation.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     internal static async Task SeedForestAsync(
         TreeContext context,
         TreeNode[] nodes,
+        CancellationToken cancellationToken,
         bool corrupt = false
     )
     {
-        await context.AddRangeAsync(nodes, CancellationToken.None);
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await context.AddRangeAsync(nodes, cancellationToken);
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
         context.ChangeTracker.Clear();
 
         if (corrupt)
@@ -58,7 +60,7 @@ internal static class EnterpriseForestTestSupport
                         .SetProperty(node => node.Start, 1)
                         .SetProperty(node => node.End, 2)
                         .SetProperty(node => node.Depth, 0),
-                    CancellationToken.None);
+                    cancellationToken);
         }
     }
 }

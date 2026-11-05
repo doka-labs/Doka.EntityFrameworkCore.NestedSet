@@ -1,3 +1,4 @@
+using System.Threading;
 using Doka.EntityFrameworkCore.NestedSet;
 using Doka.NestedSet.PackageConsumers;
 using Microsoft.EntityFrameworkCore;
@@ -7,4 +8,4 @@ options.UseSqlServer(
     "Server=127.0.0.1;Database=candidate;User ID=unused;Password=unused;Encrypt=false;Pooling=false",
     sqlServer => sqlServer.UseNestedSets());
 
-await ConsumerContext.VerifyQueryAsync(options.Options);
+await ConsumerContext.VerifyQueryAsync(options.Options, CancellationToken.None);

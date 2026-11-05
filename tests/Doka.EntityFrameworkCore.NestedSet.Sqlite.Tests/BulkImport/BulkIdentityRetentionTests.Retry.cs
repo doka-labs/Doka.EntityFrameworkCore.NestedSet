@@ -18,7 +18,9 @@ public sealed partial class BulkIdentityRetentionTests
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
@@ -76,10 +78,10 @@ public sealed partial class BulkIdentityRetentionTests
             }
         };
 
-        var rejection = await Record.ExceptionAsync(Import);
+        var rejection = await Record.ExceptionAsync(() => Import(TestContext.Current.CancellationToken));
 
         // Act
-        await Import();
+        await Import(cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(
@@ -93,7 +95,7 @@ public sealed partial class BulkIdentityRetentionTests
 
         return;
 
-        Task Import() => binary
+        Task Import(CancellationToken cancellationToken) => binary
             ? context
                 .NestedSet<BinaryNode>()
                 .ForScope<byte[]>([1])
@@ -103,7 +105,7 @@ public sealed partial class BulkIdentityRetentionTests
                             Guid.Empty,
                             new NestedSetBranch<BinaryNode>(bufferNode))
                     ],
-                    CancellationToken.None)
+                    cancellationToken)
             : context
                 .NestedSet<MutableNode>()
                 .ForScope(new MutableIdentity("scope"))
@@ -113,7 +115,7 @@ public sealed partial class BulkIdentityRetentionTests
                             Guid.Empty,
                             new NestedSetBranch<MutableNode>(classNode))
                     ],
-                    CancellationToken.None);
+                    cancellationToken);
     }
 
     /// <summary>A callback that corrupts EF's mutable hash key receives an explicit context-disposal error.</summary>
@@ -126,7 +128,9 @@ public sealed partial class BulkIdentityRetentionTests
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
@@ -155,7 +159,8 @@ public sealed partial class BulkIdentityRetentionTests
         };
 
         // Act
-        var result = await ImportMutableAsync(context, binary: false);
+        var result = await ImportMutableAsync(context, binary: false,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var errors = Assert

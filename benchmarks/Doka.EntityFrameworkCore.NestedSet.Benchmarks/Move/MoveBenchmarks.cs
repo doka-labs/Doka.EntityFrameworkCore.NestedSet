@@ -25,29 +25,29 @@ public class MoveBenchmarks : DatabaseBenchmark
     }
 
     /// <inheritdoc />
-    public override async Task PrepareAsync()
+    public override async Task PrepareAsync(CancellationToken cancellationToken)
     {
         _moved = 0;
-        await base.PrepareAsync();
+        await base.PrepareAsync(cancellationToken);
     }
 
     /// <inheritdoc />
-    public override async Task VerifyAsync()
+    public override async Task VerifyAsync(CancellationToken cancellationToken)
     {
         var node = await Fixture
             .Context
             .Nodes
             .AsNoTracking()
-            .SingleAsync(value => value.Id == _moved, CancellationToken.None);
+            .SingleAsync(value => value.Id == _moved, cancellationToken);
 
         BenchmarkFixture.Require(
             node is { ParentId: 1, Left: 2, Position: 0 },
             "Move remained a no-op or used the wrong placement.");
 
         BenchmarkFixture.Require(
-            await Fixture.Context.Nodes.CountAsync(CancellationToken.None) == Nodes,
+            await Fixture.Context.Nodes.CountAsync(cancellationToken) == Nodes,
             "Move changed the forest size.");
 
-        await base.VerifyAsync();
+        await base.VerifyAsync(cancellationToken);
     }
 }

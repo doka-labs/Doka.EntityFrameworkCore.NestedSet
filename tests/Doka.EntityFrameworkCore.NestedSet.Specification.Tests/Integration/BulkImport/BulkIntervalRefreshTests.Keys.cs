@@ -8,7 +8,10 @@ public abstract partial class BulkIntervalRefreshTests
     {
         // Arrange
         var probe = new BulkIntervalRefreshProbe(nameof(BulkStageTextNode));
-        await using var context = await _generated.ResetAsync(Engine, probe);
+        await using var context = await _generated.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var input = new BulkStageTextNode
         {
             Id = "C",
@@ -54,7 +57,10 @@ public abstract partial class BulkIntervalRefreshTests
     {
         // Arrange
         var probe = new BulkIntervalRefreshProbe(nameof(BulkStageBinaryParent));
-        await using var context = await _generated.ResetAsync(Engine, probe);
+        await using var context = await _generated.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var input = new BulkStageBinaryParent
         {
             Id = [1],
@@ -108,7 +114,10 @@ public abstract partial class BulkIntervalRefreshTests
     {
         // Arrange
         var probe = new BulkIntervalRefreshProbe(nameof(BulkStageBinaryParent));
-        await using var context = await _generated.ResetAsync(Engine, probe);
+        await using var context = await _generated.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var input = new BulkStageBinaryParent
         {
             Id = [1],

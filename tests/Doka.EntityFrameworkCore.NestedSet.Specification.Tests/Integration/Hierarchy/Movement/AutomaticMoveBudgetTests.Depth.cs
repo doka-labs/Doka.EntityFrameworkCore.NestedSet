@@ -11,10 +11,16 @@ public abstract partial class AutomaticMoveBudgetTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine, mode);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine, mode, probe);
+        await using var context = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode, probe);
+
         var tree = context
             .NestedSet<OrderingNode>()
             .ForScope(1);

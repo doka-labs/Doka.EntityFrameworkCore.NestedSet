@@ -11,12 +11,15 @@ internal interface IDatabaseBenchmark
     void Initialize();
 
     /// <summary>Prepares seeded inputs outside measured work.</summary>
-    Task PrepareAsync();
+    /// <param name="cancellationToken">Cancellation for database reset and fixture preparation.</param>
+    Task PrepareAsync(CancellationToken cancellationToken);
 
     /// <summary>Verifies the measured operation after timing and allocation observation stop.</summary>
-    Task VerifyAsync();
+    /// <param name="cancellationToken">Cancellation for the verification reads.</param>
+    Task VerifyAsync(CancellationToken cancellationToken);
 
     /// <summary>Releases only resources owned by the isolated benchmark child.</summary>
+    /// <remarks>Cleanup is deliberately independent of the operation's cancellation.</remarks>
     Task CleanupAsync();
 
     /// <summary>Gets operation-only observations for the existing untimed diagnostic pass.</summary>

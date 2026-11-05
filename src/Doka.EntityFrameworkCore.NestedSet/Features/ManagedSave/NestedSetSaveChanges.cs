@@ -104,7 +104,7 @@ internal static partial class NestedSetSaveChanges
         DbContext context,
         bool acceptAllChangesOnSuccess,
         Func<CancellationToken, Task<int>> saveChanges,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
     {
         ArgumentNullException.ThrowIfNull(context);

@@ -36,7 +36,7 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         if (profile is "priority-tie" or "rank-tie")
         {
@@ -117,9 +117,12 @@ public abstract partial class GroupSupervisorTests
         const int people = 1_000;
         var probe = new SupervisorCommandProbe();
         var plans = new EnterpriseProbe(captureParameterBindings: true);
-        await using var context = await CreateAsync(probe, plans);
+        await using var context = await CreateAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            plans);
+
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await SeedFanInAsync(context, data, people);
+        await SeedFanInAsync(context, data, people, cancellationToken: TestContext.Current.CancellationToken);
         var request = data.Request(App.SearchStart.IncludeSelf, data.Groups[5]) with
         {
             Roles = new App.NoRoleFilter(), Matches = [], OnDay = null,
@@ -130,8 +133,9 @@ public abstract partial class GroupSupervisorTests
         if (Engine is "MySql" or "MariaDb")
         {
             await context.Database.OpenConnectionAsync(CancellationToken.None);
-            _ = await CalibrateRankingHandlersAsync(context, data.Users[0]);
-            before = await ReadRankingHandlersAsync(context);
+            _ = await CalibrateRankingHandlersAsync(context, data.Users[0],
+                cancellationToken: TestContext.Current.CancellationToken);
+            before = await ReadRankingHandlersAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         }
 
         var commandIndex = plans.Commands.Count;
@@ -146,13 +150,17 @@ public abstract partial class GroupSupervisorTests
         var commands = probe.Commands.Count;
         var readerAdvances = probe.ReaderAdvances;
         probe.Enabled = false;
-        var handlers = before is null ? null : RankingHandlerDelta(before, await ReadRankingHandlersAsync(context));
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, plans, commandIndex, Engine);
+        var handlers = before is null ? null : RankingHandlerDelta(before, await ReadRankingHandlersAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        var plan = await QueryPlanTestSupport.ExplainAsync(context, plans, commandIndex, Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await QueryPlanTestSupport.WriteEvidenceAsync(
             $"{Engine}-usergroups-single-group-witness-{typeFirst}",
             [$"People={people}; elapsed={elapsed.TotalMilliseconds:F3} ms; readers={commands}; "
                 + $"readerAdvances={readerAdvances}; SESSION requests={FormatRankingHandlers(handlers)}",
-                plans.Commands[commandIndex], plan]);
+                plans.Commands[commandIndex], plan], cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(App.SupervisorResolutionStatus.Ambiguous, Assert.Single(result.Origins).Status);

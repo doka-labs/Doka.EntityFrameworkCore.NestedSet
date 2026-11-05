@@ -232,7 +232,8 @@ public sealed class CompositionEndpointProvenanceTests
         var foreignScope = Guid.NewGuid();
         var treeId = Guid.NewGuid();
         var foreignTreeId = Guid.NewGuid();
-        await SeedAsync(context, scope, foreignScope, treeId, foreignTreeId);
+        await SeedAsync(context, scope, foreignScope, treeId, foreignTreeId,
+            cancellationToken: TestContext.Current.CancellationToken);
         var tree = context
             .NestedSet<CompositionNode>()
             .ForScope(scope)
@@ -345,12 +346,19 @@ public sealed class CompositionEndpointProvenanceTests
         };
 
     /// <summary>Seeds matching keys in a foreign scope and a foreign tree alongside one hidden local node.</summary>
+    /// <param name="context">The context used by this fixture operation.</param>
+    /// <param name="scope">The primary scope populated by the fixture.</param>
+    /// <param name="foreignScope">A separate scope used to reject foreign provenance.</param>
+    /// <param name="treeId">The primary tree identity.</param>
+    /// <param name="foreignTreeId">A separate tree identity used to reject foreign provenance.</param>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
     private static async Task SeedAsync(
         CompositionContext context,
         Guid scope,
         Guid foreignScope,
         Guid treeId,
-        Guid foreignTreeId
+        Guid foreignTreeId,
+        CancellationToken cancellationToken
     )
     {
         // WHY: Use the node ordinal to seed matching identities and bounds in both compared trees.
@@ -370,7 +378,7 @@ public sealed class CompositionEndpointProvenanceTests
                 Visible = id != 2,
             };
 
-            await context.AddAsync(node, CancellationToken.None);
+            await context.AddAsync(node, cancellationToken);
         }
 
         await context.AddRangeAsync([
@@ -391,9 +399,9 @@ public sealed class CompositionEndpointProvenanceTests
                     Right = 2,
                 },
             ],
-            CancellationToken.None);
+            cancellationToken);
 
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
         context.ChangeTracker.Clear();
     }
 

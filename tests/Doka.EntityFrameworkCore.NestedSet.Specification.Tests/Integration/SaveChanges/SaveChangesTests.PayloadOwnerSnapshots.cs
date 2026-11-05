@@ -24,10 +24,16 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedPayloadOwnersAsync(database, assigned: true);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedPayloadOwnersAsync(database, assigned: true,
+            cancellationToken: TestContext.Current.CancellationToken);
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped, probe);
+        await using var context = await CreateNavigationContextAsync(database, wrapped,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var node = await context.Set<NavigationNode>().SingleAsync(value => value.Id == 2, CancellationToken.None);
         var target = await context.Set<NavigationPayloadOwner>().Include(value => value.Nodes)
             .SingleAsync(value => value.Scope == node.Scope && value.Id == 2, CancellationToken.None);
@@ -58,9 +64,11 @@ public abstract partial class SaveChangesTests
         target.Nodes.Add(node);
         var snapshotBefore = PayloadOwnerSnapshotContains(context, target, node);
         // WHY: This first save is the persistence precondition for testing a later detached collection member.
-        await SaveNavigationAsync(context, synchronous);
+        await SaveNavigationAsync(context, synchronous, cancellationToken: TestContext.Current.CancellationToken);
         var snapshotAfter = PayloadOwnerSnapshotContains(context, target, node);
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var storedAfterSave = await verification.Set<NavigationNode>().Where(value => value.Id == node.Id)
             .Select(value => new { value.Name, value.PayloadOwnerId }).SingleAsync(CancellationToken.None);
 
@@ -69,7 +77,9 @@ public abstract partial class SaveChangesTests
         var writesBeforeFollowup = probe.Writes;
 
         // Act
-        var error = await Record.ExceptionAsync(() => SaveNavigationAsync(context, synchronous));
+        var error = await Record.ExceptionAsync(() => SaveNavigationAsync(context, synchronous,
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var storedNote = await verification.Set<NavigationNote>().Select(value => value.Value)
             .SingleAsync(CancellationToken.None);
 
@@ -111,17 +121,24 @@ public abstract partial class SaveChangesTests
     public async Task PayloadOwnerSnapshotExcludesPostPersistenceCallbackMutation(bool coordinated)
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedPayloadOwnersAsync(database, assigned: true);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        await using (var setup = await CreateNavigationContextAsync(database, wrapped: true))
+        await SeedPayloadOwnersAsync(database, assigned: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using (var setup = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken))
         {
             await setup.AddAsync(new NavigationPayloadOwner { Scope = 1, Id = 3 }, CancellationToken.None);
             await setup.SaveChangesAsync(CancellationToken.None);
         }
 
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, probe);
+        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var node = await context.Set<NavigationNode>().SingleAsync(value => value.Id == 2, CancellationToken.None);
         var owners = await context.Set<NavigationPayloadOwner>().Include(value => value.Nodes)
             .Where(value => value.Scope == node.Scope).ToArrayAsync(CancellationToken.None);
@@ -156,7 +173,9 @@ public abstract partial class SaveChangesTests
         context.SavedChanges -= completion;
         var savedSnapshot = PayloadOwnerSnapshotContains(context, target, node);
         var callbackSnapshot = PayloadOwnerSnapshotContains(context, callbackTarget, node);
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var storedAfterSave = await verification.Set<NavigationNode>().Where(value => value.Id == node.Id)
             .Select(value => value.PayloadOwnerId).SingleAsync(CancellationToken.None);
 
@@ -195,10 +214,14 @@ public abstract partial class SaveChangesTests
     public async Task PayloadOwnerSnapshotExcludesCommandCompletionMutation(bool coordinated)
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedPayloadOwnersAsync(database, assigned: true);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        await using (var setup = await CreateNavigationContextAsync(database, wrapped: true))
+        await SeedPayloadOwnersAsync(database, assigned: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using (var setup = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken))
         {
             await setup.AddAsync(new NavigationPayloadOwner { Scope = 1, Id = 3 }, CancellationToken.None);
             await setup.SaveChangesAsync(CancellationToken.None);
@@ -206,7 +229,10 @@ public abstract partial class SaveChangesTests
 
         var callback = new PayloadOwnerCommandCallback();
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, callback, probe);
+        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            callback, probe);
+
         var node = await context.Set<NavigationNode>().SingleAsync(value => value.Id == 2, CancellationToken.None);
         var owners = await context.Set<NavigationPayloadOwner>().Include(value => value.Nodes)
             .Where(value => value.Scope == node.Scope).ToArrayAsync(CancellationToken.None);
@@ -239,7 +265,9 @@ public abstract partial class SaveChangesTests
         await context.SaveChangesAsync(CancellationToken.None);
         var savedSnapshot = PayloadOwnerSnapshotContains(context, target, node);
         var callbackSnapshot = PayloadOwnerSnapshotContains(context, callbackTarget, node);
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var storedAfterSave = await verification.Set<NavigationNode>().Where(value => value.Id == node.Id)
             .Select(value => value.PayloadOwnerId).SingleAsync(CancellationToken.None);
 

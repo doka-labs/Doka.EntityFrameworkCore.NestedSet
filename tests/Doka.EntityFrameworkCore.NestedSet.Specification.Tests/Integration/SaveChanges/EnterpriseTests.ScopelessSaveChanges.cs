@@ -7,7 +7,7 @@ public abstract partial class EnterpriseTests
     public async Task ScopelessParentChangeUsesTreeIdentity()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context.NestedSet<UnscopedQueryNode>();
         var treeId = Guid.NewGuid();

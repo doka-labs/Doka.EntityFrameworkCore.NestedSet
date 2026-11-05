@@ -20,7 +20,7 @@ public sealed class WideRowsetLockTests : ProviderTest,
     public async Task OppositeWideRequestsCompleteWithoutDeadlock()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var treeIds = Enumerable.Range(0, 256).Select(_ => Guid.NewGuid()).ToArray();
         await using (var setup = database.CreateContext())
         {

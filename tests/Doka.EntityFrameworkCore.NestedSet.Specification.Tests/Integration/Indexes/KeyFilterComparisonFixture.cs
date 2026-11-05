@@ -13,18 +13,24 @@ public sealed class KeyFilterComparisonFixture : IAsyncLifetime
 
     /// <summary>Resets the original mutable database used by native-type and collection-mode cases.</summary>
     /// <param name="engine">The immutable engine supplied by the consuming provider fixture.</param>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     /// <returns>The existing class-owned database with empty rows.</returns>
     internal Task<TestDatabase> ResetAsync(
-        string engine
-    ) => _resettable.ResetAsync(engine);
+        string engine,
+        CancellationToken cancellationToken
+    ) => _resettable.ResetAsync(engine, cancellationToken: cancellationToken);
 
     /// <summary>Returns the same read-only seed without allowing sibling resets to invalidate it.</summary>
     /// <param name="engine">The immutable engine supplied by the consuming provider fixture.</param>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     /// <returns>The fixture-owned database; each case owns only its newly created context.</returns>
     internal Task<TestDatabase> ComparisonAsync(
-        string engine
+        string engine,
+        CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (_engine is not null
             && _engine != engine)
         {
@@ -32,9 +38,16 @@ public sealed class KeyFilterComparisonFixture : IAsyncLifetime
         }
 
         _engine = engine;
+
+        if (_comparison is { IsCanceled: true } or { IsFaulted: true })
+        {
+            // WHY: Canceled initialization already released its database; later cases may create a fresh seed.
+            _comparison = null;
+        }
+
         // WHY: Collection-mode and native-type cases reset their original database in arbitrary discovery order.
         // One separate immutable database avoids sixteen seeds without coupling cases to execution order.
-        return _comparison ??= CreateComparisonAsync(engine);
+        return _comparison ??= CreateComparisonAsync(engine, cancellationToken: cancellationToken);
     }
 
     /// <summary>Retains copied evidence in the original cardinality and representation order.</summary>
@@ -63,6 +76,7 @@ public sealed class KeyFilterComparisonFixture : IAsyncLifetime
     public ValueTask DisposeAsync() => QueryPlanTestSupport.CompleteFixtureAsync(WriteEvidenceAsync, CleanupAsync);
 
     /// <summary>Writes the complete comparison artifact only when this suite observed comparison cases.</summary>
+    // WHY: This callback is terminal teardown; request cancellation must not discard its retained evidence.
     private Task WriteEvidenceAsync() => _evidence.Count == 0
         ? Task.CompletedTask
         : QueryPlanTestSupport.WriteEvidenceAsync(
@@ -70,7 +84,7 @@ public sealed class KeyFilterComparisonFixture : IAsyncLifetime
             _evidence
                 .Values
                 .SelectMany(entries => entries)
-                .ToArray());
+                .ToArray(), cancellationToken: CancellationToken.None);
 
     /// <summary>Returns both owned database cleanups without wrapping away a secondary task failure.</summary>
     private Task CleanupAsync()
@@ -92,11 +106,13 @@ public sealed class KeyFilterComparisonFixture : IAsyncLifetime
     }
 
     /// <summary>Seeds all four mapped key representations exactly once using the existing server owner.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task<TestDatabase> CreateComparisonAsync(
-        string engine
+        string engine,
+        CancellationToken cancellationToken
     )
     {
-        var database = await TestDatabase.CreateAsync(engine);
+        var database = await TestDatabase.CreateAsync(engine, cancellationToken: cancellationToken);
 
         try
         {
@@ -117,7 +133,7 @@ public sealed class KeyFilterComparisonFixture : IAsyncLifetime
                         Start = 1,
                         End = 2
                     },
-                    CancellationToken.None);
+                    cancellationToken);
 
                 await context.AddAsync(
                     new GuidNode
@@ -128,7 +144,7 @@ public sealed class KeyFilterComparisonFixture : IAsyncLifetime
                         Left = 1,
                         Right = 2
                     },
-                    CancellationToken.None);
+                    cancellationToken);
 
                 await context.AddAsync(
                     new BinaryNode
@@ -139,7 +155,7 @@ public sealed class KeyFilterComparisonFixture : IAsyncLifetime
                         Left = 1,
                         Right = 2,
                     },
-                    CancellationToken.None);
+                    cancellationToken);
 
                 await context.AddAsync(
                     new TextNode
@@ -150,14 +166,18 @@ public sealed class KeyFilterComparisonFixture : IAsyncLifetime
                         Left = 1,
                         Right = 2
                     },
-                    CancellationToken.None);
+                    cancellationToken);
             }
 
-            await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
-            await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(context, engine);
-            await QueryPlanTestSupport.RefreshStatisticsAsync<GuidNode>(context, engine);
-            await QueryPlanTestSupport.RefreshStatisticsAsync<BinaryNode>(context, engine);
-            await QueryPlanTestSupport.RefreshStatisticsAsync<TextNode>(context, engine);
+            await context.SavePrecomputedHierarchyAsync(cancellationToken);
+            await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(context, engine,
+                cancellationToken: cancellationToken);
+            await QueryPlanTestSupport.RefreshStatisticsAsync<GuidNode>(context, engine,
+                cancellationToken: cancellationToken);
+            await QueryPlanTestSupport.RefreshStatisticsAsync<BinaryNode>(context, engine,
+                cancellationToken: cancellationToken);
+            await QueryPlanTestSupport.RefreshStatisticsAsync<TextNode>(context, engine,
+                cancellationToken: cancellationToken);
 
             return database;
         }

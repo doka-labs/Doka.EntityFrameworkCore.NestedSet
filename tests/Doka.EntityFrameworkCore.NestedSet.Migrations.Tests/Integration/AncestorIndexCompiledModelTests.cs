@@ -31,9 +31,11 @@ public sealed class AncestorIndexCompiledModelTests
     )
     {
         // Arrange
-        await using var database = await AncestorIndexDatabase.CreateAsync(_fixture, engine);
+        await using var database = await AncestorIndexDatabase.CreateAsync(_fixture, engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var chain = database.Scaffold(true, "AncestorCompiledInitial");
-        await database.MigrateAsync(chain);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
         await using var design = database.CreateContext();
         var model = CompiledModelTestSupport.Generate(design);
         await using var context = database.CreateContext(model: model);

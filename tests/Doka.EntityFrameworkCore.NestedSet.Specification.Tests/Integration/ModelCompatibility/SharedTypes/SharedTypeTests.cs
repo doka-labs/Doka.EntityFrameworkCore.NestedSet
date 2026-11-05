@@ -15,7 +15,8 @@ public abstract class SharedTypeTests : ProviderTest
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<SharedTypeContext>(
-            Engine, static options => new SharedTypeContext(options));
+            Engine, static options => new SharedTypeContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var treeId = Guid.NewGuid();
         var root = Node(1, "Root");

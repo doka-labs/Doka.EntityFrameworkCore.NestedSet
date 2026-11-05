@@ -16,7 +16,7 @@ public sealed partial class NullableParentIndexTests
     )
     {
         var connection = context.Database.GetDbConnection();
-        var before = await PreparedSessionAsync(context, name);
+        var before = await PreparedSessionAsync(context, name, cancellationToken: cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(CancellationToken.None);
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
@@ -60,12 +60,12 @@ public sealed partial class NullableParentIndexTests
                 // WHY: An execution error aborts the owned transaction; DEALLOCATE must run after rollback.
                 if (prepared)
                 {
-                    await PreparedControlAsync(context, $"DEALLOCATE {name}");
+                    await PreparedControlAsync(context, $"DEALLOCATE {name}", cancellationToken: cancellationToken);
                 }
             }
         }
 
-        var after = await PreparedSessionAsync(context, name);
+        var after = await PreparedSessionAsync(context, name, cancellationToken: cancellationToken);
         await QueryPlanTestSupport.WriteEvidenceAsync(
             "PostgreSql-generic-" + name,
             [
@@ -73,7 +73,7 @@ public sealed partial class NullableParentIndexTests
                 $"generic_plans={generic}\ncustom_plans={custom}\nfrom_sql={fromSql}",
                 $"mode_before={before.Mode}\nmode_after={after.Mode}\nowned_statement_count={after.Count}",
                 "plan\n" + plan,
-            ]);
+            ], cancellationToken: cancellationToken);
 
         return new GenericPlanResult(plan, generic, custom, fromSql, before.Mode, after);
     }
@@ -85,9 +85,13 @@ public sealed partial class NullableParentIndexTests
             .ToString("N");
 
     /// <summary>Reads the effective mode and only the named statement from the same open session.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="name">The synthetic object or scenario name.</param>
     private static async Task<PreparedSession> PreparedSessionAsync(
         DbContext context,
-        string name
+        string name,
+        CancellationToken cancellationToken
     )
     {
         await using var command = context
@@ -99,16 +103,20 @@ public sealed partial class NullableParentIndexTests
             + "(SELECT count(*) FROM pg_prepared_statements WHERE name = @name)";
 
         AddPreparedName(command, name);
-        await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
-        await reader.ReadAsync(CancellationToken.None);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        await reader.ReadAsync(cancellationToken);
 
         return new PreparedSession(reader.GetString(0), reader.GetInt64(1));
     }
 
     /// <summary>Runs test-owned preparation or cleanup without inheriting a canceled query token.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="sql">The provider-specific SQL command text.</param>
     private static async Task PreparedControlAsync(
         DbContext context,
-        string sql
+        string sql,
+        CancellationToken cancellationToken
     )
     {
         await using var command = context
@@ -117,13 +125,17 @@ public sealed partial class NullableParentIndexTests
             .CreateCommand();
 
         command.CommandText = sql;
-        await command.ExecuteNonQueryAsync(CancellationToken.None);
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     /// <summary>Restores a test's original session setting through a bound value.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="mode">The requested transaction or query mode.</param>
     private static async Task SetSessionModeAsync(
         DbContext context,
-        string mode
+        string mode,
+        CancellationToken cancellationToken
     )
     {
         await using var command = context
@@ -136,7 +148,7 @@ public sealed partial class NullableParentIndexTests
         parameter.ParameterName = "mode";
         parameter.Value = mode;
         command.Parameters.Add(parameter);
-        await command.ExecuteScalarAsync(CancellationToken.None);
+        await command.ExecuteScalarAsync(cancellationToken);
     }
 
     /// <summary>Binds the statement identity for catalog observations without SQL string quoting.</summary>

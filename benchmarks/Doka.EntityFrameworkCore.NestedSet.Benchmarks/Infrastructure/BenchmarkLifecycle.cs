@@ -18,20 +18,24 @@ internal static class BenchmarkLifecycle
 
     /// <summary>Transfers ownership on success and releases partially initialized resources on failure.</summary>
     /// <param name="resource">The resource whose ownership is transferred only after initialization.</param>
-    /// <param name="initialize">The asynchronous initialization action.</param>
+    /// <param name="initialize">The asynchronous action receiving the caller's token.</param>
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
     internal static async Task InitializeAsync(
         IAsyncDisposable resource,
-        Func<Task> initialize
+        Func<CancellationToken, Task> initialize,
+        CancellationToken cancellationToken
     )
     {
         try
         {
-            await initialize();
+            cancellationToken.ThrowIfCancellationRequested();
+            await initialize(cancellationToken);
         }
         catch (Exception initialization)
         {
             try
             {
+                // WHY: Ownership has not transferred; cancellation must never skip releasing the partial resource.
                 await resource.DisposeAsync();
             }
             catch (Exception cleanup)

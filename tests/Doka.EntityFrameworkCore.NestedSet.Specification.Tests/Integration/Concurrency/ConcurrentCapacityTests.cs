@@ -24,7 +24,7 @@ public abstract class ConcurrentCapacityTests : ProviderTest
     public async Task IndependentExistingTreesHold64LocksInOneScope()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         await using (var setup = database.CreateContext())
         {
@@ -96,7 +96,7 @@ public abstract class ConcurrentCapacityTests : ProviderTest
     public async Task CanceledBlockedContenderPreservesBothCallerTransactions()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var treeId = TreeId(1);
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         await using (var setup = database.CreateContext())

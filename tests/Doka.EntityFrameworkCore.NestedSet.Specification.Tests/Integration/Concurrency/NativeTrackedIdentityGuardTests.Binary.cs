@@ -12,13 +12,16 @@ public abstract partial class NativeTrackedIdentityGuardTests
         await using var context = await _fixture.CreateContextAsync<BinaryGuardContext>(
             Engine,
             static options => new BinaryGuardContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var affectedTree = Guid.NewGuid();
         var otherTree = Guid.NewGuid();
-        await SeedBinaryTreeAsync(context, affectedTree, root, 1);
-        await SeedBinaryTreeAsync(context, otherTree, root + 100, 64);
+        await SeedBinaryTreeAsync(context, affectedTree, root, 1,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await SeedBinaryTreeAsync(context, otherTree, root + 100, 64,
+            cancellationToken: TestContext.Current.CancellationToken);
         var tracked = await context
             .Set<BinaryGuardNode>()
             .Where(node => node.TreeId == otherTree)
@@ -42,11 +45,13 @@ public abstract partial class NativeTrackedIdentityGuardTests
     }
 
     /// <summary>Imports fixed-width distinct binary keys without provider-dependent padding aliases.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task SeedBinaryTreeAsync(
         DbContext context,
         Guid treeId,
         int root,
-        int children
+        int children,
+        CancellationToken cancellationToken
     )
     {
         var branches = Enumerable
@@ -71,7 +76,7 @@ public abstract partial class NativeTrackedIdentityGuardTests
             .NestedSet<BinaryGuardNode>()
             .InsertForestAsync(
                 [new NestedSetTreeImport<BinaryGuardNode, Guid>(treeId, branch)],
-                CancellationToken.None);
+                cancellationToken);
 
         context.ChangeTracker.Clear();
     }

@@ -27,10 +27,12 @@ public abstract partial class AncestorIndexWorkTestBase
         await using var context = await _fixture.CreateContextAsync<AncestorIndexQueryContext>(
             Engine,
             static options => new AncestorIndexQueryContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             commands,
             capture);
 
-        await SeedAsync(context, scope, tree, forest: false, balanced: true);
+        await SeedAsync(context, scope, tree, forest: false, balanced: true,
+            cancellationToken: TestContext.Current.CancellationToken);
         var selected = Enumerable
             .Range(0, sources)
             .Select(index => 50_001 + (int)((long)index * 50_000 / (sources - 1)))
@@ -117,8 +119,12 @@ public abstract partial class AncestorIndexWorkTestBase
         var hasBinding = NestedSetProviderCapabilities.Resolve(context)
             .CompletedSourceMethod is not null;
 
-        var traversalsBefore = await NativeTraversalCounterAsync(context);
-        var indexAttemptsBefore = await MariaSessionCounterAsync(context, "Handler_icp_attempts");
+        var traversalsBefore = await NativeTraversalCounterAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var indexAttemptsBefore = await MariaSessionCounterAsync(context, "Handler_icp_attempts",
+            cancellationToken: TestContext.Current.CancellationToken);
+
         commands.Reset();
         capture.Commands.Clear();
         capture.ParameterValues.Clear();
@@ -160,16 +166,20 @@ public abstract partial class AncestorIndexWorkTestBase
                     exception.GetType().FullName
                     ?? exception.GetType().Name,
                     .. capture.Commands,
-                    await FailurePlanAsync(context, capture)
-                ]);
+                    await FailurePlanAsync(context, capture, cancellationToken: TestContext.Current.CancellationToken)
+                ], cancellationToken: TestContext.Current.CancellationToken);
 
             throw;
         }
 
         var commandCount = commands.CommandCount;
         var sql = capture.Commands.Single();
-        var indexAttempts = await MariaSessionCounterAsync(context, "Handler_icp_attempts") - indexAttemptsBefore;
-        var traversals = await NativeTraversalCounterAsync(context) - traversalsBefore;
+        var indexAttempts = await MariaSessionCounterAsync(context, "Handler_icp_attempts",
+            cancellationToken: TestContext.Current.CancellationToken) - indexAttemptsBefore;
+
+        var traversals = await NativeTraversalCounterAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken) - traversalsBefore;
+
         var completed = $"CompletedRows={count}; expected={expected}; commands={commandCount}; "
             + $"sourceBinding={hasBinding}; indexAttempts={indexAttempts}; traversals={traversals}.";
 
@@ -178,9 +188,11 @@ public abstract partial class AncestorIndexWorkTestBase
         _output.WriteLine(completed);
         await QueryPlanTestSupport.WriteEvidenceAsync(
             Engine + $"-ancestor-index-balanced-strict-tree-{treeBound}-completed-read",
-            [completed, sql]);
+            [completed, sql], cancellationToken: TestContext.Current.CancellationToken);
 
-        var plan = await Specifications.QueryPlanTestSupport.ExplainAsync(context, capture, 0, Engine);
+        var plan = await Specifications.QueryPlanTestSupport.ExplainAsync(context, capture, 0, Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var work = Engine == "MySql" ? DensePathNativeWork.MySql(plan) : DensePathNativeWork.MariaDb(plan);
         var baseTable = AncestorIndexBaseTableWork.Read(sql, plan, Engine);
         const long baseBudget = 64L * (sources + expected + 1);
@@ -197,7 +209,7 @@ public abstract partial class AncestorIndexWorkTestBase
                 + $"unexposedPreIndexAccesses={baseTable.UnexposedPreIndexAccesses}.",
                 sql,
                 plan,
-            ]);
+            ], cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         _output.WriteLine($"BaseTableTuples={baseTable.ObservedTuples}; baseBudget={baseBudget}; "

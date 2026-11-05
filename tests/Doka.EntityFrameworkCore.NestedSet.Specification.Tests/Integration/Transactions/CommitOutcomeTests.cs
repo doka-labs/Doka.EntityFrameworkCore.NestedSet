@@ -19,7 +19,7 @@ public abstract class CommitOutcomeTests : ProviderTest
     public async Task PostCommitFailureRequiresFreshContextReconciliation()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new PostCommitFailureProbe();
         await using var context = database.CreateContext(probe);
         var tree = context

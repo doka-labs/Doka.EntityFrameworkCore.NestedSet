@@ -57,28 +57,28 @@ public abstract class ConvertedTextCollationTests : ProviderTest
                     options => new ReferenceTextCollationContext(options),
                     value => new ReferenceTextKey(value),
                     value => new ReferenceTextKey(value),
-                    operation);
+                    operation, cancellationToken: TestContext.Current.CancellationToken);
                 break;
             case 1:
                 await RunAsync<ValueTextCollationContext, ValueTextKey, ValueTextKey?>(
                     options => new ValueTextCollationContext(options),
                     value => new ValueTextKey(value),
                     value => new ValueTextKey(value),
-                    operation);
+                    operation, cancellationToken: TestContext.Current.CancellationToken);
                 break;
             case 2:
                 await RunAsync<EnumTextCollationContext, EnumTextKey, EnumTextKey?>(
                     options => new EnumTextCollationContext(options),
                     value => Enum.Parse<EnumTextKey>(value, true),
                     value => Enum.Parse<EnumTextKey>(value, true),
-                    operation);
+                    operation, cancellationToken: TestContext.Current.CancellationToken);
                 break;
             case 3:
                 await RunAsync<ImplicitEnumTextCollationContext, EnumTextKey, EnumTextKey?>(
                     options => new ImplicitEnumTextCollationContext(options),
                     value => Enum.Parse<EnumTextKey>(value, true),
                     value => Enum.Parse<EnumTextKey>(value, true),
-                    operation);
+                    operation, cancellationToken: TestContext.Current.CancellationToken);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(model));
@@ -172,7 +172,8 @@ public abstract class ConvertedTextCollationTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<NullableEnumTextCollationContext>(
             Engine,
-            options => new NullableEnumTextCollationContext(options));
+            options => new NullableEnumTextCollationContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         await context
             .Set<ConvertedTextCollationNode<EnumTextKey?, EnumTextKey?>>()
@@ -201,7 +202,8 @@ public abstract class ConvertedTextCollationTests : ProviderTest
             ],
             CancellationToken.None);
 
-        await LowerParentsAsync<EnumTextKey?, EnumTextKey?>(context);
+        await LowerParentsAsync<EnumTextKey?, EnumTextKey?>(context,
+            cancellationToken: TestContext.Current.CancellationToken);
         context.ChangeTracker.Clear();
 
         // Act
@@ -237,19 +239,23 @@ public abstract class ConvertedTextCollationTests : ProviderTest
     }
 
     /// <summary>Seeds one aliased adjacency tree and executes one independent acceptance probe.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private async Task RunAsync<TContext, TKey, TParent>(
         Func<DbContextOptions<TContext>, TContext> create,
         Func<string, TKey> key,
         Func<string, TParent> parent,
-        string operation
+        string operation,
+        CancellationToken cancellationToken
     )
         where TContext : DbContext
         where TKey : notnull
     {
-        await using var context = await _fixture.CreateContextAsync(Engine, create);
+        await using var context = await _fixture.CreateContextAsync(Engine, create,
+            cancellationToken: cancellationToken);
+
         await context
             .Set<ConvertedTextCollationNode<TKey, TParent>>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(cancellationToken);
 
         var hierarchy = context.NestedSet<ConvertedTextCollationNode<TKey, TParent>>();
         var treeId = Guid.NewGuid();
@@ -286,37 +292,38 @@ public abstract class ConvertedTextCollationTests : ProviderTest
                                 }),
                         ])),
             ],
-            CancellationToken.None);
+            cancellationToken);
 
-        await LowerParentsAsync<TKey, TParent>(context);
+        await LowerParentsAsync<TKey, TParent>(context, cancellationToken: cancellationToken);
         context.ChangeTracker.Clear();
 
         switch (operation)
         {
             case "query":
-                await QueryAsync(context, hierarchy, key, treeId);
+                await QueryAsync(context, hierarchy, key, treeId, cancellationToken: cancellationToken);
                 break;
             case "projection":
-                await ProjectAsync<TKey, TParent>(context, key, treeId);
+                await ProjectAsync<TKey, TParent>(context, key, treeId, cancellationToken: cancellationToken);
                 break;
             case "delete":
-                await DeleteAsync(hierarchy, key, treeId);
+                await DeleteAsync(hierarchy, key, treeId, cancellationToken: cancellationToken);
                 break;
             case "move":
-                await MoveAsync(hierarchy, key, treeId);
+                await MoveAsync(hierarchy, key, treeId, cancellationToken: cancellationToken);
                 break;
             case "maintenance":
-                await MaintainAsync(context, hierarchy, key, treeId);
+                await MaintainAsync(context, hierarchy, key, treeId, cancellationToken: cancellationToken);
                 break;
             case "managed":
-                await SaveAsync(context, hierarchy, key, parent, treeId);
+                await SaveAsync(context, hierarchy, key, parent, treeId, cancellationToken: cancellationToken);
                 break;
             case "missing":
             case "cycle":
-                await RejectAsync(context, hierarchy, key, treeId, operation == "missing");
+                await RejectAsync(context, hierarchy, key, treeId, operation == "missing",
+                    cancellationToken: cancellationToken);
                 break;
             case "rollback":
-                await RollbackAsync(context, hierarchy, key, parent, treeId);
+                await RollbackAsync(context, hierarchy, key, parent, treeId, cancellationToken: cancellationToken);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(operation));
@@ -324,8 +331,10 @@ public abstract class ConvertedTextCollationTests : ProviderTest
     }
 
     /// <summary>Stores lowercase provider aliases, including values normalized on enum materialization.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static Task<int> LowerParentsAsync<TKey, TParent>(
-        DbContext context
+        DbContext context,
+        CancellationToken cancellationToken
     )
     {
         var entity = context.Model.FindEntityType(typeof(ConvertedTextCollationNode<TKey, TParent>))!;
@@ -338,15 +347,17 @@ public abstract class ConvertedTextCollationTests : ProviderTest
         // proves the SQL join uses principal equality instead of accidentally testing canonical CLR spellings.
         var command = $"UPDATE {table} SET {parent} = LOWER({parent}) WHERE {parent} IS NOT NULL";
 
-        return context.Database.ExecuteSqlRawAsync(command, CancellationToken.None);
+        return context.Database.ExecuteSqlRawAsync(command, cancellationToken);
     }
 
     /// <summary>Verifies symmetric indexed parent navigation with mapped converter parameters.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task QueryAsync<TKey, TParent>(
         DbContext context,
         NestedSet<ConvertedTextCollationNode<TKey, TParent>> hierarchy,
         Func<string, TKey> key,
-        Guid treeId
+        Guid treeId,
+        CancellationToken cancellationToken
     )
         where TKey : notnull
     {
@@ -358,11 +369,11 @@ public abstract class ConvertedTextCollationTests : ProviderTest
         var collation = NestedSetCollations.Resolve(context, property, entity);
 
         // Act
-        var parentRows = await parents.ToArrayAsync(CancellationToken.None);
-        var childRows = await children.ToArrayAsync(CancellationToken.None);
+        var parentRows = await parents.ToArrayAsync(cancellationToken);
+        var childRows = await children.ToArrayAsync(cancellationToken);
         var leafParents = await hierarchy
             .ParentOf(key("lEaF"))
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         // Assert
         Assert.Equal(key("ROOT"), Assert.Single(parentRows).Id);
@@ -386,14 +397,16 @@ public abstract class ConvertedTextCollationTests : ProviderTest
             Assert.DoesNotContain(" COLLATE ", parents.ToQueryString(), StringComparison.OrdinalIgnoreCase);
         }
 
-        await AssertValidAsync(hierarchy, treeId);
+        await AssertValidAsync(hierarchy, treeId, cancellationToken: cancellationToken);
     }
 
     /// <summary>Structural reads materialize nullable storage once without selecting application payload.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task ProjectAsync<TKey, TParent>(
         DbContext context,
         Func<string, TKey> key,
-        Guid treeId
+        Guid treeId,
+        CancellationToken cancellationToken
     )
         where TKey : notnull
     {
@@ -408,7 +421,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
         var sql = store.Structure.ToQueryString();
 
         // Act
-        var stored = await store.Structure.ToArrayAsync(CancellationToken.None);
+        var stored = await store.Structure.ToArrayAsync(cancellationToken);
 
         // Assert
         Assert.Equal(4, stored.Length);
@@ -420,10 +433,12 @@ public abstract class ConvertedTextCollationTests : ProviderTest
     }
 
     /// <summary>Deletion promotes aliased children and keeps the ordered sibling group dense.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task DeleteAsync<TKey, TParent>(
         NestedSet<ConvertedTextCollationNode<TKey, TParent>> hierarchy,
         Func<string, TKey> key,
-        Guid treeId
+        Guid treeId,
+        CancellationToken cancellationToken
     )
         where TKey : notnull
     {
@@ -431,12 +446,12 @@ public abstract class ConvertedTextCollationTests : ProviderTest
         var source = key("cHiLd");
 
         // Act
-        await hierarchy.DeleteAsync(source, CancellationToken.None);
+        await hierarchy.DeleteAsync(source, cancellationToken);
 
         // Assert
         var children = await hierarchy
             .ChildrenOf(key("rOoT"))
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         Assert.Equal(new[] { key("OTHER"), key("LEAF") }, children.Select(node => node.Id));
         Assert.Equal(new long[] { 0, 1 }, children.Select(node => node.Position));
@@ -444,24 +459,26 @@ public abstract class ConvertedTextCollationTests : ProviderTest
             key("ROOT"),
             (await hierarchy
                 .ParentOf(key("lEaF"))
-                .SingleAsync(CancellationToken.None)).Id);
-        await AssertValidAsync(hierarchy, treeId);
+                .SingleAsync(cancellationToken)).Id);
+        await AssertValidAsync(hierarchy, treeId, cancellationToken: cancellationToken);
     }
 
     /// <summary>Managed alias changes preserve descendants and refresh unchanged tracked destination rows.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task SaveAsync<TKey, TParent>(
         DbContext context,
         NestedSet<ConvertedTextCollationNode<TKey, TParent>> hierarchy,
         Func<string, TKey> key,
         Func<string, TParent> parent,
-        Guid treeId
+        Guid treeId,
+        CancellationToken cancellationToken
     )
         where TKey : notnull
     {
         // Arrange
         var tracked = await context
             .Set<ConvertedTextCollationNode<TKey, TParent>>()
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         var child = Assert.Single(tracked, node => node.Id.Equals(key("CHILD")));
         child.ParentId = parent("oThEr");
@@ -471,23 +488,23 @@ public abstract class ConvertedTextCollationTests : ProviderTest
         await context.SaveNestedSetChangesAsync(
             true,
             token => context.SaveChangesAsync(false, token),
-            CancellationToken.None);
+            cancellationToken);
 
         // Assert
         Assert.Equal(
             key("OTHER"),
             (await hierarchy
                 .ParentOf(key("cHiLd"))
-                .SingleAsync(CancellationToken.None)).Id);
+                .SingleAsync(cancellationToken)).Id);
         Assert.Equal(
             key("CHILD"),
             (await hierarchy
                 .ParentOf(key("lEaF"))
-                .SingleAsync(CancellationToken.None)).Id);
+                .SingleAsync(cancellationToken)).Id);
         var stored = await hierarchy
             .InTree(treeId)
             .Nodes
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         Assert.All(
             tracked,
@@ -503,14 +520,16 @@ public abstract class ConvertedTextCollationTests : ProviderTest
                         .State);
             });
 
-        await AssertValidAsync(hierarchy, treeId);
+        await AssertValidAsync(hierarchy, treeId, cancellationToken: cancellationToken);
     }
 
     /// <summary>Movement resolves aliased source and target groups using principal equality.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task MoveAsync<TKey, TParent>(
         NestedSet<ConvertedTextCollationNode<TKey, TParent>> hierarchy,
         Func<string, TKey> key,
-        Guid treeId
+        Guid treeId,
+        CancellationToken cancellationToken
     )
         where TKey : notnull
     {
@@ -519,32 +538,34 @@ public abstract class ConvertedTextCollationTests : ProviderTest
         var target = key("oThEr");
 
         // Act
-        await hierarchy.MoveToAsync(source, target, CancellationToken.None);
+        await hierarchy.MoveToAsync(source, target, cancellationToken);
 
         // Assert
         Assert.Empty(
             await hierarchy
                 .ChildrenOf(key("cHiLd"))
-                .ToArrayAsync(CancellationToken.None));
+                .ToArrayAsync(cancellationToken));
         Assert.Equal(
             key("LEAF"),
             (await hierarchy
                 .ChildrenOf(key("oThEr"))
-                .SingleAsync(CancellationToken.None)).Id);
+                .SingleAsync(cancellationToken)).Id);
         Assert.Equal(
             key("OTHER"),
             (await hierarchy
                 .ParentOf(key("lEaF"))
-                .SingleAsync(CancellationToken.None)).Id);
-        await AssertValidAsync(hierarchy, treeId);
+                .SingleAsync(cancellationToken)).Id);
+        await AssertValidAsync(hierarchy, treeId, cancellationToken: cancellationToken);
     }
 
     /// <summary>Repair and rule ordering resolve canonical parent links without losing nullable converters.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task MaintainAsync<TKey, TParent>(
         DbContext context,
         NestedSet<ConvertedTextCollationNode<TKey, TParent>> hierarchy,
         Func<string, TKey> key,
-        Guid treeId
+        Guid treeId,
+        CancellationToken cancellationToken
     )
         where TKey : notnull
     {
@@ -552,39 +573,41 @@ public abstract class ConvertedTextCollationTests : ProviderTest
         await context
             .Set<ConvertedTextCollationNode<TKey, TParent>>()
             .Where(node => node.Id.Equals(key("CHILD")))
-            .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.Name, "Z"), CancellationToken.None);
+            .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.Name, "Z"), cancellationToken);
 
         // Act
         await hierarchy
             .InTree(treeId)
-            .RebuildAsync(CancellationToken.None);
+            .RebuildAsync(cancellationToken);
 
         // Assert
         var children = await hierarchy
             .ChildrenOf(key("rOoT"))
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         Assert.Equal(new[] { key("OTHER"), key("CHILD") }, children.Select(node => node.Id));
         Assert.Equal(
             key("CHILD"),
             (await hierarchy
                 .ParentOf(key("lEaF"))
-                .SingleAsync(CancellationToken.None)).Id);
-        await AssertValidAsync(hierarchy, treeId);
+                .SingleAsync(cancellationToken)).Id);
+        await AssertValidAsync(hierarchy, treeId, cancellationToken: cancellationToken);
     }
 
     /// <summary>Missing and cyclic alias requests preserve the entire persisted tree.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task RejectAsync<TKey, TParent>(
         DbContext context,
         NestedSet<ConvertedTextCollationNode<TKey, TParent>> hierarchy,
         Func<string, TKey> key,
         Guid treeId,
-        bool missing
+        bool missing,
+        CancellationToken cancellationToken
     )
         where TKey : notnull
     {
         // Arrange
-        var before = await SnapshotAsync<TKey, TParent>(context);
+        var before = await SnapshotAsync<TKey, TParent>(context, cancellationToken: cancellationToken);
 
         // Act
         var failure = await Assert.ThrowsAsync<NestedSetException>(() => missing
@@ -595,30 +618,32 @@ public abstract class ConvertedTextCollationTests : ProviderTest
                     Name = "Missing",
                 },
                 key("mIsSiNg"),
-                CancellationToken.None)
-            : hierarchy.MoveToAsync(key("rOoT"), key("lEaF"), CancellationToken.None));
+                cancellationToken)
+            : hierarchy.MoveToAsync(key("rOoT"), key("lEaF"), cancellationToken));
 
         // Assert
         Assert.Equal(missing ? NestedSetErrorCode.NodeNotFound : NestedSetErrorCode.CycleDetected, failure.Code);
-        Assert.Equal(before, await SnapshotAsync<TKey, TParent>(context));
-        await AssertValidAsync(hierarchy, treeId);
+        Assert.Equal(before, await SnapshotAsync<TKey, TParent>(context, cancellationToken: cancellationToken));
+        await AssertValidAsync(hierarchy, treeId, cancellationToken: cancellationToken);
     }
 
     /// <summary>A late callback failure restores rows and retains the caller's pending tracked change.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task RollbackAsync<TKey, TParent>(
         DbContext context,
         NestedSet<ConvertedTextCollationNode<TKey, TParent>> hierarchy,
         Func<string, TKey> key,
         Func<string, TParent> parent,
-        Guid treeId
+        Guid treeId,
+        CancellationToken cancellationToken
     )
         where TKey : notnull
     {
         // Arrange
-        var before = await SnapshotAsync<TKey, TParent>(context);
+        var before = await SnapshotAsync<TKey, TParent>(context, cancellationToken: cancellationToken);
         var child = await context
             .Set<ConvertedTextCollationNode<TKey, TParent>>()
-            .SingleAsync(node => node.Id.Equals(key("CHILD")), CancellationToken.None);
+            .SingleAsync(node => node.Id.Equals(key("CHILD")), cancellationToken);
 
         child.ParentId = parent("oThEr");
         child.Name = "Z";
@@ -634,28 +659,30 @@ public abstract class ConvertedTextCollationTests : ProviderTest
 
                 throw new InvalidOperationException("Converted collation rollback probe.");
             },
-            CancellationToken.None));
+            cancellationToken));
 
         // Assert
         Assert.True(callbackRan);
         Assert.Equal("Converted collation rollback probe.", failure.Message);
-        Assert.Equal(before, await SnapshotAsync<TKey, TParent>(context));
+        Assert.Equal(before, await SnapshotAsync<TKey, TParent>(context, cancellationToken: cancellationToken));
         Assert.Equal(parent("oThEr"), child.ParentId);
         Assert.Equal("Z", child.Name);
         Assert.Equal(EntityState.Modified, context.Entry(child).State);
-        await AssertValidAsync(hierarchy, treeId);
+        await AssertValidAsync(hierarchy, treeId, cancellationToken: cancellationToken);
     }
 
     /// <summary>Observes every persisted structural and payload value independently of the change tracker.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task<(TKey, TParent, Guid, long, long, int, long, string)[]> SnapshotAsync<TKey, TParent>(
-        DbContext context
+        DbContext context,
+        CancellationToken cancellationToken
     )
     {
         var stored = await context
             .Set<ConvertedTextCollationNode<TKey, TParent>>()
             .AsNoTracking()
             .OrderBy(node => node.Left)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         return stored
             .Select(node => (node.Id, node.ParentId, node.TreeId, node.Left, node.Right, node.Depth, node.Position,
@@ -664,14 +691,16 @@ public abstract class ConvertedTextCollationTests : ProviderTest
     }
 
     /// <summary>Checks adjacency, bounds, positions, and configured ordering after the acceptance probe.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task AssertValidAsync<TKey, TParent>(
         NestedSet<ConvertedTextCollationNode<TKey, TParent>> hierarchy,
-        Guid treeId
+        Guid treeId,
+        CancellationToken cancellationToken
     )
     {
         var report = await hierarchy
             .InTree(treeId)
-            .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+            .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken);
 
         Assert.True(report.IsValid);
     }

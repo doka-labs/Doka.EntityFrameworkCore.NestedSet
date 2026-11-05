@@ -103,12 +103,15 @@ internal static class NestedSetTelemetry
     /// <summary>Records a provider-reported hierarchy row count without wrapping disabled operations.</summary>
     /// <param name="operation">The database task whose result is the affected hierarchy row count.</param>
     /// <returns>The original result after adding it to the active operation.</returns>
+    /// <remarks>Completion finalization cannot be canceled independently of the already-started command.</remarks>
     internal static Task<int> TrackRows(
         Task<int> operation
     )
     {
         var state = s_current.Value;
 
+        // WHY: The command already owns cancellation. Finalization must observe its terminal state before
+        // transaction cleanup; a second cancelable wait could abandon a command that is still writing.
         return state is null ? operation : TrackRowsAsync(operation, state);
     }
 
@@ -393,6 +396,8 @@ internal static class NestedSetTelemetry
         OperationState state
     )
     {
+        // WHY: Finish command observation and row accounting together; caller cancellation belongs to
+        // the provider task, never to this mandatory completion path preceding transaction cleanup.
         var count = await operation.ConfigureAwait(false);
         state.AddRows(count);
 

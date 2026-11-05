@@ -25,7 +25,7 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context.UserGroupMemberships
             .Where(member => member.TenantId == data.TenantId && member.UserId == data.Users[2])
@@ -59,7 +59,7 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context.Groups.Where(group => group.TenantId == data.TenantId && group.Id == data.Groups[2])
             .ExecuteUpdateAsync(setters => setters.SetProperty(group => group.TypeId, 3), CancellationToken.None);
@@ -97,7 +97,7 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context.UserGroupMemberships.AddAsync(new App.UserGroupMembership
         {
@@ -122,12 +122,15 @@ public abstract partial class GroupSupervisorTests
             FieldCode = "Route",
             Value = "lane-blue",
         }, CancellationToken.None);
-        await AddMetadataAsync(context, data, 0, data.Users[0], data.Groups[5], 4, "ChannelClass", "only-Anna");
-        await AddMetadataAsync(context, data, 4, data.Users[1], data.Groups[4], 3, "ChannelClass", "only-Anna");
-        await AddMetadataAsync(context, data, 4, data.Users[1], data.Groups[2], 1, "ChannelClass", "only-Anna");
+        await AddMetadataAsync(context, data, 0, data.Users[0], data.Groups[5], 4, "ChannelClass", "only-Anna",
+            cancellationToken: TestContext.Current.CancellationToken);
+        await AddMetadataAsync(context, data, 4, data.Users[1], data.Groups[4], 3, "ChannelClass", "only-Anna",
+            cancellationToken: TestContext.Current.CancellationToken);
+        await AddMetadataAsync(context, data, 4, data.Users[1], data.Groups[2], 1, "ChannelClass", "only-Anna",
+            cancellationToken: TestContext.Current.CancellationToken);
         await context.SaveChangesAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
-        await EnableSnapshotAsync(context);
+        await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var standard = data.Request(group: data.Groups[5]);
         var selection = mode switch
         {

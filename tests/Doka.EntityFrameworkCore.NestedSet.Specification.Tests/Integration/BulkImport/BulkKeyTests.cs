@@ -18,7 +18,7 @@ public abstract class BulkKeyTests : ProviderTest
     public async Task GuidAdjacencySurvivesImport()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<GuidNode>()
@@ -52,7 +52,7 @@ public abstract class BulkKeyTests : ProviderTest
     public async Task StringAdjacencySurvivesImport()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TextNode>()
@@ -81,7 +81,7 @@ public abstract class BulkKeyTests : ProviderTest
     public async Task BinaryAdjacencySurvivesImport()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<BinaryNode>()

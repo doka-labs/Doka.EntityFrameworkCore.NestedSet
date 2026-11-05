@@ -18,7 +18,7 @@ public abstract class NestedSetMutationDeleteTreeTests : ProviderTest
     public async Task DeleteTreeSupportsRestrictiveSelfForeignKey()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<ConstrainedNode>()

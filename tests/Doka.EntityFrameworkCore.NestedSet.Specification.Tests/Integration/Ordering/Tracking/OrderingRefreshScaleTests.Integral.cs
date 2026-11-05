@@ -30,7 +30,9 @@ public abstract partial class OrderingRefreshScaleTests
     )
     {
         // Arrange
-        var database = await _relationalFixture.ResetAsync(Engine);
+        var database = await _relationalFixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var extensions = source.GetService<IDbContextOptions>().Extensions
             .ToDictionary(extension => extension.GetType());
@@ -40,7 +42,9 @@ public abstract partial class OrderingRefreshScaleTests
             BindingFlags.NonPublic | BindingFlags.Static)!;
 
         // Act
-        var result = await (Task<IntegralResult>)method.MakeGenericMethod(keyType).Invoke(null, [options])!;
+        var result = await (Task<IntegralResult>)method
+            .MakeGenericMethod(keyType)
+            .Invoke(null, [options, TestContext.Current.CancellationToken])!;
 
         // Assert
         _output.WriteLine($"Engine={Engine}; key={keyType.Name}; converter={result.Converter ?? "none"}; "
@@ -78,7 +82,10 @@ public abstract partial class OrderingRefreshScaleTests
     }
 
     /// <summary>Exercises one typed fixture model without catching provider or query failures.</summary>
-    private static async Task<IntegralResult> ProbeIntegralAsync<TKey>(DbContextOptions options)
+    private static async Task<IntegralResult> ProbeIntegralAsync<TKey>(
+        DbContextOptions options,
+        CancellationToken cancellationToken
+    )
         where TKey : struct, IConvertible
     {
         using var probe = new ScaleProbe();
@@ -119,7 +126,7 @@ public abstract partial class OrderingRefreshScaleTests
         Assert.True(map.HasNativeKeyEquality);
         Assert.True(capabilities.SupportsTrackedKeyCollection(key));
         await context.GetService<IRelationalDatabaseCreator>()
-            .CreateTablesAsync(CancellationToken.None);
+            .CreateTablesAsync(cancellationToken);
         var keys = IntegralKeys<TKey>();
         var treeId = Guid.NewGuid();
         await context.AddRangeAsync(keys.Select((keyValue, index) =>
@@ -132,13 +139,13 @@ public abstract partial class OrderingRefreshScaleTests
                 Right = index == 0 ? keys.Length * 2 : index * 2 + 1,
                 Depth = index == 0 ? 0 : 1,
                 Position = index == 0 ? 0 : index - 1,
-            }), CancellationToken.None);
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+            }), cancellationToken);
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
         context.ChangeTracker.Clear();
         probe.Reset();
         var actual = await capabilities.MatchTrackedKeyCollection(
                 context.Set<OrderingKeyNode<TKey, TKey?>>().AsNoTracking(), key, keys)
-            .Select(node => node.Id).ToArrayAsync(CancellationToken.None);
+            .Select(node => node.Id).ToArrayAsync(cancellationToken);
 
         var command = probe.Commands.Single();
 

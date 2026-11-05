@@ -17,13 +17,22 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedPreparedNavigationDestinationAsync(database);
-        await SeedPayloadOwnersAsync(database, assigned: false);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedPreparedNavigationDestinationAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await SeedPayloadOwnersAsync(database, assigned: false,
+            cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, callback, probe);
-        var graph = await PrepareOwnerImportAsync(context, nodes);
+        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            callback, probe);
+
+        var graph = await PrepareOwnerImportAsync(context, nodes,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var payloadOwner = await context.Set<NavigationPayloadOwner>().Include(owner => owner.Nodes)
             .SingleAsync(owner => owner.Scope == graph.Owner.Id && owner.Id == 1, CancellationToken.None);
 
@@ -46,7 +55,9 @@ public abstract partial class SaveChangesTests
             expectedInputs[^1] = expectedInputs[^1] with { PayloadOwnerId = 2 };
         }
 
-        var storedBefore = await ReadPreparedOwnerStoreAsync(database);
+        var storedBefore = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var callbacks = 0;
         int? activeAtCallback = null;
         int? writesAtCallback = null;
@@ -88,8 +99,12 @@ public abstract partial class SaveChangesTests
             await context.SaveChangesAsync(CancellationToken.None);
         }
 
-        var storedAfter = await ReadPreparedOwnerStoreAsync(database);
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        var storedAfter = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var storedOwners = await verification.Set<NavigationNode>().Where(node => node.Id >= 1000)
             .Select(node => node.PayloadOwnerId).ToArrayAsync(CancellationToken.None);
 

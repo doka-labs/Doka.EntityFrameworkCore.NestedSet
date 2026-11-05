@@ -25,9 +25,11 @@ public abstract partial class SaveChangesTests
     public async Task ManualManagedInsertionSavesOnlyExplicitWrites(string shape, bool callbackWrite, bool marked)
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedManualDestinationAsync(setup);
-        await SeedManualMarkersAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedManualDestinationAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedManualMarkersAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();
         await using var context = CreateManualDetectionContext(setup, wrapped: true, callback);
         var node = await context.Set<OrderingNode>().SingleAsync(value => value.Id == 1, CancellationToken.None);
@@ -80,7 +82,7 @@ public abstract partial class SaveChangesTests
         var inputs = ManualInsertionInputs(shape);
 
         // Act
-        await InsertManualShapeAsync(context, shape, inputs);
+        await InsertManualShapeAsync(context, shape, inputs, cancellationToken: TestContext.Current.CancellationToken);
         var storedNode = await setup.Set<OrderingNode>().Where(value => value.Id == 1)
             .Select(value => value.Payload).SingleAsync(CancellationToken.None);
 
@@ -117,8 +119,10 @@ public abstract partial class SaveChangesTests
     public async Task ManualManagedCallbacksCannotChangeHierarchyRoles(string shape, string role)
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedManualDestinationAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedManualDestinationAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();
         var probe = new SaveBoundaryProbe();
         await using var context = CreateManualDetectionContext(setup, wrapped: true, callback, probe);
@@ -153,7 +157,9 @@ public abstract partial class SaveChangesTests
         var inputs = ManualInsertionInputs(shape);
 
         // Act
-        var failure = await Record.ExceptionAsync(() => InsertManualShapeAsync(context, shape, inputs));
+        var failure = await Record.ExceptionAsync(() => InsertManualShapeAsync(context, shape, inputs,
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var after = await setup.Set<OrderingNode>().OrderBy(value => value.Id)
             .Select(value => new { value.Id, value.Name, value.ParentId, value.Left, value.Right })
             .ToArrayAsync(CancellationToken.None);
@@ -177,9 +183,11 @@ public abstract partial class SaveChangesTests
     public async Task ManualManagedFailureRestoresExplicitPendingWrites(string shape)
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedManualDestinationAsync(setup);
-        await SeedManualMarkersAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedManualDestinationAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedManualMarkersAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();
         var failure = new ManualSaveFailure();
         await using var context = CreateManualDetectionContext(setup, wrapped: true, callback, failure);
@@ -201,7 +209,9 @@ public abstract partial class SaveChangesTests
         context.ChangeTracker.DetectedAllChanges += (_, _) => detections++;
 
         // Act
-        var error = await Record.ExceptionAsync(() => InsertManualShapeAsync(context, shape, inputs));
+        var error = await Record.ExceptionAsync(() => InsertManualShapeAsync(context, shape, inputs,
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var storedRows = await setup.Set<OrderingMarker>().OrderBy(value => value.Id)
             .Select(value => value.Value).ToArrayAsync(CancellationToken.None);
 
@@ -228,8 +238,10 @@ public abstract partial class SaveChangesTests
     public async Task ManualManagedInsertionRejectsInitiallyRegisteredWrites(string shape)
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedManualDestinationAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedManualDestinationAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new SaveBoundaryProbe();
         await using var context = CreateManualDetectionContext(setup, wrapped: true, probe);
         context.ChangeTracker.AutoDetectChangesEnabled = false;
@@ -238,7 +250,9 @@ public abstract partial class SaveChangesTests
         var inputs = ManualInsertionInputs(shape);
 
         // Act
-        var error = await Record.ExceptionAsync(() => InsertManualShapeAsync(context, shape, inputs));
+        var error = await Record.ExceptionAsync(() => InsertManualShapeAsync(context, shape, inputs,
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var count = await setup.Set<OrderingNode>().CountAsync(CancellationToken.None);
         var markers = await setup.Set<OrderingMarker>().CountAsync(CancellationToken.None);
 
@@ -264,9 +278,11 @@ public abstract partial class SaveChangesTests
     public async Task ManagedCallbacksCanChooseNativeDetectionPolicy(string shape, bool automaticDetection)
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedManualDestinationAsync(setup);
-        await SeedManualMarkersAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedManualDestinationAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedManualMarkersAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();
         await using var context = CreateManualDetectionContext(setup, wrapped: true, callback);
         var node = await context.Set<OrderingNode>().SingleAsync(value => value.Id == 1, CancellationToken.None);
@@ -284,7 +300,7 @@ public abstract partial class SaveChangesTests
         var inputs = ManualInsertionInputs(shape);
 
         // Act
-        await InsertManualShapeAsync(context, shape, inputs);
+        await InsertManualShapeAsync(context, shape, inputs, cancellationToken: TestContext.Current.CancellationToken);
         var storedNode = await setup.Set<OrderingNode>().Where(value => value.Id == 1)
             .Select(value => value.Payload).SingleAsync(CancellationToken.None);
 
@@ -304,12 +320,12 @@ public abstract partial class SaveChangesTests
     }
 
     /// <summary>Seeds a tracked-safe unaffected tree and a separate insertion destination.</summary>
-    private static async Task SeedManualDestinationAsync(DbContext context)
+    private static async Task SeedManualDestinationAsync(DbContext context, CancellationToken cancellationToken)
     {
-        await SeedAsync(context);
+        await SeedAsync(context, cancellationToken: cancellationToken);
         await context.NestedSet<OrderingNode>().ForScope(1)
             .InsertRootAsync(new OrderingNode { Id = 100, Name = "Destination" }, s_manualDestinationTree,
-                CancellationToken.None);
+                cancellationToken);
     }
 
     /// <summary>Creates detached inputs for one single insert, one subtree, or two forest roots.</summary>
@@ -332,19 +348,24 @@ public abstract partial class SaveChangesTests
     };
 
     /// <summary>Runs the selected public insertion API without touching the caller's detection policy.</summary>
-    private static async Task InsertManualShapeAsync(DbContext context, string shape, OrderingNode[] inputs)
+    private static async Task InsertManualShapeAsync(
+        DbContext context,
+        string shape,
+        OrderingNode[] inputs,
+        CancellationToken cancellationToken
+    )
     {
         var tree = context.NestedSet<OrderingNode>().ForScope(1);
 
         switch (shape)
         {
             case "single":
-                await tree.InsertChildAsync(inputs[0], 100, CancellationToken.None);
+                await tree.InsertChildAsync(inputs[0], 100, cancellationToken);
                 break;
             case "subtree":
                 await tree.InsertSubtreeAsync(
                     new NestedSetBranch<OrderingNode>(inputs[0], [new NestedSetBranch<OrderingNode>(inputs[1])]),
-                    100, CancellationToken.None);
+                    100, cancellationToken);
                 break;
             case "forest":
                 await tree.InsertForestAsync(
@@ -355,7 +376,7 @@ public abstract partial class SaveChangesTests
                         new NestedSetTreeImport<OrderingNode, Guid>(s_manualSecondImportTree,
                             new NestedSetBranch<OrderingNode>(inputs[2],
                                 [new NestedSetBranch<OrderingNode>(inputs[3])])),
-                    ], CancellationToken.None);
+                    ], cancellationToken);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(shape));

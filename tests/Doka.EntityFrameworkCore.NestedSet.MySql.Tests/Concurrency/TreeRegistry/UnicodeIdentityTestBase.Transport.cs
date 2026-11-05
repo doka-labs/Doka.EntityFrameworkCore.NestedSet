@@ -16,6 +16,7 @@ public abstract partial class UnicodeIdentityTestBase
         await using var context = await _fixture.CreateContextAsync<UnicodeTextIdentityContext>(
             Engine,
             static options => new UnicodeTextIdentityContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var entity = context.Model.FindEntityType(typeof(UnicodeIdentityNode<string>))!;
@@ -90,6 +91,7 @@ public abstract partial class UnicodeIdentityTestBase
         await using var context = await _fixture.CreateContextAsync<UnicodeTextIdentityContext>(
             Engine,
             static options => new UnicodeTextIdentityContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var entity = context.Model.FindEntityType(typeof(UnicodeIdentityNode<string>))!;
@@ -111,7 +113,9 @@ public abstract partial class UnicodeIdentityTestBase
             .Cast<INestedSetTreeLockRequest>()
             .ToArray();
 
-        var before = await RegistryCountAsync(context, entity);
+        var before = await RegistryCountAsync(context, entity,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         probe.Reset();
 
         // Act
@@ -124,6 +128,7 @@ public abstract partial class UnicodeIdentityTestBase
         Assert.Equal(NestedSetErrorCode.InvalidImport, Assert.IsType<NestedSetException>(failure).Code);
         Assert.Equal(1, probe.CommandCount);
         Assert.Equal(count == 256 ? 1 : 0, probe.JsonRowsetCommands);
-        Assert.Equal(before, await RegistryCountAsync(context, entity));
+        Assert.Equal(before, await RegistryCountAsync(context, entity,
+            cancellationToken: TestContext.Current.CancellationToken));
     }
 }

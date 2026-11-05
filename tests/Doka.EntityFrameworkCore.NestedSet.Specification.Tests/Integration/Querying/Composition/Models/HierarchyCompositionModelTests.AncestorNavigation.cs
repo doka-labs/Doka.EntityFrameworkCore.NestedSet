@@ -22,7 +22,7 @@ public abstract partial class HierarchyCompositionModelTests
         var probe = new CompositionCommandProbe();
         var materialized = 0;
         await using var context = await CreateNavigationContextAsync(scope, tree, selection, probe,
-            _ => materialized++);
+            _ => materialized++, cancellationToken: TestContext.Current.CancellationToken);
 
         materialized = 0;
         var hierarchy = context.NestedSet<CompositionNavigationNode>().ForScope(scope).InTree(tree);
@@ -76,7 +76,7 @@ public abstract partial class HierarchyCompositionModelTests
         var probe = new CompositionCommandProbe();
         var materialized = 0;
         await using var context = await CreateNavigationContextAsync(scope, tree, selection, probe,
-            _ => materialized++);
+            _ => materialized++, cancellationToken: TestContext.Current.CancellationToken);
 
         materialized = 0;
         var hierarchy = context.NestedSet<CompositionNavigationNode>().ForScope(scope).InTree(tree);

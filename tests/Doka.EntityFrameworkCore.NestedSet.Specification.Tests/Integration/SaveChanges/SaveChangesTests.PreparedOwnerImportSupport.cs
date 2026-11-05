@@ -3,12 +3,16 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public abstract partial class SaveChangesTests
 {
     /// <summary>Prepares all detached operation inputs in one owner collection without requesting detection.</summary>
-    private static async Task<PreparedOwnerGraph> PrepareOwnerImportAsync(DbContext context, int nodes)
+    private static async Task<PreparedOwnerGraph> PrepareOwnerImportAsync(
+        DbContext context,
+        int nodes,
+        CancellationToken cancellationToken
+    )
     {
         var owners = await context.Set<NavigationScopeOwner>().OrderBy(owner => owner.Id)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
-        var note = await context.Set<NavigationNote>().SingleAsync(CancellationToken.None);
+        var note = await context.Set<NavigationNote>().SingleAsync(cancellationToken);
         context.ChangeTracker.AutoDetectChangesEnabled = false;
         var noteValue = context.Entry(note).Property(value => value.Value);
         var inputs = Enumerable.Range(1000, nodes).Select(id => new NavigationNode
@@ -60,22 +64,27 @@ public abstract partial class SaveChangesTests
             input.PayloadOwnerId, input.PayloadOwner, input.Children)).ToArray();
 
     /// <summary>Reads exact stored structure and validates every remaining tree from a separate context.</summary>
-    private static async Task<PreparedOwnerStoreState> ReadPreparedOwnerStoreAsync(TestDatabase database)
+    private static async Task<PreparedOwnerStoreState> ReadPreparedOwnerStoreAsync(
+        TestDatabase database,
+        CancellationToken cancellationToken
+    )
     {
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: cancellationToken);
+
         var nodes = await verification.Set<NavigationNode>().OrderBy(node => node.Id)
             .Select(node => new PreparedOwnerStoredNode(node.Id, node.Scope, node.TreeId, node.ParentId,
-                node.Left, node.Right, node.Depth, node.Position, node.Name)).ToArrayAsync(CancellationToken.None);
+                node.Left, node.Right, node.Depth, node.Position, node.Name)).ToArrayAsync(cancellationToken);
 
         var note = await verification.Set<NavigationNote>().Select(value => value.Value)
-            .SingleAsync(CancellationToken.None);
+            .SingleAsync(cancellationToken);
 
         var issues = 0;
 
         foreach (var identity in nodes.Select(node => (node.Scope, node.TreeId)).Distinct())
         {
             var validation = await verification.NestedSet<NavigationNode>().ForScope(identity.Scope)
-                .InTree(identity.TreeId).ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+                .InTree(identity.TreeId).ValidateAsync(NestedSetValidationLevel.Full, cancellationToken);
 
             issues += validation.Issues.Count;
         }

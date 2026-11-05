@@ -87,25 +87,32 @@ public class UserGroupSelectionBenchmarks : IDatabaseBenchmark, IAsyncDisposable
 
     /// <summary>Completes actual sample preparation before native measurement begins.</summary>
     [IterationSetup]
-    public void Prepare() => BenchmarkLifecycle.Complete(PrepareAsync());
+    public void Prepare() => BenchmarkLifecycle.Complete(PrepareAsync(CancellationToken.None));
 
     /// <summary>Completes equivalence verification outside native measurement.</summary>
     [IterationCleanup]
-    public void Verify() => BenchmarkLifecycle.Complete(VerifyAsync());
+    public void Verify() => BenchmarkLifecycle.Complete(VerifyAsync(CancellationToken.None));
 
     /// <summary>Seeds inputs and asynchronously warms selected/reference EF execution before observation.</summary>
-    public async Task PrepareAsync()
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
+    public async Task PrepareAsync(CancellationToken cancellationToken)
     {
-        await ConsumerBenchmarkDatabase.ResetAsync(Context);
-        (_data, _request) = await UserGroupBenchmarkData.CreateAsync(Context, Nodes, Shape, Origins, Matches);
+        await ConsumerBenchmarkDatabase.ResetAsync(Context, cancellationToken);
+        (_data, _request) = await UserGroupBenchmarkData.CreateAsync(
+            Context,
+            Nodes,
+            Shape,
+            Origins,
+            Matches,
+            cancellationToken);
         _result = null;
         _preparedRows = null;
         _prepared = SupervisorQueries.ResolutionRows(Context, Data.TenantId, Request, PersonSelection);
 
         // WHY: Actual async execution warms EF's execution cache; ToQueryString warms a different path.
         // Every workload receives the same warm selected/reference shapes before operation counters reset.
-        _ = await _prepared.ToArrayAsync(CancellationToken.None);
-        _ = await ReadReferenceAsync();
+        _ = await _prepared.ToArrayAsync(cancellationToken);
+        _ = await ReadReferenceAsync(cancellationToken);
         _observation.Reset();
     }
 
@@ -123,7 +130,7 @@ public class UserGroupSelectionBenchmarks : IDatabaseBenchmark, IAsyncDisposable
 
     /// <summary>Reads complete candidates/statuses and applies identical application person selection.</summary>
     [Benchmark(Baseline = true)]
-    public async Task Reference() => _result = await ReadReferenceAsync();
+    public async Task Reference() => _result = await ReadReferenceAsync(CancellationToken.None);
 
     /// <summary>Measures prepared asynchronous scalar execution and materialization, excluding reduction.</summary>
     [Benchmark]
@@ -134,7 +141,8 @@ public class UserGroupSelectionBenchmarks : IDatabaseBenchmark, IAsyncDisposable
     }
 
     /// <summary>Checks origin statuses, retained evidence and canonical continuations after timing.</summary>
-    public async Task VerifyAsync()
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
+    public async Task VerifyAsync(CancellationToken cancellationToken)
     {
         if (_preparedRows is { } rows)
         {
@@ -142,7 +150,7 @@ public class UserGroupSelectionBenchmarks : IDatabaseBenchmark, IAsyncDisposable
         }
 
         var actual = Result;
-        var expected = await ReadReferenceAsync();
+        var expected = await ReadReferenceAsync(cancellationToken);
         BenchmarkFixture.Require(
             Signature(actual)
                 .SequenceEqual(Signature(expected)),
@@ -178,14 +186,15 @@ public class UserGroupSelectionBenchmarks : IDatabaseBenchmark, IAsyncDisposable
     CommandObservation IDatabaseBenchmark.Observation => _observation;
 
     /// <summary>Retains the source/catalog/zero-origin contract instead of timing an incomplete DTO query.</summary>
-    private async Task<SupervisorResolutionBatch> ReadReferenceAsync()
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
+    private async Task<SupervisorResolutionBatch> ReadReferenceAsync(CancellationToken cancellationToken)
     {
         var all = await SupervisorQueries.ResolveAsync(
             Context,
             Data.TenantId,
             Request,
             SupervisorSelection.All,
-            CancellationToken.None);
+            cancellationToken);
 
         return all with
         {

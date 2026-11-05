@@ -16,7 +16,9 @@ public abstract partial class AncestorIndexQueryTests
         var otherTree = new BroadTreeId(token + "A");
         var probe = new CompositionCommandProbe();
         await using var context = await _fixture.CreateContextAsync<AncestorIndexMappedContext>(Engine,
-            static options => new AncestorIndexMappedContext(options), probe);
+            static options => new AncestorIndexMappedContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
 
         foreach (var (identity, offset) in new[] { (tree, 0), (otherTree, 3) })
         {

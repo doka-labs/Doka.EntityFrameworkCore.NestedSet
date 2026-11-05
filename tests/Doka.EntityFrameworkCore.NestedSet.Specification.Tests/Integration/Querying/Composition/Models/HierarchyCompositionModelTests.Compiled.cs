@@ -28,6 +28,7 @@ public abstract partial class HierarchyCompositionModelTests
         await using var design = await _fixture.CreateContextAsync<CompiledTreeContext>(
             Engine,
             static options => new CompiledTreeContext(options, false),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe,
             TestMaterializationObserver.Instance);
 

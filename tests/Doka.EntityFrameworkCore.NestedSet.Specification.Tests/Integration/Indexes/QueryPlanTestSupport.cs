@@ -17,6 +17,7 @@ internal static class QueryPlanTestSupport
         Func<Task> cleanup
     )
     {
+        // WHY: Teardown must attempt both evidence retention and every resource release after canceled work.
         List<Exception>? failures = null;
         await CompleteAsync(writeEvidence);
         await CompleteAsync(cleanup);
@@ -67,9 +68,11 @@ internal static class QueryPlanTestSupport
     /// <summary>
     /// Gives the optimizer current seed distributions without waiting for background statistics collection.
     /// </summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     internal static Task RefreshStatisticsAsync<TEntity>(
         DbContext context,
-        string engine
+        string engine,
+        CancellationToken cancellationToken
     )
         where TEntity : class
     {
@@ -79,7 +82,7 @@ internal static class QueryPlanTestSupport
 
         if (engine == "SqlServer")
         {
-            return RefreshSqlServerStatisticsAsync(context, sql, table);
+            return RefreshSqlServerStatisticsAsync(context, sql, table, cancellationToken: cancellationToken);
         }
 
         // WHY: Fresh PostgreSQL tables otherwise estimated two scope rows where the probe seeded two hundred.
@@ -90,18 +93,20 @@ internal static class QueryPlanTestSupport
             _ => "ANALYZE " + table,
         };
 
-        return context.Database.ExecuteSqlRawAsync(statement, CancellationToken.None);
+        return context.Database.ExecuteSqlRawAsync(statement, cancellationToken);
     }
 
     /// <summary>Refreshes every statistic on one owned SQL Server table with its unchanged command watchdog.</summary>
     /// <param name="context">The fixture context whose ordinary provider command settings remain authoritative.</param>
     /// <param name="sql">The configured provider's identifier delimiter.</param>
     /// <param name="table">The fully delimited mapped table, bound as a value when resolving its object identity.</param>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     /// <returns>A task completing after every owned statistic has been refreshed using FULLSCAN.</returns>
     private static async Task RefreshSqlServerStatisticsAsync(
         DbContext context,
         ISqlGenerationHelper sql,
-        string table
+        string table,
+        CancellationToken cancellationToken
     )
     {
         // WHY: One all-statistics FULLSCAN accumulated every index/column scan under one command watchdog.
@@ -109,7 +114,7 @@ internal static class QueryPlanTestSupport
         var statistics = await context.Database.SqlQueryRaw<string>(
                 "SELECT [name] AS [Value] FROM [sys].[stats] "
                 + "WHERE [object_id] = OBJECT_ID({0}) ORDER BY [stats_id]", table)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         if (statistics.Length == 0)
         {
@@ -122,21 +127,23 @@ internal static class QueryPlanTestSupport
         {
             // WHY: Only mapped/catalog identifiers enter this statement, and both use the provider delimiter.
             var statement = "UPDATE STATISTICS " + table + " " + sql.DelimitIdentifier(statistic) + " WITH FULLSCAN";
-            await context.Database.ExecuteSqlRawAsync(statement, CancellationToken.None);
+            await context.Database.ExecuteSqlRawAsync(statement, cancellationToken);
         }
     }
 
     /// <summary>
     /// Obtains actual execution plans while retaining the mapped parameter values of the original query.
     /// </summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     internal static async Task<string> ExplainAsync(
         DbContext context,
         EnterpriseProbe probe,
         int index,
-        string engine
+        string engine,
+        CancellationToken cancellationToken
     )
     {
-        await context.Database.OpenConnectionAsync(CancellationToken.None);
+        await context.Database.OpenConnectionAsync(cancellationToken);
         await using var command = context
             .Database
             .GetDbConnection()
@@ -163,7 +170,7 @@ internal static class QueryPlanTestSupport
         }
 
         var plan = new StringBuilder();
-        await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
         do
         {
@@ -173,7 +180,7 @@ internal static class QueryPlanTestSupport
                 && reader.GetName(1).Equals("Code", StringComparison.OrdinalIgnoreCase)
                 && reader.GetName(2).Equals("Message", StringComparison.OrdinalIgnoreCase);
 
-            while (await reader.ReadAsync(CancellationToken.None))
+            while (await reader.ReadAsync(cancellationToken))
             {
                 if (mySqlWarnings)
                 {
@@ -199,7 +206,7 @@ internal static class QueryPlanTestSupport
 
                 plan.AppendLine(reader.GetString(engine == "Sqlite" ? 3 : 0));
             }
-        } while (await reader.NextResultAsync(CancellationToken.None));
+        } while (await reader.NextResultAsync(cancellationToken));
 
         return plan.ToString();
     }
@@ -207,9 +214,11 @@ internal static class QueryPlanTestSupport
     /// <summary>
     /// Retains provider plans outside source control for independent inspection and CI artifact collection.
     /// </summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     internal static async Task WriteEvidenceAsync(
         string name,
-        IReadOnlyList<string> evidence
+        IReadOnlyList<string> evidence,
+        CancellationToken cancellationToken
     )
     {
         var directory = Environment.GetEnvironmentVariable("DOKA_NESTEDSET_QUERY_PLAN_DIR")
@@ -219,6 +228,6 @@ internal static class QueryPlanTestSupport
         await File.WriteAllTextAsync(
             Path.Combine(directory, name + ".txt"),
             string.Join("\n\n", evidence),
-            CancellationToken.None);
+            cancellationToken);
     }
 }

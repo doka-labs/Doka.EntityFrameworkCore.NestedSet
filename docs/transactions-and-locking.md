@@ -317,6 +317,14 @@ Rollback and cleanup use `CancellationToken.None` after forward progress has
 failed. Reusing an already canceled request token could abandon transaction
 cleanup and leave context state unknown.
 
+Owned helpers dedicated to this mandatory cleanup take no cancellation token.
+The same rule applies to finalizing an already-started command: its provider
+task owns cancellation, and NestedSet observes that task's terminal result
+before transaction cleanup. Independently canceling the observation could race
+rollback with a command that is still writing. Ordinary operations and
+initialization helpers instead require explicit tokens and propagate them to
+their cancellable work; a failure during initialization does not cancel disposal.
+
 That token does not disable provider recovery timeouts. Microsoft.Data.SqlClient
 6.1.6 uses its connection-string `Connect Timeout` for native whole-transaction
 rollback; its default is 15 seconds. EF's ordinary command timeout does not

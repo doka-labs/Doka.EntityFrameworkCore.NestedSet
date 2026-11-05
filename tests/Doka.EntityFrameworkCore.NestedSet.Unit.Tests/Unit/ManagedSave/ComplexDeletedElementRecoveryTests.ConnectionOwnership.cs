@@ -2,6 +2,44 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public sealed partial class ComplexDeletedElementRecoveryTests
 {
+    /// <summary>Caller cancellation cannot prevent cleanup of the factory-owned connection.</summary>
+    /// <param name="cleanupFails">Whether disposal itself also fails after releasing the connection.</param>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CanceledInitializationAlwaysDisposesOwnedConnection(
+        bool cleanupFails
+    )
+    {
+        // Arrange
+        var cleanupFailure = new ConnectionCleanupFailure();
+        await using var connection = new ObservedConnection("Data Source=:memory:",
+            cleanupFails ? cleanupFailure : null);
+
+        using var stop = new CancellationTokenSource();
+        await stop.CancelAsync();
+        var seed = NewPayload(1, NewOuter("Stored", 0, 0));
+
+        // Act
+        var exception = await Record.ExceptionAsync(() => CreateAsync(seed, connection, stop.Token));
+
+        // Assert
+        var failure = exception;
+
+        if (cleanupFails)
+        {
+            var aggregate = Assert.IsType<AggregateException>(exception);
+            Assert.Equal(2, aggregate.InnerExceptions.Count);
+            Assert.Same(cleanupFailure, aggregate.InnerExceptions[1]);
+            failure = aggregate.InnerExceptions[0];
+        }
+
+        Assert.Equal(stop.Token,
+            Assert.IsAssignableFrom<OperationCanceledException>(failure).CancellationToken);
+        Assert.True(connection.WasDisposed);
+        Assert.Equal(ConnectionState.Closed, connection.State);
+    }
+
     /// <summary>Transfers an initialized connection to the returned context until that context is disposed.</summary>
     [Fact]
     public async Task InitializedStoreTransfersConnectionOwnershipToReturnedContext()
@@ -10,7 +48,9 @@ public sealed partial class ComplexDeletedElementRecoveryTests
         await using var connection = new ObservedConnection("Data Source=:memory:");
 
         // Act
-        var context = await CreateAsync(NewPayload(1, NewOuter("Stored", 0, 0)), connection);
+        var context = await CreateAsync(NewPayload(1, NewOuter("Stored", 0, 0)), connection,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         ConnectionState transferredState;
         bool disposedBeforeContext;
         int persistedRows;
@@ -45,7 +85,8 @@ public sealed partial class ComplexDeletedElementRecoveryTests
         };
 
         // Act
-        var exception = await Record.ExceptionAsync(() => CreateAsync(seed, connection));
+        var exception = await Record.ExceptionAsync(() => CreateAsync(seed, connection,
+            cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         var update = Assert.IsType<DbUpdateException>(exception);
@@ -74,7 +115,8 @@ public sealed partial class ComplexDeletedElementRecoveryTests
         var seed = NewPayload(1, NewOuter("Stored", 0, 0));
 
         // Act
-        var exception = await Record.ExceptionAsync(() => CreateAsync(seed, connection));
+        var exception = await Record.ExceptionAsync(() => CreateAsync(seed, connection,
+            cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         var provider = Assert.IsType<SqliteException>(exception);
@@ -98,7 +140,8 @@ public sealed partial class ComplexDeletedElementRecoveryTests
         };
 
         // Act
-        var exception = await Record.ExceptionAsync(() => CreateAsync(seed, connection));
+        var exception = await Record.ExceptionAsync(() => CreateAsync(seed, connection,
+            cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         var failures = Assert.IsType<AggregateException>(exception);

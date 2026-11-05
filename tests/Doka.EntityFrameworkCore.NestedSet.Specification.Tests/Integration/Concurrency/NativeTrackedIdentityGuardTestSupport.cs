@@ -20,12 +20,14 @@ internal static class NativeTrackedIdentityGuardTestSupport
     /// <param name="scope">The stored Scope identity.</param>
     /// <param name="treeId">The newly allocated tree identity.</param>
     /// <param name="root">The assigned first key in the centrally reserved range.</param>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     /// <returns>A task completing after import and arrangement-owned tracker cleanup.</returns>
     internal static async Task SeedScopedNativeAsync(
         DbContext context,
         string scope,
         Guid treeId,
-        int root
+        int root,
+        CancellationToken cancellationToken
     )
     {
         var branch = new NestedSetBranch<ScopeAliasNode>(
@@ -46,7 +48,7 @@ internal static class NativeTrackedIdentityGuardTestSupport
         await context
             .NestedSet<ScopeAliasNode>()
             .ForScope(scope)
-            .InsertForestAsync([new NestedSetTreeImport<ScopeAliasNode, Guid>(treeId, branch)], CancellationToken.None);
+            .InsertForestAsync([new NestedSetTreeImport<ScopeAliasNode, Guid>(treeId, branch)], cancellationToken);
 
         context.ChangeTracker.Clear();
     }
@@ -56,12 +58,14 @@ internal static class NativeTrackedIdentityGuardTestSupport
     /// <param name="scope">The converted Scope value with its native persisted comparison.</param>
     /// <param name="treeId">The newly allocated tree identity.</param>
     /// <param name="root">The assigned first key in the centrally reserved range.</param>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     /// <returns>A task completing after import and arrangement-owned tracker cleanup.</returns>
     internal static async Task SeedBroadScopeAsync(
         DbContext context,
         BroadScope scope,
         Guid treeId,
-        int root
+        int root,
+        CancellationToken cancellationToken
     )
     {
         var branch = new NestedSetBranch<BroadScopeNode>(
@@ -82,7 +86,7 @@ internal static class NativeTrackedIdentityGuardTestSupport
         await context
             .NestedSet<BroadScopeNode>()
             .ForScope(scope)
-            .InsertForestAsync([new NestedSetTreeImport<BroadScopeNode, Guid>(treeId, branch)], CancellationToken.None);
+            .InsertForestAsync([new NestedSetTreeImport<BroadScopeNode, Guid>(treeId, branch)], cancellationToken);
 
         context.ChangeTracker.Clear();
     }

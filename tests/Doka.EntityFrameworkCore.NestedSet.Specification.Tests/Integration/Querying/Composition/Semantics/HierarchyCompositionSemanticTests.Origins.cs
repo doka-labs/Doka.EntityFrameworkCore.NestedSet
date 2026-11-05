@@ -9,7 +9,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
+        await using var context = await CreateContextAsync(scope, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
         var pairs = hierarchy.SelectAncestors(node => node.Id == 3 || node.Id == 6,
             (source, pivot, distance) => new { Source = source, Pivot = pivot, Distance = distance });
@@ -42,7 +44,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
+        await using var context = await CreateContextAsync(scope, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
         IReadOnlyDictionary<int, int?> parents = new Dictionary<int, int?>
         {
@@ -87,7 +91,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
+        await using var context = await CreateContextAsync(scope, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
         var node = context.Set<CompositionNode>().Where(entity => entity.Scope == scope && entity.Id == 3);
         var payloads = node.Select(entity => new { Node = entity, CandidateId = 1, AcceptedId = 1, Payload = 11 })

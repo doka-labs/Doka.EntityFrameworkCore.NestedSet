@@ -7,8 +7,10 @@ public abstract partial class OrderingTests
     public async Task OptionsGuardRejectsUncoordinatedSortChange()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(Tree(setup));
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(Tree(setup), cancellationToken: TestContext.Current.CancellationToken);
         var options = (DbContextOptions)setup.GetService<IDbContextOptions>();
         await using var context = new MissingIntegrationOrderingContext(options);
         var node = await context.Set<OrderingNode>()
@@ -33,8 +35,10 @@ public abstract partial class OrderingTests
     public async Task OptionsGuardAllowsPayloadOnlySave()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(Tree(setup));
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(Tree(setup), cancellationToken: TestContext.Current.CancellationToken);
         var options = (DbContextOptions)setup.GetService<IDbContextOptions>();
         await using var context = new MissingIntegrationOrderingContext(options);
         var node = await context.Set<OrderingNode>()
@@ -58,7 +62,9 @@ public abstract partial class OrderingTests
     public async Task OptionsGuardRejectsDirectAdd()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var options = (DbContextOptions)setup.GetService<IDbContextOptions>();
         await using var context = new MissingIntegrationOrderingContext(options);
         context.Add(Node(1, "Root"));
@@ -77,7 +83,9 @@ public abstract partial class OrderingTests
     public async Task OptionsGuardRejectsDirectDelete()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await Tree(setup).InsertRootAsync(Node(1, "Root"), Guid.NewGuid(), CancellationToken.None);
         var options = (DbContextOptions)setup.GetService<IDbContextOptions>();
         await using var context = new MissingIntegrationOrderingContext(options);
@@ -100,7 +108,9 @@ public abstract partial class OrderingTests
     public async Task OptionsGuardRejectsDirectCoordinateChange()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await Tree(setup).InsertRootAsync(Node(1, "Root"), Guid.NewGuid(), CancellationToken.None);
         var options = (DbContextOptions)setup.GetService<IDbContextOptions>();
         await using var context = new MissingIntegrationOrderingContext(options);

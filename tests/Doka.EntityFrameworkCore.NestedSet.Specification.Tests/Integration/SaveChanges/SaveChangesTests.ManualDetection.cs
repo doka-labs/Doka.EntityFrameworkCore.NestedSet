@@ -30,8 +30,10 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await setup.AddAsync(new OrderingMarker { Id = 1, Value = "original" }, CancellationToken.None);
         await setup.SaveChangesAsync(CancellationToken.None);
         var probe = new SaveBoundaryProbe();
@@ -87,8 +89,10 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await setup.AddAsync(new OrderingMarker { Id = 1, Value = "original" }, CancellationToken.None);
         await setup.SaveChangesAsync(CancellationToken.None);
         var probe = new SaveBoundaryProbe();
@@ -153,8 +157,10 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await setup.AddAsync(new OrderingMarker { Id = 1, Value = "original" }, CancellationToken.None);
         await setup.SaveChangesAsync(CancellationToken.None);
         var probe = new SaveBoundaryProbe();
@@ -250,8 +256,10 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await setup.AddAsync(new OrderingMarker { Id = 1, Value = "original" }, CancellationToken.None);
         await setup.SaveChangesAsync(CancellationToken.None);
         var probe = new SaveBoundaryProbe();
@@ -334,8 +342,10 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await setup.AddAsync(new OrderingMarker { Id = 1, Value = "original" }, CancellationToken.None);
         await setup.SaveChangesAsync(CancellationToken.None);
         var callback = new SaveBoundaryCallback();
@@ -389,8 +399,10 @@ public abstract partial class SaveChangesTests
     public async Task ManualDetectionCoordinatesExplicitParentChange()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = CreateManualDetectionContext(setup, wrapped: true);
         var node = await context.Set<OrderingNode>().SingleAsync(value => value.Id == 1, CancellationToken.None);
         context.ChangeTracker.AutoDetectChangesEnabled = false;
@@ -433,8 +445,10 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new SaveBoundaryProbe();
         var callback = new ManualSaveCompletionCallback();
         await using var context = CreateManualDetectionContext(setup, wrapped, probe, callback);

@@ -12,16 +12,17 @@ public abstract partial class SaveChangesTests
         string navigation,
         bool automaticDetection,
         bool pendingPayload,
-        bool normalizeAutomatic
+        bool normalizeAutomatic,
+        CancellationToken cancellationToken
     )
     {
         var nodes = await context.Set<NavigationNode>().Include(node => node.Children).Include(node => node.ScopeOwner)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         var root = nodes.Single(node => node.Id == 1);
         var child = nodes.Single(node => node.Id == 2);
         var target = nodes.Single(node => node.Id == 3);
-        var note = await context.Set<NavigationNote>().SingleAsync(CancellationToken.None);
+        var note = await context.Set<NavigationNote>().SingleAsync(cancellationToken);
         var updates = context.GetService<IUpdateAdapterFactory>().Create();
 
         // WHY: Warm native dependent indexes while keys are unchanged, before any caller-side raw FK edit.
@@ -179,12 +180,17 @@ public abstract partial class SaveChangesTests
     /// <summary>
     ///     Creates the destination tree without loading any hierarchy input into the later facade context.
     /// </summary>
-    private static async Task SeedPreparedNavigationDestinationAsync(TestDatabase database)
+    private static async Task SeedPreparedNavigationDestinationAsync(
+        TestDatabase database,
+        CancellationToken cancellationToken
+    )
     {
-        await using var setup = await CreateNavigationContextAsync(database, wrapped: true);
+        await using var setup = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: cancellationToken);
+
         await setup.NestedSet<NavigationNode>().ForScope(1)
             .InsertRootAsync(new NavigationNode { Id = 100, Name = "Destination" }, s_manualDestinationTree,
-                CancellationToken.None);
+                cancellationToken);
     }
 
     /// <summary>Reuses the existing insertion-shape data with the navigation model's explicit scope.</summary>
@@ -200,7 +206,8 @@ public abstract partial class SaveChangesTests
     private static async Task InsertPreparedNavigationShapeAsync(
         DbContext context,
         string shape,
-        NavigationNode[] inputs
+        NavigationNode[] inputs,
+        CancellationToken cancellationToken
     )
     {
         var tree = context.NestedSet<NavigationNode>().ForScope(inputs[0].Scope);
@@ -208,12 +215,12 @@ public abstract partial class SaveChangesTests
         switch (shape)
         {
             case "single":
-                await tree.InsertChildAsync(inputs[0], 100, CancellationToken.None);
+                await tree.InsertChildAsync(inputs[0], 100, cancellationToken);
                 break;
             case "subtree":
                 await tree.InsertSubtreeAsync(
                     new NestedSetBranch<NavigationNode>(inputs[0], [new NestedSetBranch<NavigationNode>(inputs[1])]),
-                    100, CancellationToken.None);
+                    100, cancellationToken);
                 break;
             case "forest":
                 await tree.InsertForestAsync(
@@ -224,7 +231,7 @@ public abstract partial class SaveChangesTests
                         new NestedSetTreeImport<NavigationNode, Guid>(s_manualSecondImportTree,
                             new NestedSetBranch<NavigationNode>(inputs[2],
                                 [new NestedSetBranch<NavigationNode>(inputs[3])])),
-                    ], CancellationToken.None);
+                    ], cancellationToken);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(shape));

@@ -21,8 +21,9 @@ public abstract partial class WriteAmplificationTests : ProviderTest
     public async Task LocalMoveWritesOnlyTheCrossedInterval()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await WriteAmplificationTestSupport.SeedAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await WriteAmplificationTestSupport.SeedAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
         var probe = new StructuralWriteProbe();
         await using var context = database.CreateContext(probe);
         var service = context
@@ -39,7 +40,8 @@ public abstract partial class WriteAmplificationTests : ProviderTest
         // Assert
         Assert.True(probe.BoundsWrites is [{ Rows: 4 } _], probe.Describe());
         Assert.Equal(6, probe.NodeUpdates.Sum(write => write.Rows));
-        await AssertCommandBudgetAsync(probe, Engine, 10, "local-move", discoveryRequired: true);
+        await AssertCommandBudgetAsync(probe, Engine, 10, "local-move", discoveryRequired: true,
+            cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal([1, 4, 5, 2, 3, 6], keys);
         Assert.Empty(
             (await service
@@ -54,8 +56,9 @@ public abstract partial class WriteAmplificationTests : ProviderTest
     public async Task CrossParentMoveSkipsKnownPositionNoOps()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await WriteAmplificationTestSupport.SeedAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await WriteAmplificationTestSupport.SeedAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
         var probe = new StructuralWriteProbe();
         await using var context = database.CreateContext(probe);
         var service = context
@@ -85,8 +88,9 @@ public abstract partial class WriteAmplificationTests : ProviderTest
     public async Task PromotedDeleteRewritesEachAffectedBoundaryOnce()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await WriteAmplificationTestSupport.SeedAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await WriteAmplificationTestSupport.SeedAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
         var probe = new StructuralWriteProbe();
         await using var context = database.CreateContext(probe);
         var service = context
@@ -99,7 +103,8 @@ public abstract partial class WriteAmplificationTests : ProviderTest
         // Assert
         Assert.True(probe.BoundsWrites is [{ Rows: 107 } _], probe.Describe());
         Assert.Equal(108, probe.NodeUpdates.Sum(write => write.Rows));
-        await AssertCommandBudgetAsync(probe, Engine, 8, "promoted-delete", discoveryRequired: true);
+        await AssertCommandBudgetAsync(probe, Engine, 8, "promoted-delete", discoveryRequired: true,
+            cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(
             2,
             await service
@@ -119,8 +124,9 @@ public abstract partial class WriteAmplificationTests : ProviderTest
     public async Task RootAppendAvoidsEmptyUpdates()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await WriteAmplificationTestSupport.SeedAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await WriteAmplificationTestSupport.SeedAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
         var probe = new StructuralWriteProbe();
         await using var context = database.CreateContext(probe);
         var service = context
@@ -134,7 +140,8 @@ public abstract partial class WriteAmplificationTests : ProviderTest
 
         // Assert
         Assert.True(probe.NodeUpdates.Count == 0, probe.Describe());
-        await AssertCommandBudgetAsync(probe, Engine, 6, "new-tree-root", discoveryRequired: false);
+        await AssertCommandBudgetAsync(probe, Engine, 6, "new-tree-root", discoveryRequired: false,
+            cancellationToken: TestContext.Current.CancellationToken);
         var root = await service
             .InTree(treeId)
             .Nodes
@@ -154,8 +161,9 @@ public abstract partial class WriteAmplificationTests : ProviderTest
     public async Task ChildAppendUsesOneBoundaryUpdate()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await WriteAmplificationTestSupport.SeedAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await WriteAmplificationTestSupport.SeedAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
         var probe = new StructuralWriteProbe();
         await using var context = database.CreateContext(probe);
         var service = context
@@ -167,7 +175,8 @@ public abstract partial class WriteAmplificationTests : ProviderTest
 
         // Assert
         Assert.True(probe.NodeUpdates.Count == 1 && probe.BoundsWrites is [{ Rows: 103 } _], probe.Describe());
-        await AssertCommandBudgetAsync(probe, Engine, 8, "child-append", discoveryRequired: true);
+        await AssertCommandBudgetAsync(probe, Engine, 8, "child-append", discoveryRequired: true,
+            cancellationToken: TestContext.Current.CancellationToken);
         Assert.DoesNotContain(probe.Commands, sql => sql.Contains("MAX(", StringComparison.OrdinalIgnoreCase));
         Assert.Empty(
             (await service
@@ -176,6 +185,7 @@ public abstract partial class WriteAmplificationTests : ProviderTest
     }
 
     /// <summary>Separates one required tree discovery from the unchanged bounded structural command budget.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="probe">The observed native commands and write counters.</param>
     /// <param name="engine">The provider whose reservation command budget is applied.</param>
     /// <param name="ordinary">The existing structural command ceiling for the operation.</param>
@@ -187,10 +197,12 @@ public abstract partial class WriteAmplificationTests : ProviderTest
         string engine,
         int ordinary,
         string operation,
-        bool discoveryRequired
+        bool discoveryRequired,
+        CancellationToken cancellationToken
     )
     {
-        await QueryPlanTestSupport.WriteEvidenceAsync($"{engine}-typed-{operation}-commands", probe.Commands);
+        await QueryPlanTestSupport.WriteEvidenceAsync($"{engine}-typed-{operation}-commands", probe.Commands,
+            cancellationToken: cancellationToken);
         var discoveries = probe
             .Commands
             .Where(IsTreeDiscovery)

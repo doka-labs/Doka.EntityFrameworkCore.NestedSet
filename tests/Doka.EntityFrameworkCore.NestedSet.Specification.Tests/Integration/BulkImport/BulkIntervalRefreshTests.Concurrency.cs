@@ -7,7 +7,9 @@ public abstract partial class BulkIntervalRefreshTests
     public async Task RefreshedGeneratedTokenAllowsOrdinaryPayloadSave()
     {
         // Arrange
-        await using var context = await _generated.ResetAsync(Engine);
+        await using var context = await _generated.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = context
             .NestedSet<BulkIntervalNode>()
             .ForScope(1);

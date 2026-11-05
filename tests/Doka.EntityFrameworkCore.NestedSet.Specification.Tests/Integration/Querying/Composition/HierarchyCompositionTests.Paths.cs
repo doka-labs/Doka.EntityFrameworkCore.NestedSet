@@ -17,6 +17,7 @@ public abstract partial class HierarchyCompositionTests
         await using var context = await _fixture.CreateContextAsync<CompositionContext>(
             Engine,
             static options => new CompositionContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe,
             TestMaterializationObserver.Instance);
 
@@ -78,7 +79,9 @@ public abstract partial class HierarchyCompositionTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe, closed: 2);
+        await using var context = await CreateContextAsync(scope, probe, closed: 2,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
 
         // Act
@@ -112,7 +115,9 @@ public abstract partial class HierarchyCompositionTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe, hidden: 2);
+        await using var context = await CreateContextAsync(scope, probe, hidden: 2,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
 
         // Act
@@ -146,7 +151,9 @@ public abstract partial class HierarchyCompositionTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
+        await using var context = await CreateContextAsync(scope, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
         var source = context.Set<CompositionNode>()
             .Where(node => node.Scope == scope && node.Id == 3)
@@ -187,7 +194,9 @@ public abstract partial class HierarchyCompositionTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe, hidden: 2);
+        await using var context = await CreateContextAsync(scope, probe, hidden: 2,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
         var source = context.Set<CompositionNode>()
             .Where(node => node.Scope == scope && node.Id == 3)
@@ -218,7 +227,9 @@ public abstract partial class HierarchyCompositionTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe, hidden: 1);
+        await using var context = await CreateContextAsync(scope, probe, hidden: 1,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
         var source = context.Set<CompositionNode>()
             .Where(node => node.Scope == scope && node.Id == 3)

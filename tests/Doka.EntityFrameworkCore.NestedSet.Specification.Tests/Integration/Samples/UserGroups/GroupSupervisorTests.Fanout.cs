@@ -21,10 +21,10 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await SeedOriginProfileAsync(context, data, 8, 1);
-        await EnableSnapshotAsync(context);
+        await SeedOriginProfileAsync(context, data, 8, 1, cancellationToken: TestContext.Current.CancellationToken);
+        await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         App.MetadataMatch[] matches =
         [
             new(App.MetadataOwner.SourceUser, "Route", App.MetadataOwner.CandidateMembership, "Route"),

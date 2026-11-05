@@ -16,10 +16,13 @@ public abstract partial class HierarchyCompositionConsistencyTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var setup = await CreateContextAsync(scope, probe);
+        await using var setup = await CreateContextAsync(scope, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var writer = await _fixture.CreateContextAsync<CompositionContext>(
             Engine,
-            static options => new CompositionContext(options));
+            static options => new CompositionContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var committedDuringRead = false;
         var boundary = new CompositionReadBoundaryProbe(async token =>
@@ -31,10 +34,11 @@ public abstract partial class HierarchyCompositionConsistencyTests
         await using var context = await _fixture.CreateContextAsync<CompositionContext>(
             Engine,
             static options => new CompositionContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe,
             boundary);
 
-        await ConfigureSnapshotAsync(context);
+        await ConfigureSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         await using var native = Engine == "Sqlite" ? BeginDeferredSqliteTransaction(context) : null;
         await using var transaction = native is null
@@ -57,7 +61,8 @@ public abstract partial class HierarchyCompositionConsistencyTests
         await transaction.RollbackAsync(CancellationToken.None);
         await using var verification = await _fixture.CreateContextAsync<CompositionContext>(
             Engine,
-            static options => new CompositionContext(options));
+            static options => new CompositionContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var after = await BuildMixedQuery(verification, scope)
             .ToArrayAsync(CancellationToken.None);
@@ -86,7 +91,8 @@ public abstract partial class HierarchyCompositionConsistencyTests
     ///     Enables only test-owned provider options required for a nonblocking snapshot-versus-writer proof.
     /// </summary>
     private async Task ConfigureSnapshotAsync(
-        CompositionContext context
+        CompositionContext context,
+        CancellationToken cancellationToken
     )
     {
         if (Engine == "SqlServer")
@@ -95,13 +101,13 @@ public abstract partial class HierarchyCompositionConsistencyTests
             // the query library must neither alter database options nor silently change caller isolation.
             await context.Database.ExecuteSqlRawAsync(
                 "ALTER DATABASE CURRENT SET ALLOW_SNAPSHOT_ISOLATION ON",
-                CancellationToken.None);
+                cancellationToken);
         }
         else if (Engine == "Sqlite")
         {
             // WHY: WAL permits the competing commit while the reader retains its original version.
             // Rollback journaling would block that writer and make an await-inside-reader barrier deadlock.
-            await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL", CancellationToken.None);
+            await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL", cancellationToken);
         }
     }
 

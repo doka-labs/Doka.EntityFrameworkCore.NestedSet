@@ -7,8 +7,10 @@ public abstract partial class OrderingQueryShapeTests
     public async Task PersistedIntervalsExcludeStaleTrackedAliases()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         using var probe = new ScaleProbe();
         var ordinals = new OrdinalProbe();
         await using var context = CreateContext(setup, probe, ordinals);
@@ -72,10 +74,10 @@ public abstract partial class OrderingQueryShapeTests
                 .Entry(renamed)
                 .Property(node => node.Name)
                 .IsModified);
-        AssertPersisted(await ReadScopeAsync(setup, 1), 1);
-        AssertPersisted(await ReadScopeAsync(setup, 2), 0);
-        await AssertRootAsync(setup, 1);
-        await AssertRootAsync(setup, 2);
+        AssertPersisted(await ReadScopeAsync(setup, 1, cancellationToken: TestContext.Current.CancellationToken), 1);
+        AssertPersisted(await ReadScopeAsync(setup, 2, cancellationToken: TestContext.Current.CancellationToken), 0);
+        await AssertRootAsync(setup, 1, cancellationToken: TestContext.Current.CancellationToken);
+        await AssertRootAsync(setup, 2, cancellationToken: TestContext.Current.CancellationToken);
         Assert.All(
             observation.Commands,
             command =>

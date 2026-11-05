@@ -55,7 +55,7 @@ public abstract class TableMappingTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<TableSplitContext>(
             Engine,
-            static options => new TableSplitContext(options));
+            static options => new TableSplitContext(options), cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<TableSplitNode>();
         var treeId = Guid.NewGuid();
@@ -134,7 +134,8 @@ public abstract class TableMappingTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<EntitySplitContext>(
             Engine,
-            static options => new EntitySplitContext(options));
+            static options => new EntitySplitContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<EntitySplitNode>();
         var treeId = Guid.NewGuid();

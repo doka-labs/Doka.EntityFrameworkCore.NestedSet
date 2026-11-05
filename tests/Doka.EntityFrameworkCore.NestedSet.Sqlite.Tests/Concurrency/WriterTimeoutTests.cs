@@ -16,7 +16,9 @@ public sealed class WriterTimeoutTests : ProviderTest, IClassFixture<ProviderFix
     public async Task BusyWriterPreservesStructureAndRegistryUntilFreshRetry()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var firstTree = Guid.Parse("11111111-1111-1111-1111-111111111111");
         var secondTree = Guid.Parse("22222222-2222-2222-2222-222222222222");
         await using (var setup = database.CreateContext())
@@ -28,7 +30,7 @@ public sealed class WriterTimeoutTests : ProviderTest, IClassFixture<ProviderFix
             await hierarchy.InsertRootAsync(new TreeNode { NodeId = 1 }, firstTree, CancellationToken.None);
         }
 
-        var before = await SnapshotAsync(database);
+        var before = await SnapshotAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         await using var writer = database.CreateContext();
         await using var transaction = await writer.Database.BeginTransactionAsync(
             IsolationLevel.Serializable,
@@ -51,7 +53,7 @@ public sealed class WriterTimeoutTests : ProviderTest, IClassFixture<ProviderFix
             CancellationToken.None));
 
         await transaction.RollbackAsync(CancellationToken.None);
-        var afterFailure = await SnapshotAsync(database);
+        var afterFailure = await SnapshotAsync(database, cancellationToken: TestContext.Current.CancellationToken);
 
         await using var retryContext = database.CreateContext();
         var retryTree = retryContext
@@ -60,7 +62,7 @@ public sealed class WriterTimeoutTests : ProviderTest, IClassFixture<ProviderFix
 
         var retriedRoot = new TreeNode { NodeId = 2 };
         await retryTree.InsertRootAsync(retriedRoot, secondTree, CancellationToken.None);
-        var afterRetry = await SnapshotAsync(database);
+        var afterRetry = await SnapshotAsync(database, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var busy = Assert.IsType<SqliteException>(failure);
@@ -80,8 +82,11 @@ public sealed class WriterTimeoutTests : ProviderTest, IClassFixture<ProviderFix
     }
 
     /// <summary>Reads persisted coordinates and typed registry identities through an independent context.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="database">The isolated database used by the scenario.</param>
     private static async Task<SnapshotState> SnapshotAsync(
-        TestDatabase database
+        TestDatabase database,
+        CancellationToken cancellationToken
     )
     {
         await using var context = database.CreateContext();
@@ -98,7 +103,7 @@ public sealed class WriterTimeoutTests : ProviderTest, IClassFixture<ProviderFix
                 node.Depth,
                 node.Position,
                 node.Parent))
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         var hierarchy = context.Model.FindEntityType(typeof(TreeNode))!;
         var registry = Mapping.NestedSetTreeRegistryMapping.For(hierarchy).Registry;
@@ -111,7 +116,7 @@ public sealed class WriterTimeoutTests : ProviderTest, IClassFixture<ProviderFix
                 EF.Property<Guid>(row, NestedSetTreeRegistryMetadata.TreeId),
                 EF.Property<long>(row, NestedSetTreeRegistryMetadata.Revision),
                 EF.Property<byte>(row, NestedSetTreeRegistryMetadata.Lifecycle)))
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         return new SnapshotState(nodes, rows);
     }

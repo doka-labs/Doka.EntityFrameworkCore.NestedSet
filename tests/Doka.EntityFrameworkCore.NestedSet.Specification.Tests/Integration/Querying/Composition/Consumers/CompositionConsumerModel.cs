@@ -100,7 +100,7 @@ internal static class CompositionConsumerModel
     }
 
     /// <summary>Creates only concrete sample payload tables; no structural rows are inserted or copied.</summary>
-    internal static async Task CreatePayloadAsync(DbContext context, bool signal)
+    internal static async Task CreatePayloadAsync(DbContext context, bool signal, CancellationToken cancellationToken)
     {
         var model = context.GetService<IDesignTimeModel>().Model.GetRelationalModel();
         var excluded = signal ? new[] { SignalNodes, SignalPeriods } : new[] { GroupNodes };
@@ -124,12 +124,12 @@ internal static class CompositionConsumerModel
 
         foreach (var command in commands)
         {
-            await context.Database.ExecuteSqlRawAsync(command.CommandText, CancellationToken.None);
+            await context.Database.ExecuteSqlRawAsync(command.CommandText, cancellationToken);
         }
     }
 
     /// <summary>Exposes exact persisted coordinates with explicit, constant capacity-only business payload.</summary>
-    internal static async Task CreateViewsAsync(TreeContext source, bool signal)
+    internal static async Task CreateViewsAsync(TreeContext source, bool signal, CancellationToken cancellationToken)
     {
         var entity = source.Model.FindEntityType(typeof(TreeNode))!;
         var store = StoreObjectIdentifier.Table(entity.GetTableName()!, entity.GetSchema());
@@ -157,7 +157,7 @@ internal static class CompositionConsumerModel
         var statement = $"CREATE VIEW {sql.DelimitIdentifier(view, store.Schema)} AS SELECT "
             + string.Join(", ", projections) + $" FROM {table}";
 
-        await source.Database.ExecuteSqlRawAsync(statement, CancellationToken.None);
+        await source.Database.ExecuteSqlRawAsync(statement, cancellationToken);
 
         if (signal)
         {
@@ -178,7 +178,7 @@ internal static class CompositionConsumerModel
             var periodStatement = $"CREATE VIEW {sql.DelimitIdentifier(SignalPeriods, store.Schema)} AS SELECT "
                 + string.Join(", ", periods) + $" FROM {table} WHERE {sql.DelimitIdentifier(parent)} IS NOT NULL";
 
-            await source.Database.ExecuteSqlRawAsync(periodStatement, CancellationToken.None);
+            await source.Database.ExecuteSqlRawAsync(periodStatement, cancellationToken);
         }
 
         string Column(string property, string alias) => sql.DelimitIdentifier(

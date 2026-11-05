@@ -72,7 +72,7 @@ public sealed partial class SupervisorEvidenceJoinTests
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
         var data = await SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await PrepareMixedOriginsAsync(context, data, closed);
+        await PrepareMixedOriginsAsync(context, data, closed, cancellationToken: TestContext.Current.CancellationToken);
         var request = data.Request(SearchStart.IncludeSelf) with
         {
             Groups = new AllEligibleGroups(),
@@ -139,7 +139,8 @@ public sealed partial class SupervisorEvidenceJoinTests
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
         var data = await SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await PrepareMixedOriginsAsync(context, data, closed: false, sharedWinner: true);
+        await PrepareMixedOriginsAsync(context, data, closed: false, sharedWinner: true,
+            cancellationToken: TestContext.Current.CancellationToken);
         var request = data.Request(SearchStart.IncludeSelf) with
         {
             Groups = new AllEligibleGroups(),

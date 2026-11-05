@@ -43,9 +43,13 @@ public abstract partial class GroupSupervisorTests
         // Arrange
         var probe = new SupervisorCommandProbe();
         var planProbe = new EnterpriseProbe(captureParameterBindings: true);
-        await using var context = await CreateAsync(probe, planProbe);
+        await using var context = await CreateAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe);
+
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await SeedOriginProfileAsync(context, data, origins, fields);
+        await SeedOriginProfileAsync(context, data, origins, fields,
+            cancellationToken: TestContext.Current.CancellationToken);
         var request = data.Request(App.SearchStart.IncludeSelf) with
         {
             Groups = new App.NthTypeGroupThenValidate(4, 1),
@@ -61,8 +65,10 @@ public abstract partial class GroupSupervisorTests
         if (Engine is "MySql" or "MariaDb")
         {
             await context.Database.OpenConnectionAsync(CancellationToken.None);
-            calibration = await CalibrateRankingHandlersAsync(context, data.Users[0]);
-            handlersBefore = await ReadRankingHandlersAsync(context);
+            calibration = await CalibrateRankingHandlersAsync(context, data.Users[0],
+                cancellationToken: TestContext.Current.CancellationToken);
+            handlersBefore = await ReadRankingHandlersAsync(context,
+                cancellationToken: TestContext.Current.CancellationToken);
         }
 
         var commandIndex = planProbe.Commands.Count;
@@ -81,13 +87,16 @@ public abstract partial class GroupSupervisorTests
                 Engine + "-usergroups-failed-origins-" + origins + "-" + fields,
                 [App.SupervisorQueries.ResolutionRows(context, data.TenantId, request,
                     App.SupervisorSelection.RequireUnique).ToQueryString(),
-                    await EstimatedOriginPlanAsync(context, planProbe, commandIndex)]);
+                    await EstimatedOriginPlanAsync(context, planProbe, commandIndex,
+                        cancellationToken: TestContext.Current.CancellationToken)],
+                cancellationToken: TestContext.Current.CancellationToken);
 
             throw;
         }
 
         var handlerReads = handlersBefore is null ? null
-            : RankingHandlerDelta(handlersBefore, await ReadRankingHandlersAsync(context));
+            : RankingHandlerDelta(handlersBefore, await ReadRankingHandlersAsync(context,
+                cancellationToken: TestContext.Current.CancellationToken));
 
         var commandCount = probe.Commands.Count;
         var readerAdvances = probe.ReaderAdvances;
@@ -96,7 +105,9 @@ public abstract partial class GroupSupervisorTests
             // WHY: Capture original-command counters before EXPLAIN executes the query a second time.
             // Handler requests and iterator output describe different boundaries; retain both raw records.
             var sql = planProbe.Commands[commandIndex];
-            var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, commandIndex, Engine);
+            var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, commandIndex, Engine,
+                cancellationToken: TestContext.Current.CancellationToken);
+
             await QueryPlanTestSupport.WriteEvidenceAsync(
                 Engine + "-usergroups-origins-" + origins + "-" + fields,
             [
@@ -106,7 +117,7 @@ public abstract partial class GroupSupervisorTests
                 "Calibration status-only delta: " + FormatRankingHandlers(calibration?.Empty),
                 "Calibration fully drained fixture-lookup delta: " + FormatRankingHandlers(calibration?.Lookup),
                 sql, plan,
-            ]);
+            ], cancellationToken: TestContext.Current.CancellationToken);
         }
 
         // Assert
@@ -143,13 +154,15 @@ public abstract partial class GroupSupervisorTests
     }
 
     /// <summary>Records an estimated failure plan without repeating the timed-out payload operation.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="context">The context whose open connection supplies the estimated plan.</param>
     /// <param name="probe">The observer holding the original SQL and parameter bindings.</param>
     /// <param name="index">The original command's position in the observer.</param>
     private async Task<string> EstimatedOriginPlanAsync(
         App.UserGroupContext context,
         EnterpriseProbe probe,
-        int index
+        int index,
+        CancellationToken cancellationToken
     )
     {
         if (Engine is not ("MySql" or "MariaDb" or "PostgreSql"))
@@ -157,7 +170,7 @@ public abstract partial class GroupSupervisorTests
             return "Estimated failure plan is available for server capacity engines only.";
         }
 
-        await context.Database.OpenConnectionAsync(CancellationToken.None);
+        await context.Database.OpenConnectionAsync(cancellationToken);
         await using var command = context.Database.GetDbConnection().CreateCommand();
         command.CommandText = (Engine == "PostgreSql" ? "EXPLAIN (FORMAT JSON) " : "EXPLAIN FORMAT=JSON ")
             + probe.Commands[index];
@@ -166,9 +179,9 @@ public abstract partial class GroupSupervisorTests
             command.Parameters.Add(parameter);
         }
 
-        await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var output = new StringBuilder();
-        while (await reader.ReadAsync(CancellationToken.None))
+        while (await reader.ReadAsync(cancellationToken))
         {
             output.AppendLine(reader.GetString(0));
         }
@@ -184,7 +197,7 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var four = data.Request() with
         {
@@ -228,6 +241,7 @@ public abstract partial class GroupSupervisorTests
     /// <summary>
     /// Builds medium application data around the existing small hierarchy, preserving tenant-qualified foreign keys.
     /// </summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="context">The context that persists the profile data.</param>
     /// <param name="data">The existing hierarchy and users extended by the profile.</param>
     /// <param name="origins">The number of new own-membership origins.</param>
@@ -236,20 +250,21 @@ public abstract partial class GroupSupervisorTests
         App.UserGroupContext context,
         App.SupervisorScenarioFixture data,
         int origins,
-        int fields
+        int fields,
+        CancellationToken cancellationToken
     )
     {
         await context.UserGroupMemberships
             .Where(member => member.TenantId == data.TenantId && member.UserId == data.Users[0])
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(cancellationToken);
         var root = await context.Groups.Where(group => group.TenantId == data.TenantId && group.Id == data.Groups[0])
             .Select(group => new { group.Right, group.Depth })
-            .SingleAsync(CancellationToken.None);
+            .SingleAsync(cancellationToken);
 
         await context.Groups.Where(group => group.TenantId == data.TenantId && group.Id == data.Groups[0])
             .ExecuteUpdateAsync(
                 setters => setters.SetProperty(group => group.Right, root.Right + origins * 2L),
-                CancellationToken.None);
+                cancellationToken);
         var groups = new App.UserGroup[origins];
         for (var index = 0; index < origins; index++)
         {
@@ -267,8 +282,8 @@ public abstract partial class GroupSupervisorTests
             };
         }
 
-        await context.Groups.AddRangeAsync(groups, CancellationToken.None);
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await context.Groups.AddRangeAsync(groups, cancellationToken);
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
         for (var fieldIndex = 0; fieldIndex < fields; fieldIndex++)
         {
             var field = s_profileFields[fieldIndex];
@@ -278,13 +293,13 @@ public abstract partial class GroupSupervisorTests
                 {
                     TenantId = data.TenantId,
                     FieldCode = field,
-                }, CancellationToken.None);
+                }, cancellationToken);
                 await context.MembershipMetadataDefinitions.AddAsync(new App.MembershipMetadataDefinition
                 {
                     TenantId = data.TenantId,
                     GroupTypeId = 4,
                     FieldCode = field,
-                }, CancellationToken.None);
+                }, cancellationToken);
             }
 
             if (fieldIndex != 0)
@@ -295,7 +310,7 @@ public abstract partial class GroupSupervisorTests
                     UserId = data.Users[0],
                     FieldCode = field,
                     Value = "lane-blue",
-                }, CancellationToken.None);
+                }, cancellationToken);
             }
         }
 
@@ -315,14 +330,14 @@ public abstract partial class GroupSupervisorTests
                     UserId = data.Users[1],
                     UserGroupId = group.Id,
                     LeadershipPriority = 10,
-                }], CancellationToken.None);
+                }], cancellationToken);
             await context.MembershipRoles.AddAsync(new App.MembershipRole
             {
                 TenantId = data.TenantId,
                 UserId = data.Users[1],
                 UserGroupId = group.Id,
                 RoleId = data.ManagerRoleId,
-            }, CancellationToken.None);
+            }, cancellationToken);
             foreach (var field in s_profileFields.Take(fields))
             {
                 await context.MembershipMetadatas.AddAsync(new App.MembershipMetadata
@@ -333,12 +348,12 @@ public abstract partial class GroupSupervisorTests
                     GroupTypeId = 4,
                     FieldCode = field,
                     Value = "lane-blue",
-                }, CancellationToken.None);
+                }, cancellationToken);
             }
         }
 
-        await context.SaveChangesAsync(CancellationToken.None);
+        await context.SaveChangesAsync(cancellationToken);
         context.ChangeTracker.Clear();
-        await PrepareConsumerStatisticsAsync(context);
+        await PrepareConsumerStatisticsAsync(context, cancellationToken: cancellationToken);
     }
 }

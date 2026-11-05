@@ -44,45 +44,49 @@ public abstract partial class OrderingTests : ProviderTest
 
     /// <summary>Materializes only identities while retaining a query's database order.</summary>
     private static Task<int[]> IdsAsync(
-        IQueryable<OrderingNode> query
+        IQueryable<OrderingNode> query,
+        CancellationToken cancellationToken
     ) => query
         .Select(node => node.Id)
-        .ToArrayAsync(CancellationToken.None);
+        .ToArrayAsync(cancellationToken);
 
     /// <summary>Checks persisted identity order after the asynchronous query has finished.</summary>
     private static async Task AssertIdsAsync(
         IQueryable<OrderingNode> query,
+        CancellationToken cancellationToken,
         params int[] expected
     )
     {
-        var actual = await IdsAsync(query);
+        var actual = await IdsAsync(query, cancellationToken: cancellationToken);
 
         Assert.Equal(expected, actual);
     }
 
     /// <summary>Seeds three alphabetic sibling subtrees in a deliberately different insertion order.</summary>
     private static async Task<Guid> SeedAsync(
-        ScopedNestedSet<OrderingNode, int> tree
+        ScopedNestedSet<OrderingNode, int> tree,
+        CancellationToken cancellationToken
     )
     {
         var treeId = Guid.NewGuid();
-        await tree.InsertRootAsync(Node(1, "Root"), treeId, CancellationToken.None);
-        await tree.InsertChildAsync(Node(4, "Charlie"), 1, CancellationToken.None);
-        await tree.InsertChildAsync(Node(2, "Alpha"), 1, CancellationToken.None);
-        await tree.InsertChildAsync(Node(3, "Bravo"), 1, CancellationToken.None);
-        await tree.InsertChildAsync(Node(5, "Leaf"), 3, CancellationToken.None);
+        await tree.InsertRootAsync(Node(1, "Root"), treeId, cancellationToken);
+        await tree.InsertChildAsync(Node(4, "Charlie"), 1, cancellationToken);
+        await tree.InsertChildAsync(Node(2, "Alpha"), 1, cancellationToken);
+        await tree.InsertChildAsync(Node(3, "Bravo"), 1, cancellationToken);
+        await tree.InsertChildAsync(Node(5, "Leaf"), 3, cancellationToken);
 
         return treeId;
     }
 
     /// <summary>Reads all persisted payload and structure in stable key order for rollback comparisons.</summary>
     private static Task<OrderingNode[]> SnapshotAsync(
-        OrderingContext context
+        OrderingContext context,
+        CancellationToken cancellationToken
     ) => context
         .Set<OrderingNode>()
         .AsNoTracking()
         .OrderBy(node => node.Id)
-        .ToArrayAsync(CancellationToken.None);
+        .ToArrayAsync(cancellationToken);
 
     /// <summary>Compares complete persisted values without relying on reference equality.</summary>
     private static void AssertSnapshot(
@@ -97,11 +101,12 @@ public abstract partial class OrderingTests : ProviderTest
     /// <summary>Checks interval and adjacency invariants independently of the library's inspector.</summary>
     private static async Task AssertForestAsync(
         OrderingContext context,
+        CancellationToken cancellationToken,
         int scope = 1
     )
     {
         var forest = await Nodes(context, scope)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         Assert.NotEmpty(forest);
 
@@ -150,7 +155,7 @@ public abstract partial class OrderingTests : ProviderTest
 
             var report = await Tree(context, scope)
                 .InTree(group.Key.TreeId)
-                .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+                .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken);
 
             Assert.True(report.IsValid);
         }
@@ -158,8 +163,9 @@ public abstract partial class OrderingTests : ProviderTest
 
     /// <summary>Starts a caller-owned transaction at the provider's supported isolation level.</summary>
     private static Task<IDbContextTransaction> BeginAsync(
-        OrderingContext context
+        OrderingContext context,
+        CancellationToken cancellationToken
     ) => context.Database.BeginTransactionAsync(
         context.Database.IsSqlite() ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
-        CancellationToken.None);
+        cancellationToken);
 }

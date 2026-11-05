@@ -15,14 +15,16 @@ public abstract partial class SingleInsertGuardTests
         await using var database = new ModelCompatibilityDatabase();
         await using var context = await database.CreateContextAsync<SingleIdentityContext>(
             Engine,
-            static options => new SingleIdentityContext(options));
+            static options => new SingleIdentityContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var marker = new UnrelatedRow { Id = 701 };
         await context.AddAsync(marker, CancellationToken.None);
         await context.SaveChangesAsync(CancellationToken.None);
 
         // Act
-        var rejected = await FailSingleTrackingInputAsync(context, owned);
+        var rejected = await FailSingleTrackingInputAsync(context, owned,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // WHY: Async completion can resume this observer inside the producer's exception stack. Yield once
         // so those active frames finish before measuring references held by the live context.
@@ -50,10 +52,12 @@ public abstract partial class SingleInsertGuardTests
     }
 
     /// <summary>Ends every caller-owned strong reference before the live-context retention observation.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static async Task<(WeakReference Root, WeakReference Owned, bool Restored)> FailSingleTrackingInputAsync(
         SingleIdentityContext context,
-        bool owned
+        bool owned,
+        CancellationToken cancellationToken
     )
     {
         var treeId = Guid.NewGuid();
@@ -81,7 +85,7 @@ public abstract partial class SingleInsertGuardTests
 
                 return context
                     .NestedSet<SingleIdentityNode>()
-                    .InsertRootAsync(input, Guid.Empty, CancellationToken.None);
+                    .InsertRootAsync(input, Guid.Empty, cancellationToken);
             });
         }
         finally

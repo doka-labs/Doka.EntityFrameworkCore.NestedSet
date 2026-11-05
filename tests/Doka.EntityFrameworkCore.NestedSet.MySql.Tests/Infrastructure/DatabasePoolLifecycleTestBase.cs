@@ -27,7 +27,9 @@ public abstract class DatabasePoolLifecycleTestBase : ProviderTest
     {
         // Arrange
         var cancellationToken = TestContext.Current.CancellationToken;
-        await using var live = await TestDatabase.CreateAsync(Engine);
+        await using var live = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var liveContext = live.CreateContext();
         await liveContext.AddAsync(new UnrelatedRow { Id = 701 }, cancellationToken);
         await liveContext.SaveChangesAsync(cancellationToken);
@@ -46,7 +48,8 @@ public abstract class DatabasePoolLifecycleTestBase : ProviderTest
 
         await using var completed = initializationFailure
             ? null
-            : await TestDatabase.CreateAsync(Engine, InitializeAsync);
+            : await TestDatabase.CreateAsync(Engine, InitializeAsync,
+                cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         Exception? error = null;
@@ -55,12 +58,12 @@ public abstract class DatabasePoolLifecycleTestBase : ProviderTest
         {
             error = await Record.ExceptionAsync(() => TestDatabase.CreateAsync(
                 Engine,
-                async context =>
+                async (context, token) =>
                 {
-                    await InitializeAsync(context);
+                    await InitializeAsync(context, cancellationToken: token);
 
                     throw failure;
-                }));
+                }, cancellationToken: TestContext.Current.CancellationToken));
         }
         else if (deletionFailure)
         {
@@ -143,7 +146,8 @@ public abstract class DatabasePoolLifecycleTestBase : ProviderTest
         return;
 
         async Task InitializeAsync(
-            TreeContext context
+            TreeContext context,
+            CancellationToken cancellationToken
         )
         {
             await context.Database.EnsureCreatedAsync(cancellationToken);

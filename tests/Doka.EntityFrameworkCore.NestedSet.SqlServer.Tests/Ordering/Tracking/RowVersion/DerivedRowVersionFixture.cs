@@ -12,12 +12,14 @@ public sealed class DerivedRowVersionFixture : IAsyncLifetime
 
     /// <summary>Resets both hierarchy rows and reserved tree identities before one independent probe.</summary>
     /// <param name="interceptor">An optional scalar-refresh observation or failure probe.</param>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
     public async Task<DerivedRowVersionContext> ResetAsync(
+        CancellationToken cancellationToken,
         Microsoft.EntityFrameworkCore.Diagnostics.DbCommandInterceptor? interceptor = null
     )
     {
         var initialize = _database is null;
-        _database ??= await TestDatabase.CreateAsync("SqlServer");
+        _database ??= await TestDatabase.CreateAsync("SqlServer", cancellationToken: cancellationToken);
         await using var source = _database.CreateContext();
         var builder = new DbContextOptionsBuilder<DerivedRowVersionContext>()
             .ConfigureTestWarnings()
@@ -32,11 +34,11 @@ public sealed class DerivedRowVersionFixture : IAsyncLifetime
 
         if (initialize)
         {
-            await context.GetService<IRelationalDatabaseCreator>().CreateTablesAsync(CancellationToken.None);
+            await context.GetService<IRelationalDatabaseCreator>().CreateTablesAsync(cancellationToken);
         }
 
-        await context.Set<DerivedVersionBaseNode>().ExecuteDeleteAsync(CancellationToken.None);
-        await context.ClearNestedSetTreeRegistriesAsync(CancellationToken.None);
+        await context.Set<DerivedVersionBaseNode>().ExecuteDeleteAsync(cancellationToken);
+        await context.ClearNestedSetTreeRegistriesAsync(cancellationToken);
 
         return context;
     }

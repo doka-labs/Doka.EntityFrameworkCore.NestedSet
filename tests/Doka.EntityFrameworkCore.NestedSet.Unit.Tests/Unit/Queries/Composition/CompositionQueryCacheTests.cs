@@ -45,7 +45,7 @@ public sealed class CompositionQueryCacheTests
         var firstTree = Guid.Parse("04ba1fd5-3159-4c68-b9fb-90f658fc925b");
         var secondTree = Guid.Parse("e1927022-7320-407e-8481-86f7d138c2cd");
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
-        await SeedAsync(context, firstTree, secondTree);
+        await SeedAsync(context, firstTree, secondTree, cancellationToken: TestContext.Current.CancellationToken);
         var first = Query(context, operation, 11, firstTree, [1, 3], 0);
         var second = Query(context, operation, 22, secondTree, [4, 6], 3);
         var changedValue = Query(context, operation, 11, firstTree, [1, 3], 1);
@@ -107,10 +107,15 @@ public sealed class CompositionQueryCacheTests
     }
 
     /// <summary>Seeds two equal-shaped chains under different scope, tree, and node identities.</summary>
+    /// <param name="context">The context used by this fixture operation.</param>
+    /// <param name="firstTree">The identity of the first seeded tree.</param>
+    /// <param name="secondTree">The identity of the second seeded tree.</param>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
     private static async Task SeedAsync(
         CompositionGuardContext context,
         Guid firstTree,
-        Guid secondTree
+        Guid secondTree,
+        CancellationToken cancellationToken
     )
     {
         // WHY: Keep each group ordinal aligned with its scope, tree identity, and disjoint key range.
@@ -138,11 +143,11 @@ public sealed class CompositionQueryCacheTests
 
                 await context
                     .Set<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
-                    .AddAsync(node, CancellationToken.None);
+                    .AddAsync(node, cancellationToken);
             }
         }
 
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
         context.ChangeTracker.Clear();
     }
 

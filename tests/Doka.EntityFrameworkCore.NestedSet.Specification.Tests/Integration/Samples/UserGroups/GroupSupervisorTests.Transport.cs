@@ -14,7 +14,7 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var request = ChainRequest(data, false) with { MaxResultRows = int.MaxValue };
         probe.Enabled = true;
@@ -52,9 +52,9 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await EnableSnapshotAsync(context);
+        await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var initial = ChainRequest(data, false);
         var request = initial with
         {
@@ -93,7 +93,7 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var request = data.Request(group: data.Groups[5]) with
         {
@@ -161,13 +161,13 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context.MembershipRoles.Where(role => role.TenantId == data.TenantId
                 && role.UserId == data.Users[2] && role.UserGroupId == data.Groups[4]
                 && role.RoleId == data.ManagerRoleId)
             .ExecuteUpdateAsync(setters => setters.SetProperty(role => role.Visible, false), CancellationToken.None);
-        await EnableSnapshotAsync(context);
+        await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var initial = ChainRequest(data, false);
         var request = initial with
         {
@@ -223,13 +223,13 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context.MembershipRoles.Where(role => role.TenantId == data.TenantId
                 && role.UserId == data.Users[2] && role.UserGroupId == data.Groups[4]
                 && role.RoleId == data.ManagerRoleId)
             .ExecuteUpdateAsync(setters => setters.SetProperty(role => role.Visible, false), CancellationToken.None);
-        await EnableSnapshotAsync(context);
+        await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var initial = ChainRequest(data, false);
         var request = initial with
         {

@@ -22,9 +22,10 @@ public class CompositionExecutionBenchmarks : DatabaseBenchmark
         _result ?? throw new InvalidOperationException("The composition query did not run.");
 
     /// <summary>Prepares both equivalent query expressions after the ordinary isolated database seed.</summary>
-    public override async Task PrepareAsync()
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
+    public override async Task PrepareAsync(CancellationToken cancellationToken)
     {
-        await base.PrepareAsync();
+        await base.PrepareAsync(cancellationToken);
         _result = null;
         var treeId = Fixture.Forest.Imports[0].TreeId;
         _api = CompositionBenchmarkQueries.Api(Fixture.Context, treeId, Fixture.LeafKey, Anchors, PayloadRows);
@@ -53,7 +54,8 @@ public class CompositionExecutionBenchmarks : DatabaseBenchmark
     }
 
     /// <summary>Checks the exact independent adjacency aggregate and tracker state outside measured work.</summary>
-    public override async Task VerifyAsync()
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
+    public override async Task VerifyAsync(CancellationToken cancellationToken)
     {
         var firstAnchor = Math.Max(2, Fixture.LeafKey - Anchors + 2);
         var firstPayload = Math.Max(1, Fixture.LeafKey - PayloadRows + 1);
@@ -86,6 +88,6 @@ public class CompositionExecutionBenchmarks : DatabaseBenchmark
                 .Any(),
             "Scalar composition unexpectedly materialized tracked hierarchy nodes.");
 
-        await base.VerifyAsync();
+        await base.VerifyAsync(cancellationToken);
     }
 }

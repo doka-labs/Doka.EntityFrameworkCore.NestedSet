@@ -21,21 +21,31 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await AddMetadataAsync(context, data, 0, data.Users[0], data.Groups[5], 4, "ChannelClass", "channel-A");
-        await AddMetadataAsync(context, data, 0, data.Users[0], data.Groups[5], 4, "RoutingZone", "zone-A");
-        await AddMetadataAsync(context, data, 1, data.Users[0], data.Groups[5], 4, "ChannelClass", "member-A");
-        await AddMetadataAsync(context, data, 2, data.Users[0], data.Groups[5], 4, "RoutingZone", "group-A");
-        await AddMetadataAsync(context, data, 4, data.Users[1], data.Groups[4], 3, "ChannelClass", "channel-A");
+        await AddMetadataAsync(context, data, 0, data.Users[0], data.Groups[5], 4, "ChannelClass", "channel-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+        await AddMetadataAsync(context, data, 0, data.Users[0], data.Groups[5], 4, "RoutingZone", "zone-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+        await AddMetadataAsync(context, data, 1, data.Users[0], data.Groups[5], 4, "ChannelClass", "member-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+        await AddMetadataAsync(context, data, 2, data.Users[0], data.Groups[5], 4, "RoutingZone", "group-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+        await AddMetadataAsync(context, data, 4, data.Users[1], data.Groups[4], 3, "ChannelClass", "channel-A",
+            cancellationToken: TestContext.Current.CancellationToken);
         await AddMetadataAsync(context, data, 4, data.Users[1], data.Groups[4], 3, "RoutingZone",
-            shape == "within-pair" ? "zone-B" : "zone-A");
+            shape == "within-pair" ? "zone-B" : "zone-A", cancellationToken: TestContext.Current.CancellationToken);
         await AddMetadataAsync(context, data, 3, data.Users[1], data.Groups[4], 3, "ManagerRoute",
-            shape == "between-pairs" ? "member-B" : "member-A");
-        await AddMetadataAsync(context, data, 4, data.Users[2], data.Groups[4], 3, "ChannelClass", "channel-B");
-        await AddMetadataAsync(context, data, 4, data.Users[2], data.Groups[4], 3, "RoutingZone", "zone-A");
-        await AddMetadataAsync(context, data, 3, data.Users[2], data.Groups[4], 3, "ManagerRoute", "member-A");
-        await AddMetadataAsync(context, data, 5, data.Users[1], data.Groups[4], 3, "ManagerRoute", "group-A");
+            shape == "between-pairs" ? "member-B" : "member-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+        await AddMetadataAsync(context, data, 4, data.Users[2], data.Groups[4], 3, "ChannelClass", "channel-B",
+            cancellationToken: TestContext.Current.CancellationToken);
+        await AddMetadataAsync(context, data, 4, data.Users[2], data.Groups[4], 3, "RoutingZone", "zone-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+        await AddMetadataAsync(context, data, 3, data.Users[2], data.Groups[4], 3, "ManagerRoute", "member-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+        await AddMetadataAsync(context, data, 5, data.Users[1], data.Groups[4], 3, "ManagerRoute", "group-A",
+            cancellationToken: TestContext.Current.CancellationToken);
         await context.SaveChangesAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         App.MetadataMatch[] matches =
@@ -87,9 +97,10 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await SeedOriginProfileAsync(context, data, 1, s_profileFields.Length);
+        await SeedOriginProfileAsync(context, data, 1, s_profileFields.Length,
+            cancellationToken: TestContext.Current.CancellationToken);
         var finalField = s_profileFields[^1];
         var target = context.MembershipMetadatas.Where(value => value.TenantId == data.TenantId
             && value.UserId == data.Users[1] && value.FieldCode == finalField);

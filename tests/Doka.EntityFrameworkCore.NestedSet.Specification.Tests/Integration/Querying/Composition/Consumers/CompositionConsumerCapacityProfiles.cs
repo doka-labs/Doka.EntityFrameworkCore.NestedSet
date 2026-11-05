@@ -20,12 +20,19 @@ internal static partial class CompositionConsumerCapacityProfiles
     /// sample-model tests separately qualify physical constraints, indexes, catalogs and migrations.
     /// </remarks>
     internal static async Task<IReadOnlyList<CompositionConsumerCapacityObservation>> MeasureAsync(
-        TestDatabase database, string engine, int nodes, bool balanced = false, bool deep = false)
+        TestDatabase database, string engine, int nodes, CancellationToken cancellationToken,
+        bool balanced = false, bool deep = false)
     {
-        var pending = s_data.GetValue(database, owned => new Lazy<Task<CompositionConsumerDataset>>(
-            () => CompositionConsumerDataset.CreateAsync(owned, engine, nodes, deep)));
+        cancellationToken.ThrowIfCancellationRequested();
 
+        var pending = s_data.GetValue(database, owned => new Lazy<Task<CompositionConsumerDataset>>(
+            () => CompositionConsumerDataset.CreateAsync(owned, engine, nodes, deep,
+                cancellationToken: cancellationToken)));
+
+        // WHY: Shared initialization must reach its terminal state before callers can release the database.
+        // A separately canceled wait could leave its seeding commands running during fixture disposal.
         var data = await pending.Value;
+        cancellationToken.ThrowIfCancellationRequested();
 
         if (data.Nodes != nodes || data.Deep != deep)
         {
@@ -41,7 +48,7 @@ internal static partial class CompositionConsumerCapacityProfiles
         {
             observations.Add(await MeasureSignalsAsync(database, engine, data,
                 data.Report(profile.Anchors, profile.Metrics, profile.Sources, profile.Days, profile.Nearest),
-                balanced, deep));
+                balanced, deep, cancellationToken: cancellationToken));
         }
 
         var originCounts = deep ? CompositionConsumerDataset.OriginCounts.Take(1)
@@ -50,18 +57,22 @@ internal static partial class CompositionConsumerCapacityProfiles
         foreach (var origins in originCounts)
         {
             var fields = origins == 1 ? 1 : origins == 16 ? 4 : 16;
-            observations.Add(await MeasureGroupsAsync(database, engine, data, origins, fields, balanced, deep));
+            observations.Add(await MeasureGroupsAsync(database, engine, data, origins, fields, balanced, deep,
+                cancellationToken: cancellationToken));
         }
 
         if (deep)
         {
             foreach (var hops in new[] { 2, 4, 8 })
             {
-                observations.Add(await MeasureChainAsync(database, engine, data, hops, false));
-                observations.Add(await MeasureChainAsync(database, engine, data, hops, true));
+                observations.Add(await MeasureChainAsync(database, engine, data, hops, false,
+                    cancellationToken: cancellationToken));
+                observations.Add(await MeasureChainAsync(database, engine, data, hops, true,
+                    cancellationToken: cancellationToken));
             }
 
-            observations.AddRange(await MeasureGroupRanksAsync(database, engine, data));
+            observations.AddRange(await MeasureGroupRanksAsync(database, engine, data,
+                cancellationToken: cancellationToken));
         }
 
         return observations;
@@ -95,7 +106,8 @@ internal static partial class CompositionConsumerCapacityProfiles
     /// <summary>Measures complete owner/path/UNION/SUM construction and the real two-reader report.</summary>
     internal static async Task<CompositionConsumerCapacityObservation> MeasureSignalsAsync(
         TestDatabase database, string engine, CompositionConsumerDataset data,
-        SignalApp.SignalReportRequest request, bool balanced, bool deep)
+        SignalApp.SignalReportRequest request, bool balanced, bool deep,
+        CancellationToken cancellationToken)
     {
         await using var source = database.CreateContext();
         var planProbe = new EnterpriseProbe(captureParameterBindings: true);
@@ -121,11 +133,13 @@ internal static partial class CompositionConsumerCapacityProfiles
 
         try
         {
-            rows = await SignalApp.SignalReportBuilder.ReadAsync(context, request, CancellationToken.None);
+            rows = await SignalApp.SignalReportBuilder.ReadAsync(context, request, cancellationToken);
         }
         catch (Exception error)
         {
-            await RetainReadFailureAsync(context, engine, profile, planProbe, error);
+            // WHY: Failure evidence completes independently of the canceled workload and preserves its error.
+            await RetainReadFailureAsync(context, engine, profile, planProbe, error,
+                cancellationToken: CancellationToken.None);
 
             throw;
         }
@@ -136,11 +150,13 @@ internal static partial class CompositionConsumerCapacityProfiles
         var tracked = context.ChangeTracker.Entries().Count();
         var actual = rows.Select(SignalKey).Order(StringComparer.Ordinal).ToArray();
         var expected = ExpectedSignals(data, request, balanced, deep);
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, 1, engine);
+        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, 1, engine,
+            cancellationToken: cancellationToken);
+
         var observation = new CompositionConsumerCapacityObservation(profile, actual, expected, commandCount,
             2, maximumParameters, constructionCommands, materialized, tracked, buildBytes, 256 * 1_024, elapsed, plan);
 
-        await WriteAsync(engine, observation, planProbe.Commands[1]);
+        await WriteAsync(engine, observation, planProbe.Commands[1], cancellationToken: cancellationToken);
 
         return observation;
     }
@@ -148,7 +164,8 @@ internal static partial class CompositionConsumerCapacityProfiles
     /// <summary>Measures one-reader person selection with increasing origins and routing fields.</summary>
     private static async Task<CompositionConsumerCapacityObservation> MeasureGroupsAsync(
         TestDatabase database, string engine, CompositionConsumerDataset data,
-        int origins, int fields, bool balanced, bool deep)
+        int origins, int fields, bool balanced, bool deep,
+        CancellationToken cancellationToken)
     {
         await using var source = database.CreateContext();
         var planProbe = new EnterpriseProbe(captureParameterBindings: true);
@@ -173,11 +190,13 @@ internal static partial class CompositionConsumerCapacityProfiles
         try
         {
             batch = await GroupApp.SupervisorQueries.ResolveAsync(context, tenant, request,
-                GroupApp.SupervisorSelection.RequireUnique, CancellationToken.None);
+                GroupApp.SupervisorSelection.RequireUnique, cancellationToken);
         }
         catch (Exception error)
         {
-            await RetainReadFailureAsync(context, engine, profile, planProbe, error);
+            // WHY: Failure evidence completes independently of the canceled workload and preserves its error.
+            await RetainReadFailureAsync(context, engine, profile, planProbe, error,
+                cancellationToken: CancellationToken.None);
 
             throw;
         }
@@ -202,12 +221,14 @@ internal static partial class CompositionConsumerCapacityProfiles
                 + $"{CompositionConsumerModel.Tenant:N}:1")
             .Order(StringComparer.Ordinal).Prepend("Completed:True").ToArray();
 
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, 0, engine);
+        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, 0, engine,
+            cancellationToken: cancellationToken);
+
         var budget = (256 * 1_024) + (Math.Max(0, fields - 4) * 4_096);
         var observation = new CompositionConsumerCapacityObservation(profile, actual, expected, commandCount,
             1, maximumParameters, constructionCommands, materialized, tracked, buildBytes, budget, elapsed, plan);
 
-        await WriteAsync(engine, observation, planProbe.Commands[0]);
+        await WriteAsync(engine, observation, planProbe.Commands[0], cancellationToken: cancellationToken);
 
         if (engine == "SqlServer")
         {
@@ -314,7 +335,8 @@ internal static partial class CompositionConsumerCapacityProfiles
 
     /// <summary>Retains the failed reader and a nonexecuting estimate without replaying its report.</summary>
     private static async Task RetainReadFailureAsync(
-        DbContext context, string engine, string profile, EnterpriseProbe probe, Exception failure)
+        DbContext context, string engine, string profile, EnterpriseProbe probe, Exception failure,
+        CancellationToken cancellationToken)
     {
         var evidence = new List<string> { profile, ModelBoundary, failure.ToString() };
         var index = probe.Commands.Count - 1;
@@ -335,7 +357,7 @@ internal static partial class CompositionConsumerCapacityProfiles
 
             if (index >= 0 && (engine is "PostgreSql" or "MySql" or "MariaDb"))
             {
-                await context.Database.OpenConnectionAsync(CancellationToken.None);
+                await context.Database.OpenConnectionAsync(cancellationToken);
                 await using var command = context.Database.GetDbConnection().CreateCommand();
                 command.CommandText = (engine == "PostgreSql" ? "EXPLAIN (FORMAT JSON) " : "EXPLAIN FORMAT=JSON ")
                     + probe.Commands[index];
@@ -347,9 +369,9 @@ internal static partial class CompositionConsumerCapacityProfiles
                     command.Parameters.Add(((ICloneable)parameter).Clone());
                 }
 
-                await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
+                await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
-                while (await reader.ReadAsync(CancellationToken.None))
+                while (await reader.ReadAsync(cancellationToken))
                 {
                     evidence.Add(reader.GetString(0));
                 }
@@ -364,7 +386,7 @@ internal static partial class CompositionConsumerCapacityProfiles
         try
         {
             await QueryPlanTestSupport.WriteEvidenceAsync(
-                engine + "-composition-consumer-failed-" + profile, evidence);
+                engine + "-composition-consumer-failed-" + profile, evidence, cancellationToken: cancellationToken);
         }
         catch (Exception diagnosticFailure)
         {
@@ -375,7 +397,8 @@ internal static partial class CompositionConsumerCapacityProfiles
 
     /// <summary>Retains plans and diagnostic duration without introducing a hardware-dependent release gate.</summary>
     private static Task WriteAsync(
-        string engine, CompositionConsumerCapacityObservation observation, string command)
+        string engine, CompositionConsumerCapacityObservation observation, string command,
+        CancellationToken cancellationToken)
         => QueryPlanTestSupport.WriteEvidenceAsync(engine + "-composition-consumer-" + observation.Profile,
         [
             $"{observation.Profile}; commands={observation.Commands}; rows={observation.Actual.Length}; "
@@ -385,5 +408,5 @@ internal static partial class CompositionConsumerCapacityProfiles
             ModelBoundary,
             command,
             observation.Plan,
-        ]);
+        ], cancellationToken: cancellationToken);
 }

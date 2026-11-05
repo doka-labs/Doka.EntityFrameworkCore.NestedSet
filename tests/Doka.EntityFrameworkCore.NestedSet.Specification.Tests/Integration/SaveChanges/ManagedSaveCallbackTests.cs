@@ -25,7 +25,7 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var callback = new PostSaveInspector();
         await using var context = database.CreateContext(callback);
         var observed = 0;
@@ -76,7 +76,7 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
     public async Task PersistenceHookIsInstalledForEveryProvider()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
 
         // Act
@@ -95,11 +95,12 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();
         var failure = new PostSaveFailure();
         await using var context = database.CreateContext(callback, failure);
-        var (changed, removed, audit) = await PrepareCallbackWritesAsync(database, context, callback);
+        var (changed, removed, audit) = await PrepareCallbackWritesAsync(database, context, callback,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var root = new TreeNode { NodeId = 101 };
         var hierarchy = context
@@ -160,11 +161,12 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();
         var failure = new PostSaveFailure();
         await using var context = database.CreateContext(callback, failure);
-        var (_, _, audit) = await PrepareCallbackWritesAsync(database, context, callback);
+        var (_, _, audit) = await PrepareCallbackWritesAsync(database, context, callback,
+            cancellationToken: TestContext.Current.CancellationToken);
         var root = new TreeNode { NodeId = 101 };
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -215,7 +217,8 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
         PrepareCallbackWritesAsync(
             TestDatabase database,
             TreeContext context,
-            SaveBoundaryCallback callback
+            SaveBoundaryCallback callback,
+            CancellationToken cancellationToken
         )
     {
         await using (var setup = database.CreateContext())
@@ -233,18 +236,18 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
                         Value = "removed",
                     },
                 ],
-                CancellationToken.None);
+                cancellationToken);
 
-            await setup.SaveChangesAsync(CancellationToken.None);
+            await setup.SaveChangesAsync(cancellationToken);
         }
 
         var changed = await context
             .Set<UnrelatedRow>()
-            .SingleAsync(row => row.Id == 701, CancellationToken.None);
+            .SingleAsync(row => row.Id == 701, cancellationToken);
 
         var removed = await context
             .Set<UnrelatedRow>()
-            .SingleAsync(row => row.Id == 702, CancellationToken.None);
+            .SingleAsync(row => row.Id == 702, cancellationToken);
 
         var audit = new GeneratedAuditRow { Value = "inserted" };
         callback.OnSaving = current =>
@@ -270,7 +273,7 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();
         var failure = new PostSaveFailure { FailOnSave = 2 };
         await using var context = database.CreateContext(callback, failure);
@@ -351,7 +354,7 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext(new SuppressingSave());
         var root = new TreeNode { NodeId = 101 };
         var hierarchy = context

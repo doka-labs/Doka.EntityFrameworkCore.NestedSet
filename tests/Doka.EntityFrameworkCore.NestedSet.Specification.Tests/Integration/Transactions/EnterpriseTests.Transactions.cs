@@ -11,9 +11,11 @@ public abstract partial class EnterpriseTests
     public async Task CallerCommitPersistsTreeAndApplicationChanges()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
-        await using var transaction = await BeginCallerAsync(context);
+        await using var transaction = await BeginCallerAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var preceding = new UnrelatedRow
         {
             Id = 1,
@@ -66,9 +68,11 @@ public abstract partial class EnterpriseTests
     public async Task CallerRollbackUndoesTreeAndApplicationChanges()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
-        await using var transaction = await BeginCallerAsync(context);
+        await using var transaction = await BeginCallerAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await context.AddAsync(
             new UnrelatedRow
             {
@@ -115,13 +119,17 @@ public abstract partial class EnterpriseTests
     public async Task FailedRepairPreservesCallerWorkAndAllowsSubsequentCommit()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(129), true);
-        var before = await SnapshotAsync(setup);
+        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(129),
+            cancellationToken: TestContext.Current.CancellationToken,
+            true);
+        var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe { FailSecondNodeUpdate = true };
         await using var context = database.CreateContext((IInterceptor)probe);
-        await using var transaction = await BeginCallerAsync(context);
+        await using var transaction = await BeginCallerAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await context.AddAsync(
             new UnrelatedRow
             {
@@ -157,7 +165,8 @@ public abstract partial class EnterpriseTests
         Assert.True(retainedOwnership);
         Assert.Equal(1, probe.CompletedNodeUpdates);
         await using var verification = database.CreateContext();
-        Assert.Equal(before, await SnapshotAsync(verification));
+        Assert.Equal(before, await SnapshotAsync(verification,
+            cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(
             2,
             await verification
@@ -171,14 +180,18 @@ public abstract partial class EnterpriseTests
     public async Task CanceledRepairPreservesCallerWorkAndAllowsSubsequentCommit()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(129), true);
-        var before = await SnapshotAsync(setup);
+        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(129),
+            cancellationToken: TestContext.Current.CancellationToken,
+            true);
+        var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         using var cancellation = new CancellationTokenSource();
         var probe = new EnterpriseProbe { CancelSecondNodeUpdate = cancellation };
         await using var context = database.CreateContext((IInterceptor)probe);
-        await using var transaction = await BeginCallerAsync(context);
+        await using var transaction = await BeginCallerAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await context.AddAsync(
             new UnrelatedRow
             {
@@ -213,7 +226,8 @@ public abstract partial class EnterpriseTests
         Assert.IsAssignableFrom<OperationCanceledException>(exception);
         Assert.Equal(1, probe.CompletedNodeUpdates);
         await using var verification = database.CreateContext();
-        Assert.Equal(before, await SnapshotAsync(verification));
+        Assert.Equal(before, await SnapshotAsync(verification,
+            cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(
             2,
             await verification
@@ -229,7 +243,7 @@ public abstract partial class EnterpriseTests
     public async Task CallerRepeatableReadIsRejectedBeforeHierarchySql()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
         await using var transaction = await context.Database.BeginTransactionAsync(
@@ -258,7 +272,7 @@ public abstract partial class EnterpriseTests
     public async Task AmbientTransactionIsRejectedBeforeHierarchySql()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
         var tree = context

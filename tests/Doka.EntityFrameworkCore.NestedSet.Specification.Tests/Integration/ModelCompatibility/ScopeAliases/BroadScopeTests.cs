@@ -42,7 +42,7 @@ public abstract class BroadScopeTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadScopeContext>(
             Engine,
-            static options => new BroadScopeContext(options));
+            static options => new BroadScopeContext(options), cancellationToken: TestContext.Current.CancellationToken);
 
         var firstTree = Guid.NewGuid();
         var secondTree = Guid.NewGuid();
@@ -96,7 +96,7 @@ public abstract class BroadScopeTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadScopeContext>(
             Engine,
-            static options => new BroadScopeContext(options));
+            static options => new BroadScopeContext(options), cancellationToken: TestContext.Current.CancellationToken);
 
         var firstTree = Guid.NewGuid();
         var secondTree = Guid.NewGuid();
@@ -146,7 +146,7 @@ public abstract class BroadScopeTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadScopeContext>(
             Engine,
-            static options => new BroadScopeContext(options));
+            static options => new BroadScopeContext(options), cancellationToken: TestContext.Current.CancellationToken);
 
         var input = new BroadScopeNode
         {
@@ -182,7 +182,7 @@ public abstract class BroadScopeTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadScopeContext>(
             Engine,
-            static options => new BroadScopeContext(options));
+            static options => new BroadScopeContext(options), cancellationToken: TestContext.Current.CancellationToken);
 
         var input = new BroadScopeNode
         {

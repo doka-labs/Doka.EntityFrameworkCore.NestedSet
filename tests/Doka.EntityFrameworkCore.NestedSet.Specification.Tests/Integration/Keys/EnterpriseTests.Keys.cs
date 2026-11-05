@@ -8,7 +8,7 @@ public abstract partial class EnterpriseTests
     public async Task BinaryKeysRemainCorrectAcrossRepairBatches()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
 
         // WHY: Distinct positive leaf intervals satisfy database checks while remaining inconsistent with the
@@ -71,7 +71,7 @@ public abstract partial class EnterpriseTests
     public async Task StringKeysAndParentAliasesRemainCorrectAcrossRepairBatches()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var parent = Engine == "PostgreSql" ? "ROOT" : "root";
         await using var setup = database.CreateContext();
 

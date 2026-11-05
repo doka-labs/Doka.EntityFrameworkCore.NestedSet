@@ -136,8 +136,9 @@ public sealed class TestDatabase : IAsyncDisposable
     }
 
     /// <summary>Clears test entities and lock rows without restarting the fixture-owned engine.</summary>
+    /// <param name="cancellationToken">The caller's token for the complete reset.</param>
     /// <returns>A task that completes when the database is ready for an isolated case.</returns>
-    public async Task ResetAsync()
+    public async Task ResetAsync(CancellationToken cancellationToken)
     {
         await using var context = CreateContext();
 
@@ -145,78 +146,86 @@ public sealed class TestDatabase : IAsyncDisposable
         // before deletion. This remains valid when xUnit v3 schedules provider theory cases concurrently.
         await context
             .Set<ConstrainedNode>()
-            .ExecuteUpdateAsync(x => x.SetProperty(n => n.ParentId, (int?)null), CancellationToken.None);
+            .ExecuteUpdateAsync(x => x.SetProperty(n => n.ParentId, (int?)null), cancellationToken);
         await context
             .Set<TreeNode>()
-            .ExecuteUpdateAsync(x => x.SetProperty(n => n.Parent, (int?)null), CancellationToken.None);
+            .ExecuteUpdateAsync(x => x.SetProperty(n => n.Parent, (int?)null), cancellationToken);
         await context
             .Set<GuidNode>()
-            .ExecuteUpdateAsync(x => x.SetProperty(n => n.ParentId, (Guid?)null), CancellationToken.None);
+            .ExecuteUpdateAsync(x => x.SetProperty(n => n.ParentId, (Guid?)null), cancellationToken);
         await context
             .Set<TextNode>()
-            .ExecuteUpdateAsync(x => x.SetProperty(n => n.ParentId, (string?)null), CancellationToken.None);
+            .ExecuteUpdateAsync(x => x.SetProperty(n => n.ParentId, (string?)null), cancellationToken);
         await context
             .Set<BinaryNode>()
-            .ExecuteUpdateAsync(x => x.SetProperty(n => n.ParentId, (byte[]?)null), CancellationToken.None);
+            .ExecuteUpdateAsync(x => x.SetProperty(n => n.ParentId, (byte[]?)null), cancellationToken);
         await context
             .Set<ConcurrentNode>()
-            .ExecuteUpdateAsync(x => x.SetProperty(n => n.ParentId, (int?)null), CancellationToken.None);
+            .ExecuteUpdateAsync(x => x.SetProperty(n => n.ParentId, (int?)null), cancellationToken);
         await context
             .Set<UnscopedQueryNode>()
             .IgnoreQueryFilters()
-            .ExecuteUpdateAsync(x => x.SetProperty(n => n.ParentId, (int?)null), CancellationToken.None);
+            .ExecuteUpdateAsync(x => x.SetProperty(n => n.ParentId, (int?)null), cancellationToken);
 
         await context
             .Set<ConstrainedNode>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(cancellationToken);
         await context
             .Set<TreeNode>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(cancellationToken);
         await context
             .Set<GuidNode>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(cancellationToken);
         await context
             .Set<TextNode>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(cancellationToken);
         await context
             .Set<BinaryNode>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(cancellationToken);
         await context
             .Set<ConcurrentNode>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(cancellationToken);
         await context
             .Set<UnscopedQueryNode>()
             .IgnoreQueryFilters()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(cancellationToken);
         await context
             .Set<UnrelatedRow>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(cancellationToken);
         await context
             .Set<GeneratedAuditRow>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(cancellationToken);
 
-        await context.ClearNestedSetTreeRegistriesAsync(CancellationToken.None);
+        await context.ClearNestedSetTreeRegistriesAsync(cancellationToken);
     }
 
     /// <summary>Creates an isolated database on the assembly-owned engine or a SQLite file.</summary>
     /// <param name="engine">Sqlite, MySql, MariaDb, PostgreSql, or SqlServer.</param>
+    /// <param name="cancellationToken">The caller's token for startup and schema initialization.</param>
     /// <returns>A database with an independently owned schema or temporary file.</returns>
     /// <exception cref="ArgumentOutOfRangeException">The engine name is unsupported.</exception>
     /// <exception cref="AggregateException">
     /// Initialization and cleanup both failed; both causes are preserved.
     /// </exception>
     public static Task<TestDatabase> CreateAsync(
-        string engine
-    ) => CreateAsync(engine, null);
+        string engine,
+        CancellationToken cancellationToken
+    ) => CreateAsync(engine, null, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Owns startup cleanup and permits deterministic initialization failures in fixture lifecycle tests.
     /// </summary>
+    /// <param name="engine">The selected provider engine.</param>
+    /// <param name="initialize">An optional initializer that receives the unchanged caller token.</param>
+    /// <param name="cancellationToken">The caller's token for startup and initialization.</param>
     internal static async Task<TestDatabase> CreateAsync(
         string engine,
-        Func<TreeContext, Task>? initialize
+        Func<TreeContext, CancellationToken, Task>? initialize,
+        CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var options = new DbContextOptionsBuilder<TreeContext>().ConfigureTestWarnings();
         string? file = null;
         TestDatabase? database = null;
@@ -232,22 +241,34 @@ public sealed class TestDatabase : IAsyncDisposable
             }
             else if (engine == "PostgreSql")
             {
-                var connection = await (await TestDatabaseServers.GetCurrentAsync()).NewConnectionStringAsync(engine);
+                var connection = await (await TestDatabaseServers.GetCurrentAsync(
+                    cancellationToken: cancellationToken)).NewConnectionStringAsync(engine,
+                    cancellationToken: cancellationToken);
+
                 options.UseNpgsql(connection, provider => provider.UseNestedSets());
             }
             else if (engine == "SqlServer")
             {
-                var connection = await (await TestDatabaseServers.GetCurrentAsync()).NewConnectionStringAsync(engine);
+                var connection = await (await TestDatabaseServers.GetCurrentAsync(
+                    cancellationToken: cancellationToken)).NewConnectionStringAsync(engine,
+                    cancellationToken: cancellationToken);
+
                 options.UseSqlServer(connection, provider => provider.UseNestedSets());
             }
             else if (engine == "MySql")
             {
-                var connection = await (await TestDatabaseServers.GetCurrentAsync()).NewConnectionStringAsync(engine);
+                var connection = await (await TestDatabaseServers.GetCurrentAsync(
+                    cancellationToken: cancellationToken)).NewConnectionStringAsync(engine,
+                    cancellationToken: cancellationToken);
+
                 options.UseMySql(connection, DatabaseTestTargets.MySql, provider => provider.UseNestedSets());
             }
             else if (engine == "MariaDb")
             {
-                var connection = await (await TestDatabaseServers.GetCurrentAsync()).NewConnectionStringAsync(engine);
+                var connection = await (await TestDatabaseServers.GetCurrentAsync(
+                    cancellationToken: cancellationToken)).NewConnectionStringAsync(engine,
+                    cancellationToken: cancellationToken);
+
                 options.UseMySql(connection, DatabaseTestTargets.MariaDb, provider => provider.UseNestedSets());
             }
             else
@@ -260,11 +281,11 @@ public sealed class TestDatabase : IAsyncDisposable
             await using var context = database.CreateContext();
             if (initialize is null)
             {
-                await context.Database.EnsureCreatedAsync(CancellationToken.None);
+                await context.Database.EnsureCreatedAsync(cancellationToken);
             }
             else
             {
-                await initialize(context);
+                await initialize(context, cancellationToken);
             }
 
             return database;

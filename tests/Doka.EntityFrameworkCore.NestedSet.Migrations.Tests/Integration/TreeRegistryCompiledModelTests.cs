@@ -28,7 +28,9 @@ public sealed class TreeRegistryCompiledModelTests
     )
     {
         // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync(engine, qualifySchema: false);
+        await using var database = await _fixture.CreateDatabaseAsync(engine, qualifySchema: false,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var design = CreateContext(database, engine);
         var designName = Registry(design.GetService<IDesignTimeModel>().Model).GetTableName();
         var model = CompiledModelTestSupport.Generate(design);

@@ -19,9 +19,14 @@ public sealed class JsonRowsetTests : ProviderTest, IClassFixture<ProviderFixtur
     public async Task ResolvesMoreThanFiveHundredTreesInOneJsonRowset()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new OrderingLockProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine, probe);
+        await using var context = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var requests = Enumerable
             .Range(1, 601)
             .Reverse()
@@ -31,7 +36,8 @@ public sealed class JsonRowsetTests : ProviderTest, IClassFixture<ProviderFixtur
                 OrderingLockTestSupport.FirstTreeId))
             .ToArray();
 
-        await using var transaction = await OrderingLockTestSupport.BeginAsync(context);
+        await using var transaction = await OrderingLockTestSupport.BeginAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         await Execution.NestedSetTreeLocks.AcquireAsync(context, requests, CancellationToken.None);

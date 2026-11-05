@@ -22,7 +22,9 @@ public abstract partial class HierarchyCompositionModelTests
         var treeId = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
         var materialized = 0;
-        await using var context = await CreateBagContextAsync(treeId, probe);
+        await using var context = await CreateBagContextAsync(treeId, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         TestMaterializationObserver.Instance.Register(context, _ => materialized++);
         var hierarchy = context.NestedSet<Dictionary<string, object?>>(CompositionBagContext.First).InTree(treeId);
 
@@ -48,7 +50,9 @@ public abstract partial class HierarchyCompositionModelTests
         // Arrange
         var treeId = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateBagContextAsync(treeId, probe);
+        await using var context = await CreateBagContextAsync(treeId, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<Dictionary<string, object?>>(CompositionBagContext.First).InTree(treeId);
         var foreign = context.NestedSet<Dictionary<string, object?>>(CompositionBagContext.Second).InTree(treeId);
         var pairs = foreign.SelectSubtrees(node => true,
@@ -74,12 +78,14 @@ public abstract partial class HierarchyCompositionModelTests
     /// <summary>Seeds both named tables without resetting rows owned by another theory case.</summary>
     private async Task<CompositionBagContext> CreateBagContextAsync(
         Guid treeId,
-        CompositionCommandProbe probe
+        CompositionCommandProbe probe,
+        CancellationToken cancellationToken
     )
     {
         var context = await _fixture.CreateContextAsync<CompositionBagContext>(
             Engine,
             static options => new CompositionBagContext(options),
+            cancellationToken: cancellationToken,
             probe,
             TestMaterializationObserver.Instance);
 
@@ -102,11 +108,11 @@ public abstract partial class HierarchyCompositionModelTests
                         [NestedSetPropertyRoles.Right] = 6L - depth,
                         [NestedSetPropertyRoles.Depth] = depth,
                         [NestedSetPropertyRoles.Position] = 0L,
-                    }, CancellationToken.None);
+                    }, cancellationToken);
                 }
             }
 
-            await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+            await context.SavePrecomputedHierarchyAsync(cancellationToken);
             context.ChangeTracker.Clear();
             probe.Reset();
 

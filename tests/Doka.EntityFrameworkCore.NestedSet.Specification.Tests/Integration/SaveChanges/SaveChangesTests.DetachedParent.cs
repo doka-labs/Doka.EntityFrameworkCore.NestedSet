@@ -16,9 +16,11 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        await using (var setup = await CreateNavigationContextAsync(database, wrapped: true))
+        await using (var setup = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken))
         {
             await setup.NestedSet<NavigationNode>().ForScope(1)
                 .InsertChildAsync(new NavigationNode { Id = 4, Name = "Charlie" }, 1, CancellationToken.None);
@@ -26,7 +28,10 @@ public abstract partial class SaveChangesTests
 
         var callback = new SaveBoundaryCallback();
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, callback, probe);
+        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            callback, probe);
+
         var root = await context.Set<NavigationNode>().Include(node => node.Children)
             .SingleAsync(node => node.Id == 1, CancellationToken.None);
 
@@ -44,7 +49,9 @@ public abstract partial class SaveChangesTests
         parent.IsModified = true;
         noteValue.CurrentValue = "detached parent payload";
         context.ChangeTracker.AutoDetectChangesEnabled = automaticDetection;
-        var storedBefore = await ReadPreparedOwnerStoreAsync(database);
+        var storedBefore = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         callback.OnSaving = _ =>
         {
             switch (callbackChange)
@@ -65,7 +72,8 @@ public abstract partial class SaveChangesTests
 
         // Act
         var error = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
-        var storedAfter = await ReadPreparedOwnerStoreAsync(database);
+        var storedAfter = await ReadPreparedOwnerStoreAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         if (callbackChange == "none")

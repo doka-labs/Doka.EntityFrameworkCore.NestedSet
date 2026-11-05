@@ -8,9 +8,10 @@ public abstract partial class EnterpriseTests
     public async Task NativeKeyValidationUsesOneStructuralReadWithoutWriteLock()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(129));
+        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(129),
+            cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
         var tree = context
@@ -34,9 +35,10 @@ public abstract partial class EnterpriseTests
     public async Task DetailedValidationIdentifiesCorruptNodeInSelectedScope()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(3));
+        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(3),
+            cancellationToken: TestContext.Current.CancellationToken);
         await setup
             .Set<TreeNode>()
             .Where(node => node.NodeId == 2)
@@ -76,9 +78,11 @@ public abstract partial class EnterpriseTests
     public async Task RebuildUsesFlatCasesWith322ParametersPerFullBatch()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(65), true);
+        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(65),
+            cancellationToken: TestContext.Current.CancellationToken,
+            true);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
         var tree = context
@@ -99,6 +103,7 @@ public abstract partial class EnterpriseTests
         Assert.Equal(4, update.Split("CASE", StringSplitOptions.None).Length - 1);
         Assert.DoesNotContain("ELSE CASE", update, StringComparison.OrdinalIgnoreCase);
         await using var verification = database.CreateContext();
-        Assert.Equal(Snapshot(EnterpriseForestTestSupport.CreateForest(65)), await SnapshotAsync(verification));
+        Assert.Equal(Snapshot(EnterpriseForestTestSupport.CreateForest(65)), await SnapshotAsync(verification,
+            cancellationToken: TestContext.Current.CancellationToken));
     }
 }

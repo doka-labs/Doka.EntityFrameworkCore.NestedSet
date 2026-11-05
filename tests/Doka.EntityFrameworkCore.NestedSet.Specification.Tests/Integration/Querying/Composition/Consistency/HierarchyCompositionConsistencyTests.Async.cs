@@ -16,7 +16,9 @@ public abstract partial class HierarchyCompositionConsistencyTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
+        await using var context = await CreateContextAsync(scope, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var query = BuildMixedQuery(context, scope);
 
         // Act
@@ -44,7 +46,9 @@ public abstract partial class HierarchyCompositionConsistencyTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
+        await using var context = await CreateContextAsync(scope, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
         var query = BuildMixedQuery(context, scope);
@@ -95,7 +99,9 @@ public abstract partial class HierarchyCompositionConsistencyTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var setup = await CreateContextAsync(scope, probe);
+        await using var setup = await CreateContextAsync(scope, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         using var cancellation = new CancellationTokenSource();
         var observedToken = CancellationToken.None;
         var boundary = new CompositionReadBoundaryProbe(async token =>
@@ -108,6 +114,7 @@ public abstract partial class HierarchyCompositionConsistencyTests
         await using var context = await _fixture.CreateContextAsync<CompositionContext>(
             Engine,
             static options => new CompositionContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe,
             boundary);
 

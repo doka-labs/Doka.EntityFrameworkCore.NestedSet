@@ -14,13 +14,16 @@ public abstract partial class HierarchyCompositionCapacityTests
     {
         // Arrange
         const int nodes = 100_001;
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var setup = database.CreateContext();
-        await CapacitySeed.SeedAsync(setup, nodes);
+        await CapacitySeed.SeedAsync(setup, nodes, cancellationToken: TestContext.Current.CancellationToken);
 
         if (repair)
         {
-            await CompositionCapacityProfiles.BalanceAsync(setup, nodes);
+            await CompositionCapacityProfiles.BalanceAsync(setup, nodes,
+                cancellationToken: TestContext.Current.CancellationToken);
         }
 
         var probe = new EnterpriseProbe();
@@ -33,8 +36,10 @@ public abstract partial class HierarchyCompositionCapacityTests
 
         // Act
         var changed = repair
-            ? await CompositionCapacityProfiles.CorruptWideForRepairAsync(context, nodes)
-            : await CompositionCapacityProfiles.BalanceAsync(context, nodes);
+            ? await CompositionCapacityProfiles.CorruptWideForRepairAsync(context, nodes,
+                cancellationToken: TestContext.Current.CancellationToken)
+            : await CompositionCapacityProfiles.BalanceAsync(context, nodes,
+                cancellationToken: TestContext.Current.CancellationToken);
 
         var rows = await context.Set<TreeNode>()
             .Where(node => node.NodeId == 1 || node.NodeId >= 100_000)

@@ -26,7 +26,9 @@ public abstract class RetryBoundaryTests : ProviderTest
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var services = RetryBoundaryServices.Create(Engine);
         var commands = new EnterpriseProbe();
         var transactions = new RetryBoundaryTransactionProbe();
@@ -86,8 +88,10 @@ public abstract class RetryBoundaryTests : ProviderTest
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await using var services = RetryBoundaryServices.Create(Engine);
         var commands = new EnterpriseProbe();
         var transactions = new RetryBoundaryTransactionProbe();
@@ -136,8 +140,10 @@ public abstract class RetryBoundaryTests : ProviderTest
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var commands = new EnterpriseProbe();
         var transactions = new RetryBoundaryTransactionProbe();
         await using var context = Create(setup, null, commands, transactions);
@@ -180,7 +186,9 @@ public abstract class RetryBoundaryTests : ProviderTest
     public async Task OuterStrategyStillRetriesAnUnrelatedSave()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var services = RetryBoundaryServices.Create(Engine);
         var probe = new SaveBoundaryProbe { FailNextPayload = true };
         await using var context = Create(setup, services, probe);
@@ -214,7 +222,9 @@ public abstract class RetryBoundaryTests : ProviderTest
     public async Task NonRetryingOuterStrategyAllowsHierarchyWrites()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var context = Create(setup, null);
         var strategy = new RetryBoundaryNonRetryStrategy(context);
         var tree = context
@@ -252,7 +262,9 @@ public abstract class RetryBoundaryTests : ProviderTest
     public async Task RetryingUnitUsesCallerTransactionForHierarchyAndDomainWrites()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var services = RetryBoundaryServices.Create(Engine);
         await using var strategyContext = Create(setup, services);
         var strategy = strategyContext.Database.CreateExecutionStrategy();
@@ -326,7 +338,9 @@ public abstract class RetryBoundaryTests : ProviderTest
     public async Task CallerTransactionRequiresRetryStrategyBoundary()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var services = RetryBoundaryServices.Create(Engine);
         var commands = new EnterpriseProbe();
         await using var context = Create(setup, services, commands);
@@ -389,7 +403,8 @@ public abstract class RetryBoundaryTests : ProviderTest
 
     /// <summary>Seeds two siblings whose rename requires automatic reordering inside one tree.</summary>
     private static async Task SeedAsync(
-        DbContext context
+        DbContext context,
+        CancellationToken cancellationToken
     )
     {
         var tree = context
@@ -403,7 +418,7 @@ public abstract class RetryBoundaryTests : ProviderTest
                 Name = "Root",
             },
             Guid.Empty,
-            CancellationToken.None);
+            cancellationToken);
 
         await tree.InsertChildAsync(
             new OrderingNode
@@ -412,7 +427,7 @@ public abstract class RetryBoundaryTests : ProviderTest
                 Name = "Alpha",
             },
             100,
-            CancellationToken.None);
+            cancellationToken);
 
         await tree.InsertChildAsync(
             new OrderingNode
@@ -421,6 +436,6 @@ public abstract class RetryBoundaryTests : ProviderTest
                 Name = "Bravo",
             },
             100,
-            CancellationToken.None);
+            cancellationToken);
     }
 }

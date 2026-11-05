@@ -18,7 +18,9 @@ public sealed partial class BulkIdentityRetentionTests
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
@@ -57,7 +59,8 @@ public sealed partial class BulkIdentityRetentionTests
         };
 
         // Act
-        var result = await ImportMutableAsync(context, binary);
+        var result = await ImportMutableAsync(context, binary,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(
@@ -89,7 +92,9 @@ public sealed partial class BulkIdentityRetentionTests
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<ShallowBinaryContext>()
             .ConfigureTestWarnings()
@@ -115,7 +120,8 @@ public sealed partial class BulkIdentityRetentionTests
         };
 
         // Act
-        var result = await ImportMutableAsync(context, binary: true);
+        var result = await ImportMutableAsync(context, binary: true,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(NestedSetErrorCode.InvalidImport, Assert.IsType<NestedSetException>(result.Error).Code);
@@ -134,7 +140,9 @@ public sealed partial class BulkIdentityRetentionTests
     public async Task SuccessfulImportReleasesMutableIdentities()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
@@ -177,7 +185,9 @@ public sealed partial class BulkIdentityRetentionTests
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()

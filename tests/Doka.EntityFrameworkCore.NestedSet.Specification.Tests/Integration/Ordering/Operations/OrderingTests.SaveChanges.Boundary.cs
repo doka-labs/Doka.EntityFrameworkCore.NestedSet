@@ -10,7 +10,9 @@ public abstract partial class OrderingTests
     public async Task ParentMovesDoNotReacquireRegistryLocksAfterPayload()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = setup.NestedSet<OrderingNode>().ForScope(1);
         var firstTree = Guid.NewGuid();
         var secondTree = Guid.NewGuid();
@@ -21,7 +23,10 @@ public abstract partial class OrderingTests
         await hierarchy.InsertRootAsync(Node(10, "Destination"), secondTree, CancellationToken.None);
         var commands = new OrderingSaveProbe();
         var savepoints = new SavepointProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine, "Strict", commands, savepoints);
+        await using var context = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "Strict", commands, savepoints);
+
         var changed = await context.Set<OrderingNode>()
             .Where(node => node.Id == 2 || node.Id == 4)
             .OrderBy(node => node.Id)
@@ -45,7 +50,9 @@ public abstract partial class OrderingTests
         Assert.Contains(commands.Commands.Take(payloadIndex), IsRegistryLock);
         Assert.DoesNotContain(commands.Commands.Skip(payloadIndex + 1), IsRegistryLock);
         Assert.InRange(savepoints.Created, 0, 1);
-        await using var verification = await _fixture.CreateContextAsync(Engine);
+        await using var verification = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var scope = verification.NestedSet<OrderingNode>().ForScope(1);
         Assert.True((await scope.InTree(firstTree)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);

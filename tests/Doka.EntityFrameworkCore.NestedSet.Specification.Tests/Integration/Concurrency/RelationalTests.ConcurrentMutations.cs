@@ -16,13 +16,13 @@ public abstract partial class RelationalTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
         var tree = setup
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedPlacementTreeAsync(setup, 1);
+        await SeedPlacementTreeAsync(setup, 1, cancellationToken: TestContext.Current.CancellationToken);
         await tree.InsertChildAsync(Node(7), 1, CancellationToken.None);
 
         if (operation == "Rebuild")
@@ -38,14 +38,15 @@ public abstract partial class RelationalTests
                     CancellationToken.None);
         }
 
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(45));
         var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var arrivals = 0;
         var lockBarrier = new MutationLockBarrier(setup.Model.FindEntityType(typeof(TreeNode))!, 1, Guid.Empty);
 
-        var first = MutateAsync(2);
-        var second = MutateAsync(3);
+        var first = MutateAsync(2, cancellationToken: timeout.Token);
+        var second = MutateAsync(3, cancellationToken: timeout.Token);
         await ready.Task.WaitAsync(timeout.Token);
 
         // Act
@@ -56,7 +57,7 @@ public abstract partial class RelationalTests
         // Assert
         Assert.Equal(2, arrivals);
         Assert.Equal(Engine == "Sqlite" ? 0 : 2, lockBarrier.Arrivals);
-        await AssertValidAsync(setup, 1);
+        await AssertValidAsync(setup, 1, cancellationToken: TestContext.Current.CancellationToken);
         var nodes = await setup
             .Set<TreeNode>()
             .AsNoTracking()
@@ -107,7 +108,8 @@ public abstract partial class RelationalTests
         return;
 
         async Task MutateAsync(
-            int key
+            int key,
+            CancellationToken cancellationToken
         )
         {
             // WHY: SQLite reserves its sole writer during transaction begin, before the lock command; waiting
@@ -125,7 +127,7 @@ public abstract partial class RelationalTests
                 ready.TrySetResult();
             }
 
-            await release.Task.WaitAsync(timeout.Token);
+            await release.Task.WaitAsync(cancellationToken);
 
             var selected = operation switch
             {
@@ -138,15 +140,15 @@ public abstract partial class RelationalTests
             switch (selected)
             {
                 case "Move":
-                    await scoped.MoveToAsync(key, 7, timeout.Token);
+                    await scoped.MoveToAsync(key, 7, cancellationToken);
                     break;
                 case "Delete":
-                    await scoped.DeleteAsync(key, timeout.Token);
+                    await scoped.DeleteAsync(key, cancellationToken);
                     break;
                 case "Rebuild":
                     await scoped
                         .InTree(Guid.Empty)
-                        .RebuildAsync(timeout.Token);
+                        .RebuildAsync(cancellationToken);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(operation));

@@ -102,14 +102,14 @@ public class QueryBenchmarks : DatabaseBenchmark
     }
 
     /// <inheritdoc />
-    public override async Task PrepareAsync()
+    public override async Task PrepareAsync(CancellationToken cancellationToken)
     {
         _result = null;
-        await base.PrepareAsync();
+        await base.PrepareAsync(cancellationToken);
     }
 
     /// <inheritdoc />
-    public override async Task VerifyAsync()
+    public override async Task VerifyAsync(CancellationToken cancellationToken)
     {
         var result = Result;
 
@@ -124,7 +124,7 @@ public class QueryBenchmarks : DatabaseBenchmark
                 .SequenceEqual(ExpectedKeys()),
             "Query returned unexpected keys or hierarchy order.");
 
-        await base.VerifyAsync();
+        await base.VerifyAsync(cancellationToken);
     }
 
     /// <summary>Derives exact query membership and preorder from the independent, immutable import plan.</summary>

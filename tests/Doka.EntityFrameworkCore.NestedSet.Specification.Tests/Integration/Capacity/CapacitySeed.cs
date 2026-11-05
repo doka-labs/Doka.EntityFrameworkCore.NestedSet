@@ -6,9 +6,11 @@ internal static class CapacitySeed
     private const int NativeBatchSize = 100_000;
 
     /// <summary>Registers the tree through the public API before inserting bounded native adjacency batches.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     internal static async Task SeedAsync(
         TreeContext context,
         int count,
+        CancellationToken cancellationToken,
         bool deep = false,
         bool corrupt = false
     )
@@ -16,7 +18,7 @@ internal static class CapacitySeed
         await context
             .NestedSet<TreeNode>()
             .ForScope(1)
-            .InsertRootAsync(new TreeNode { NodeId = 1 }, Guid.Empty, CancellationToken.None);
+            .InsertRootAsync(new TreeNode { NodeId = 1 }, Guid.Empty, cancellationToken);
         context.ChangeTracker.Clear();
 
         await context
@@ -27,7 +29,7 @@ internal static class CapacitySeed
                     .SetProperty(node => node.Start, 1L)
                     .SetProperty(node => node.End, corrupt ? 2L : (long)count * 2)
                     .SetProperty(node => node.Depth, corrupt ? 9 : 0),
-                CancellationToken.None);
+                cancellationToken);
 
         var entity = context.Model.FindEntityType(typeof(TreeNode))!;
         var store = StoreObjectIdentifier.Table(entity.GetTableName()!, entity.GetSchema());
@@ -76,7 +78,7 @@ internal static class CapacitySeed
             };
 
             // WHY: The mapped relational type supplies Guid conversion, including Doka's binary MySQL storage.
-            await context.Database.ExecuteSqlRawAsync(sql, parameters, CancellationToken.None);
+            await context.Database.ExecuteSqlRawAsync(sql, parameters, cancellationToken);
 
             DbParameter Parameter(
                 string property,
@@ -89,9 +91,11 @@ internal static class CapacitySeed
     }
 
     /// <summary>Counts missing, unexpected, and structurally mismatched rows in bounded key ranges.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     internal static async Task<long> MismatchesAsync(
         TreeContext context,
         int count,
+        CancellationToken cancellationToken,
         bool deep = false,
         bool corrupt = false
     )
@@ -101,7 +105,7 @@ internal static class CapacitySeed
             .AsNoTracking();
 
         var mismatches = await nodes.LongCountAsync(
-            node => node.NodeId < 1 || node.NodeId > count, CancellationToken.None);
+            node => node.NodeId < 1 || node.NodeId > count, cancellationToken);
 
         // WHY: One coordinate aggregate over ten million rows can exceed the ordinary command timeout before
         // returning any result. Primary-key ranges bound that wait without retaining entities or raising timeouts.
@@ -112,7 +116,7 @@ internal static class CapacitySeed
             var range = nodes.Where(node => node.NodeId >= firstKey && node.NodeId <= lastKey);
 
             // WHY: Correct coordinates on surviving rows do not prove that every expected key still exists.
-            mismatches += lastKey - firstKey + 1L - await range.LongCountAsync(CancellationToken.None);
+            mismatches += lastKey - firstKey + 1L - await range.LongCountAsync(cancellationToken);
 
             // WHY: Explicit root/child branches preserve null-parent checks without repeated SQL CASE compensation.
             mismatches += await range.LongCountAsync(
@@ -126,15 +130,17 @@ internal static class CapacitySeed
                         : node.NodeId == 1 ? 2L * count : (2L * node.NodeId) - 1)
                     || node.Depth != (corrupt ? 9 : deep ? node.NodeId - 1 : node.NodeId == 1 ? 0 : 1)
                     || node.Position != (deep || node.NodeId == 1 ? 0L : node.NodeId - 2L),
-                CancellationToken.None);
+                cancellationToken);
         }
 
         return mismatches;
     }
 
     /// <summary>Reads the complete mutable registry state independently of any operation context.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     internal static Task<CapacityRegistryState> RegistryAsync(
-        TreeContext context
+        TreeContext context,
+        CancellationToken cancellationToken
     )
     {
         var hierarchy = context.Model.FindEntityType(typeof(TreeNode))!;
@@ -147,18 +153,20 @@ internal static class CapacitySeed
             .Select(row => new CapacityRegistryState(
                 EF.Property<long>(row, NestedSetTreeRegistryMetadata.Revision),
                 EF.Property<byte>(row, NestedSetTreeRegistryMetadata.Lifecycle)))
-            .SingleAsync(CancellationToken.None);
+            .SingleAsync(cancellationToken);
     }
 
     /// <summary>Counts all registry rows to prove that a failed new-tree reservation was rolled back.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     internal static Task<int> RegistryCountAsync(
-        TreeContext context
+        TreeContext context,
+        CancellationToken cancellationToken
     )
     {
         var hierarchy = context.Model.FindEntityType(typeof(TreeNode))!;
         var registry = NestedSetTreeRegistryMapping.For(hierarchy).Registry;
 
-        return context.Set<NestedSetTreeRegistry>(registry.Name).CountAsync(CancellationToken.None);
+        return context.Set<NestedSetTreeRegistry>(registry.Name).CountAsync(cancellationToken);
     }
 }
 

@@ -40,14 +40,14 @@ public sealed class PreparedOwnerImportBenchmarkTests
         try
         {
             benchmark.Initialize();
-            await benchmark.PrepareAsync();
+            await benchmark.PrepareAsync(cancellationToken: TestContext.Current.CancellationToken);
             Func<Task> import = forest ? benchmark.Forest : benchmark.Subtree;
 
             // Act
             await import();
 
             // Assert
-            await benchmark.VerifyAsync();
+            await benchmark.VerifyAsync(cancellationToken: TestContext.Current.CancellationToken);
             Assert.False(benchmark.Context.ChangeTracker.AutoDetectChangesEnabled);
         }
         finally
@@ -66,10 +66,10 @@ public sealed class PreparedOwnerImportBenchmarkTests
         try
         {
             benchmark.Initialize();
-            await benchmark.PrepareAsync();
+            await benchmark.PrepareAsync(cancellationToken: TestContext.Current.CancellationToken);
 
             // Act
-            var error = await Record.ExceptionAsync(benchmark.VerifyAsync);
+            var error = await Record.ExceptionAsync(() => benchmark.VerifyAsync(TestContext.Current.CancellationToken));
 
             // Assert
             Assert.IsType<InvalidOperationException>(error);
@@ -90,12 +90,12 @@ public sealed class PreparedOwnerImportBenchmarkTests
         try
         {
             benchmark.Initialize();
-            await benchmark.PrepareAsync();
+            await benchmark.PrepareAsync(cancellationToken: TestContext.Current.CancellationToken);
             await benchmark.Subtree();
             await benchmark.Context.Nodes.Where(node => node.Id == 66).ExecuteDeleteAsync(CancellationToken.None);
 
             // Act
-            var error = await Record.ExceptionAsync(benchmark.VerifyAsync);
+            var error = await Record.ExceptionAsync(() => benchmark.VerifyAsync(TestContext.Current.CancellationToken));
 
             // Assert
             Assert.IsType<InvalidOperationException>(error);

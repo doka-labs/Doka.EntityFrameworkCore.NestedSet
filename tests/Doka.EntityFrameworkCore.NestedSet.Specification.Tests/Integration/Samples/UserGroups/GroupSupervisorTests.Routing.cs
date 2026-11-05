@@ -25,12 +25,14 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await AddMetadataAsync(
-            context, data, sourceOwner, data.Users[0], data.Groups[5], 4, "ChannelClass", "lane-blue");
+            context, data, sourceOwner, data.Users[0], data.Groups[5], 4, "ChannelClass", "lane-blue",
+            cancellationToken: TestContext.Current.CancellationToken);
         await AddMetadataAsync(
-            context, data, candidateOwner, data.Users[1], data.Groups[4], 3, "ManagerRoute", "lane-blue");
+            context, data, candidateOwner, data.Users[1], data.Groups[4], 3, "ManagerRoute", "lane-blue",
+            cancellationToken: TestContext.Current.CancellationToken);
         await context.SaveChangesAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         var request = data.Request(group: data.Groups[5]) with
@@ -69,10 +71,12 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await AddMetadataAsync(context, data, 0, data.Users[0], data.Groups[5], 4, "ChannelClass", "lane-blue");
-        await AddMetadataAsync(context, data, 4, data.Users[1], data.Groups[4], 3, "ManagerRoute", value);
+        await AddMetadataAsync(context, data, 0, data.Users[0], data.Groups[5], 4, "ChannelClass", "lane-blue",
+            cancellationToken: TestContext.Current.CancellationToken);
+        await AddMetadataAsync(context, data, 4, data.Users[1], data.Groups[4], 3, "ManagerRoute", value,
+            cancellationToken: TestContext.Current.CancellationToken);
         await context.SaveChangesAsync(CancellationToken.None);
         var request = data.Request(group: data.Groups[5]) with
         {
@@ -103,15 +107,21 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await AddMetadataAsync(context, data, 0, data.Users[0], data.Groups[5], 4, "ChannelClass", "channel-A");
-        await AddMetadataAsync(context, data, 0, data.Users[0], data.Groups[5], 4, "RoutingZone", "zone-A");
-        await AddMetadataAsync(context, data, 4, data.Users[1], data.Groups[4], 3, "ChannelClass", "channel-A");
+        await AddMetadataAsync(context, data, 0, data.Users[0], data.Groups[5], 4, "ChannelClass", "channel-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+        await AddMetadataAsync(context, data, 0, data.Users[0], data.Groups[5], 4, "RoutingZone", "zone-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+        await AddMetadataAsync(context, data, 4, data.Users[1], data.Groups[4], 3, "ChannelClass", "channel-A",
+            cancellationToken: TestContext.Current.CancellationToken);
         await AddMetadataAsync(
-            context, data, 4, data.Users[1], data.Groups[4], 3, "RoutingZone", matchingPerson ? "zone-A" : "zone-B");
-        await AddMetadataAsync(context, data, 4, data.Users[2], data.Groups[4], 3, "ChannelClass", "channel-B");
-        await AddMetadataAsync(context, data, 4, data.Users[2], data.Groups[4], 3, "RoutingZone", "zone-A");
+            context, data, 4, data.Users[1], data.Groups[4], 3, "RoutingZone", matchingPerson ? "zone-A" : "zone-B",
+            cancellationToken: TestContext.Current.CancellationToken);
+        await AddMetadataAsync(context, data, 4, data.Users[2], data.Groups[4], 3, "ChannelClass", "channel-B",
+            cancellationToken: TestContext.Current.CancellationToken);
+        await AddMetadataAsync(context, data, 4, data.Users[2], data.Groups[4], 3, "RoutingZone", "zone-A",
+            cancellationToken: TestContext.Current.CancellationToken);
         await context.SaveChangesAsync(CancellationToken.None);
         var request = data.Request(group: data.Groups[5]) with
         {
@@ -141,6 +151,7 @@ public abstract partial class GroupSupervisorTests
     }
 
     /// <summary>Creates real owner-specific rows using the application's definitions and constraints.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="context">The context that persists the metadata row.</param>
     /// <param name="data">The tenant-qualified fixture identities.</param>
     /// <param name="owner">The source or candidate metadata owner.</param>
@@ -157,7 +168,8 @@ public abstract partial class GroupSupervisorTests
         int group,
         int type,
         string field,
-        string? value
+        string? value,
+        CancellationToken cancellationToken
     )
     {
         switch ((App.MetadataOwner)owner)
@@ -170,7 +182,7 @@ public abstract partial class GroupSupervisorTests
                     UserId = user,
                     FieldCode = field,
                     Value = value,
-                }, CancellationToken.None);
+                }, cancellationToken);
                 break;
             case App.MetadataOwner.SourceMembership:
             case App.MetadataOwner.CandidateMembership:
@@ -182,7 +194,7 @@ public abstract partial class GroupSupervisorTests
                     GroupTypeId = type,
                     FieldCode = field,
                     Value = value,
-                }, CancellationToken.None);
+                }, cancellationToken);
                 break;
             case App.MetadataOwner.SourceGroup:
             case App.MetadataOwner.CandidateGroup:
@@ -193,7 +205,7 @@ public abstract partial class GroupSupervisorTests
                     GroupTypeId = type,
                     FieldCode = field,
                     Value = value,
-                }, CancellationToken.None);
+                }, cancellationToken);
                 break;
         }
     }

@@ -23,7 +23,7 @@ public abstract partial class SingleInsertGuardTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         await using var transaction = await context.Database.BeginTransactionAsync(
             Engine == "Sqlite" ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
@@ -78,7 +78,7 @@ public abstract partial class SingleInsertGuardTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
@@ -138,7 +138,7 @@ public abstract partial class SingleInsertGuardTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();
         await using var context = database.CreateContext(callback);
         var tree = context
@@ -180,7 +180,7 @@ public abstract partial class SingleInsertGuardTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using (var setup = database.CreateContext())
         {
             await setup.AddAsync(new UnrelatedRow { Id = 701 }, CancellationToken.None);

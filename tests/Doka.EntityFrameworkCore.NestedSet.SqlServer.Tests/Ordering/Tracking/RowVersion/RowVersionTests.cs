@@ -23,7 +23,10 @@ public sealed class RowVersionTests : ProviderTest, IClassFixture<ProviderFixtur
     )
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(readCommittedSnapshot);
+        await using var context = await _fixture.ResetAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            readCommittedSnapshot);
+
         var tree = context
             .NestedSet<SqlServerVersionNode>()
             .ForScope(1);
@@ -66,7 +69,7 @@ public sealed class RowVersionTests : ProviderTest, IClassFixture<ProviderFixtur
     )
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync();
+        await using var context = await _fixture.ResetAsync(cancellationToken: TestContext.Current.CancellationToken);
         var tree = context
             .NestedSet<SqlServerVersionNode>()
             .ForScope(1);

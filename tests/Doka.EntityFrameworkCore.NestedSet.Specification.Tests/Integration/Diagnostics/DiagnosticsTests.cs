@@ -23,7 +23,7 @@ public abstract class DiagnosticsTests : ProviderTest
     public async Task SuccessfulMutationMeasuresOperationAndLockWithoutPayloadTags()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var service = context
             .NestedSet<TreeNode>()
@@ -68,7 +68,7 @@ public abstract class DiagnosticsTests : ProviderTest
     public async Task RebuildPublishesBoundedWorkMeasurements()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -107,7 +107,7 @@ public abstract class DiagnosticsTests : ProviderTest
     public async Task MissingNodeFailureHasBoundedClassification()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var service = context
             .NestedSet<TreeNode>()
@@ -136,7 +136,7 @@ public abstract class DiagnosticsTests : ProviderTest
     public async Task CancellationHasItsOwnOutcomeAndDoesNotAcquireALock()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var service = context
             .NestedSet<TreeNode>()
@@ -170,7 +170,7 @@ public abstract class DiagnosticsTests : ProviderTest
     public async Task CancellationDuringLockAcquisitionRecordsTheCanceledWait()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var reached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         IInterceptor probe = Engine == "Sqlite"
             ? new LockCancellationProbe(reached)
@@ -209,7 +209,9 @@ public abstract class DiagnosticsTests : ProviderTest
     public async Task CoordinatedSaveIsObservedOnce()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var service = context
             .NestedSet<OrderingNode>()
             .ForScope(1);
@@ -251,7 +253,9 @@ public abstract class DiagnosticsTests : ProviderTest
     public async Task ParentSaveDoesNotCountItsInternalMove()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context
             .NestedSet<OrderingNode>()
             .ForScope(1);
@@ -309,7 +313,9 @@ public abstract class DiagnosticsTests : ProviderTest
     public async Task UnrelatedNativeSaveDoesNotEmitHierarchyMetrics()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         context.Add(new OrderingMarker { Id = 1 });
         using var capture = new DiagnosticsCapture();
 
@@ -326,7 +332,7 @@ public abstract class DiagnosticsTests : ProviderTest
     public async Task UnacquiredWriteLockHasBoundedClassification()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new LockCommandFailureProbe();
         await using var context = database.CreateContext(probe);
         var service = context
@@ -362,7 +368,7 @@ public abstract class DiagnosticsTests : ProviderTest
     public async Task ProviderLockFailureDoesNotExposeItsMessage()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var failure = new LockProviderFailureException();
         var probe = new LockCommandFailureProbe(failure);
         await using var context = database.CreateContext(probe);
@@ -399,7 +405,7 @@ public abstract class DiagnosticsTests : ProviderTest
     public async Task ForestImportIsObservedOnce()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -425,7 +431,7 @@ public abstract class DiagnosticsTests : ProviderTest
     public async Task CrossTreeMoveIsObservedOnce()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -451,7 +457,7 @@ public abstract class DiagnosticsTests : ProviderTest
     public async Task DetachAsTreeIsObservedOnce()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -476,7 +482,7 @@ public abstract class DiagnosticsTests : ProviderTest
     public async Task DeleteTreeIsObservedOnce()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -499,7 +505,7 @@ public abstract class DiagnosticsTests : ProviderTest
     public async Task PurgeTreeIdIsObservedOnce()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -523,7 +529,7 @@ public abstract class DiagnosticsTests : ProviderTest
     public async Task ActiveTreePurgeHasBoundedClassification()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()

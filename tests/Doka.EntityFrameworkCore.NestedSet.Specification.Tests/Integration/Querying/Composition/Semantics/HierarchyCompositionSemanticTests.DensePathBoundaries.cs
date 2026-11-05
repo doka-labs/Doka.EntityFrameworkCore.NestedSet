@@ -46,7 +46,9 @@ public abstract partial class HierarchyCompositionSemanticTests
             .Concat(DensePathDecoys(local, scope, Guid.NewGuid(), 10_000)).ToArray();
 
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateLongPathContextAsync(scope, lower, all, probe);
+        await using var context = await CreateLongPathContextAsync(scope, lower, all, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope).InTree(treeId);
         var rows = LongRows(context, scope, 2, 2, lower);
         var expected = ExpectedLongRows(all, scope, treeId, 2, 2, lower, filter);
@@ -65,7 +67,7 @@ public abstract partial class HierarchyCompositionSemanticTests
             _ => throw new ArgumentOutOfRangeException(nameof(filter)),
         };
 
-        var actual = await ReadLongRowsAsync(query);
+        var actual = await ReadLongRowsAsync(query, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(expectedCoordinates, (local.Single(node => node.Id == 2).Left,

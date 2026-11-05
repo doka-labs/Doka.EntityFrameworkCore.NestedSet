@@ -58,7 +58,9 @@ public abstract class ServerQueryPlanTests : ProviderTest
     {
         // Arrange
         var probe = new EnterpriseProbe(captureParameterBindings: true);
-        await using var context = await _fixture.CreateContextAsync(Engine, probe);
+        await using var context = await _fixture.CreateContextAsync(Engine, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var service = context
             .NestedSet<OrderingNode>()
             .ForScope(scope);
@@ -78,7 +80,9 @@ public abstract class ServerQueryPlanTests : ProviderTest
             .Select(node => node.Id)
             .ToArrayAsync(CancellationToken.None);
 
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, probe, commandIndex, Engine);
+        var plan = await QueryPlanTestSupport.ExplainAsync(context, probe, commandIndex, Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var queryIndex = query switch
         {
             "Parent" => 0,
@@ -114,7 +118,9 @@ public abstract class ServerQueryPlanTests : ProviderTest
     {
         // Arrange
         var probe = new EnterpriseProbe(captureParameterBindings: true);
-        await using var context = await _fixture.CreateContextAsync(Engine, probe);
+        await using var context = await _fixture.CreateContextAsync(Engine, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var store = new NestedSetStore<OrderingNode, int, Guid, int>(
             context,
             context.Model.FindEntityType(typeof(OrderingNode))!,
@@ -128,7 +134,9 @@ public abstract class ServerQueryPlanTests : ProviderTest
             new NestedSetParent<int>(true, 10000),
             CancellationToken.None);
 
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, probe, commandIndex + 1, Engine);
+        var plan = await QueryPlanTestSupport.ExplainAsync(context, probe, commandIndex + 1, Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         _fixture.RecordPredecessorEvidence(plan);
 
         // Assert

@@ -20,9 +20,9 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await EnableSnapshotAsync(context);
+        await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var request = ChainRequest(data, currentSubject);
         probe.Enabled = true;
 
@@ -59,7 +59,7 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context.UserGroupMemberships.AddAsync(new App.UserGroupMembership
         {
@@ -70,7 +70,7 @@ public abstract partial class GroupSupervisorTests
         }, CancellationToken.None);
         await context.SaveChangesAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
-        await EnableSnapshotAsync(context);
+        await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var request = ChainRequest(data, true);
         probe.Enabled = true;
 
@@ -111,11 +111,11 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context.Users.Where(user => user.TenantId == data.TenantId && user.Id == data.Users[0])
             .ExecuteUpdateAsync(setters => setters.SetProperty(user => user.Visible, false), CancellationToken.None);
-        await EnableSnapshotAsync(context);
+        await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var request = ChainRequest(data, false);
         probe.Enabled = true;
 
@@ -139,9 +139,9 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await EnableSnapshotAsync(context);
+        await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var request = ChainRequest(data, false) with { MaxResultRows = 1 };
         probe.Enabled = true;
 
@@ -166,7 +166,7 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var isolation = Engine == "Sqlite" ? IsolationLevel.ReadUncommitted : IsolationLevel.ReadCommitted;
         await using var transaction = await context.Database.BeginTransactionAsync(isolation, CancellationToken.None);
@@ -207,10 +207,11 @@ public abstract partial class GroupSupervisorTests
     }
 
     /// <summary>Enables the explicit SQL Server snapshot feature only in the test-owned database.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="context">The context for the test-owned database.</param>
-    private Task EnableSnapshotAsync(App.UserGroupContext context)
+    private Task EnableSnapshotAsync(App.UserGroupContext context, CancellationToken cancellationToken)
         => Engine == "SqlServer"
             ? context.Database.ExecuteSqlRawAsync(
-                "ALTER DATABASE CURRENT SET ALLOW_SNAPSHOT_ISOLATION ON", CancellationToken.None)
+                "ALTER DATABASE CURRENT SET ALLOW_SNAPSHOT_ISOLATION ON", cancellationToken)
             : Task.CompletedTask;
 }

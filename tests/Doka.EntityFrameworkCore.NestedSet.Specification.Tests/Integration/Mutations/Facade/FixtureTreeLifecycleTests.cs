@@ -20,7 +20,8 @@ public abstract class FixtureTreeLifecycleTests : ProviderTest
     public async Task FieldModelResetRemovesTombstonedIdentity()
     {
         // Arrange
-        await using (var previous = await _fixture.CreateFieldContextAsync(Engine))
+        await using (var previous = await _fixture.CreateFieldContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken))
         {
             var hierarchy = previous
                 .NestedSet<FieldNode>()
@@ -31,7 +32,9 @@ public abstract class FixtureTreeLifecycleTests : ProviderTest
         }
 
         // Act
-        await using var context = await _fixture.CreateFieldContextAsync(Engine);
+        await using var context = await _fixture.CreateFieldContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var replacement = context
             .NestedSet<FieldNode>()
             .ForScope(1);
@@ -57,7 +60,8 @@ public abstract class FixtureTreeLifecycleTests : ProviderTest
     public async Task GeneratedModelResetRemovesTombstonedIdentity()
     {
         // Arrange
-        await using (var previous = await _fixture.CreateGeneratedContextAsync(Engine))
+        await using (var previous = await _fixture.CreateGeneratedContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken))
         {
             var hierarchy = previous
                 .NestedSet<TreeNode>()
@@ -69,7 +73,9 @@ public abstract class FixtureTreeLifecycleTests : ProviderTest
         }
 
         // Act
-        await using var context = await _fixture.CreateGeneratedContextAsync(Engine);
+        await using var context = await _fixture.CreateGeneratedContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var replacement = context
             .NestedSet<TreeNode>()
             .ForScope(1);

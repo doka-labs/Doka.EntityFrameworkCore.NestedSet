@@ -7,11 +7,11 @@ public abstract partial class KeyFilterComparisonTests
     public async Task ComparisonSeedIsReusedAcrossContexts()
     {
         // Arrange
-        var first = await _fixture.ComparisonAsync(Engine);
+        var first = await _fixture.ComparisonAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var firstContext = first.CreateContext();
 
         // Act
-        var second = await _fixture.ComparisonAsync(Engine);
+        var second = await _fixture.ComparisonAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var secondContext = second.CreateContext();
         var rows = await secondContext
             .Set<TreeNode>()
@@ -28,10 +28,11 @@ public abstract partial class KeyFilterComparisonTests
     public async Task ResettingSiblingRowsPreservesComparisonSeed()
     {
         // Arrange
-        var comparison = await _fixture.ComparisonAsync(Engine);
+        var comparison = await _fixture.ComparisonAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        var mutable = await _fixture.ResetAsync(Engine);
+        var mutable = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var comparisonContext = comparison.CreateContext();
         await using var mutableContext = mutable.CreateContext();
         var integerRows = await comparisonContext

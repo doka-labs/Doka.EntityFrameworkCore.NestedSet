@@ -19,7 +19,7 @@ public abstract class CommandProbeTests : ProviderTest
     public async Task PositionCaseAssignmentDoesNotCountAsBoundsWrite()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
         var tree = setup
             .NestedSet<TreeNode>()

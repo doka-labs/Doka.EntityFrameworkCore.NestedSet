@@ -7,7 +7,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task BulkImportsAssignExactTreeIdentity()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -87,7 +87,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task ForestRejectsDuplicateTreeIdentityAtomically()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -136,7 +136,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task TreeMaintenancePlansAndRepairsExactTree()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -201,7 +201,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task TreeMaintenanceRejectsMultipleRoots()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()

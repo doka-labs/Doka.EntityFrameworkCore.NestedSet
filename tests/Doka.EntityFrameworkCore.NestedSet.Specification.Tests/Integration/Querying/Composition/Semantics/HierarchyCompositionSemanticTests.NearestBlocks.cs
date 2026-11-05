@@ -35,7 +35,9 @@ public abstract partial class HierarchyCompositionSemanticTests
 
         var all = local.Concat(foreign).ToArray();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateLongPathContextAsync(scope, 40, all, probe);
+        await using var context = await CreateLongPathContextAsync(scope, 40, all, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await context.AddRangeAsync(LongDays().Select(day => new CompositionInputOne
         {
             Scope = scope,
@@ -62,7 +64,7 @@ public abstract partial class HierarchyCompositionSemanticTests
         var query = hierarchy.WhereNearestAncestorOrSelf(rows, row => row.Node,
             (row, owner) => owner.Candidate, (row, owner) => owner.Matches);
 
-        var actualRows = await ReadLongRowsAsync(query);
+        var actualRows = await ReadLongRowsAsync(query, cancellationToken: TestContext.Current.CancellationToken);
         var actual = actualRows.OrderBy(row => row.Origin).ThenBy(row => row.Node).ThenBy(row => row.Day).ToArray();
 
         // Assert
@@ -92,7 +94,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         }
 
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateLongPathContextAsync(scope, 40, local, probe);
+        await using var context = await CreateLongPathContextAsync(scope, 40, local, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope).InTree(treeId);
         var source = hierarchy.Nodes.OrderBy(_ => EF.Functions.Random()).Take(10);
 
@@ -123,7 +127,9 @@ public abstract partial class HierarchyCompositionSemanticTests
         var treeId = Guid.NewGuid();
         var local = NearestSectionNodes(scope, treeId, "zero-owner");
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateLongPathContextAsync(scope, 40, local, probe);
+        await using var context = await CreateLongPathContextAsync(scope, 40, local, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope).InTree(treeId);
         var nodes = context.Set<CompositionNode>().Where(node => node.Scope == scope && node.Id == 40);
         var firstDay = LongDays()[0];

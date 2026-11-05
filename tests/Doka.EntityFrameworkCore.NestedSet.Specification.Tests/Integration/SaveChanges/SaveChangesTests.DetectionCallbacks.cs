@@ -28,8 +28,10 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new SaveBoundaryProbe();
         await using var context = CreateManualDetectionContext(setup, wrapped, probe);
         var node = await context.Set<OrderingNode>().SingleAsync(value => value.Id == 1, CancellationToken.None);
@@ -61,7 +63,9 @@ public abstract partial class SaveChangesTests
         };
 
         // Act
-        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(context, synchronous));
+        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(context, synchronous,
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var storedLeft = await setup.Set<OrderingNode>().Where(value => value.Id == 1)
             .Select(value => value.Left).SingleAsync(CancellationToken.None);
 

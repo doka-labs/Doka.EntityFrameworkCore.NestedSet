@@ -28,7 +28,9 @@ public abstract partial class HierarchyCompositionTests
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
         await using var context = await _fixture.CreateContextAsync<CompositionContext>(
-            Engine, static options => new CompositionContext(options), probe, TestMaterializationObserver.Instance);
+            Engine, static options => new CompositionContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe, TestMaterializationObserver.Instance);
 
         TestMaterializationObserver.Instance.Register(context, probe.RecordMaterialization);
         var upper = new CompositionNode

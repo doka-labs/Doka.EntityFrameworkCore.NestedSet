@@ -7,7 +7,8 @@ public abstract partial class OrderingQueryShapeTests
 
     /// <summary>Seeds two overlapping coordinate spaces without exercising automatic ordering during setup.</summary>
     private static async Task SeedAsync(
-        OrderingKeyContext setup
+        OrderingKeyContext setup,
+        CancellationToken cancellationToken
     )
     {
         var extensions = setup
@@ -30,8 +31,8 @@ public abstract partial class OrderingQueryShapeTests
                 .Prepend(CreateRoot(scope)))
             .ToArray();
 
-        await seed.AddRangeAsync(rows, CancellationToken.None);
-        await seed.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await seed.AddRangeAsync(rows, cancellationToken);
+        await seed.SavePrecomputedHierarchyAsync(cancellationToken);
     }
 
     /// <summary>
@@ -260,13 +261,14 @@ public abstract partial class OrderingQueryShapeTests
     /// </summary>
     private static Task<OrderingKeyNode<string, string?>[]> ReadScopeAsync(
         OrderingKeyContext context,
-        int scope
+        int scope,
+        CancellationToken cancellationToken
     ) => context
         .Set<OrderingKeyNode<string, string?>>()
         .AsNoTracking()
         .Where(node => node.Scope == scope && node.ParentId != null)
         .OrderBy(node => node.Id)
-        .ToArrayAsync(CancellationToken.None);
+        .ToArrayAsync(cancellationToken);
 
     /// <summary>Checks every persisted sibling, including stable islands that were never tracked.</summary>
     private static void AssertPersisted(
@@ -294,13 +296,14 @@ public abstract partial class OrderingQueryShapeTests
     /// <summary>Checks that a disjoint child permutation preserves its untracked enclosing root.</summary>
     private static async Task AssertRootAsync(
         OrderingKeyContext context,
-        int scope
+        int scope,
+        CancellationToken cancellationToken
     )
     {
         var root = await context
             .Set<OrderingKeyNode<string, string?>>()
             .AsNoTracking()
-            .SingleAsync(node => node.Scope == scope && node.ParentId == null, CancellationToken.None);
+            .SingleAsync(node => node.Scope == scope && node.ParentId == null, cancellationToken);
 
         Assert.Equal($"S{scope}-ROOT", root.Id);
         Assert.Equal(s_shapeTreeId, root.TreeId);

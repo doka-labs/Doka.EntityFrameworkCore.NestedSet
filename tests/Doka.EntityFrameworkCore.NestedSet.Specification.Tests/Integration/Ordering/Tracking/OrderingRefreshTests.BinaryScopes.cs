@@ -7,7 +7,9 @@ public abstract partial class OrderingRefreshTests
     public async Task EqualBinaryScopesShareOneMembershipBatch()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var extensions = setup
             .GetService<IDbContextOptions>()
             .Extensions

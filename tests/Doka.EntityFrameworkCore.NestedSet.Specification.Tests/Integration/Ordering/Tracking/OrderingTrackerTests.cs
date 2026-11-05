@@ -15,20 +15,24 @@ public abstract partial class OrderingTrackerTests : ProviderTest
     }
 
     /// <summary>Prepares equivalent coordinated and ordinary EF reference rows on the requested provider.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="engine">The supported real relational provider.</param>
     private Task<TestDatabase> CreateDatabaseAsync(
-        string engine
-    ) => _fixture.PrepareAsync(engine, SeedDatabaseAsync);
+        string engine,
+        CancellationToken cancellationToken
+    ) => _fixture.PrepareAsync(engine, SeedDatabaseAsync, cancellationToken: cancellationToken);
 
     /// <summary>Creates or clears both models before seeding the shared tracker scenario.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="database">The fixture-owned database reused by serialized cases.</param>
     /// <param name="firstUse">Whether independent tracker tables must be created.</param>
     private static async Task SeedDatabaseAsync(
         TestDatabase database,
-        bool firstUse
+        bool firstUse,
+        CancellationToken cancellationToken
     )
     {
-        var options = await OptionsAsync(database);
+        var options = await OptionsAsync(database, cancellationToken: cancellationToken);
         await using var context = new TrackerContext(options);
         await using var plain = new PlainTrackerContext(options);
 
@@ -36,71 +40,73 @@ public abstract partial class OrderingTrackerTests : ProviderTest
         {
             await context
                 .GetService<IRelationalDatabaseCreator>()
-                .CreateTablesAsync(CancellationToken.None);
+                .CreateTablesAsync(cancellationToken);
 
             await plain
                 .GetService<IRelationalDatabaseCreator>()
-                .CreateTablesAsync(CancellationToken.None);
+                .CreateTablesAsync(cancellationToken);
         }
         else
         {
             await context
                 .Set<TrackerChild>()
-                .ExecuteDeleteAsync(CancellationToken.None);
+                .ExecuteDeleteAsync(cancellationToken);
 
             await context
                 .Set<TrackerOwner>()
-                .ExecuteDeleteAsync(CancellationToken.None);
+                .ExecuteDeleteAsync(cancellationToken);
 
             await context
                 .Set<TrackerAddition>()
-                .ExecuteDeleteAsync(CancellationToken.None);
+                .ExecuteDeleteAsync(cancellationToken);
 
             await context
                 .Set<TrackerNode>()
                 .ExecuteUpdateAsync(
                     setters => setters.SetProperty(node => node.ParentId, (int?)null),
-                    CancellationToken.None);
+                    cancellationToken);
 
             await context
                 .Set<TrackerNode>()
-                .ExecuteDeleteAsync(CancellationToken.None);
+                .ExecuteDeleteAsync(cancellationToken);
 
             await plain
                 .Set<TrackerNode>()
                 .ExecuteUpdateAsync(
                     setters => setters.SetProperty(node => node.ParentId, (int?)null),
-                    CancellationToken.None);
+                    cancellationToken);
 
             await plain
                 .Set<TrackerNode>()
-                .ExecuteDeleteAsync(CancellationToken.None);
+                .ExecuteDeleteAsync(cancellationToken);
         }
 
         var tree = Tree(context);
-        await tree.InsertRootAsync(Node(1, "Root"), Guid.NewGuid(), CancellationToken.None);
-        await tree.InsertChildAsync(Node(2, "Alpha"), 1, CancellationToken.None);
-        await tree.InsertChildAsync(Node(3, "Bravo"), 1, CancellationToken.None);
-        await tree.InsertChildAsync(Node(4, "Charlie"), 1, CancellationToken.None);
+        await tree.InsertRootAsync(Node(1, "Root"), Guid.NewGuid(), cancellationToken);
+        await tree.InsertChildAsync(Node(2, "Alpha"), 1, cancellationToken);
+        await tree.InsertChildAsync(Node(3, "Bravo"), 1, cancellationToken);
+        await tree.InsertChildAsync(Node(4, "Charlie"), 1, cancellationToken);
         var owner = new TrackerOwner { Id = 1 };
         owner.Children.Add(new TrackerChild { Id = 1 });
-        await context.AddAsync(owner, CancellationToken.None);
-        await context.SaveChangesAsync(CancellationToken.None);
+        await context.AddAsync(owner, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
         var nodes = await tree
             .TreeContaining(1)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
-        await plain.AddRangeAsync(nodes, CancellationToken.None);
-        await plain.SaveChangesAsync(CancellationToken.None);
+        await plain.AddRangeAsync(nodes, cancellationToken);
+        await plain.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>Uses the established provider lifecycle with one payload command per observable batch.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="database">The fixture database with independent tracker tables.</param>
     /// <param name="interceptors">Observers registered only for this context.</param>
     private static Task<DbContextOptions> OptionsAsync(
         TestDatabase database,
+        CancellationToken cancellationToken,
         params IInterceptor[] interceptors
-    ) => SaveSemanticsFixture.OptionsAsync(database, interceptors);
+    ) => SaveSemanticsFixture.OptionsAsync(database, cancellationToken: cancellationToken, interceptors);
 
     /// <summary>Creates a detached payload for assignment of its scope, parent, and coordinates.</summary>
     private static TrackerNode Node(
@@ -118,18 +124,20 @@ public abstract partial class OrderingTrackerTests : ProviderTest
     /// <summary>Reads a node through the ordinary tracking API, as application payload editing would do.</summary>
     private static Task<TrackerNode> LoadNodeAsync(
         DbContext context,
-        int key
+        int key,
+        CancellationToken cancellationToken
     ) => context
         .Set<TrackerNode>()
-        .SingleAsync(node => node.Id == key, CancellationToken.None);
+        .SingleAsync(node => node.Id == key, cancellationToken);
 
     /// <summary>Reads persisted sibling order without loading or mutating the tracked entities.</summary>
     private static Task<int[]> ChildIdsAsync(
-        TrackerContext context
+        TrackerContext context,
+        CancellationToken cancellationToken
     ) => Tree(context)
         .ChildrenOf(1)
         .Select(node => node.Id)
-        .ToArrayAsync(CancellationToken.None);
+        .ToArrayAsync(cancellationToken);
 
     /// <summary>
     ///     Captures visible tracker state without a fresh DetectChanges changing store-generated sidecars.

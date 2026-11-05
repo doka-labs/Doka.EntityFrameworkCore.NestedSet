@@ -17,7 +17,7 @@ public sealed class BenchmarkProvenanceDriftTests
     )
     {
         // Arrange
-        await using var repository = await TemporaryRepository.CreateAsync();
+        await using var repository = await TemporaryRepository.CreateAsync(TestContext.Current.CancellationToken);
         using var processState = new ProcessState(repository.Directory);
         var options = new BenchmarkRunOptions
         {
@@ -138,7 +138,9 @@ public sealed class BenchmarkProvenanceDriftTests
 
         internal string SourceFile => Path.Combine(Directory, "source.cs");
 
-        internal static async Task<TemporaryRepository> CreateAsync()
+        /// <summary>Creates an independently owned benchmark fixture.</summary>
+        /// <param name="cancellationToken">The caller's cancellation token for the operation.</param>
+        internal static async Task<TemporaryRepository> CreateAsync(CancellationToken cancellationToken)
         {
             var directory = Path.Combine(
                 Path.GetTempPath(),
@@ -148,16 +150,16 @@ public sealed class BenchmarkProvenanceDriftTests
             var repository = new TemporaryRepository(directory);
             await BenchmarkLifecycle.InitializeAsync(
                 repository,
-                async () =>
+                async token =>
                 {
-                    await RunGitAsync(directory, ["init", "--quiet"]);
+                    await RunGitAsync(directory, ["init", "--quiet"], token);
                     await File.WriteAllTextAsync(
                         repository.SourceFile,
                         "class OriginalSource { }\n",
-                        CancellationToken.None);
-                    await RunGitAsync(directory, ["add", "source.cs"]);
-                    await RunGitAsync(directory, ["commit", "--quiet", "--message", "source fixture"]);
-                });
+                        token);
+                    await RunGitAsync(directory, ["add", "source.cs"], token);
+                    await RunGitAsync(directory, ["commit", "--quiet", "--message", "source fixture"], token);
+                }, cancellationToken);
 
             return repository;
         }
@@ -171,11 +173,17 @@ public sealed class BenchmarkProvenanceDriftTests
         }
 
         /// <summary>Runs Git only against the owned fixture with hooks, signing and global identity disabled.</summary>
+        /// <param name="directory">The owned repository working directory.</param>
+        /// <param name="arguments">The individual Git command arguments.</param>
+        /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
         private static async Task RunGitAsync(
             string directory,
-            string[] arguments
+            string[] arguments,
+            CancellationToken cancellationToken
         )
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var start = new ProcessStartInfo("git")
             {
                 WorkingDirectory = directory,
@@ -206,14 +214,47 @@ public sealed class BenchmarkProvenanceDriftTests
             using var process = Process.Start(start)
                 ?? throw new InvalidOperationException("The source fixture could not start Git.");
 
+            // WHY: Stream drains must also finish after cancellation kills the child; only the live wait is cancelable.
             var output = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
             var error = process.StandardError.ReadToEndAsync(CancellationToken.None);
-            await process.WaitForExitAsync(CancellationToken.None);
-            await output;
-            var failure = await error;
-            if (process.ExitCode != 0)
+
+            try
             {
-                throw new InvalidOperationException("Source fixture Git failed: " + failure);
+                await process.WaitForExitAsync(cancellationToken);
+                await output;
+                var failure = await error;
+
+                if (process.ExitCode != 0)
+                {
+                    throw new InvalidOperationException("Source fixture Git failed: " + failure);
+                }
+            }
+            catch (Exception original)
+            {
+                try
+                {
+                    if (!process.HasExited)
+                    {
+                        try
+                        {
+                            process.Kill(entireProcessTree: true);
+                        }
+                        catch (InvalidOperationException) when (process.HasExited)
+                        {
+                            // WHY: A natural exit can race the cancellation cleanup's preceding HasExited check.
+                        }
+                    }
+
+                    // WHY: Caller cancellation cannot release the owned Process before exit and stream observation.
+                    await process.WaitForExitAsync(CancellationToken.None);
+                    await Task.WhenAll(output, error);
+                }
+                catch (Exception cleanup)
+                {
+                    throw new AggregateException(original, cleanup);
+                }
+
+                throw;
             }
         }
     }

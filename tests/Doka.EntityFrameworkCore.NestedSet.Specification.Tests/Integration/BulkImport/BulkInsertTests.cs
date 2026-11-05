@@ -20,7 +20,7 @@ public abstract class BulkInsertTests : ProviderTest
     public async Task WideSubtreeUsesOneGapAndBatchedWrites()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
         await setup
             .NestedSet<TreeNode>()
@@ -80,7 +80,7 @@ public abstract class BulkInsertTests : ProviderTest
     public async Task DeepForestDoesNotRequireRecursiveCalls()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
@@ -134,7 +134,7 @@ public abstract class BulkInsertTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext(probe);
         var entity = new TreeNode
@@ -171,7 +171,7 @@ public abstract class BulkInsertTests : ProviderTest
     public async Task MissingScopedParentDoesNotOpenGap()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
         await setup
             .NestedSet<TreeNode>()
@@ -209,7 +209,7 @@ public abstract class BulkInsertTests : ProviderTest
     public async Task MidImportCancellationRollsBackGapAndRestoresInputs()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
         await setup
             .NestedSet<TreeNode>()
@@ -268,7 +268,7 @@ public abstract class BulkInsertTests : ProviderTest
     public async Task CallerTransactionSurvivesFailedImport()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new BulkRefreshFailure(nameof(TreeNode));
         await using var context = database.CreateContext(probe);
         await using var transaction = await context.Database.BeginTransactionAsync(

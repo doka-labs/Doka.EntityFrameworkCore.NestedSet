@@ -32,7 +32,7 @@ public sealed partial class NullableParentIndexTests : ProviderTest,
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var entity = Entity(context, scoped);
         var columns = Columns(context, entity, scoped);
@@ -43,7 +43,7 @@ public sealed partial class NullableParentIndexTests : ProviderTest,
 
         var dependent = indexes.Single(index => index.GetFilter() == columns.Parent + " IS NOT NULL");
         var roots = indexes.Single(index => index.GetFilter() == columns.Parent + " IS NULL");
-        await SeedAsync(context, columns, scoped);
+        await SeedAsync(context, columns, scoped, cancellationToken: TestContext.Current.CancellationToken);
         var scope = scoped ? $"x.{columns.Scope} = @scope AND " : string.Empty;
         var predicate = scope + $"x.{columns.Key} = @key";
         var principalQuery = $"SELECT 1 FROM ONLY {columns.Table} x WHERE {predicate} FOR KEY SHARE OF x";
@@ -51,9 +51,15 @@ public sealed partial class NullableParentIndexTests : ProviderTest,
         var rootQuery = $"SELECT x.{columns.Key} FROM {columns.Table} x WHERE {scope}x.{columns.Parent} IS NULL";
 
         // Act
-        var principalPlan = await ExplainAsync(context, principalQuery, scoped);
-        var dependentPlan = await ExplainAsync(context, dependentQuery, scoped);
-        var rootPlan = await ExplainAsync(context, rootQuery, scoped);
+        var principalPlan = await ExplainAsync(context, principalQuery, scoped,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var dependentPlan = await ExplainAsync(context, dependentQuery, scoped,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var rootPlan = await ExplainAsync(context, rootQuery, scoped,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var rootKeys = scoped
             ? await context
                 .Set<TreeNode>()
@@ -69,7 +75,8 @@ public sealed partial class NullableParentIndexTests : ProviderTest,
 
         await QueryPlanTestSupport.WriteEvidenceAsync(
             "PostgreSql-nullable-parent-" + (scoped ? "scoped" : "unscoped"),
-            ["principal\n" + principalPlan, "dependent\n" + dependentPlan, "roots\n" + rootPlan]);
+            ["principal\n" + principalPlan, "dependent\n" + dependentPlan, "roots\n" + rootPlan],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var principalIndexes = IndexNames(principalPlan);
@@ -100,10 +107,10 @@ public sealed partial class NullableParentIndexTests : ProviderTest,
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var columns = Columns(context, Entity(context, scoped), scoped);
-        await SeedAsync(context, columns, scoped);
+        await SeedAsync(context, columns, scoped, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var exception = await Record.ExceptionAsync(() => scoped
@@ -181,13 +188,18 @@ public sealed partial class NullableParentIndexTests : ProviderTest,
     }
 
     /// <summary>Seeds valid twenty-node trees without updating statistics or overriding planner settings.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="columns">The physical columns included in the statement.</param>
+    /// <param name="scoped">Whether the hierarchy uses a scope.</param>
     private static async Task SeedAsync(
         DbContext context,
         ParentColumns columns,
-        bool scoped
+        bool scoped,
+        CancellationToken cancellationToken
     )
     {
-        await context.Database.OpenConnectionAsync(CancellationToken.None);
+        await context.Database.OpenConnectionAsync(cancellationToken);
         await using var command = context
             .Database
             .GetDbConnection()
@@ -205,14 +217,19 @@ public sealed partial class NullableParentIndexTests : ProviderTest,
                                FROM generate_series(1, 20000) AS seed(n)
                                """;
 
-        await command.ExecuteNonQueryAsync(CancellationToken.None);
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     /// <summary>Explains parameterized principal, dependent, or root reads with actual row counts.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="query">The composed provider query to execute.</param>
+    /// <param name="scoped">Whether the hierarchy uses a scope.</param>
     private static async Task<string> ExplainAsync(
         DbContext context,
         string query,
-        bool scoped
+        bool scoped,
+        CancellationToken cancellationToken
     )
     {
         await using var command = context
@@ -234,7 +251,7 @@ public sealed partial class NullableParentIndexTests : ProviderTest,
             command.Parameters.Add(scope);
         }
 
-        return (string)(await command.ExecuteScalarAsync(CancellationToken.None))!;
+        return (string)(await command.ExecuteScalarAsync(cancellationToken))!;
     }
 
     /// <summary>Returns every index referenced by the actual plan, including nested lock wrappers.</summary>

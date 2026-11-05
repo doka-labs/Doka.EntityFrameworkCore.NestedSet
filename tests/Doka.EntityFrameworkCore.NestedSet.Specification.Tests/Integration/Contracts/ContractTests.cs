@@ -42,9 +42,11 @@ public abstract partial class ContractTests : ProviderTest
 
     /// <summary>Arranges a three-level hierarchy with independently allocated binary identity values.</summary>
     /// <param name="context">The empty context whose connection and schema will be initialized.</param>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     /// <returns>A task that completes when the fixture is persisted.</returns>
     private static async Task SeedBinaryHierarchyAsync(
-        TreeContext context
+        TreeContext context,
+        CancellationToken cancellationToken
     )
     {
         var tree = context
@@ -52,30 +54,32 @@ public abstract partial class ContractTests : ProviderTest
             .ForScope(1);
 
         // Separate array instances expose reference-equality mistakes in parent resolution.
-        await tree.InsertRootAsync(new BinaryNode { Id = [1, 2] }, Guid.Empty, CancellationToken.None);
+        await tree.InsertRootAsync(new BinaryNode { Id = [1, 2] }, Guid.Empty, cancellationToken);
         await tree.InsertChildAsync<byte[]>(
             new BinaryNode { Id = [3, 4] },
             [1, 2],
-            cancellationToken: CancellationToken.None);
+            cancellationToken: cancellationToken);
 
         await tree.InsertChildAsync<byte[]>(
             new BinaryNode { Id = [5, 6] },
             [3, 4],
-            cancellationToken: CancellationToken.None);
+            cancellationToken: cancellationToken);
     }
 
     /// <summary>Arranges a root and child using the configured field-access mapping.</summary>
     /// <param name="context">The empty context whose connection and schema will be initialized.</param>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     /// <returns>A task that completes when the fixture is persisted.</returns>
     private static async Task SeedFieldHierarchyAsync(
-        FieldContext context
+        FieldContext context,
+        CancellationToken cancellationToken
     )
     {
         var tree = context
             .NestedSet<FieldNode>()
             .ForScope(1);
 
-        await tree.InsertRootAsync(new FieldNode { Id = 1 }, Guid.Empty, CancellationToken.None);
-        await tree.InsertChildAsync(new FieldNode { Id = 2 }, 1, cancellationToken: CancellationToken.None);
+        await tree.InsertRootAsync(new FieldNode { Id = 1 }, Guid.Empty, cancellationToken);
+        await tree.InsertChildAsync(new FieldNode { Id = 2 }, 1, cancellationToken: cancellationToken);
     }
 }

@@ -8,7 +8,7 @@ public abstract partial class RelationalTests
     public async Task GuidChildrenResolveNullableParent()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<GuidNode>()
@@ -38,7 +38,7 @@ public abstract partial class RelationalTests
     public async Task GuidDetachmentCreatesAnIndependentRoot()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<GuidNode>()
@@ -81,7 +81,7 @@ public abstract partial class RelationalTests
     public async Task GuidCrossTreeMoveSetsTypedParent()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<GuidNode>()
@@ -114,7 +114,7 @@ public abstract partial class RelationalTests
     public async Task StringInsertStoresCanonicalParentKey()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TextNode>()
@@ -146,7 +146,7 @@ public abstract partial class RelationalTests
     public async Task StringRebuildResolvesStoredParentAlias()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TextNode>()
@@ -185,7 +185,7 @@ public abstract partial class RelationalTests
     public async Task StringChildrenUsesKeyCollationForStoredParentAlias()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TextNode>()
@@ -216,7 +216,7 @@ public abstract partial class RelationalTests
     public async Task StringDetachmentCreatesAnIndependentRoot()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TextNode>()
@@ -264,7 +264,7 @@ public abstract partial class RelationalTests
     public async Task StringCrossTreeMoveStoresCanonicalParent()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TextNode>()

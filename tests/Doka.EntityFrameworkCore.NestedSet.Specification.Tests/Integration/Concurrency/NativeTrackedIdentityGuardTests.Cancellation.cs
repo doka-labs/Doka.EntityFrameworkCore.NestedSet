@@ -9,12 +9,15 @@ public abstract partial class NativeTrackedIdentityGuardTests
     {
         // Arrange
         var probe = new NativeGuardProbe();
-        await using var context = await CreateAliasContextAsync(Engine, probe);
+        await using var context = await CreateAliasContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var affectedTree = $"guard-cancel-{root}";
         var otherTree = $"guard-cancel-other-{root}";
-        await SeedTreeAsync(context, affectedTree, root, 1);
-        await SeedTreeAsync(context, otherTree, root + 10, 1);
+        await SeedTreeAsync(context, affectedTree, root, 1, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedTreeAsync(context, otherTree, root + 10, 1, cancellationToken: TestContext.Current.CancellationToken);
         await using var transaction = await context.Database.BeginTransactionAsync(
             NestedSetProviderCapabilities.Resolve(context)
                 .RequiredIsolation,
@@ -44,7 +47,8 @@ public abstract partial class NativeTrackedIdentityGuardTests
         Assert.Same(transaction, context.Database.CurrentTransaction);
         Assert.False(context.ChangeTracker.HasChanges());
         Assert.Equal(EntityState.Unchanged, context.Entry(payload).State);
-        Assert.Equal("Caller application write", (await ReadNodeAsync(context, root + 10)).Name);
+        Assert.Equal("Caller application write", (await ReadNodeAsync(context, root + 10,
+            cancellationToken: TestContext.Current.CancellationToken)).Name);
         Assert.Equal(
             2,
             await context
@@ -60,12 +64,15 @@ public abstract partial class NativeTrackedIdentityGuardTests
     {
         // Arrange
         var probe = new NativeGuardProbe();
-        await using var context = await CreateAliasContextAsync(Engine, probe);
+        await using var context = await CreateAliasContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var affectedTree = $"guard-retry-{root}";
         var otherTree = $"guard-retry-other-{root}";
-        await SeedTreeAsync(context, affectedTree, root, 1);
-        await SeedTreeAsync(context, otherTree, root + 10, 1);
+        await SeedTreeAsync(context, affectedTree, root, 1, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedTreeAsync(context, otherTree, root + 10, 1, cancellationToken: TestContext.Current.CancellationToken);
         await using var transaction = await context.Database.BeginTransactionAsync(
             NestedSetProviderCapabilities.Resolve(context).RequiredIsolation,
             CancellationToken.None);
@@ -98,7 +105,8 @@ public abstract partial class NativeTrackedIdentityGuardTests
         Assert.Same(transaction, context.Database.CurrentTransaction);
         Assert.False(context.ChangeTracker.HasChanges());
         Assert.Equal(EntityState.Unchanged, context.Entry(payload).State);
-        Assert.Equal("Caller application write", (await ReadNodeAsync(context, root + 10)).Name);
+        Assert.Equal("Caller application write", (await ReadNodeAsync(context, root + 10,
+            cancellationToken: TestContext.Current.CancellationToken)).Name);
         Assert.Equal(
             0,
             await context

@@ -18,9 +18,12 @@ public abstract partial class GroupSupervisorTests
         // Arrange
         var probe = new SupervisorCommandProbe();
         var planProbe = new EnterpriseProbe(captureParameterBindings: true);
-        await using var context = await CreateAsync(probe, planProbe);
+        await using var context = await CreateAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe);
+
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await SeedOriginProfileAsync(context, data, 16, 4);
+        await SeedOriginProfileAsync(context, data, 16, 4, cancellationToken: TestContext.Current.CancellationToken);
         var request = data.Request(App.SearchStart.IncludeSelf) with
         {
             Groups = new App.NthTypeGroupThenValidate(4, 1),
@@ -39,9 +42,11 @@ public abstract partial class GroupSupervisorTests
                 .ToArrayAsync(CancellationToken.None)).Length;
 
         var readers = probe.Commands.Count;
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, commandIndex, Engine);
+        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, commandIndex, Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await QueryPlanTestSupport.WriteEvidenceAsync(Engine + "-usergroups-" + (unique ? "unique" : "candidates"),
-            [planProbe.Commands[commandIndex], plan]);
+            [planProbe.Commands[commandIndex], plan], cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(16, rows);

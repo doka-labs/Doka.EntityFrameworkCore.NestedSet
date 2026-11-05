@@ -18,7 +18,7 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         for (var index = 0; index < 25; index++)
         {
             await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
@@ -69,7 +69,7 @@ public abstract partial class GroupSupervisorTests
                     new DateOnly(2026, 10, 15)), CancellationToken.None);
         }
 
-        await EnableSnapshotAsync(context);
+        await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var request = ChainRequest(data, true);
         int[] expectedOrigins = blocked ? [data.Groups[6]] : [data.Groups[4], data.Groups[6]];
         probe.Enabled = true;

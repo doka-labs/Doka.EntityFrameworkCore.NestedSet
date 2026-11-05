@@ -17,10 +17,14 @@ public abstract partial class OrderingRefreshScaleTests
         var cancellationToken = TestContext.Current.CancellationToken;
 
         // Act
-        await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, nodes, probe);
+        await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, nodes,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
 
         // Assert
-        await using var verify = await _fixture.CreateContextAsync(Engine);
+        await using var verify = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var root = await verify
             .Set<OrderingNode>()
             .AsNoTracking()
@@ -99,10 +103,14 @@ public abstract partial class OrderingRefreshScaleTests
 
         // Act
         var failure = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, 10001, probe));
+            OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, 10001,
+                cancellationToken: TestContext.Current.CancellationToken,
+                probe));
 
         // Assert
-        await using var verify = await _fixture.CreateContextAsync(Engine);
+        await using var verify = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var registry = NestedSetTreeRegistryMapping.For(verify.Model.FindEntityType(typeof(OrderingNode))!).Registry;
         Assert.Same(probe.Failure, failure);
         Assert.Equal(failOnWrite, probe.NativeWrites);
@@ -121,9 +129,12 @@ public abstract partial class OrderingRefreshScaleTests
     public async Task NativeSeedRejectsNegativeCountBeforeResettingData()
     {
         // Arrange
-        await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, 1);
+        await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, 1,
+            cancellationToken: TestContext.Current.CancellationToken);
         var cancellationToken = TestContext.Current.CancellationToken;
-        await using var before = await _fixture.CreateContextAsync(Engine);
+        await using var before = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var treeId = await before
             .Set<OrderingNode>()
             .Select(node => node.TreeId)
@@ -131,10 +142,13 @@ public abstract partial class OrderingRefreshScaleTests
 
         // Act
         var failure = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
-            OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, -1));
+            OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, -1,
+                cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
-        await using var verify = await _fixture.CreateContextAsync(Engine);
+        await using var verify = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         Assert.Equal("nodes", failure.ParamName);
         Assert.Equal(2, await verify
             .Set<OrderingNode>()

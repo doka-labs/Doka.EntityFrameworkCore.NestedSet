@@ -14,9 +14,10 @@ public abstract partial class EnterpriseTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(3));
+        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(3),
+            cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
         var tree = context
@@ -24,7 +25,7 @@ public abstract partial class EnterpriseTests
             .ForScope(1);
 
         // Act
-        await ApplyStructuralOperationAsync(tree, operation);
+        await ApplyStructuralOperationAsync(tree, operation, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(0, probe.MaterializedNodes);
@@ -47,11 +48,12 @@ public abstract partial class EnterpriseTests
     public async Task ValidRebuildDoesNotWriteNodes()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var expected = EnterpriseForestTestSupport.CreateForest(129);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, expected);
-        var registryBefore = await RegistryStateAsync(setup);
+        await EnterpriseForestTestSupport.SeedForestAsync(setup, expected,
+            cancellationToken: TestContext.Current.CancellationToken);
+        var registryBefore = await RegistryStateAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
         var tree = context
@@ -67,10 +69,11 @@ public abstract partial class EnterpriseTests
         Assert.Equal(0, probe.NodeUpdates);
         Assert.Equal(0, probe.MaterializedNodes);
         await using var verification = database.CreateContext();
-        Assert.Equal(Snapshot(expected), await SnapshotAsync(verification));
+        Assert.Equal(Snapshot(expected), await SnapshotAsync(verification,
+            cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(
             registryBefore with { Revision = registryBefore.Revision + 1 },
-            await RegistryStateAsync(verification));
+            await RegistryStateAsync(verification, cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Verifies bounded repair batches at the first size requiring a third batch.</summary>
@@ -79,11 +82,13 @@ public abstract partial class EnterpriseTests
     public async Task RebuildRepairs129NodesInThreeBoundedCommands()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var expected = EnterpriseForestTestSupport.CreateForest(129);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, expected, true);
-        var registryBefore = await RegistryStateAsync(setup);
+        await EnterpriseForestTestSupport.SeedForestAsync(setup, expected,
+            cancellationToken: TestContext.Current.CancellationToken,
+            true);
+        var registryBefore = await RegistryStateAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
         var tree = context
@@ -101,10 +106,11 @@ public abstract partial class EnterpriseTests
         Assert.InRange(probe.MaximumUpdateParameters, 1, 577);
         Assert.Equal(0, probe.MaterializedNodes);
         await using var verification = database.CreateContext();
-        Assert.Equal(Snapshot(expected), await SnapshotAsync(verification));
+        Assert.Equal(Snapshot(expected), await SnapshotAsync(verification,
+            cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(
             registryBefore with { Revision = registryBefore.Revision + 1 },
-            await RegistryStateAsync(verification));
+            await RegistryStateAsync(verification, cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Verifies that a second-batch failure rolls back the repair already persisted by batch one.</summary>
@@ -113,11 +119,13 @@ public abstract partial class EnterpriseTests
     public async Task RepairFailureRollsBackCompletedFirstBatch()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(129), true);
-        var before = await SnapshotAsync(setup);
-        var registryBefore = await RegistryStateAsync(setup);
+        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(129),
+            cancellationToken: TestContext.Current.CancellationToken,
+            true);
+        var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
+        var registryBefore = await RegistryStateAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe { FailSecondNodeUpdate = true };
         await using var context = database.CreateContext((IInterceptor)probe);
         var tree = context
@@ -134,8 +142,10 @@ public abstract partial class EnterpriseTests
         Assert.Equal(1, probe.CompletedNodeUpdates);
         Assert.Null(context.Database.CurrentTransaction);
         await using var verification = database.CreateContext();
-        Assert.Equal(before, await SnapshotAsync(verification));
-        Assert.Equal(registryBefore, await RegistryStateAsync(verification));
+        Assert.Equal(before, await SnapshotAsync(verification,
+            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(registryBefore, await RegistryStateAsync(verification,
+            cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Verifies that cancellation at a repair boundary rolls back an executed earlier batch.</summary>
@@ -144,11 +154,13 @@ public abstract partial class EnterpriseTests
     public async Task RepairCancellationRollsBackCompletedFirstBatch()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(129), true);
-        var before = await SnapshotAsync(setup);
-        var registryBefore = await RegistryStateAsync(setup);
+        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(129),
+            cancellationToken: TestContext.Current.CancellationToken,
+            true);
+        var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
+        var registryBefore = await RegistryStateAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         using var cancellation = new CancellationTokenSource();
         var probe = new EnterpriseProbe { CancelSecondNodeUpdate = cancellation };
         await using var context = database.CreateContext((IInterceptor)probe);
@@ -166,8 +178,10 @@ public abstract partial class EnterpriseTests
         Assert.Equal(1, probe.CompletedNodeUpdates);
         Assert.Null(context.Database.CurrentTransaction);
         await using var verification = database.CreateContext();
-        Assert.Equal(before, await SnapshotAsync(verification));
-        Assert.Equal(registryBefore, await RegistryStateAsync(verification));
+        Assert.Equal(before, await SnapshotAsync(verification,
+            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(registryBefore, await RegistryStateAsync(verification,
+            cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Verifies valid wide and deep forests without recursive traversal or entity materialization.</summary>
@@ -181,9 +195,10 @@ public abstract partial class EnterpriseTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(2049, deep));
+        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(2049, deep),
+            cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
         var tree = context
@@ -210,9 +225,10 @@ public abstract partial class EnterpriseTests
     public async Task MaterializationObserverCountsEntitiesOnlyForTheirOwningContext()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(3));
+        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(3),
+            cancellationToken: TestContext.Current.CancellationToken);
         var firstProbe = new EnterpriseProbe();
         var secondProbe = new EnterpriseProbe();
         await using var first = database.CreateContext((IInterceptor)firstProbe);
@@ -238,23 +254,24 @@ public abstract partial class EnterpriseTests
     /// <summary>Dispatches exactly one structural operation for projection observation.</summary>
     private static async Task ApplyStructuralOperationAsync(
         ScopedNestedSet<TreeNode, int> tree,
-        string operation
+        string operation,
+        CancellationToken cancellationToken
     )
     {
         switch (operation)
         {
             case "Move":
-                await tree.MoveToAsync(3, 2, CancellationToken.None);
+                await tree.MoveToAsync(3, 2, cancellationToken);
                 break;
             case "Validate":
                 await tree
                     .InTree(Guid.Empty)
-                    .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+                    .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken);
                 break;
             case "Rebuild":
                 await tree
                     .InTree(Guid.Empty)
-                    .RebuildAsync(CancellationToken.None);
+                    .RebuildAsync(cancellationToken);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(operation));
@@ -263,7 +280,8 @@ public abstract partial class EnterpriseTests
 
     /// <summary>Reads the selected tree's persisted registry revision and lifecycle by mapped identity.</summary>
     private static Task<RegistryState> RegistryStateAsync(
-        TreeContext context
+        TreeContext context,
+        CancellationToken cancellationToken
     )
     {
         var hierarchy = context.Model.FindEntityType(typeof(TreeNode))!;
@@ -277,7 +295,7 @@ public abstract partial class EnterpriseTests
             .Select(row => new RegistryState(
                 EF.Property<long>(row, NestedSetTreeRegistryMetadata.Revision),
                 EF.Property<byte>(row, NestedSetTreeRegistryMetadata.Lifecycle)))
-            .SingleAsync(CancellationToken.None);
+            .SingleAsync(cancellationToken);
     }
 
     /// <summary>Stores the complete mutable registry state for equality and rollback assertions.</summary>

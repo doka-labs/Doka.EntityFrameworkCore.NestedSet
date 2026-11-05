@@ -24,7 +24,7 @@ public abstract class LongCoordinateRoundTripTests : ProviderTest
         // Arrange
         var expectedStoreType = Engine == "Sqlite" ? "INTEGER" : "bigint";
 
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var left = checked(int.MaxValue + 1L);
         var right = checked(left + 1L);
@@ -50,7 +50,8 @@ public abstract class LongCoordinateRoundTripTests : ProviderTest
             .AsNoTracking()
             .SingleAsync(candidate => candidate.NodeId == node.NodeId, CancellationToken.None);
 
-        var storeTypes = await ReadCoordinateStoreTypesAsync(context);
+        var storeTypes = await ReadCoordinateStoreTypesAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(left, persisted.Start);
@@ -63,7 +64,8 @@ public abstract class LongCoordinateRoundTripTests : ProviderTest
     }
 
     private static async Task<IReadOnlyList<string>> ReadCoordinateStoreTypesAsync(
-        TreeContext context
+        TreeContext context,
+        CancellationToken cancellationToken
     )
     {
         var entityType = context.Model.FindEntityType(typeof(TreeNode))!;
@@ -85,16 +87,16 @@ public abstract class LongCoordinateRoundTripTests : ProviderTest
             + sql.DelimitIdentifier(tableName, schema)
             + " WHERE 1 = 0";
 
-        await context.Database.OpenConnectionAsync(CancellationToken.None);
+        await context.Database.OpenConnectionAsync(cancellationToken);
         await using var command = context
             .Database
             .GetDbConnection()
             .CreateCommand();
 
         command.CommandText = commandText;
-        await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SchemaOnly, CancellationToken.None);
+        await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SchemaOnly, cancellationToken);
 
-        var columns = await reader.GetColumnSchemaAsync(CancellationToken.None);
+        var columns = await reader.GetColumnSchemaAsync(cancellationToken);
 
         return columns
             .Select(column => column.DataTypeName!)

@@ -18,11 +18,16 @@ public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
     }
 
     /// <summary>Creates an isolated database with explicitly enabled runtime and design-time adapters.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="engine">The selected database engine.</param>
+    /// <param name="qualifySchema">Whether mappings use an explicit provider schema.</param>
     private Task<MigrationDatabase> CreateDatabaseAsync(
         string engine,
-        bool qualifySchema
+        bool qualifySchema,
+        CancellationToken cancellationToken
     ) => _fixture.CreateDatabaseAsync(
         engine,
+        cancellationToken: cancellationToken,
         options => SafeMigrationTestServices.ConfigureOptions(options, engine),
         SafeMigrationTestServices.ConfigureDesignServices,
         qualifySchema);

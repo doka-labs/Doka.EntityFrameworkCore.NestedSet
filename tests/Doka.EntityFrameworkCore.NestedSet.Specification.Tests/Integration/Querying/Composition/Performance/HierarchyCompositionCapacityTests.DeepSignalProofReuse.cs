@@ -12,17 +12,24 @@ public abstract partial class HierarchyCompositionCapacityTests
     {
         // Arrange
         const int nodes = 100_001;
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var setup = database.CreateContext();
-        await CapacitySeed.SeedAsync(setup, nodes, deep: true);
-        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(setup, Engine);
-        var data = await CompositionConsumerDataset.CreateAsync(database, Engine, nodes, deep: true);
+        await CapacitySeed.SeedAsync(setup, nodes, deep: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(setup, Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+        var data = await CompositionConsumerDataset.CreateAsync(database, Engine, nodes, deep: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var request = repeatedFacts ? data.Report(16, 2, 3, 2, nearest: true)
             : data.Report(1, 1, 1, 1, nearest: false);
 
         // Act
         var observation = await CompositionConsumerCapacityProfiles.MeasureSignalsAsync(
-            database, Engine, data, request, balanced: false, deep: true);
+            database, Engine, data, request, balanced: false, deep: true,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         CompositionConsumerCapacityProfiles.AssertAll([observation], _output);

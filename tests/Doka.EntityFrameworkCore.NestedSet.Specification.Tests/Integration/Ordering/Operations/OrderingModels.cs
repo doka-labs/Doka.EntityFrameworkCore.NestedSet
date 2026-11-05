@@ -9,62 +9,114 @@ public sealed class OrderingFixture : IAsyncLifetime
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
     /// <summary>Returns an empty strict or flexible model without modifying another test fixture.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="engine">The real relational engine.</param>
     /// <param name="mode">Strict, Flexible, or Converted.</param>
     /// <returns>A context owned by the test.</returns>
     public async Task<OrderingContext> ResetAsync(
         string engine,
+        CancellationToken cancellationToken,
         string mode = "Strict"
     )
     {
         if (!_databases.TryGetValue(engine, out var database))
         {
-            database = await TestDatabase.CreateAsync(engine);
+            database = await TestDatabase.CreateAsync(engine, cancellationToken: cancellationToken);
             _databases.Add(engine, database);
 
-            foreach (var model in new[] { "Strict", "Flexible", "Converted" })
+            try
             {
-                await using var setup = await CreateContextAsync(engine, model);
-                await setup
-                    .GetService<IRelationalDatabaseCreator>()
-                    .CreateTablesAsync(CancellationToken.None);
+                foreach (var model in new[] { "Strict", "Flexible", "Converted" })
+                {
+                    await using var setup = await CreateContextAsync(engine,
+                        cancellationToken: cancellationToken,
+                        model);
+
+                    await setup
+                        .GetService<IRelationalDatabaseCreator>()
+                        .CreateTablesAsync(cancellationToken);
+                }
+            }
+            catch (Exception initializationFailure)
+            {
+                // WHY: Canceled table creation must not leave a partially initialized reusable database.
+                _databases.Remove(engine);
+
+                try
+                {
+                    await database.DisposeAsync();
+                }
+                catch (Exception cleanupFailure)
+                {
+                    throw new AggregateException(
+                        "Ordering fixture initialization and cleanup both failed.",
+                        initializationFailure,
+                        cleanupFailure);
+                }
+
+                throw;
             }
         }
 
-        var context = await CreateContextAsync(engine, mode);
-        await context
-            .Set<OrderingNode>()
-            .Where(node => node.ParentId != null)
-            .ExecuteUpdateAsync(
-                setters => setters.SetProperty(node => node.ParentId, (int?)null),
-                CancellationToken.None);
+        var context = await CreateContextAsync(engine, cancellationToken: cancellationToken, mode);
 
-        // WHY: The production model intentionally uses a restrictive self-FK. Unlinking the fixture rows first keeps
-        // cleanup valid after an interrupted mutation leaves a populated hierarchy behind.
-        await context
-            .Set<OrderingNode>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+        try
+        {
+            await context
+                .Set<OrderingNode>()
+                .Where(node => node.ParentId != null)
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(node => node.ParentId, (int?)null),
+                    cancellationToken);
 
-        await context
-            .Set<OrderingMarker>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            // WHY: The production model intentionally uses a restrictive self-FK. Unlinking the fixture rows first keeps
+            // cleanup valid after an interrupted mutation leaves a populated hierarchy behind.
+            await context
+                .Set<OrderingNode>()
+                .ExecuteDeleteAsync(cancellationToken);
 
-        await NestedSetTestInfrastructure.ClearRegistriesAsync(context, CancellationToken.None);
+            await context
+                .Set<OrderingMarker>()
+                .ExecuteDeleteAsync(cancellationToken);
 
-        return context;
+            await NestedSetTestInfrastructure.ClearRegistriesAsync(context, cancellationToken);
+
+            return context;
+        }
+        catch (Exception resetFailure)
+        {
+            // WHY: Ownership transfers only after a complete reset; cleanup cannot use the canceled token.
+            try
+            {
+                await context.DisposeAsync();
+            }
+            catch (Exception cleanupFailure)
+            {
+                throw new AggregateException(
+                    "Ordering fixture reset and context cleanup both failed.",
+                    resetFailure,
+                    cleanupFailure);
+            }
+
+            throw;
+        }
     }
 
     /// <summary>Creates an independent context with optional fault observers against an initialized model.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="engine">The real relational engine.</param>
     /// <param name="mode">The mapped ordering contract.</param>
     /// <param name="interceptors">Observers owned by the calling test.</param>
     /// <returns>A context owned by the caller.</returns>
     public async Task<OrderingContext> CreateContextAsync(
         string engine,
+        CancellationToken cancellationToken,
         string mode = "Strict",
         params IInterceptor[] interceptors
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         await using var source = _databases[engine]
             .CreateContext();
 

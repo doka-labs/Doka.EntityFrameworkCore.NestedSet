@@ -18,7 +18,8 @@ public abstract partial class HierarchyCompositionModelTests
         var tree = Guid.NewGuid();
         var otherTree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateNavigationContextAsync(scope, tree, "visible", probe, _ => { });
+        await using var context = await CreateNavigationContextAsync(scope, tree, "visible", probe, _ => { },
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // WHY: Equal keys in another scope and equal bounds in another authorized tree independently
         // challenge both sides of the structural-key rehydration; coordinates alone never identify an owner.

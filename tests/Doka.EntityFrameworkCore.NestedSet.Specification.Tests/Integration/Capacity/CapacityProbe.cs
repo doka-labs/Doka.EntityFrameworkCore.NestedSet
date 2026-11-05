@@ -67,6 +67,7 @@ internal sealed class CapacityProbe : DbCommandInterceptor, IAsyncDisposable
     /// <summary>Freezes observations before verification queries allocate their own result state.</summary>
     internal async Task StopAsync()
     {
+        // WHY: Ending the measurement must stop its sampler even when the observed workload was canceled.
         Sample();
         await DisposeAsync();
         TotalAllocatedBytes = GC.GetTotalAllocatedBytes(precise: true) - _allocatedBaseline;
@@ -102,7 +103,7 @@ internal sealed class CapacityProbe : DbCommandInterceptor, IAsyncDisposable
             MaximumRepairSqlLength = Math.Max(MaximumRepairSqlLength, command.CommandText.Length);
             if (RepairCommands == FailRepairCommand)
             {
-                await FailAsync();
+                await FailAsync(cancellationToken: cancellationToken);
             }
         }
 
@@ -139,7 +140,7 @@ internal sealed class CapacityProbe : DbCommandInterceptor, IAsyncDisposable
         if (FailBulkRefresh
             && command.CommandText.Contains(NestedSetDiagnostics.BulkRefreshTag, StringComparison.Ordinal))
         {
-            await FailAsync();
+            await FailAsync(cancellationToken: cancellationToken);
         }
 
         return result;
@@ -178,8 +179,11 @@ internal sealed class CapacityProbe : DbCommandInterceptor, IAsyncDisposable
     }
 
     /// <summary>Injects a fault or fully completed cancellation at the same late command boundary.</summary>
-    private async Task FailAsync()
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
+    private async Task FailAsync(CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         ReachedFailure = true;
         if (Cancellation is { } source)
         {

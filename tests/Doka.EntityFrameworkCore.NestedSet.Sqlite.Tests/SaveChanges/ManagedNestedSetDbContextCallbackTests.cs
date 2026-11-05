@@ -24,7 +24,9 @@ public sealed class ManagedNestedSetDbContextCallbackTests : ProviderTest,
     )
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var observed = 0;
         context.AfterBaseSave = current => observed = current
             .ChangeTracker

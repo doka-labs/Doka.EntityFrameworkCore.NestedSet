@@ -31,7 +31,7 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var request = data.Request(group: data.Groups[5]);
         var membership = context.UserGroupMemberships.Where(row => row.TenantId == data.TenantId
@@ -83,7 +83,8 @@ public abstract partial class GroupSupervisorTests
         probe.Enabled = true;
 
         // Act
-        var result = await ReadOriginWitnessAsync(context, data.TenantId, request, api);
+        var result = await ReadOriginWitnessAsync(context, data.TenantId, request, api,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(expectedUsers.Order(), result.Evidence.Select(row => row.CandidateUserId).Order());
@@ -117,7 +118,7 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var independentTree = Guid.NewGuid();
         var emptyOrigin = new App.UserGroup { Name = "Independent empty origin", TypeId = 4 };
@@ -136,7 +137,8 @@ public abstract partial class GroupSupervisorTests
         probe.Enabled = true;
 
         // Act
-        var result = await ReadOriginWitnessAsync(context, data.TenantId, request, api);
+        var result = await ReadOriginWitnessAsync(context, data.TenantId, request, api,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(5, result.Evidence.Length);
@@ -173,19 +175,20 @@ public abstract partial class GroupSupervisorTests
         App.UserGroupContext context,
         Guid tenantId,
         App.SupervisorRequest request,
-        string api
+        string api,
+        CancellationToken cancellationToken
     )
     {
         if (api == "candidates")
         {
             var candidates = await App.SupervisorQueries.Candidates(context, tenantId, request)
-                .ToArrayAsync(CancellationToken.None);
+                .ToArrayAsync(cancellationToken);
 
             return (null, [], candidates);
         }
 
         var result = await App.SupervisorQueries.ResolveAsync(context, tenantId, request,
-            App.SupervisorSelection.All, CancellationToken.None);
+            App.SupervisorSelection.All, cancellationToken);
 
         return (result.Status, result.Origins.ToArray(), result.Origins.SelectMany(origin => origin.Evidence).ToArray());
     }

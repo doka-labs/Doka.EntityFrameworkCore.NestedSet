@@ -7,6 +7,7 @@ internal static partial class CompositionCapacityProfiles
     private const int NativeMutationBatchSize = 100_000;
 
     /// <summary>Measures broad and selective payload joins on an existing valid wide or balanced hierarchy.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="database">The already seeded case-owned database.</param>
     /// <param name="engine">The provider identity used for native plans.</param>
     /// <param name="nodes">The complete persisted population.</param>
@@ -17,14 +18,18 @@ internal static partial class CompositionCapacityProfiles
         TestDatabase database,
         string engine,
         int nodes,
+        CancellationToken cancellationToken,
         bool balanced = false,
         bool broad = false
     )
     {
         await using var setup = database.CreateContext();
-        await SeedPayloadAsync(setup, nodes, broad ? nodes : Math.Min(nodes, 100));
-        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(setup, engine);
-        await QueryPlanTestSupport.RefreshStatisticsAsync<UnrelatedRow>(setup, engine);
+        await SeedPayloadAsync(setup, nodes, broad ? nodes : Math.Min(nodes, 100),
+            cancellationToken: cancellationToken);
+        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(setup, engine,
+            cancellationToken: cancellationToken);
+        await QueryPlanTestSupport.RefreshStatisticsAsync<UnrelatedRow>(setup, engine,
+            cancellationToken: cancellationToken);
         var results = new List<CompositionCapacityObservation>();
 
         foreach (var anchors in new[] { 1, 10, 100, 1_000 })
@@ -46,11 +51,13 @@ internal static partial class CompositionCapacityProfiles
 
             try
             {
-                rows = await query.ToArrayAsync(CancellationToken.None);
+                rows = await query.ToArrayAsync(cancellationToken);
             }
             catch (Exception error)
             {
-                await RetainFailureAsync(context, engine, profile, planProbe, error);
+                // WHY: Failure evidence completes independently of the canceled workload and preserves its error.
+                await RetainFailureAsync(context, engine, profile, planProbe, error,
+                    cancellationToken: CancellationToken.None);
 
                 throw;
             }
@@ -63,11 +70,14 @@ internal static partial class CompositionCapacityProfiles
 
             try
             {
-                plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, 0, engine);
+                plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, 0, engine,
+                    cancellationToken: cancellationToken);
             }
             catch (Exception error)
             {
-                await RetainFailureAsync(context, engine, profile, planProbe, error);
+                // WHY: Failure evidence completes independently of the canceled workload and preserves its error.
+                await RetainFailureAsync(context, engine, profile, planProbe, error,
+                    cancellationToken: CancellationToken.None);
 
                 throw;
             }
@@ -78,14 +88,15 @@ internal static partial class CompositionCapacityProfiles
                 commandsBefore, materialized, tracked, buildBytes, elapsed, plan);
 
             results.Add(observation);
-            await WriteAsync(engine, observation, planProbe.Commands[0]);
+            await WriteAsync(engine, observation, planProbe.Commands[0], cancellationToken: cancellationToken);
         }
 
         if (!broad)
         {
             // WHY: Keep a real upward/downward DTO composition selective; crossing every broad fact with every
             // origin would measure the requested Cartesian result, not accidental whole-tree materialization.
-            results.AddRange(await MeasureMixedAsync(database, engine, nodes, balanced));
+            results.AddRange(await MeasureMixedAsync(database, engine, nodes, balanced,
+                cancellationToken: cancellationToken));
         }
 
         return results;
@@ -134,7 +145,8 @@ internal static partial class CompositionCapacityProfiles
     /// </remarks>
     internal static async Task<int> BalanceAsync(
         TreeContext context,
-        int nodes
+        int nodes,
+        CancellationToken cancellationToken
     )
     {
         var changed = 0;
@@ -176,19 +188,21 @@ internal static partial class CompositionCapacityProfiles
                         node => (node.NodeId - 2) % BalancedBranchSize == 0
                             ? (long)Math.Floor((node.NodeId - 2) / (double)BalancedBranchSize)
                             : ((node.NodeId - 2) % BalancedBranchSize) - 1),
-                    CancellationToken.None);
+                    cancellationToken);
         }
 
         return changed;
     }
 
     /// <summary>Restores wide adjacency and the original repair corruption before its heap observer starts.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="context">The existing fixture context outside the measured repair operation.</param>
     /// <param name="nodes">The complete existing population; no additional tree is seeded.</param>
     /// <returns>The number of existing rows changed across bounded primary-key windows.</returns>
     internal static async Task<int> CorruptWideForRepairAsync(
         TreeContext context,
-        int nodes
+        int nodes,
+        CancellationToken cancellationToken
     )
     {
         var changed = 0;
@@ -205,7 +219,7 @@ internal static partial class CompositionCapacityProfiles
                     .SetProperty(node => node.Position, node => node.NodeId == 1 ? 0L : node.NodeId - 2L)
                     .SetProperty(node => node.Start, 1L)
                     .SetProperty(node => node.End, 2L)
-                    .SetProperty(node => node.Depth, 9), CancellationToken.None);
+                    .SetProperty(node => node.Depth, 9), cancellationToken);
         }
 
         return changed;
@@ -305,6 +319,7 @@ internal static partial class CompositionCapacityProfiles
     }
 
     /// <summary>Copies only the requested scalar payload keys with mapped table names and bounded SQL.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="context">The case-owned database with its already seeded hierarchy.</param>
     /// <param name="nodes">The largest source key in the fixture's dense population.</param>
     /// <param name="facts">The number of trailing hierarchy keys that receive payload.</param>
@@ -312,10 +327,11 @@ internal static partial class CompositionCapacityProfiles
     internal static async Task SeedPayloadAsync(
         TreeContext context,
         int nodes,
-        int facts
+        int facts,
+        CancellationToken cancellationToken
     )
     {
-        await context.Set<UnrelatedRow>().ExecuteDeleteAsync(CancellationToken.None);
+        await context.Set<UnrelatedRow>().ExecuteDeleteAsync(cancellationToken);
         var sql = context.GetService<ISqlGenerationHelper>();
         var source = context.Model.FindEntityType(typeof(TreeNode))!;
         var target = context.Model.FindEntityType(typeof(UnrelatedRow))!;
@@ -342,7 +358,7 @@ internal static partial class CompositionCapacityProfiles
                 + $"AND {sourceKey} <= {last.ToString(CultureInfo.InvariantCulture)}";
 
             // WHY: Only fixture-owned integer bounds are interpolated; identifiers use the provider delimiter.
-            await context.Database.ExecuteSqlRawAsync(statement, CancellationToken.None);
+            await context.Database.ExecuteSqlRawAsync(statement, cancellationToken);
         }
     }
 
@@ -350,7 +366,8 @@ internal static partial class CompositionCapacityProfiles
     private static Task WriteAsync(
         string engine,
         CompositionCapacityObservation observation,
-        string command
+        string command,
+        CancellationToken cancellationToken
     ) => QueryPlanTestSupport.WriteEvidenceAsync(engine + "-composition-capacity-" + observation.Profile,
     [
         FormattableString.Invariant(
@@ -360,5 +377,5 @@ internal static partial class CompositionCapacityProfiles
             + $"construction={observation.BuildBytes} B/op",
         command,
         observation.Plan,
-    ]);
+    ], cancellationToken: cancellationToken);
 }

@@ -30,9 +30,14 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped, probe);
+        await using var context = await CreateNavigationContextAsync(database, wrapped,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var root = await context.Set<NavigationNode>().Include(node => node.Children)
             .SingleAsync(node => node.Id == 1, CancellationToken.None);
 
@@ -51,8 +56,12 @@ public abstract partial class SaveChangesTests
         };
 
         // Act
-        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(context, synchronous));
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(context, synchronous,
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var storedParent = await verification.Set<NavigationNode>().Where(node => node.Id == 2)
             .Select(node => node.ParentId).SingleAsync(CancellationToken.None);
 
@@ -99,9 +108,14 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped, probe);
+        await using var context = await CreateNavigationContextAsync(database, wrapped,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var node = await context.Set<NavigationNode>().SingleAsync(value => value.Id == 2, CancellationToken.None);
         var originalLeft = node.Left;
         context.ChangeTracker.AutoDetectChangesEnabled = automaticDetection;
@@ -123,8 +137,12 @@ public abstract partial class SaveChangesTests
         }
 
         // Act
-        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(context, synchronous));
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(context, synchronous,
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var storedLeft = await verification.Set<NavigationNode>().Where(value => value.Id == 2)
             .Select(value => value.Left).SingleAsync(CancellationToken.None);
 

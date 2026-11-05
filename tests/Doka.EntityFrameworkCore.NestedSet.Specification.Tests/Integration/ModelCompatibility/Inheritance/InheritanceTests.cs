@@ -21,7 +21,7 @@ public abstract partial class InheritanceTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<TphContext>(
             Engine,
-            static options => new TphContext(options));
+            static options => new TphContext(options), cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<InheritanceNode>();
         var treeId = Guid.NewGuid();
@@ -66,7 +66,7 @@ public abstract partial class InheritanceTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<TptContext>(
             Engine,
-            static options => new TptContext(options));
+            static options => new TptContext(options), cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<InheritanceNode>();
         var treeId = Guid.NewGuid();
@@ -123,8 +123,10 @@ public abstract partial class InheritanceTests : ProviderTest
     {
         // Arrange
         await using DbContext context = tpt
-            ? await _fixture.CreateContextAsync<TptContext>(Engine, static options => new TptContext(options))
-            : await _fixture.CreateContextAsync<TphContext>(Engine, static options => new TphContext(options));
+            ? await _fixture.CreateContextAsync<TptContext>(Engine, static options => new TptContext(options),
+                cancellationToken: TestContext.Current.CancellationToken)
+            : await _fixture.CreateContextAsync<TphContext>(Engine, static options => new TphContext(options),
+                cancellationToken: TestContext.Current.CancellationToken);
 
         var rootId = tpt ? 1_001 : 2_001;
         var hierarchy = context.NestedSet<InheritanceNode>();
@@ -186,7 +188,7 @@ public abstract partial class InheritanceTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<TphContext>(
             Engine,
-            static options => new TphContext(options));
+            static options => new TphContext(options), cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<InheritanceNode>();
         var treeId = Guid.NewGuid();

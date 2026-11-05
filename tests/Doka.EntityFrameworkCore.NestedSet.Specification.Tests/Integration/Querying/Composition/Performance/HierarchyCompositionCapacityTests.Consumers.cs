@@ -13,27 +13,33 @@ public abstract partial class HierarchyCompositionCapacityTests
     {
         // Arrange
         const int nodes = 100_001;
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var context = database.CreateContext();
-        await CapacitySeed.SeedAsync(context, nodes, deep: deep);
+        await CapacitySeed.SeedAsync(context, nodes, deep: deep,
+            cancellationToken: TestContext.Current.CancellationToken);
         // WHY: The shared generic profiles prepare these physical statistics before their consumer
         // reads. This independent entry point must do the same; fresh-row estimates otherwise hide
         // the actual hundred-thousand-node population behind a one-row view estimate.
-        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(context, Engine);
+        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(context, Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
         var observations = new List<CompositionConsumerCapacityObservation>();
 
         // Act
         // WHY: Consumer evidence uses the actual sample builders. An unrelated generic access-path
         // failure must remain visible in its own test without preventing these operations from running.
         observations.AddRange(await CompositionConsumerCapacityProfiles.MeasureAsync(
-            database, Engine, nodes, deep: deep));
+            database, Engine, nodes, TestContext.Current.CancellationToken, deep: deep));
 
         if (!deep)
         {
-            await CompositionCapacityProfiles.BalanceAsync(context, nodes);
-            await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(context, Engine);
+            await CompositionCapacityProfiles.BalanceAsync(context, nodes,
+                cancellationToken: TestContext.Current.CancellationToken);
+            await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(context, Engine,
+                cancellationToken: TestContext.Current.CancellationToken);
             observations.AddRange(await CompositionConsumerCapacityProfiles.MeasureAsync(
-                database, Engine, nodes, balanced: true));
+                database, Engine, nodes, TestContext.Current.CancellationToken, balanced: true));
         }
 
         var validation = await context.NestedSet<TreeNode>().ForScope(1).InTree(Guid.Empty)

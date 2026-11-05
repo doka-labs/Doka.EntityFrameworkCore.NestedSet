@@ -49,6 +49,8 @@ hierarchy before the one operation being assessed.
 
 | Risk | Positive coverage | Negative or adversarial coverage |
 | --- | --- | --- |
+| Owned cancellation silently remains optional | `CancellationContractTests` inspects all six packages; `OwnedBenchmarkTokensAreRequired` covers benchmark helpers; explicit None/live tokens retain behavior | Omitted arguments reject; canceled tokens retain identity and never invoke the save delegate; actual EF/.NET contracts remain optional |
+| Owned async work omits cancellation or cancels mandatory cleanup | `OwnedAsyncOperationsRequireTokensUnlessFinalizing`, native initializer token forwarding, benchmark `ResourceInitializationTests` and `SignalMaterializationReaderTests` | Pre-canceled work never starts; canceled setup releases its resources; shared startup retries only owner cancellation; command finalization observes terminal results before cleanup |
 | Incorrect generic roles | Configured ordinary and named mappings | Wrong roles or foreign mapping before SQL |
 | Parent presence lost | Assigned default keys and absent detached roots | Direct Parent-to-null change rejected |
 | Mapped property shape lost | Field, shadow, converted, compiled, shared models | Missing named mapping or capture metadata |

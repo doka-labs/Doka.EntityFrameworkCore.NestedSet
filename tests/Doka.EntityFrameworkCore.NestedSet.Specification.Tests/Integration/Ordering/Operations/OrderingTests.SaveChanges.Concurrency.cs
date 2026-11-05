@@ -10,7 +10,9 @@ public abstract partial class OrderingTests
     public async Task SortedSaveRejectsNodeMovedToUnlockedTree()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = setup.NestedSet<OrderingNode>().ForScope(1);
         var firstTree = Guid.NewGuid();
         var secondTree = Guid.NewGuid();
@@ -18,8 +20,13 @@ public abstract partial class OrderingTests
         await hierarchy.InsertChildAsync(Node(2, "Alpha"), 1, CancellationToken.None);
         await hierarchy.InsertRootAsync(Node(10, "Destination"), secondTree, CancellationToken.None);
         await using var barrier = new SaveRegistryLockBarrier();
-        await using var first = await _fixture.CreateContextAsync(Engine, "Strict", barrier);
-        await using var second = await _fixture.CreateContextAsync(Engine);
+        await using var first = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "Strict", barrier);
+
+        await using var second = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var renamed = await first.Set<OrderingNode>()
             .SingleAsync(node => node.Id == 2, CancellationToken.None);
 
@@ -45,7 +52,9 @@ public abstract partial class OrderingTests
         // Assert
         var conflict = Assert.IsType<DbUpdateConcurrencyException>(failure);
         Assert.Contains("changed trees before locking", conflict.Message, StringComparison.Ordinal);
-        await using var verification = await _fixture.CreateContextAsync(Engine);
+        await using var verification = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var node = await verification.Set<OrderingNode>()
             .AsNoTracking()
             .SingleAsync(value => value.Id == 2, CancellationToken.None);

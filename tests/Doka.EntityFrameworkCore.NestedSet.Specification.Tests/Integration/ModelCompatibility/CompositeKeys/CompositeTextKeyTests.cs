@@ -23,7 +23,8 @@ public abstract class CompositeTextKeyTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<CompositeTextKeyContext>(
             Engine,
-            static options => new CompositeTextKeyContext(options));
+            static options => new CompositeTextKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var first = context
             .NestedSet<CompositeTextKeyNode>()
@@ -136,6 +137,7 @@ public abstract class CompositeTextKeyTests : ProviderTest
         await using var context = await _fixture.CreateContextAsync<CompositeTextKeyContext>(
             Engine,
             static options => new CompositeTextKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var trees = new Guid[3];

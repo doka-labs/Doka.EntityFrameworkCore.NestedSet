@@ -33,7 +33,7 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
     )
     {
         // Arrange
-        await WarmAsync();
+        await WarmAsync(cancellationToken: TestContext.Current.CancellationToken);
         await using var context = new TopologyContext();
         var payload = CreatePayload(rows);
         var entry = context.Attach(payload);
@@ -168,8 +168,11 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
     }
 
     /// <summary>Warms shared metadata and property restoration against a different, unchanged topology.</summary>
-    private static async Task WarmAsync()
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
+    private static async Task WarmAsync(CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         await using var context = new TopologyContext();
         var entry = context.Attach(CreatePayload(1));
         _ = context.Model.GetRelationalModel();

@@ -16,7 +16,7 @@ public abstract partial class SingleInsertGuardTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         await using var transaction = callerTransaction
             ? await context.Database.BeginTransactionAsync(
@@ -69,7 +69,7 @@ public abstract partial class SingleInsertGuardTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         await using var transaction = callerTransaction
             ? await context.Database.BeginTransactionAsync(

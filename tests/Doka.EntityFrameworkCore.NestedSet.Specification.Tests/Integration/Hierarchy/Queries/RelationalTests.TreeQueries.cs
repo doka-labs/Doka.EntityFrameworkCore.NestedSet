@@ -14,8 +14,8 @@ public abstract partial class RelationalTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await SeedTreeQueryForestAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedTreeQueryForestAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
@@ -47,8 +47,8 @@ public abstract partial class RelationalTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await SeedTreeQueryForestAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedTreeQueryForestAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
@@ -81,8 +81,8 @@ public abstract partial class RelationalTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await SeedTreeQueryForestAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedTreeQueryForestAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
@@ -109,8 +109,8 @@ public abstract partial class RelationalTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await SeedTreeQueryForestAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedTreeQueryForestAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
 
         // WHY: The IInterceptor overload registers both command and entity-materialization observation.
@@ -149,8 +149,8 @@ public abstract partial class RelationalTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await SeedTreeQueryForestAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedTreeQueryForestAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
         var tree = context
@@ -194,8 +194,8 @@ public abstract partial class RelationalTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await SeedTreeQueryForestAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedTreeQueryForestAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
         var tree = context
@@ -241,8 +241,8 @@ public abstract partial class RelationalTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await SeedBinaryTreeQueryForestAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedBinaryTreeQueryForestAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe(nameof(BinaryNode));
         await using var context = database.CreateContext((IInterceptor)probe);
         var tree = context
@@ -270,9 +270,11 @@ public abstract partial class RelationalTests
 
     /// <summary>Seeds two roots and a second scope whose valid coordinates overlap the first tree.</summary>
     /// <param name="database">The reset database receiving independently known structural values.</param>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     /// <returns>A task that completes after the seed context has saved and released its tracked entities.</returns>
     private static async Task SeedTreeQueryForestAsync(
-        TestDatabase database
+        TestDatabase database,
+        CancellationToken cancellationToken
     )
     {
         // WHY: Direct coordinates isolate query behavior from mutation correctness.
@@ -377,15 +379,17 @@ public abstract partial class RelationalTests
             });
 
         await using var context = database.CreateContext();
-        await context.AddRangeAsync(nodes.Concat(foreignNodes), CancellationToken.None);
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await context.AddRangeAsync(nodes.Concat(foreignNodes), cancellationToken);
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
     }
 
     /// <summary>Seeds binary-key branches plus unrelated roots in the same and another scope.</summary>
     /// <param name="database">The reset database whose existing model supports binary primary keys.</param>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     /// <returns>A task that completes after storing the independent binary-key forest.</returns>
     private static async Task SeedBinaryTreeQueryForestAsync(
-        TestDatabase database
+        TestDatabase database,
+        CancellationToken cancellationToken
     )
     {
         await using var context = database.CreateContext();
@@ -451,7 +455,7 @@ public abstract partial class RelationalTests
                     Depth = 1,
                 },
             ],
-            CancellationToken.None);
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+            cancellationToken);
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
     }
 }

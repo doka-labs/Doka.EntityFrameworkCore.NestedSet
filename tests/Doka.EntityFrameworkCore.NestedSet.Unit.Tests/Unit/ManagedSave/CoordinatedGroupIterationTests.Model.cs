@@ -3,16 +3,17 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public sealed partial class CoordinatedGroupIterationTests
 {
     /// <summary>Creates two independent owner mappings that share one physical SQLite transaction boundary.</summary>
-    private static async Task<GroupContext> CreateContextAsync()
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
+    private static async Task<GroupContext> CreateContextAsync(CancellationToken cancellationToken)
     {
         var context = new GroupContext();
 
         try
         {
-            await context.Database.OpenConnectionAsync(CancellationToken.None);
-            await context.Database.EnsureCreatedAsync(CancellationToken.None);
-            await SeedAsync<FirstOwner>(context);
-            await SeedAsync<SecondOwner>(context);
+            await context.Database.OpenConnectionAsync(cancellationToken);
+            await context.Database.EnsureCreatedAsync(cancellationToken);
+            await SeedAsync<FirstOwner>(context, cancellationToken: cancellationToken);
+            await SeedAsync<SecondOwner>(context, cancellationToken: cancellationToken);
             context.ChangeTracker.Clear();
 
             return context;
@@ -26,8 +27,11 @@ public sealed partial class CoordinatedGroupIterationTests
     }
 
     /// <summary>Seeds sibling order opposite to insertion order through the actual hierarchy facade.</summary>
+    /// <param name="context">The context used by this fixture operation.</param>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
     private static async Task SeedAsync<TOwner>(
-        GroupContext context
+        GroupContext context,
+        CancellationToken cancellationToken
     )
     {
         var hierarchy = context
@@ -42,7 +46,7 @@ public sealed partial class CoordinatedGroupIterationTests
                 Name = "Root",
             },
             Guid.NewGuid(),
-            CancellationToken.None);
+            cancellationToken);
         await hierarchy.InsertChildAsync(
             new GroupNode<TOwner>
             {
@@ -51,7 +55,7 @@ public sealed partial class CoordinatedGroupIterationTests
                 Name = "Bravo",
             },
             1,
-            CancellationToken.None);
+            cancellationToken);
         await hierarchy.InsertChildAsync(
             new GroupNode<TOwner>
             {
@@ -60,7 +64,7 @@ public sealed partial class CoordinatedGroupIterationTests
                 Name = "Alpha",
             },
             1,
-            CancellationToken.None);
+            cancellationToken);
     }
 
     /// <summary>Coordinates two distinct entity types without EF inheritance between their owners.</summary>

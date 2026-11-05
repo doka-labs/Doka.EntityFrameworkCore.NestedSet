@@ -7,7 +7,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task MutationRejectsTrackedEntityFromAffectedTree()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -37,7 +37,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task MutationAllowsTrackedEntityFromUnaffectedTree()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -69,7 +69,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task SubtreeImportAllowsTrackedEntityFromUnaffectedTree()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -104,7 +104,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task RebuildAllowsTrackedEntityFromUnaffectedTree()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -131,7 +131,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task SubtreeImportRejectsTrackedEntityFromAffectedTree()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -158,7 +158,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task RebuildRejectsTrackedEntityFromAffectedTree()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -183,7 +183,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task CrossTreeMoveRejectsTrackedEntityFromDestinationTree()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()

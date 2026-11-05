@@ -12,7 +12,9 @@ public abstract partial class BulkStageGuardTests
     )
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = context
             .NestedSet<BulkStageBinaryScope>()
             .ForScope<byte[]>([1]);
@@ -68,7 +70,9 @@ public abstract partial class BulkStageGuardTests
     )
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = context
             .NestedSet<BulkStageBinaryParent>()
             .ForScope(1);

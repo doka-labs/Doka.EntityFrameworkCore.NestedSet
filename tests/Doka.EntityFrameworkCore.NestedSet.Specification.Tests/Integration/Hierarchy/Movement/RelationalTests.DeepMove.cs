@@ -8,7 +8,7 @@ public abstract partial class RelationalTests
     {
         // Arrange
         const int count = 1024;
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using (var seed = database.CreateContext())
         {
             // WHY: Construct valid adjacency directly so setup does not hide quadratic insertion work in this test.
@@ -41,7 +41,7 @@ public abstract partial class RelationalTests
 
         await other.InsertRootAsync(new TreeNode { NodeId = count + 1 }, Guid.Empty, CancellationToken.None);
         await other.InsertChildAsync(new TreeNode { NodeId = count + 2 }, count + 1, CancellationToken.None);
-        var beforeOther = await SnapshotAsync(context, 2);
+        var beforeOther = await SnapshotAsync(context, 2, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         await tree.DetachAsTreeAsync(2, Guid.NewGuid(), CancellationToken.None);
@@ -59,7 +59,8 @@ public abstract partial class RelationalTests
         Assert.Null(nodes[1].Parent);
         Assert.Equal(0, nodes[1].Position);
         Assert.All(nodes.Skip(1), node => Assert.Equal(node.NodeId - 2, node.Depth));
-        await AssertValidAsync(context, 1);
-        Assert.Equal(beforeOther, await SnapshotAsync(context, 2));
+        await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.Equal(beforeOther, await SnapshotAsync(context, 2,
+            cancellationToken: TestContext.Current.CancellationToken));
     }
 }

@@ -50,10 +50,14 @@ public sealed class ProviderFixtureIsolationTests
                 try
                 {
                     TestContext.SetForTestClass(firstClass, TestEngineStatus.Running, cancellationToken, firstMappings);
-                    var before = await TestDatabaseServers.GetCurrentAsync();
+                    var before = await TestDatabaseServers.GetCurrentAsync(
+                        cancellationToken: TestContext.Current.CancellationToken);
+
                     firstReady.TrySetResult();
                     await secondReady.Task.WaitAsync(cancellationToken);
-                    var interleaved = await TestDatabaseServers.GetCurrentAsync();
+                    var interleaved = await TestDatabaseServers.GetCurrentAsync(
+                        cancellationToken: TestContext.Current.CancellationToken);
+
                     await firstAssembly.DisposeAsync();
 
                     return (Before: before, Interleaved: interleaved);
@@ -79,12 +83,17 @@ public sealed class ProviderFixtureIsolationTests
                         cancellationToken,
                         secondMappings);
 
-                    var before = await TestDatabaseServers.GetCurrentAsync();
+                    var before = await TestDatabaseServers.GetCurrentAsync(
+                        cancellationToken: TestContext.Current.CancellationToken);
+
                     secondReady.TrySetResult();
                     await firstReady.Task.WaitAsync(cancellationToken);
-                    var interleaved = await TestDatabaseServers.GetCurrentAsync();
+                    var interleaved = await TestDatabaseServers.GetCurrentAsync(
+                        cancellationToken: TestContext.Current.CancellationToken);
+
                     await firstDisposed.Task.WaitAsync(cancellationToken);
-                    var afterDisposal = await TestDatabaseServers.GetCurrentAsync();
+                    var afterDisposal = await TestDatabaseServers.GetCurrentAsync(
+                        cancellationToken: TestContext.Current.CancellationToken);
 
                     return (Before: before, Interleaved: interleaved, AfterDisposal: afterDisposal);
                 }

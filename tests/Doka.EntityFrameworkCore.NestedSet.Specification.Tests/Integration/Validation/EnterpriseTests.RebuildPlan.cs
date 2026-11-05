@@ -8,11 +8,12 @@ public abstract partial class EnterpriseTests
     public async Task ValidTreePlanHasNoRepairsOrWrites()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(3));
-        var before = await SnapshotAsync(setup);
-        var registryBefore = await RegistryStateAsync(setup);
+        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(3),
+            cancellationToken: TestContext.Current.CancellationToken);
+        var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
+        var registryBefore = await RegistryStateAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
         var tree = context
@@ -33,8 +34,10 @@ public abstract partial class EnterpriseTests
         Assert.Equal(0, probe.NodeUpdates);
         Assert.Empty(context.ChangeTracker.Entries());
         await using var verification = database.CreateContext();
-        Assert.Equal(before, await SnapshotAsync(verification));
-        Assert.Equal(registryBefore, await RegistryStateAsync(verification));
+        Assert.Equal(before, await SnapshotAsync(verification,
+            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(registryBefore, await RegistryStateAsync(verification,
+            cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>A repairable tree reports the exact changed nodes, write batch, roles, and typed issues.</summary>
@@ -43,11 +46,13 @@ public abstract partial class EnterpriseTests
     public async Task RepairableTreePlanReportsExactWorkWithoutWrites()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(3), true);
-        var before = await SnapshotAsync(setup);
-        var registryBefore = await RegistryStateAsync(setup);
+        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(3),
+            cancellationToken: TestContext.Current.CancellationToken,
+            true);
+        var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
+        var registryBefore = await RegistryStateAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
         var tree = context
@@ -73,8 +78,10 @@ public abstract partial class EnterpriseTests
         Assert.Equal(0, probe.NodeUpdates);
         Assert.Empty(context.ChangeTracker.Entries());
         await using var verification = database.CreateContext();
-        Assert.Equal(before, await SnapshotAsync(verification));
-        Assert.Equal(registryBefore, await RegistryStateAsync(verification));
+        Assert.Equal(before, await SnapshotAsync(verification,
+            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(registryBefore, await RegistryStateAsync(verification,
+            cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>A parent cycle is reported without changing tree rows or registry state.</summary>
@@ -83,16 +90,17 @@ public abstract partial class EnterpriseTests
     public async Task ParentCyclePlanReportsUnrepairableStructureWithoutWrites()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(3));
+        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(3),
+            cancellationToken: TestContext.Current.CancellationToken);
         await setup
             .Set<TreeNode>()
             .Where(node => node.NodeId == 1)
             .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.Parent, 2), CancellationToken.None);
 
-        var before = await SnapshotAsync(setup);
-        var registryBefore = await RegistryStateAsync(setup);
+        var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
+        var registryBefore = await RegistryStateAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
         var tree = context
@@ -126,8 +134,10 @@ public abstract partial class EnterpriseTests
         Assert.Equal(0, probe.NodeUpdates);
         Assert.Empty(context.ChangeTracker.Entries());
         await using var verification = database.CreateContext();
-        Assert.Equal(before, await SnapshotAsync(verification));
-        Assert.Equal(registryBefore, await RegistryStateAsync(verification));
+        Assert.Equal(before, await SnapshotAsync(verification,
+            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(registryBefore, await RegistryStateAsync(verification,
+            cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Asserts the documented roles in their stable public order.</summary>

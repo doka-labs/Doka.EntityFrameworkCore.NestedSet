@@ -9,6 +9,18 @@ This exception does not authorize other breaking minor releases.
 
 ## Unreleased
 
+### Changed
+
+- Require an explicit `CancellationToken` on NestedSet-owned asynchronous
+  operations and benchmark helpers. This is source-breaking for callers that
+  omitted the argument; pass the caller's token or explicit
+  `CancellationToken.None`. Binary method signatures, cancellation behavior and
+  actual EF/.NET override and interface contracts remain unchanged.
+- Thread explicit cancellation through owned asynchronous test, benchmark and
+  package-consumer helpers, including initialization callbacks. Keep mandatory
+  rollback, disposal and terminal command finalization uninterruptible, and
+  preserve actual framework and runner entry signatures.
+
 ### Fixed
 
 - Align the portable signed build-provenance filename with Doka and

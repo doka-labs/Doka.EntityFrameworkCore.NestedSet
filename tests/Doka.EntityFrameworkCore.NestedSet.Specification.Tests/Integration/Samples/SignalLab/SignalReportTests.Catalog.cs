@@ -18,10 +18,12 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
         var input = data.Request(nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any);
-        await AddUnrequestedCatalogAsync(context, input);
+        await AddUnrequestedCatalogAsync(context, input, cancellationToken: TestContext.Current.CancellationToken);
         var request = SignalReportValidation.Snapshot(withoutCriteria ? input with { Criteria = [] } : input);
         var fields = request.Groups.SelectMany(group => group.Criteria)
             .Select(criterion => (criterion.TypeId, criterion.FieldCode)).ToHashSet();
@@ -56,10 +58,12 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
         var request = data.Request(nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any);
-        await AddUnrequestedCatalogAsync(context, request);
+        await AddUnrequestedCatalogAsync(context, request, cancellationToken: TestContext.Current.CancellationToken);
         var expected = SignalReportOracle.Calculate(request).ToDictionary(cell => (cell.AnchorId, cell.ChannelId, cell.Source));
         probe.Reset();
 
@@ -78,7 +82,9 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
         var request = data.Request() with
         {
@@ -121,7 +127,9 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
         var criterion = new TagCriterion(SignalReportDataset.ModuleKind, "ModuleClass", "Receiver",
             nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any);
@@ -158,8 +166,12 @@ public abstract partial class SignalReportTests
         // Arrange
         var probe = new SignalReportProbe();
         var secondProbe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
-        await using var secondContext = await CreateContextAsync(secondProbe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using var secondContext = await CreateContextAsync(secondProbe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var first = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
         var second = await SignalReportDataset.CreateAsync(secondContext, 5, false,
             CancellationToken.None, Guid.NewGuid());
@@ -201,7 +213,8 @@ public abstract partial class SignalReportTests
     /// <summary>Seeds unselected bindings and crossed choices without changing measured nodes or facts.</summary>
     private static async Task AddUnrequestedCatalogAsync(
         SignalLabContext context,
-        SignalReportRequest request
+        SignalReportRequest request,
+        CancellationToken cancellationToken
     )
     {
         var criterion = request.Criteria[0];
@@ -247,7 +260,7 @@ public abstract partial class SignalReportTests
                 FieldCode = "RackCode",
                 Value = "Liquid",
             });
-        await context.SaveChangesAsync(CancellationToken.None);
+        await context.SaveChangesAsync(cancellationToken);
         context.ChangeTracker.Clear();
     }
 }

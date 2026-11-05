@@ -18,8 +18,10 @@ public abstract partial class AutomaticMoveBudgetTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
 
         if (scenario is "source-bounds" or "anchor-bounds")
         {
@@ -32,9 +34,12 @@ public abstract partial class AutomaticMoveBudgetTests
                     CancellationToken.None);
         }
 
-        var before = await SnapshotAsync(setup);
+        var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine, "Strict", probe);
+        await using var context = await _fixture.CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "Strict", probe);
+
         var tree = context
             .NestedSet<OrderingNode>()
             .ForScope(1);
@@ -69,6 +74,6 @@ public abstract partial class AutomaticMoveBudgetTests
             LockedHierarchyReads(probe, "Strict", context),
             sql => sql.Contains("LAG(", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(probe.Commands, IsHierarchyWrite);
-        Assert.Equal(before, await SnapshotAsync(setup));
+        Assert.Equal(before, await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken));
     }
 }

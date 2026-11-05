@@ -18,7 +18,9 @@ public abstract class NestedSetMutationOrderingTests : ProviderTest
     public async Task AutomaticInsertUsesConfiguredOrder()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context
             .NestedSet<OrderingNode>()
             .ForScope(1);
@@ -45,7 +47,9 @@ public abstract class NestedSetMutationOrderingTests : ProviderTest
     public async Task StrictOrderRejectsManualPlacement()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context
             .NestedSet<OrderingNode>()
             .ForScope(1);
@@ -76,7 +80,10 @@ public abstract class NestedSetMutationOrderingTests : ProviderTest
     public async Task FlexibleOrderAllowsManualPlacement()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine, "Flexible");
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "Flexible");
+
         var hierarchy = context
             .NestedSet<OrderingNode>()
             .ForScope(1);

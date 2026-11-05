@@ -26,7 +26,9 @@ public sealed partial class BulkIdentityRetentionTests : ProviderTest,
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
@@ -52,7 +54,8 @@ public sealed partial class BulkIdentityRetentionTests : ProviderTest,
         }
 
         // Act
-        var result = await ImportScalarAsync(context, generated);
+        var result = await ImportScalarAsync(context, generated,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.Error is NestedSetException, result.Error?.ToString());
@@ -85,7 +88,9 @@ public sealed partial class BulkIdentityRetentionTests : ProviderTest,
     public async Task NativeFindResolvesTheAttachedImportedMutableIdentity()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
@@ -133,7 +138,9 @@ public sealed partial class BulkIdentityRetentionTests : ProviderTest,
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
@@ -173,7 +180,7 @@ public sealed partial class BulkIdentityRetentionTests : ProviderTest,
         };
 
         // Act
-        var result = await ImportTwoRootsAsync(context);
+        var result = await ImportTwoRootsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         if (intermediate)

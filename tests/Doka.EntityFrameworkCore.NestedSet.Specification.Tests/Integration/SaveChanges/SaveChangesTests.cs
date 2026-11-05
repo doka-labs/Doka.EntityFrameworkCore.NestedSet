@@ -16,9 +16,11 @@ public abstract partial class SaveChangesTests : ProviderTest
     }
 
     /// <summary>Creates one tree with two ordered children for callback and pooled-lease tests.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="context">The initialized context that owns the fixture tables.</param>
     private static async Task SeedAsync(
-        DbContext context
+        DbContext context,
+        CancellationToken cancellationToken
     )
     {
         var hierarchy = context
@@ -32,7 +34,7 @@ public abstract partial class SaveChangesTests : ProviderTest
                 Name = "Root",
             },
             s_treeId,
-            CancellationToken.None);
+            cancellationToken);
 
         await hierarchy.InsertChildAsync(
             new OrderingNode
@@ -41,7 +43,7 @@ public abstract partial class SaveChangesTests : ProviderTest
                 Name = "Alpha",
             },
             10,
-            CancellationToken.None);
+            cancellationToken);
 
         await hierarchy.InsertChildAsync(
             new OrderingNode
@@ -50,6 +52,6 @@ public abstract partial class SaveChangesTests : ProviderTest
                 Name = "Bravo",
             },
             10,
-            CancellationToken.None);
+            cancellationToken);
     }
 }

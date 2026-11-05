@@ -155,8 +155,14 @@ consistent with the surrounding feature and provider boundaries.
   non-obvious implementation choices with a short nearby WHY comment.
 - Keep shared imports in the existing `Imports.cs` files and file-specific
   imports local. Use a named alias for a real type-name collision.
-- Use native asynchronous I/O and pass cancellation tokens through cancellable
-  work. Preserve caller resource ownership, transaction and rollback contracts.
+- Use native asynchronous I/O. Owned async operations, including test and
+  benchmark helpers, require an explicit `CancellationToken` and forward it
+  through cancellable work and callbacks. Actual framework and runner entry
+  signatures remain unchanged; their owned helpers still require tokens. Use
+  `CancellationToken.None` explicitly when the entry point supplies no token.
+  Deliberately uninterruptible rollback, disposal and terminal finalization
+  helpers take no token. Never abandon a started command before resource or
+  transaction cleanup; document that safety reason locally.
 - Keep samples and test/benchmark fixtures independently synthetic; do not copy
   confidential application schemas, identities or calculation recipes.
 - Do not track build output, caches, test results or personal IDE/OS metadata.

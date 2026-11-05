@@ -151,7 +151,9 @@ public abstract class CompiledModelTests : ProviderTest
     {
         // Arrange
         var model = ModelFor(Engine);
-        await using var context = await _fixture.ResetAsync(Engine, model);
+        await using var context = await _fixture.ResetAsync(Engine, model,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = context
             .NestedSet<CompiledFolder>()
             .ForScope("SCOPE");
@@ -219,7 +221,9 @@ public abstract class CompiledModelTests : ProviderTest
     {
         // Arrange
         var model = ModelFor(Engine);
-        await using var context = await _fixture.ResetAsync(Engine, model);
+        await using var context = await _fixture.ResetAsync(Engine, model,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = context
             .NestedSet<CompiledNumber>()
             .ForScope(7);
@@ -265,7 +269,8 @@ public abstract class CompiledModelTests : ProviderTest
         // Arrange
         var model = ModelFor(Engine);
 
-        await using (var seeded = await _fixture.ResetAsync(Engine, model))
+        await using (var seeded = await _fixture.ResetAsync(Engine, model,
+            cancellationToken: TestContext.Current.CancellationToken))
         {
             var folders = seeded
                 .NestedSet<CompiledFolder>()
@@ -314,7 +319,8 @@ public abstract class CompiledModelTests : ProviderTest
         }
 
         // Act
-        await using var reset = await _fixture.ResetAsync(Engine, model);
+        await using var reset = await _fixture.ResetAsync(Engine, model,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Empty(
@@ -336,11 +342,14 @@ public abstract class CompiledModelTests : ProviderTest
     public async Task SuppliedModelWithoutAdapterHasAnActionableDiagnostic()
     {
         // Arrange
-        var sourceOptions = await _fixture.CreateOptionsAsync<LegacyCompiledContext>(Engine);
+        var sourceOptions = await _fixture.CreateOptionsAsync<LegacyCompiledContext>(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = new LegacyCompiledContext(sourceOptions);
         var supplied = source.Model;
         var options = await _fixture.CreateOptionsAsync<LegacyCompiledContext>(
             Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
             supplied,
             enableNestedSets: false);
 
@@ -375,13 +384,16 @@ public abstract class CompiledModelTests : ProviderTest
         var legacyOptions = await _fixture.CreateOptionsAsync<LegacyCompiledContext>(
             Engine,
             model: null,
-            enableNestedSets: false);
+            enableNestedSets: false, cancellationToken: TestContext.Current.CancellationToken);
 
         await using var source = new LegacyCompiledContext(legacyOptions);
         var supplied = source.Model;
 
         // WHY: Register the runtime adapter independently; supplying the legacy model must skip regeneration.
-        var options = await _fixture.CreateOptionsAsync<LegacyCompiledContext>(Engine, supplied);
+        var options = await _fixture.CreateOptionsAsync<LegacyCompiledContext>(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            supplied);
+
         var boundary = new ConfigurationIoBoundary();
         await using var context = new LegacyCompiledContext(
             new DbContextOptionsBuilder<LegacyCompiledContext>(options).AddInterceptors(boundary, boundary.Commands)
@@ -413,11 +425,14 @@ public abstract class CompiledModelTests : ProviderTest
         var options = await _fixture.CreateOptionsAsync<StaleCollationCaptureContext>(
             Engine,
             model: null,
-            enableNestedSets: false);
+            enableNestedSets: false, cancellationToken: TestContext.Current.CancellationToken);
 
         await using var source = new StaleCollationCaptureContext(options);
         var supplied = source.Model;
-        var runtimeOptions = await _fixture.CreateOptionsAsync<StaleCollationCaptureContext>(Engine, supplied);
+        var runtimeOptions = await _fixture.CreateOptionsAsync<StaleCollationCaptureContext>(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            supplied);
+
         var boundary = new ConfigurationIoBoundary();
         await using var context = new StaleCollationCaptureContext(
             new DbContextOptionsBuilder<StaleCollationCaptureContext>(runtimeOptions)

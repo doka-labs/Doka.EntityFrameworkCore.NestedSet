@@ -24,13 +24,19 @@ public abstract partial class CapacityTests
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var setup = database.CreateContext();
-        await CapacitySeed.SeedAsync(setup, count, deep, corrupt);
+        await CapacitySeed.SeedAsync(setup, count,
+            cancellationToken: TestContext.Current.CancellationToken,
+            deep, corrupt);
         await using var context = database.CreateContext();
 
         // Act
-        var mismatches = await CapacitySeed.MismatchesAsync(context, count, deep, corrupt);
+        var mismatches = await CapacitySeed.MismatchesAsync(context, count,
+            cancellationToken: TestContext.Current.CancellationToken,
+            deep, corrupt);
 
         // Assert
         Assert.Equal(0, mismatches);
@@ -52,9 +58,11 @@ public abstract partial class CapacityTests
     {
         // Arrange
         var count = key == 1 ? 1 : 100_001;
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var setup = database.CreateContext();
-        await CapacitySeed.SeedAsync(setup, count);
+        await CapacitySeed.SeedAsync(setup, count, cancellationToken: TestContext.Current.CancellationToken);
         await setup
             .Set<TreeNode>()
             .Where(node => node.NodeId == key)
@@ -63,7 +71,8 @@ public abstract partial class CapacityTests
         await using var context = database.CreateContext();
 
         // Act
-        var mismatches = await CapacitySeed.MismatchesAsync(context, count);
+        var mismatches = await CapacitySeed.MismatchesAsync(context, count,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(1, mismatches);
@@ -87,9 +96,11 @@ public abstract partial class CapacityTests
     {
         // Arrange
         const int count = 129;
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var setup = database.CreateContext();
-        await CapacitySeed.SeedAsync(setup, count);
+        await CapacitySeed.SeedAsync(setup, count, cancellationToken: TestContext.Current.CancellationToken);
 
         if (replace)
         {
@@ -115,7 +126,8 @@ public abstract partial class CapacityTests
         await using var context = database.CreateContext();
 
         // Act
-        var mismatches = await CapacitySeed.MismatchesAsync(context, count);
+        var mismatches = await CapacitySeed.MismatchesAsync(context, count,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(replace ? 2 : 1, mismatches);
@@ -150,18 +162,22 @@ public abstract partial class CapacityTests
     {
         // Arrange
         var count = field == nameof(TreeNode.Tree) ? 1 : 129;
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var setup = database.CreateContext();
-        await CapacitySeed.SeedAsync(setup, count, deep);
+        await CapacitySeed.SeedAsync(setup, count, cancellationToken: TestContext.Current.CancellationToken, deep);
         var target = setup
             .Set<TreeNode>()
             .Where(node => node.NodeId == (root ? 1 : count));
 
-        await DamageAsync(target, field, root);
+        await DamageAsync(target, field, root, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
 
         // Act
-        var mismatches = await CapacitySeed.MismatchesAsync(context, count, deep);
+        var mismatches = await CapacitySeed.MismatchesAsync(context, count,
+            cancellationToken: TestContext.Current.CancellationToken,
+            deep);
 
         // Assert
         Assert.Equal(1, mismatches);
@@ -181,9 +197,11 @@ public abstract partial class CapacityTests
     {
         // Arrange
         const int count = 129;
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var setup = database.CreateContext();
-        await CapacitySeed.SeedAsync(setup, count, deep);
+        await CapacitySeed.SeedAsync(setup, count, cancellationToken: TestContext.Current.CancellationToken, deep);
         await setup
             .Set<TreeNode>()
             .Where(node => node.NodeId == count)
@@ -193,7 +211,9 @@ public abstract partial class CapacityTests
         await using var context = database.CreateContext();
 
         // Act
-        var mismatches = await CapacitySeed.MismatchesAsync(context, count, deep);
+        var mismatches = await CapacitySeed.MismatchesAsync(context, count,
+            cancellationToken: TestContext.Current.CancellationToken,
+            deep);
 
         // Assert
         Assert.Equal(1, mismatches);
@@ -213,9 +233,11 @@ public abstract partial class CapacityTests
     {
         // Arrange
         const int count = 100_001;
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var setup = database.CreateContext();
-        await CapacitySeed.SeedAsync(setup, count);
+        await CapacitySeed.SeedAsync(setup, count, cancellationToken: TestContext.Current.CancellationToken);
         await setup
             .Set<TreeNode>()
             .Where(node => node.NodeId == key)
@@ -224,7 +246,8 @@ public abstract partial class CapacityTests
         await using var context = database.CreateContext();
 
         // Act
-        var mismatches = await CapacitySeed.MismatchesAsync(context, count);
+        var mismatches = await CapacitySeed.MismatchesAsync(context, count,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(1, mismatches);
@@ -239,16 +262,19 @@ public abstract partial class CapacityTests
     {
         // Arrange
         const int count = 100_001;
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var setup = database.CreateContext();
-        await CapacitySeed.SeedAsync(setup, count);
+        await CapacitySeed.SeedAsync(setup, count, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new CoordinateCommandProbe();
         await using var context = database.CreateContext(probe);
         await using var sample = context.Database.GetDbConnection().CreateCommand();
         var timeout = context.Database.GetCommandTimeout() ?? sample.CommandTimeout;
 
         // Act
-        var mismatches = await CapacitySeed.MismatchesAsync(context, count);
+        var mismatches = await CapacitySeed.MismatchesAsync(context, count,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(0, mismatches);
@@ -271,27 +297,29 @@ public abstract partial class CapacityTests
     }
 
     /// <summary>Changes one stored field without repairing the deliberately invalid fixture row.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static Task<int> DamageAsync(
         IQueryable<TreeNode> target,
         string field,
-        bool root
+        bool root,
+        CancellationToken cancellationToken
     ) => field switch
     {
         nameof(TreeNode.Tree) => target.ExecuteUpdateAsync(
-            setters => setters.SetProperty(node => node.Tree, 2), CancellationToken.None),
+            setters => setters.SetProperty(node => node.Tree, 2), cancellationToken),
         nameof(TreeNode.TreeId) => target.ExecuteUpdateAsync(
-            setters => setters.SetProperty(node => node.TreeId, s_inputTreeId), CancellationToken.None),
+            setters => setters.SetProperty(node => node.TreeId, s_inputTreeId), cancellationToken),
         nameof(TreeNode.Parent) => target.ExecuteUpdateAsync(
             setters => setters.SetProperty(node => node.Parent, root ? 129 : (int?)null),
-            CancellationToken.None),
+            cancellationToken),
         nameof(TreeNode.Start) => target.ExecuteUpdateAsync(
-            setters => setters.SetProperty(node => node.Start, 17L), CancellationToken.None),
+            setters => setters.SetProperty(node => node.Start, 17L), cancellationToken),
         nameof(TreeNode.End) => target.ExecuteUpdateAsync(
-            setters => setters.SetProperty(node => node.End, node => node.End + 1), CancellationToken.None),
+            setters => setters.SetProperty(node => node.End, node => node.End + 1), cancellationToken),
         nameof(TreeNode.Depth) => target.ExecuteUpdateAsync(
-            setters => setters.SetProperty(node => node.Depth, 9), CancellationToken.None),
+            setters => setters.SetProperty(node => node.Depth, 9), cancellationToken),
         nameof(TreeNode.Position) => target.ExecuteUpdateAsync(
-            setters => setters.SetProperty(node => node.Position, 17L), CancellationToken.None),
+            setters => setters.SetProperty(node => node.Position, 17L), cancellationToken),
         _ => throw new ArgumentOutOfRangeException(nameof(field)),
     };
 

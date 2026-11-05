@@ -17,14 +17,17 @@ public abstract partial class NativeTrackedIdentityGuardTests
         await using var context = await _fixture.CreateContextAsync<ConvertedBroadScopeContext>(
             Engine,
             static options => new ConvertedBroadScopeContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var otherTree = Guid.NewGuid();
-        await SeedTinyScopesAsync(context, otherTree, root, scopes);
+        await SeedTinyScopesAsync(context, otherTree, root, scopes,
+            cancellationToken: TestContext.Current.CancellationToken);
         var selectedScope = new BroadScope($"TINY-SELECTED-{root}");
         var selectedTree = Guid.NewGuid();
-        await SeedPairRootAsync(context, selectedScope, selectedTree, root + 10);
+        await SeedPairRootAsync(context, selectedScope, selectedTree, root + 10,
+            cancellationToken: TestContext.Current.CancellationToken);
         var tracked = await context
             .Set<BroadScopeNode>()
             .Where(node => node.TreeId == otherTree)
@@ -94,11 +97,12 @@ public abstract partial class NativeTrackedIdentityGuardTests
         await using var context = await _fixture.CreateContextAsync<ConvertedBroadScopeContext>(
             Engine,
             static options => new ConvertedBroadScopeContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var treeId = Guid.NewGuid();
-        await SeedTinyScopesAsync(context, treeId, root, 769);
+        await SeedTinyScopesAsync(context, treeId, root, 769, cancellationToken: TestContext.Current.CancellationToken);
         var tracked = await context
             .Set<BroadScopeNode>()
             .Where(node => node.TreeId == treeId)
@@ -182,14 +186,17 @@ public abstract partial class NativeTrackedIdentityGuardTests
         await using var context = await _fixture.CreateContextAsync<ConvertedBroadScopeContext>(
             Engine,
             static options => new ConvertedBroadScopeContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var trackedScope = new BroadScope($"SCALAR-CURRENT-{root}");
         var requestedScope = new BroadScope(trackedScope.Value.ToLowerInvariant());
         var treeId = Guid.NewGuid();
-        await SeedPairRootAsync(context, trackedScope, treeId, root);
-        await SeedPairRootAsync(context, requestedScope, treeId, root);
+        await SeedPairRootAsync(context, trackedScope, treeId, root,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await SeedPairRootAsync(context, requestedScope, treeId, root,
+            cancellationToken: TestContext.Current.CancellationToken);
         var persisted = await context
             .Set<BroadScopeNode>()
             .AsNoTracking()
@@ -263,14 +270,17 @@ public abstract partial class NativeTrackedIdentityGuardTests
         await using var context = await _fixture.CreateContextAsync<ConvertedBroadScopeContext>(
             Engine,
             static options => new ConvertedBroadScopeContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var firstScope = new BroadScope($"SCALAR-STALE-{root}");
         var secondScope = new BroadScope(firstScope.Value.ToLowerInvariant());
         var treeId = Guid.NewGuid();
-        await SeedPairRootAsync(context, firstScope, treeId, root);
-        await SeedPairRootAsync(context, secondScope, treeId, root);
+        await SeedPairRootAsync(context, firstScope, treeId, root,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await SeedPairRootAsync(context, secondScope, treeId, root,
+            cancellationToken: TestContext.Current.CancellationToken);
         var tracked = await context
             .Set<BroadScopeNode>()
             .AsNoTracking()
@@ -355,16 +365,19 @@ public abstract partial class NativeTrackedIdentityGuardTests
     }
 
     /// <summary>Creates actual scoped roots through the public insertion and registry contracts.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task SeedTinyScopesAsync(
         DbContext context,
         Guid treeId,
         int root,
-        int scopes
+        int scopes,
+        CancellationToken cancellationToken
     )
     {
         for (var index = 0; index < scopes; index++)
         {
-            await SeedPairRootAsync(context, new BroadScope($"TINY-{root}-{index:D4}"), treeId, root);
+            await SeedPairRootAsync(context, new BroadScope($"TINY-{root}-{index:D4}"), treeId, root,
+                cancellationToken: cancellationToken);
         }
     }
 }

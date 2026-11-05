@@ -25,7 +25,7 @@ public sealed class SingleInsertScaleTests : ProviderTest,
     public async Task SingleInsertAllocationPerUnrelatedTrackedEntityStaysBounded()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var baseline = database.CreateContext();
         var baselineHierarchy = baseline
             .NestedSet<TreeNode>()

@@ -21,15 +21,20 @@ public sealed partial class AncestorIndexLifecycleTests
         await using var database = await AncestorIndexDatabase.CreateAsync(
             _fixture,
             engine,
+            cancellationToken: TestContext.Current.CancellationToken,
             options => options.AddInterceptors(probe));
 
-        await using var context = await CreatePendingParentMoveAsync(database);
+        await using var context = await CreatePendingParentMoveAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         probe.Armed = true;
 
         // Act
         await context.SaveChangesAsync(CancellationToken.None);
         probe.Armed = false;
-        var persisted = await ReadLifecycleStatesAsync(context);
+        var persisted = await ReadLifecycleStatesAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tracked = ReadTrackedLifecycleStates(context);
         var original = ReadOriginalLifecycleStates(context);
 
@@ -60,10 +65,15 @@ public sealed partial class AncestorIndexLifecycleTests
         await using var database = await AncestorIndexDatabase.CreateAsync(
             _fixture,
             engine,
+            cancellationToken: TestContext.Current.CancellationToken,
             options => options.AddInterceptors(probe));
 
-        await using var context = await CreatePendingParentMoveAsync(database);
-        var persistedBefore = await ReadLifecycleStatesAsync(context);
+        await using var context = await CreatePendingParentMoveAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var persistedBefore = await ReadLifecycleStatesAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var pendingBefore = ReadTrackedLifecycleStates(context);
         var originalBefore = ReadOriginalLifecycleStates(context);
         probe.Armed = true;
@@ -71,7 +81,9 @@ public sealed partial class AncestorIndexLifecycleTests
         // Act
         var exception = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
         probe.Armed = false;
-        var persisted = await ReadLifecycleStatesAsync(context);
+        var persisted = await ReadLifecycleStatesAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tracked = ReadTrackedLifecycleStates(context);
         var original = ReadOriginalLifecycleStates(context);
 
@@ -104,22 +116,31 @@ public sealed partial class AncestorIndexLifecycleTests
         await using var database = await AncestorIndexDatabase.CreateAsync(
             _fixture,
             engine,
+            cancellationToken: TestContext.Current.CancellationToken,
             options => options.AddInterceptors(probe));
 
-        await using var context = await CreatePendingParentMoveAsync(database);
-        var persistedBefore = await ReadLifecycleStatesAsync(context);
+        await using var context = await CreatePendingParentMoveAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var persistedBefore = await ReadLifecycleStatesAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var pendingBefore = ReadTrackedLifecycleStates(context);
         var originalBefore = ReadOriginalLifecycleStates(context);
         probe.Armed = true;
         var priorFailure = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
         probe.Armed = false;
-        var restoredDatabase = await ReadLifecycleStatesAsync(context);
+        var restoredDatabase = await ReadLifecycleStatesAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var restoredTracked = ReadTrackedLifecycleStates(context);
         var restoredOriginal = ReadOriginalLifecycleStates(context);
 
         // Act
         await context.SaveChangesAsync(CancellationToken.None);
-        var persisted = await ReadLifecycleStatesAsync(context);
+        var persisted = await ReadLifecycleStatesAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tracked = ReadTrackedLifecycleStates(context);
         var original = ReadOriginalLifecycleStates(context);
 
@@ -139,20 +160,23 @@ public sealed partial class AncestorIndexLifecycleTests
     }
 
     /// <summary>Creates the shared migrated topology and one detected pending cross-tree parent edit.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="database">The isolated database used by the scenario.</param>
     private static async Task<AncestorIndexContext> CreatePendingParentMoveAsync(
-        AncestorIndexDatabase database
+        AncestorIndexDatabase database,
+        CancellationToken cancellationToken
     )
     {
         var chain = database.Scaffold(true, "AncestorLateStructuralRollback");
-        await database.MigrateAsync(chain);
+        await database.MigrateAsync(chain, cancellationToken: cancellationToken);
         var context = database.CreateContext();
 
         try
         {
-            await SeedAsync(context);
+            await SeedAsync(context, cancellationToken: cancellationToken);
             await context
                 .Set<MigrationNode>()
-                .LoadAsync(CancellationToken.None);
+                .LoadAsync(cancellationToken);
 
             var moved = context
                 .ChangeTracker
@@ -186,8 +210,11 @@ public sealed partial class AncestorIndexLifecycleTests
     }
 
     /// <summary>Reads the complete structural and generated state without tracker identity resolution.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
     private static Task<LifecycleState[]> ReadLifecycleStatesAsync(
-        AncestorIndexContext context
+        AncestorIndexContext context,
+        CancellationToken cancellationToken
     ) => context
         .Set<MigrationNode>()
         .AsNoTracking()
@@ -202,7 +229,7 @@ public sealed partial class AncestorIndexLifecycleTests
             x.Depth,
             x.Position,
             EF.Property<bool>(x, AncestorIndexContext.FlagProperty)))
-        .ToArrayAsync(CancellationToken.None);
+        .ToArrayAsync(cancellationToken);
 
     /// <summary>Captures CLR structure and the current generated shadow sidecar.</summary>
     private static LifecycleState[] ReadTrackedLifecycleStates(

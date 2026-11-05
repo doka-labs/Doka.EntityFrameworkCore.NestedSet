@@ -25,7 +25,7 @@ public abstract class ErrorContractTests : ProviderTest
     public async Task UnacquiredWriteLockReportsItsOwnCode()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new LockCommandFailureProbe();
         await using var context = database.CreateContext(probe);
         var service = context
@@ -52,7 +52,7 @@ public abstract class ErrorContractTests : ProviderTest
     public async Task ProviderLockFailureRemainsUnwrapped()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var failure = new LockProviderFailureException();
         var probe = new LockCommandFailureProbe(failure);
         await using var context = database.CreateContext(probe);
@@ -80,7 +80,7 @@ public abstract class ErrorContractTests : ProviderTest
     public async Task MovingUnderADescendantReportsACycleAndPreservesTheTree()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var service = context
             .NestedSet<TreeNode>()
@@ -114,7 +114,7 @@ public abstract class ErrorContractTests : ProviderTest
     public async Task OtherScopeNodeReportsNotFoundWithoutLeakingScopeOrKey()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var source = context
             .NestedSet<TreeNode>()
@@ -147,7 +147,7 @@ public abstract class ErrorContractTests : ProviderTest
     public async Task InvalidBoundsReportInvalidStructure()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var service = context
             .NestedSet<TreeNode>()
@@ -177,7 +177,7 @@ public abstract class ErrorContractTests : ProviderTest
     public async Task TrackedHierarchyReportsInvalidContext()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var service = context
             .NestedSet<TreeNode>()
@@ -205,7 +205,7 @@ public abstract class ErrorContractTests : ProviderTest
     public async Task AmbientTransactionReportsInvalidTransaction()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var service = context
             .NestedSet<TreeNode>()
@@ -228,7 +228,7 @@ public abstract class ErrorContractTests : ProviderTest
     public async Task RepeatedImportEntityReportsInvalidImport()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var service = context
             .NestedSet<TreeNode>()
@@ -258,7 +258,9 @@ public abstract class ErrorContractTests : ProviderTest
     public async Task StrictPlacementReportsManualPlacementNotAllowed()
     {
         // Arrange
-        await using var context = await _ordering.ResetAsync(Engine);
+        await using var context = await _ordering.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var service = context
             .NestedSet<OrderingNode>()
             .ForScope(1);

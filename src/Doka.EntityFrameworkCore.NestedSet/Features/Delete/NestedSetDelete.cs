@@ -32,7 +32,7 @@ internal sealed class NestedSetDelete<TEntity, TKey, TTreeId, TScope>
     /// <returns>A task that completes after the atomic deletion.</returns>
     internal Task DeleteAsync(
         TKey key,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     ) => _store.ExecuteMutationAsync(
         _executor,
         async token =>
@@ -149,7 +149,7 @@ internal sealed class NestedSetDelete<TEntity, TKey, TTreeId, TScope>
     /// <returns>A task that completes after the atomic deletion.</returns>
     internal Task DeleteSubtreeAsync(
         TKey key,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     ) => _store.ExecuteMutationAsync(
         _executor,
         async token =>

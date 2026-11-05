@@ -36,7 +36,9 @@ public sealed partial class QueryPlanReplayTests
         try
         {
             // Act
-            await CompositionCapacityProfiles.RetainFailureAsync(context, "PostgreSql", profile, probe, original, 1);
+            await CompositionCapacityProfiles.RetainFailureAsync(context, "PostgreSql", profile, probe, original,
+                cancellationToken: TestContext.Current.CancellationToken,
+                1);
             var evidence = await File.ReadAllTextAsync(path, CancellationToken.None);
 
             // Assert

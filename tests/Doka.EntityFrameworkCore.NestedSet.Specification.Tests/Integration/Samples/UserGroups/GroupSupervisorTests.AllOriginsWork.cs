@@ -20,9 +20,13 @@ public abstract partial class GroupSupervisorTests
         const int origins = 1_000;
         var probe = new SupervisorCommandProbe();
         var plans = new EnterpriseProbe(captureParameterBindings: true);
-        await using var context = await CreateAsync(probe, plans);
+        await using var context = await CreateAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            plans);
+
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await SeedOriginProfileAsync(context, data, origins, fields);
+        await SeedOriginProfileAsync(context, data, origins, fields,
+            cancellationToken: TestContext.Current.CancellationToken);
         var expectedOrigins = await context.UserGroupMemberships
             .Where(member => member.TenantId == data.TenantId && member.UserId == data.Users[0])
             .Select(member => member.UserGroupId).Order().ToArrayAsync(CancellationToken.None);
@@ -42,8 +46,9 @@ public abstract partial class GroupSupervisorTests
         if (Engine is "MySql" or "MariaDb")
         {
             await context.Database.OpenConnectionAsync(CancellationToken.None);
-            calibration = await CalibrateRankingHandlersAsync(context, data.Users[0]);
-            before = await ReadRankingHandlersAsync(context);
+            calibration = await CalibrateRankingHandlersAsync(context, data.Users[0],
+                cancellationToken: TestContext.Current.CancellationToken);
+            before = await ReadRankingHandlersAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         }
 
         var index = plans.Commands.Count;
@@ -64,7 +69,8 @@ public abstract partial class GroupSupervisorTests
                 failure.Add(plans.Commands[index]);
                 try
                 {
-                    failure.Add(await EstimatedOriginPlanAsync(context, plans, index));
+                    failure.Add(await EstimatedOriginPlanAsync(context, plans, index,
+                        cancellationToken: TestContext.Current.CancellationToken));
                 }
                 catch (Exception captureError)
                 {
@@ -74,17 +80,22 @@ public abstract partial class GroupSupervisorTests
             }
 
             await QueryPlanTestSupport.WriteEvidenceAsync(
-                $"{Engine}-usergroups-all-origins-failed-{fields}", failure);
+                $"{Engine}-usergroups-all-origins-failed-{fields}", failure,
+                cancellationToken: TestContext.Current.CancellationToken);
 
             throw;
         }
 
-        var handlers = before is null ? null : RankingHandlerDelta(before, await ReadRankingHandlersAsync(context));
+        var handlers = before is null ? null : RankingHandlerDelta(before, await ReadRankingHandlersAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken));
+
         var commandCount = probe.Commands.Count;
         var readerAdvances = probe.ReaderAdvances;
         var sql = plans.Commands[index];
         var bytes = Encoding.UTF8.GetByteCount(sql);
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, plans, index, Engine);
+        var plan = await QueryPlanTestSupport.ExplainAsync(context, plans, index, Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await QueryPlanTestSupport.WriteEvidenceAsync($"{Engine}-usergroups-all-origins-{fields}",
         [
             $"Origins={origins}; fields={fields}; SQL={bytes} B; linearWorkBudget={linearWorkBudget}",
@@ -92,7 +103,7 @@ public abstract partial class GroupSupervisorTests
             "Calibration status-only delta: " + FormatRankingHandlers(calibration?.Empty),
             "Calibration fully drained fixture-lookup delta: " + FormatRankingHandlers(calibration?.Lookup),
             sql, plan,
-        ]);
+        ], cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(App.SupervisorBatchStatus.Completed, result.Status);

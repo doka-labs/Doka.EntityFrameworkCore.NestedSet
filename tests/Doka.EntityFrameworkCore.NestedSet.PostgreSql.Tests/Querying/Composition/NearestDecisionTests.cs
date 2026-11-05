@@ -29,7 +29,8 @@ public sealed class NearestDecisionTests : ProviderTest
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
         await using var context = await CompositionTestData.CreateContextAsync(
-            _fixture, Engine, scope, probe, hidden: mode == "hidden-path" ? 2 : null);
+            _fixture, Engine, scope, probe, hidden: mode == "hidden-path" ? 2 : null,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var treeId = await context.Set<CompositionNode>().Where(node => node.Scope == scope && node.Id == 1)
             .Select(node => node.TreeId).SingleAsync(CancellationToken.None);

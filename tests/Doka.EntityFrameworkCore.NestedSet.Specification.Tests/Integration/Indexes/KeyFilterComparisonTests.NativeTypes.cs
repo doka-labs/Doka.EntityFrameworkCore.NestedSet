@@ -45,33 +45,47 @@ public abstract partial class KeyFilterComparisonTests
         int count
     ) => key switch
     {
-        "Int64" => CompareNativeAsync(Engine, count, index => (long)int.MaxValue + index),
-        "Int16" => CompareNativeAsync(Engine, count, index => (short)index),
-        "Byte" => CompareNativeAsync(Engine, count, index => (byte)index),
-        "Boolean" => CompareNativeAsync(Engine, count, index => index % 2 == 0),
-        "Decimal" => CompareNativeAsync(Engine, count, index => index / 10m),
-        "Single" => CompareNativeAsync(Engine, count, index => index / 4f),
-        "Double" => CompareNativeAsync(Engine, count, index => index / 4d),
-        "DateTime" => CompareNativeAsync(Engine, count, index => DateTime.UnixEpoch.AddDays(index)),
-        "DateTimeOffset" => CompareNativeAsync(Engine, count, index => DateTimeOffset.UnixEpoch.AddDays(index)),
-        "DateOnly" => CompareNativeAsync(Engine, count, index => DateOnly.FromDayNumber(730000 + index)),
-        "TimeOnly" => CompareNativeAsync(Engine, count, index => TimeOnly.FromTimeSpan(TimeSpan.FromMinutes(index))),
-        "TimeSpan" => CompareNativeAsync(Engine, count, index => TimeSpan.FromMinutes(index)),
+        "Int64" => CompareNativeAsync(Engine, count, index => (long)int.MaxValue + index,
+            cancellationToken: TestContext.Current.CancellationToken),
+        "Int16" => CompareNativeAsync(Engine, count, index => (short)index,
+            cancellationToken: TestContext.Current.CancellationToken),
+        "Byte" => CompareNativeAsync(Engine, count, index => (byte)index,
+            cancellationToken: TestContext.Current.CancellationToken),
+        "Boolean" => CompareNativeAsync(Engine, count, index => index % 2 == 0,
+            cancellationToken: TestContext.Current.CancellationToken),
+        "Decimal" => CompareNativeAsync(Engine, count, index => index / 10m,
+            cancellationToken: TestContext.Current.CancellationToken),
+        "Single" => CompareNativeAsync(Engine, count, index => index / 4f,
+            cancellationToken: TestContext.Current.CancellationToken),
+        "Double" => CompareNativeAsync(Engine, count, index => index / 4d,
+            cancellationToken: TestContext.Current.CancellationToken),
+        "DateTime" => CompareNativeAsync(Engine, count, index => DateTime.UnixEpoch.AddDays(index),
+            cancellationToken: TestContext.Current.CancellationToken),
+        "DateTimeOffset" => CompareNativeAsync(Engine, count, index => DateTimeOffset.UnixEpoch.AddDays(index),
+            cancellationToken: TestContext.Current.CancellationToken),
+        "DateOnly" => CompareNativeAsync(Engine, count, index => DateOnly.FromDayNumber(730000 + index),
+            cancellationToken: TestContext.Current.CancellationToken),
+        "TimeOnly" => CompareNativeAsync(Engine, count, index => TimeOnly.FromTimeSpan(TimeSpan.FromMinutes(index)),
+            cancellationToken: TestContext.Current.CancellationToken),
+        "TimeSpan" => CompareNativeAsync(Engine, count, index => TimeSpan.FromMinutes(index),
+            cancellationToken: TestContext.Current.CancellationToken),
         _ => throw new ArgumentOutOfRangeException(nameof(key)),
     };
 
     /// <summary>
     /// Runs exactly one arrange, comparison, and assertion sequence for a discovered native key case.
     /// </summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private async Task CompareNativeAsync<TKey>(
         string engine,
         int count,
-        Func<int, TKey> createKey
+        Func<int, TKey> createKey,
+        CancellationToken cancellationToken
     )
         where TKey : struct
     {
         // Arrange
-        var database = await _fixture.ResetAsync(engine);
+        var database = await _fixture.ResetAsync(engine, cancellationToken: cancellationToken);
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder().ConfigureTestWarnings();
         var connection = source.Database.GetConnectionString()!;
@@ -105,7 +119,7 @@ public abstract partial class KeyFilterComparisonTests
             context.Model.FindEntityType(typeof(NativeKeyNode<TKey>))!);
         await context
             .GetService<IRelationalDatabaseCreator>()
-            .CreateTablesAsync(CancellationToken.None);
+            .CreateTablesAsync(cancellationToken);
 
         try
         {
@@ -126,11 +140,12 @@ public abstract partial class KeyFilterComparisonTests
                         Right = (index * 2) + 2,
                         Position = index,
                     },
-                    CancellationToken.None);
+                    cancellationToken);
             }
 
-            await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
-            await QueryPlanTestSupport.RefreshStatisticsAsync<NativeKeyNode<TKey>>(context, engine);
+            await context.SavePrecomputedHierarchyAsync(cancellationToken);
+            await QueryPlanTestSupport.RefreshStatisticsAsync<NativeKeyNode<TKey>>(context, engine,
+                cancellationToken: cancellationToken);
             context.ChangeTracker.Clear();
             var evidence = new List<string>();
             var keys = values
@@ -144,11 +159,11 @@ public abstract partial class KeyFilterComparisonTests
                 engine,
                 nameof(NativeKeyNode<>.Id),
                 keys,
-                evidence);
+                evidence, cancellationToken: cancellationToken);
 
             await QueryPlanTestSupport.WriteEvidenceAsync(
                 $"{engine}-native-key-filter-{typeof(TKey).Name}-{count}",
-                evidence);
+                evidence, cancellationToken: cancellationToken);
 
             // Assert
             Assert.Equal(keys.Length, equality.Length);
@@ -164,7 +179,7 @@ public abstract partial class KeyFilterComparisonTests
             foreach (var entity in context.Model.GetEntityTypes())
             {
                 var drop = "DROP TABLE " + sql.DelimitIdentifier(entity.GetTableName()!, entity.GetSchema());
-                await context.Database.ExecuteSqlRawAsync(drop, CancellationToken.None);
+                await context.Database.ExecuteSqlRawAsync(drop, cancellationToken);
             }
         }
     }

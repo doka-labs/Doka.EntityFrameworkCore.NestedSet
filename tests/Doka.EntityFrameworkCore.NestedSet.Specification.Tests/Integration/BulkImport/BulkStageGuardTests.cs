@@ -18,7 +18,9 @@ public abstract partial class BulkStageGuardTests : ProviderTest
     public async Task CallbackCannotChangeParentToComparerEqualDatabaseDistinctKey()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await context.AddRangeAsync(
             [
                 new BulkStageTextNode
@@ -87,7 +89,9 @@ public abstract partial class BulkStageGuardTests : ProviderTest
     public async Task CallbackCannotChangeScopeToComparerEqualDatabaseDistinctValue()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = context
             .NestedSet<BulkStageTextNode>()
             .ForScope("A");
@@ -129,7 +133,9 @@ public abstract partial class BulkStageGuardTests : ProviderTest
     public async Task CallbackCannotMutateStagedBinaryParentInPlace()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await context.AddRangeAsync(
             [
                 new BulkStageBinaryParent
@@ -198,7 +204,9 @@ public abstract partial class BulkStageGuardTests : ProviderTest
     public async Task CallbackCannotMutateStagedBinaryScopeInPlace()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         byte[] scope = [1];
         var tree = context
             .NestedSet<BulkStageBinaryScope>()
@@ -243,7 +251,9 @@ public abstract partial class BulkStageGuardTests : ProviderTest
     public async Task UnchangedStagedValuesRetainCustomComparerSupport()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await context.AddAsync(
             new BulkStageTextNode
             {
@@ -279,7 +289,9 @@ public abstract partial class BulkStageGuardTests : ProviderTest
     public async Task EquivalentBinaryScopeReplacementRemainsSupported()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         byte[] scope = [1];
         var tree = context
             .NestedSet<BulkStageBinaryScope>()

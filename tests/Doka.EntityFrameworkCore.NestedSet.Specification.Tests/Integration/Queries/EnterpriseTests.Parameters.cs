@@ -10,7 +10,7 @@ public abstract partial class EnterpriseTests
     public async Task RuntimeScopesAndKeysUseParametersWithReusableSqlShape()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
         await setup.AddRangeAsync(
             [

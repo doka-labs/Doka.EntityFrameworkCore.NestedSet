@@ -10,7 +10,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task ConcurrentTreeChangeHasDistinctErrorCode()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using (var setup = database.CreateContext())
         {
             var hierarchy = setup
@@ -70,7 +70,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task ConcurrentRootMoveDoesNotReportTreeIdUnavailable()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using (var setup = database.CreateContext())
         {
             var hierarchy = setup
@@ -126,7 +126,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task OpposingCrossTreeMovesDoNotDeadlock()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using (var setup = database.CreateContext())
         {
             var hierarchy = setup

@@ -9,15 +9,17 @@ public sealed class BulkStageGuardFixture : IAsyncLifetime
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
     /// <summary>Resets guard tables without restarting a shared fixture-owned database engine.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     public async Task<BulkStageGuardContext> ResetAsync(
-        string engine
+        string engine,
+        CancellationToken cancellationToken
     )
     {
         var create = !_databases.TryGetValue(engine, out var database);
 
         if (create)
         {
-            database = await TestDatabase.CreateAsync(engine);
+            database = await TestDatabase.CreateAsync(engine, cancellationToken: cancellationToken);
             _databases.Add(engine, database);
         }
 
@@ -34,35 +36,35 @@ public sealed class BulkStageGuardFixture : IAsyncLifetime
         {
             await context
                 .GetService<IRelationalDatabaseCreator>()
-                .CreateTablesAsync(CancellationToken.None);
+                .CreateTablesAsync(cancellationToken);
         }
 
         await context
             .Set<BulkStageTextNode>()
             .ExecuteUpdateAsync(
                 setters => setters.SetProperty(node => node.ParentId, (string?)null),
-                CancellationToken.None);
+                cancellationToken);
 
         await context
             .Set<BulkStageTextNode>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(cancellationToken);
 
         await context
             .Set<BulkStageBinaryParent>()
             .ExecuteUpdateAsync(
                 setters => setters.SetProperty(node => node.ParentId, (byte[]?)null),
-                CancellationToken.None);
+                cancellationToken);
 
         await context
             .Set<BulkStageBinaryParent>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(cancellationToken);
 
         await context
             .Set<BulkStageBinaryScope>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(cancellationToken);
 
         // WHY: Fresh import cases must not inherit active identities or tombstones from a previous case.
-        await NestedSetTestInfrastructure.ClearRegistriesAsync(context, CancellationToken.None);
+        await NestedSetTestInfrastructure.ClearRegistriesAsync(context, cancellationToken);
 
         return context;
     }

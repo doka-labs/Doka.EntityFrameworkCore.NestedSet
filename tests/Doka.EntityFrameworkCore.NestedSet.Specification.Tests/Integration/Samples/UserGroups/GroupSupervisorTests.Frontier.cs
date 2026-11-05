@@ -18,9 +18,10 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await SeedOriginProfileAsync(context, data, 1, fields);
+        await SeedOriginProfileAsync(context, data, 1, fields,
+            cancellationToken: TestContext.Current.CancellationToken);
         var leaf = await context.UserGroupMemberships
             .Where(member => member.TenantId == data.TenantId && member.UserId == data.Users[0])
             .Select(member => member.UserGroupId)
@@ -82,7 +83,7 @@ public abstract partial class GroupSupervisorTests
 
         await context.SaveChangesAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
-        await EnableSnapshotAsync(context);
+        await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var matches = s_profileFields.Take(fields).Select(field => new App.MetadataMatch(
             App.MetadataOwner.SourceUser, field, App.MetadataOwner.CandidateMembership, field)).ToArray();
 
@@ -138,7 +139,7 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var secondTree = Guid.NewGuid();
         var hierarchy = context.NestedSet<App.UserGroup>().ForScope(data.TenantId);
@@ -189,7 +190,7 @@ public abstract partial class GroupSupervisorTests
         }, CancellationToken.None);
         await context.SaveChangesAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
-        await EnableSnapshotAsync(context);
+        await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var original = ChainRequest(data, false);
         var steps = original.Steps.Select(step => step with { OnDay = null }).ToArray();
         var request = original with { Steps = steps };

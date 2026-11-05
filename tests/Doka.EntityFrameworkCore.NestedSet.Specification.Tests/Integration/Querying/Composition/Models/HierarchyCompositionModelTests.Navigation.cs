@@ -28,7 +28,7 @@ public abstract partial class HierarchyCompositionModelTests
             {
                 materialized++;
             }
-        });
+        }, cancellationToken: TestContext.Current.CancellationToken);
 
         materialized = 0;
         var nodes = context.Set<CompositionNavigationNode>().Where(node => node.Scope == scope && node.TreeId == tree);
@@ -83,7 +83,8 @@ public abstract partial class HierarchyCompositionModelTests
         var probe = new CompositionCommandProbe();
         var materialized = 0;
         await using var context = await CreateNavigationContextAsync(
-            scope, tree, selection, probe, _ => materialized++);
+            scope, tree, selection, probe, _ => materialized++,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         materialized = 0;
         var nodes = context.Set<CompositionNavigationNode>().Where(node => node.Scope == scope && node.TreeId == tree);
@@ -139,11 +140,14 @@ public abstract partial class HierarchyCompositionModelTests
         Guid tree,
         string selection,
         CompositionCommandProbe probe,
-        Action<object> materialized
+        Action<object> materialized,
+        CancellationToken cancellationToken
     )
     {
         var context = await _fixture.CreateContextAsync<CompositionNavigationContext>(Engine,
-            static options => new CompositionNavigationContext(options), probe, TestMaterializationObserver.Instance);
+            static options => new CompositionNavigationContext(options),
+            cancellationToken: cancellationToken,
+            probe, TestMaterializationObserver.Instance);
 
         TestMaterializationObserver.Instance.Register(context, materialized);
 
@@ -181,10 +185,10 @@ public abstract partial class HierarchyCompositionModelTests
                     });
                 }
 
-                await context.AddAsync(node, CancellationToken.None);
+                await context.AddAsync(node, cancellationToken);
             }
 
-            await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+            await context.SavePrecomputedHierarchyAsync(cancellationToken);
             context.ChangeTracker.Clear();
             probe.Reset();
 

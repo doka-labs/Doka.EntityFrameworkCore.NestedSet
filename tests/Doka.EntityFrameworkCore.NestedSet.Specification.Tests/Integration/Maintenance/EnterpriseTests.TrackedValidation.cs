@@ -17,11 +17,14 @@ public abstract partial class EnterpriseTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(3));
+        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(3),
+            cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
-        await using var transaction = caller ? await BeginCallerAsync(context) : null;
+        await using var transaction = caller ? await BeginCallerAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken) : null;
+
         var tracked = await context
             .Set<TreeNode>()
             .SingleAsync(node => node.NodeId == 2, CancellationToken.None);

@@ -16,7 +16,9 @@ public abstract partial class AncestorIndexQueryTests
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
         await using var context = await _fixture.CreateContextAsync<AncestorIndexScopeQueryContext>(Engine,
-            static options => new AncestorIndexScopeQueryContext(options), probe);
+            static options => new AncestorIndexScopeQueryContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
 
         foreach (var identity in new[] { scope, foreignScope })
         {

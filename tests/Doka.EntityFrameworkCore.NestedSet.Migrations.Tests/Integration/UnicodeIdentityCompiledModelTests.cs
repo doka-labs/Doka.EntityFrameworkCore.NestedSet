@@ -28,7 +28,9 @@ public sealed class UnicodeIdentityCompiledModelTests
     )
     {
         // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync(engine, qualifySchema: false);
+        await using var database = await _fixture.CreateDatabaseAsync(engine, qualifySchema: false,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var design = CreateContext(database, engine);
         var model = CompiledModelTestSupport.Generate(design);
         await using var context = CreateContext(database, engine, model);
@@ -77,7 +79,9 @@ public sealed class UnicodeIdentityCompiledModelTests
     )
     {
         // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync(engine, qualifySchema: false);
+        await using var database = await _fixture.CreateDatabaseAsync(engine, qualifySchema: false,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var design = CreateContext(database, engine);
         var model = CompiledModelTestSupport.Generate(design);
         await using var context = CreateContext(database, engine, model);
@@ -114,7 +118,9 @@ public sealed class UnicodeIdentityCompiledModelTests
     )
     {
         // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync("PostgreSql", qualifySchema: false);
+        await using var database = await _fixture.CreateDatabaseAsync("PostgreSql", qualifySchema: false,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<UnicodeIdentityAliasCompiledContext>().UseNpgsql(
             source.Database.GetConnectionString()!,

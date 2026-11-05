@@ -7,7 +7,9 @@ public abstract partial class BulkStageGuardTests
     public async Task ComparerEqualOriginalValuesDoNotPreventExactStaging()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await context.AddAsync(
             new BulkStageTextNode
             {
@@ -53,7 +55,9 @@ public abstract partial class BulkStageGuardTests
     public async Task RejectedCallbackRestoresComparerEqualOriginalRepresentations()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await context.AddAsync(
             new BulkStageTextNode
             {
@@ -112,7 +116,9 @@ public abstract partial class BulkStageGuardTests
     public async Task InitiallySharedBinaryScopeCannotMutateServiceArgument()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         byte[] scope = [1];
         var tree = context
             .NestedSet<BulkStageBinaryScope>()

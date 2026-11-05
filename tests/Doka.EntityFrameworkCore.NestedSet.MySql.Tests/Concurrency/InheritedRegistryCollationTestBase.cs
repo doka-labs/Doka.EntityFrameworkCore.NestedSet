@@ -22,7 +22,8 @@ public abstract class InheritedRegistryCollationTestBase : ProviderTest
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<InheritedBinaryScopeContext>(
-            Engine, static options => new InheritedBinaryScopeContext(options));
+            Engine, static options => new InheritedBinaryScopeContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var root = Interlocked.Add(ref s_nextRoot, 1000);
         var firstScope = new BroadScope($"REGISTRY-INHERITED-{root}");
@@ -84,26 +85,35 @@ public abstract class InheritedRegistryCollationTestBase : ProviderTest
         // Arrange
         var probe = new EnterpriseProbe();
         await using var context = await _fixture.CreateContextAsync<InheritedBinaryScopeContext>(
-            Engine, static options => new InheritedBinaryScopeContext(options), probe);
+            Engine, static options => new InheritedBinaryScopeContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
 
         var root = Interlocked.Add(ref s_nextRoot, 1000);
         var firstScope = new BroadScope($"REGISTRY-ORDER-{root}");
         var secondScope = new BroadScope(firstScope.Value.ToLowerInvariant());
         var treeId = Guid.NewGuid();
-        var firstState = await SeedRootAsync(context, firstScope, treeId, root, "First root");
-        var secondState = await SeedRootAsync(context, secondScope, treeId, root + 10, "Second root");
+        var firstState = await SeedRootAsync(context, firstScope, treeId, root, "First root",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var secondState = await SeedRootAsync(context, secondScope, treeId, root + 10, "Second root",
+            cancellationToken: TestContext.Current.CancellationToken);
+
         BroadScope[] scopes = reverseRequests ? [secondScope, firstScope] : [firstScope, secondScope];
         var requests = Requests(context, scopes, treeId, NestedSetTreeLockMode.Existing);
         ClearCaptures(probe);
 
         // Act
-        await AcquireAsync(context, requests);
+        await AcquireAsync(context, requests, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(new[] { firstScope.Value, secondScope.Value }, LockScopes(probe));
-        Assert.Equal(firstState, await ReadRootAsync(context, firstScope, treeId));
-        Assert.Equal(secondState, await ReadRootAsync(context, secondScope, treeId));
-        Assert.Equal(2, await RegistryCountAsync(context, treeId));
+        Assert.Equal(firstState, await ReadRootAsync(context, firstScope, treeId,
+            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(secondState, await ReadRootAsync(context, secondScope, treeId,
+            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(2, await RegistryCountAsync(context, treeId,
+            cancellationToken: TestContext.Current.CancellationToken));
         Assert.Empty(context.ChangeTracker.Entries());
         Assert.Null(context.Database.CurrentTransaction);
     }
@@ -115,24 +125,31 @@ public abstract class InheritedRegistryCollationTestBase : ProviderTest
         // Arrange
         var probe = new EnterpriseProbe();
         await using var context = await _fixture.CreateContextAsync<ExplicitRegistryScopeCollationContext>(
-            Engine, static options => new ExplicitRegistryScopeCollationContext(options), probe);
+            Engine, static options => new ExplicitRegistryScopeCollationContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
 
         var root = Interlocked.Add(ref s_nextRoot, 1000);
         var scope = new BroadScope($"REGISTRY-OVERRIDE-{root}");
         var alias = new BroadScope(scope.Value.ToLowerInvariant());
         var treeId = Guid.NewGuid();
-        var before = await SeedRootAsync(context, scope, treeId, root, "Existing root");
+        var before = await SeedRootAsync(context, scope, treeId, root, "Existing root",
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var requests = Requests(context, [scope, alias], treeId, NestedSetTreeLockMode.Existing);
         ClearCaptures(probe);
 
         // Act
-        await AcquireAsync(context, requests);
+        await AcquireAsync(context, requests, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(new[] { scope.Value }, LockScopes(probe));
-        Assert.Equal(before, await ReadRootAsync(context, scope, treeId));
-        Assert.Equal(before, await ReadRootAsync(context, alias, treeId));
-        Assert.Equal(1, await RegistryCountAsync(context, treeId));
+        Assert.Equal(before, await ReadRootAsync(context, scope, treeId,
+            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(before, await ReadRootAsync(context, alias, treeId,
+            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(1, await RegistryCountAsync(context, treeId,
+            cancellationToken: TestContext.Current.CancellationToken));
         Assert.Empty(context.ChangeTracker.Entries());
         Assert.Null(context.Database.CurrentTransaction);
     }
@@ -143,13 +160,16 @@ public abstract class InheritedRegistryCollationTestBase : ProviderTest
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<ExplicitRegistryScopeCollationContext>(
-            Engine, static options => new ExplicitRegistryScopeCollationContext(options));
+            Engine, static options => new ExplicitRegistryScopeCollationContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var root = Interlocked.Add(ref s_nextRoot, 1000);
         var scope = new BroadScope($"REGISTRY-DUPLICATE-{root}");
         var alias = new BroadScope(scope.Value.ToLowerInvariant());
         var treeId = Guid.NewGuid();
-        var before = await SeedRootAsync(context, scope, treeId, root, "Existing root");
+        var before = await SeedRootAsync(context, scope, treeId, root, "Existing root",
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var rejected = new BroadScopeNode { Id = root + 10, Name = "Rejected root" };
         var rejectedBefore = Snapshot(rejected);
 
@@ -161,9 +181,12 @@ public abstract class InheritedRegistryCollationTestBase : ProviderTest
         Assert.Equal(NestedSetErrorCode.TreeIdUnavailable, Assert.IsType<NestedSetException>(failure).Code);
         Assert.Equal(rejectedBefore, Snapshot(rejected));
         Assert.Equal(EntityState.Detached, context.Entry(rejected).State);
-        Assert.Equal(before, await ReadRootAsync(context, scope, treeId));
-        Assert.Equal(before, await ReadRootAsync(context, alias, treeId));
-        Assert.Equal(1, await RegistryCountAsync(context, treeId));
+        Assert.Equal(before, await ReadRootAsync(context, scope, treeId,
+            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(before, await ReadRootAsync(context, alias, treeId,
+            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(1, await RegistryCountAsync(context, treeId,
+            cancellationToken: TestContext.Current.CancellationToken));
         Assert.Empty(context.ChangeTracker.Entries());
         Assert.Null(context.Database.CurrentTransaction);
     }
@@ -175,7 +198,9 @@ public abstract class InheritedRegistryCollationTestBase : ProviderTest
         // Arrange
         var probe = new EnterpriseProbe();
         await using var context = await _fixture.CreateContextAsync<ExplicitRegistryScopeCollationContext>(
-            Engine, static options => new ExplicitRegistryScopeCollationContext(options), probe);
+            Engine, static options => new ExplicitRegistryScopeCollationContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
 
         var root = Interlocked.Add(ref s_nextRoot, 1000);
         var scope = new BroadScope($"REGISTRY-IMPORT-{root}");
@@ -195,23 +220,31 @@ public abstract class InheritedRegistryCollationTestBase : ProviderTest
         Assert.Empty(await context.NestedSet<BroadScopeNode>().ForScope(scope).InTree(treeId).Nodes
             .ToArrayAsync(CancellationToken.None));
 
-        Assert.Equal(0, await RegistryCountAsync(context, treeId));
+        Assert.Equal(0, await RegistryCountAsync(context, treeId,
+            cancellationToken: TestContext.Current.CancellationToken));
         Assert.Empty(context.ChangeTracker.Entries());
         Assert.Null(context.Database.CurrentTransaction);
     }
 
     /// <summary>Seeds through the public mutation contract without retaining arrangement-owned tracked nodes.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="scope">The hierarchy scope used by the scenario.</param>
+    /// <param name="treeId">The hierarchy tree identity.</param>
+    /// <param name="key">The synthetic primary key.</param>
+    /// <param name="name">The synthetic object or scenario name.</param>
     private static async Task<RootState> SeedRootAsync(
         BroadScopeContext context,
         BroadScope scope,
         Guid treeId,
         int key,
-        string name
+        string name,
+        CancellationToken cancellationToken
     )
     {
         var root = new BroadScopeNode { Id = key, Name = name };
         await context.NestedSet<BroadScopeNode>().ForScope(scope)
-            .InsertRootAsync(root, treeId, CancellationToken.None);
+            .InsertRootAsync(root, treeId, cancellationToken);
 
         var state = Snapshot(root);
 
@@ -236,11 +269,15 @@ public abstract class InheritedRegistryCollationTestBase : ProviderTest
     }
 
     /// <summary>Exercises native deduplication and acquisition inside the normal transaction owner.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="requests">The complete typed tree-lock requests.</param>
     private static Task AcquireAsync(
         BroadScopeContext context,
-        IReadOnlyList<INestedSetTreeLockRequest> requests
+        IReadOnlyList<INestedSetTreeLockRequest> requests,
+        CancellationToken cancellationToken
     ) => NestedSetTransaction.ExecuteAsync(context,
-        token => NestedSetTreeLocks.AcquireAsync(context, requests, token), CancellationToken.None);
+        token => NestedSetTreeLocks.AcquireAsync(context, requests, token), cancellationToken);
 
     /// <summary>Discards arrangement-only observations without altering database or tracked state.</summary>
     private static void ClearCaptures(EnterpriseProbe probe)
@@ -260,23 +297,39 @@ public abstract class InheritedRegistryCollationTestBase : ProviderTest
             .ToArray();
 
     /// <summary>Reads complete root structure through the public Scope and TreeId query contract.</summary>
-    private static async Task<RootState> ReadRootAsync(BroadScopeContext context, BroadScope scope, Guid treeId)
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="scope">The hierarchy scope used by the scenario.</param>
+    /// <param name="treeId">The hierarchy tree identity.</param>
+    private static async Task<RootState> ReadRootAsync(
+        BroadScopeContext context,
+        BroadScope scope,
+        Guid treeId,
+        CancellationToken cancellationToken
+    )
     {
         var root = await context.NestedSet<BroadScopeNode>().ForScope(scope).InTree(treeId).Nodes
-            .SingleAsync(CancellationToken.None);
+            .SingleAsync(cancellationToken);
 
         return Snapshot(root);
     }
 
     /// <summary>Counts only the test's fresh TreeId across the model's own physical registry.</summary>
-    private static Task<int> RegistryCountAsync(BroadScopeContext context, Guid treeId)
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="treeId">The hierarchy tree identity.</param>
+    private static Task<int> RegistryCountAsync(
+        BroadScopeContext context,
+        Guid treeId,
+        CancellationToken cancellationToken
+    )
     {
         var hierarchy = context.Model.FindEntityType(typeof(BroadScopeNode))!;
         var registry = NestedSetTreeRegistryMapping.For(hierarchy).Registry;
 
         return context.Set<NestedSetTreeRegistry>(registry.Name)
             .Where(row => EF.Property<Guid>(row, NestedSetTreeRegistryMetadata.TreeId) == treeId)
-            .CountAsync(CancellationToken.None);
+            .CountAsync(cancellationToken);
     }
 
     /// <summary>Preserves every hierarchy and payload value, including untouched detached input Scope.</summary>

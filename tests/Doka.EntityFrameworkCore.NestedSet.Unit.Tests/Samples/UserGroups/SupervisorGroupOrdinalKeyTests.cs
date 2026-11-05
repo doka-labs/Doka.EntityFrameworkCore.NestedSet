@@ -78,7 +78,7 @@ public sealed class SupervisorGroupOrdinalKeyTests
             1,
             6,
             0,
-            1);
+            1, cancellationToken: TestContext.Current.CancellationToken);
         await InsertGroupAsync(context,
             tenant,
             tree,
@@ -87,7 +87,7 @@ public sealed class SupervisorGroupOrdinalKeyTests
             2,
             5,
             1,
-            1);
+            1, cancellationToken: TestContext.Current.CancellationToken);
         await InsertGroupAsync(context,
             tenant,
             tree,
@@ -96,7 +96,7 @@ public sealed class SupervisorGroupOrdinalKeyTests
             3,
             4,
             2,
-            2);
+            2, cancellationToken: TestContext.Current.CancellationToken);
         await context.Database.ExecuteSqlRawAsync(
             """
             INSERT INTO "UserGroupMemberships" ("TenantId", "UserId", "UserGroupId", "LeadershipPriority", "Visible")
@@ -141,6 +141,16 @@ public sealed class SupervisorGroupOrdinalKeyTests
     }
 
     /// <summary>Inserts one trusted SQLite fixture row with parameterized scalar values.</summary>
+    /// <param name="context">The context used by this fixture operation.</param>
+    /// <param name="tenant">The tenant key of the inserted group.</param>
+    /// <param name="tree">The tree identity of the inserted group.</param>
+    /// <param name="key">The assigned group key.</param>
+    /// <param name="parent">The optional direct parent key.</param>
+    /// <param name="left">The precomputed left interval bound.</param>
+    /// <param name="right">The precomputed right interval bound.</param>
+    /// <param name="depth">The precomputed hierarchy depth.</param>
+    /// <param name="type">The synthetic group-type key.</param>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
     private static Task<int> InsertGroupAsync(
         UserGroupContext context,
         Guid tenant,
@@ -150,7 +160,8 @@ public sealed class SupervisorGroupOrdinalKeyTests
         long left,
         long right,
         int depth,
-        int type
+        int type,
+        CancellationToken cancellationToken
     ) => context.Database.ExecuteSqlRawAsync(
         """
         INSERT INTO "UserGroups" ("Id", "TenantId", "TreeId", "ParentId", "Name", "Left", "Right", "Depth",
@@ -165,5 +176,5 @@ public sealed class SupervisorGroupOrdinalKeyTests
             },
             $"Group {key}", left, right, depth, DateTime.UnixEpoch, type,
         ],
-        CancellationToken.None);
+        cancellationToken);
 }

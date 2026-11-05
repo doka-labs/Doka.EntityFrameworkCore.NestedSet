@@ -24,7 +24,8 @@ public abstract class SharedTypeManagedSaveTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<SortedSharedContext>(
             Engine,
-            static options => new SortedSharedContext(options));
+            static options => new SortedSharedContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var treeId = Guid.NewGuid();
         var hierarchy = context.NestedSet<SharedSaveNode>(SortedSharedContext.FolderEntity);
@@ -142,7 +143,8 @@ public abstract class SharedTypeManagedSaveTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<PropertyBagSaveContext>(
             Engine,
-            static options => new PropertyBagSaveContext(options));
+            static options => new PropertyBagSaveContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var sourceTree = Guid.NewGuid();
         var targetTree = Guid.NewGuid();

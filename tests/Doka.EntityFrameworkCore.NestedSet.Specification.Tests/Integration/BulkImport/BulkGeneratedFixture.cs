@@ -9,8 +9,10 @@ public sealed class BulkGeneratedFixture : IAsyncLifetime
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
     /// <summary>Clears the import mapping and returns an independent context with optional command observers.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     public async Task<BulkGeneratedContext> ResetAsync(
         string engine,
+        CancellationToken cancellationToken,
         params IInterceptor[] interceptors
     )
     {
@@ -18,7 +20,7 @@ public sealed class BulkGeneratedFixture : IAsyncLifetime
 
         if (create)
         {
-            database = await TestDatabase.CreateAsync(engine);
+            database = await TestDatabase.CreateAsync(engine, cancellationToken: cancellationToken);
             _databases.Add(engine, database);
         }
 
@@ -54,7 +56,7 @@ public sealed class BulkGeneratedFixture : IAsyncLifetime
             {
                 await setup
                     .GetService<IRelationalDatabaseCreator>()
-                    .CreateTablesAsync(CancellationToken.None);
+                    .CreateTablesAsync(cancellationToken);
 
                 if (engine == "Sqlite")
                 {
@@ -64,7 +66,7 @@ public sealed class BulkGeneratedFixture : IAsyncLifetime
                         + "WHEN NEW.Version = OLD.Version BEGIN UPDATE BulkGeneratedNodes "
                         + "SET Version = OLD.Version + 1, Details_Revision = OLD.Details_Revision + 1 "
                         + "WHERE Id = NEW.Id; END",
-                        CancellationToken.None);
+                        cancellationToken);
                 }
             }
 
@@ -72,28 +74,28 @@ public sealed class BulkGeneratedFixture : IAsyncLifetime
                 .Set<BulkGeneratedNode>()
                 .ExecuteUpdateAsync(
                     setters => setters.SetProperty(node => node.ParentId, (int?)null),
-                    CancellationToken.None);
+                    cancellationToken);
             await setup
                 .Set<BulkGeneratedNode>()
-                .ExecuteDeleteAsync(CancellationToken.None);
+                .ExecuteDeleteAsync(cancellationToken);
             await setup
                 .Set<BulkManualNode>()
                 .ExecuteUpdateAsync(
                     setters => setters.SetProperty(node => node.ParentId, (int?)null),
-                    CancellationToken.None);
+                    cancellationToken);
             await setup
                 .Set<BulkManualNode>()
-                .ExecuteDeleteAsync(CancellationToken.None);
+                .ExecuteDeleteAsync(cancellationToken);
             await setup
                 .Set<BulkNavigationNode>()
                 .ExecuteUpdateAsync(
                     setters => setters.SetProperty(node => node.ParentId, (int?)null),
-                    CancellationToken.None);
+                    cancellationToken);
             await setup
                 .Set<BulkNavigationNode>()
-                .ExecuteDeleteAsync(CancellationToken.None);
+                .ExecuteDeleteAsync(cancellationToken);
             // WHY: Fresh import cases must not inherit active identities or tombstones from a previous case.
-            await NestedSetTestInfrastructure.ClearRegistriesAsync(setup, CancellationToken.None);
+            await NestedSetTestInfrastructure.ClearRegistriesAsync(setup, cancellationToken);
         }
 
         return new BulkGeneratedContext(

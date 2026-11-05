@@ -40,7 +40,7 @@ public sealed class UnchangedForeignKeyRollbackAllocationTests
     )
     {
         // Arrange
-        await WarmCaptureMetadataAsync();
+        await WarmCaptureMetadataAsync(cancellationToken: TestContext.Current.CancellationToken);
         await using var context = new HierarchyChangeDetectionTests.SnapshotContext();
         var owner = new HierarchyChangeDetectionTests.ProbeOwner { Id = 7 };
         var entities = Enumerable
@@ -108,8 +108,11 @@ public sealed class UnchangedForeignKeyRollbackAllocationTests
     }
 
     /// <summary>Warms process/model capture metadata without initializing the measured context's native map.</summary>
-    private static async Task WarmCaptureMetadataAsync()
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
+    private static async Task WarmCaptureMetadataAsync(CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         // WHY: First-use shared metadata costs depend on test order. A separate disposed fixture warms
         // that infrastructure while every measured context retains its own cold native dependent map.
         await using var context = new HierarchyChangeDetectionTests.SnapshotContext();

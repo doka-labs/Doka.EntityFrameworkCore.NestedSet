@@ -23,7 +23,9 @@ public abstract partial class HierarchyCompositionModelTests
         var probe = new CompositionCommandProbe();
         var materialized = 0;
         await using var context = await _fixture.CreateContextAsync<CompositionBinaryContext>(Engine,
-            static options => new CompositionBinaryContext(options), probe, TestMaterializationObserver.Instance);
+            static options => new CompositionBinaryContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe, TestMaterializationObserver.Instance);
 
         TestMaterializationObserver.Instance.Register(context, _ => materialized++);
         await context.AddRangeAsync(Enumerable.Range(0, 6).Select(depth => new BinaryNode

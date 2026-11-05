@@ -15,8 +15,8 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
     )
     {
         // Arrange
-        await WarmAsync();
-        await WarmDetectedComplexRebindAsync();
+        await WarmAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await WarmDetectedComplexRebindAsync(cancellationToken: TestContext.Current.CancellationToken);
         await using var context = new TopologyContext();
         var payload = CreatePayload(rows);
         var entry = context.Attach(payload);
@@ -91,8 +91,11 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
     }
 
     /// <summary>Warms the actual detected-removal rebind against a separate two-element graph.</summary>
-    private static async Task WarmDetectedComplexRebindAsync()
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
+    private static async Task WarmDetectedComplexRebindAsync(CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         await using var context = new TopologyContext();
         var payload = CreatePayload(2);
         var entry = context.Attach(payload);

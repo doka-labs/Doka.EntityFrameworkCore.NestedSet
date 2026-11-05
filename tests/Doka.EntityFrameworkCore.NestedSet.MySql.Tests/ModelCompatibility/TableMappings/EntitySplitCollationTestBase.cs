@@ -20,7 +20,7 @@ public abstract class EntitySplitCollationTestBase : ProviderTest
     public async Task SecondaryFragmentReservesIndependentCaseDistinctScopes()
     {
         // Arrange
-        await using var context = await CreateContextAsync();
+        await using var context = await CreateContextAsync(cancellationToken: TestContext.Current.CancellationToken);
         var suffix = Guid
             .NewGuid()
             .ToString("N");
@@ -118,7 +118,9 @@ public abstract class EntitySplitCollationTestBase : ProviderTest
         var registry = NestedSetTreeRegistryMapping.For(entityType).Registry;
         var designRegistry = designModel.FindEntityType(registry.Name)!;
         Assert.Equal("utf8mb4_bin", designRegistry.FindProperty(NestedSetTreeRegistryMetadata.Scope)!.GetCollation());
-        var registries = await RegistrySnapshotsAsync(context, treeId);
+        var registries = await RegistrySnapshotsAsync(context, treeId,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         Assert.Equal(
             new[] { scope, lowerScope }.OrderBy(value => value, StringComparer.Ordinal),
             registries.Select(row => row.Scope));
@@ -133,7 +135,7 @@ public abstract class EntitySplitCollationTestBase : ProviderTest
     public async Task SecondaryFragmentRejectsBinaryParentAliasWithoutWrites()
     {
         // Arrange
-        await using var context = await CreateContextAsync();
+        await using var context = await CreateContextAsync(cancellationToken: TestContext.Current.CancellationToken);
         var suffix = Guid
             .NewGuid()
             .ToString("N");
@@ -163,8 +165,12 @@ public abstract class EntitySplitCollationTestBase : ProviderTest
             CancellationToken.None);
 
         context.ChangeTracker.Clear();
-        var before = await TreeSnapshotsAsync(context, scope, treeId);
-        var registryBefore = await RegistrySnapshotsAsync(context, treeId);
+        var before = await TreeSnapshotsAsync(context, scope, treeId,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var registryBefore = await RegistrySnapshotsAsync(context, treeId,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var rejected = RejectedInput("REJECTED-" + suffix);
         var inputBefore = Snapshot(rejected);
 
@@ -178,8 +184,10 @@ public abstract class EntitySplitCollationTestBase : ProviderTest
         Assert.Equal(NestedSetErrorCode.NodeNotFound, Assert.IsType<NestedSetException>(failure).Code);
         Assert.Equal(inputBefore, Snapshot(rejected));
         Assert.Equal(EntityState.Detached, context.Entry(rejected).State);
-        Assert.Equal(before, await TreeSnapshotsAsync(context, scope, treeId));
-        Assert.Equal(registryBefore, await RegistrySnapshotsAsync(context, treeId));
+        Assert.Equal(before, await TreeSnapshotsAsync(context, scope, treeId,
+            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(registryBefore, await RegistrySnapshotsAsync(context, treeId,
+            cancellationToken: TestContext.Current.CancellationToken));
         Assert.True(
             (await hierarchy
                 .InTree(treeId)
@@ -194,7 +202,7 @@ public abstract class EntitySplitCollationTestBase : ProviderTest
     public async Task SecondaryFragmentRejectsDuplicateReservationWithoutWrites()
     {
         // Arrange
-        await using var context = await CreateContextAsync();
+        await using var context = await CreateContextAsync(cancellationToken: TestContext.Current.CancellationToken);
         var suffix = Guid
             .NewGuid()
             .ToString("N");
@@ -216,8 +224,12 @@ public abstract class EntitySplitCollationTestBase : ProviderTest
             CancellationToken.None);
 
         context.ChangeTracker.Clear();
-        var before = await TreeSnapshotsAsync(context, scope, treeId);
-        var registryBefore = await RegistrySnapshotsAsync(context, treeId);
+        var before = await TreeSnapshotsAsync(context, scope, treeId,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var registryBefore = await RegistrySnapshotsAsync(context, treeId,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var rejected = RejectedInput("REJECTED-" + suffix);
         var inputBefore = Snapshot(rejected);
 
@@ -231,8 +243,10 @@ public abstract class EntitySplitCollationTestBase : ProviderTest
         Assert.Equal(NestedSetErrorCode.TreeIdUnavailable, Assert.IsType<NestedSetException>(failure).Code);
         Assert.Equal(inputBefore, Snapshot(rejected));
         Assert.Equal(EntityState.Detached, context.Entry(rejected).State);
-        Assert.Equal(before, await TreeSnapshotsAsync(context, scope, treeId));
-        Assert.Equal(registryBefore, await RegistrySnapshotsAsync(context, treeId));
+        Assert.Equal(before, await TreeSnapshotsAsync(context, scope, treeId,
+            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(registryBefore, await RegistrySnapshotsAsync(context, treeId,
+            cancellationToken: TestContext.Current.CancellationToken));
         Assert.True(
             (await hierarchy
                 .InTree(treeId)
@@ -242,10 +256,11 @@ public abstract class EntitySplitCollationTestBase : ProviderTest
     }
 
     /// <summary>Creates this distinct split model on the existing provider database.</summary>
-    private Task<EntitySplitCollationContext> CreateContextAsync() =>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    private Task<EntitySplitCollationContext> CreateContextAsync(CancellationToken cancellationToken) =>
         _fixture.CreateContextAsync<EntitySplitCollationContext>(
             Engine,
-            static options => new EntitySplitCollationContext(options));
+            static options => new EntitySplitCollationContext(options), cancellationToken: cancellationToken);
 
     /// <summary>Creates distinctive input values so exact rollback cannot be mistaken for a default reset.</summary>
     private static EntitySplitCollationNode RejectedInput(
@@ -273,11 +288,16 @@ public abstract class EntitySplitCollationTestBase : ProviderTest
         node.Payload);
 
     /// <summary>Reads complete persisted entity values without introducing tracked state.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="scope">The hierarchy scope used by the scenario.</param>
+    /// <param name="treeId">The hierarchy tree identity.</param>
     private static async Task<(string Id, string Scope, Guid TreeId, string? Parent, long Left, long Right, int Depth,
         long Position, string Name, string Payload)[]> TreeSnapshotsAsync(
         EntitySplitCollationContext context,
         string scope,
-        Guid treeId
+        Guid treeId,
+        CancellationToken cancellationToken
     )
     {
         var nodes = await context
@@ -285,7 +305,7 @@ public abstract class EntitySplitCollationTestBase : ProviderTest
             .ForScope(scope)
             .InTree(treeId)
             .Nodes
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         return nodes
             .Select(Snapshot)
@@ -293,9 +313,13 @@ public abstract class EntitySplitCollationTestBase : ProviderTest
     }
 
     /// <summary>Captures registry identity, revision, and lifecycle for exact failed-mutation comparison.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="treeId">The hierarchy tree identity.</param>
     private static Task<(string Scope, Guid TreeId, long Revision, byte Lifecycle)[]> RegistrySnapshotsAsync(
         EntitySplitCollationContext context,
-        Guid treeId
+        Guid treeId,
+        CancellationToken cancellationToken
     )
     {
         var hierarchy = context.Model.FindEntityType(typeof(EntitySplitCollationNode))!;
@@ -311,6 +335,6 @@ public abstract class EntitySplitCollationTestBase : ProviderTest
                 EF.Property<Guid>(row, NestedSetTreeRegistryMetadata.TreeId),
                 EF.Property<long>(row, NestedSetTreeRegistryMetadata.Revision),
                 EF.Property<byte>(row, NestedSetTreeRegistryMetadata.Lifecycle)))
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
     }
 }

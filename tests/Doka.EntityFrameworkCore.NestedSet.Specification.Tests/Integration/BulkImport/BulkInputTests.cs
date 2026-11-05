@@ -35,7 +35,7 @@ public abstract class BulkInputTests : ProviderTest
     public async Task EmptyForestDoesNotAccessDatabase()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext(probe);
         var tree = context
@@ -61,7 +61,7 @@ public abstract class BulkInputTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext(probe);
         var tree = context
@@ -115,7 +115,7 @@ public abstract class BulkInputTests : ProviderTest
     public async Task CancellationBeforeImportLeavesInputsDetached()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext(probe);
         var tree = context
@@ -140,7 +140,7 @@ public abstract class BulkInputTests : ProviderTest
     public async Task SavingCallbackCannotAlterManagedScope()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
@@ -177,7 +177,7 @@ public abstract class BulkInputTests : ProviderTest
     public async Task SavingCallbackCannotAddUnplannedSignalNode()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
@@ -217,7 +217,7 @@ public abstract class BulkInputTests : ProviderTest
     public async Task SuccessfulImportRemainsInsideCallerTransaction()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         await using var transaction = await context.Database.BeginTransactionAsync(
             Engine == "Sqlite" ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
@@ -252,7 +252,7 @@ public abstract class BulkInputTests : ProviderTest
     public async Task ImportAllowsUnrelatedTrackedSignalNode()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var foreign = context
             .NestedSet<TreeNode>()

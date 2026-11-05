@@ -49,7 +49,9 @@ public abstract class TpcCollationTestBase : ProviderTest
     public async Task BinaryConcreteTableCanReserveIndependentScopes()
     {
         // Arrange
-        await using var context = await CreateContextAsync(Engine);
+        await using var context = await CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var suffix = Guid
             .NewGuid()
             .ToString("N");
@@ -115,7 +117,9 @@ public abstract class TpcCollationTestBase : ProviderTest
     public async Task CaseInsensitiveConcreteTableRejectsScopeAliasReservation()
     {
         // Arrange
-        await using var context = await CreateContextAsync(Engine);
+        await using var context = await CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var suffix = Guid
             .NewGuid()
             .ToString("N");
@@ -176,7 +180,9 @@ public abstract class TpcCollationTestBase : ProviderTest
     public async Task CaseInsensitiveConcreteParentAcceptsKeyAlias()
     {
         // Arrange
-        await using var context = await CreateContextAsync(Engine);
+        await using var context = await CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var suffix = Guid
             .NewGuid()
             .ToString("N");
@@ -222,7 +228,9 @@ public abstract class TpcCollationTestBase : ProviderTest
     public async Task BinaryConcreteParentRejectsKeyAlias()
     {
         // Arrange
-        await using var context = await CreateContextAsync(Engine);
+        await using var context = await CreateContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var suffix = Guid
             .NewGuid()
             .ToString("N");
@@ -275,9 +283,13 @@ public abstract class TpcCollationTestBase : ProviderTest
     }
 
     /// <summary>Shares one isolated schema while every test selects new Scope and assigned key values.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="engine">The selected database engine.</param>
     private Task<CollatedTpcContext> CreateContextAsync(
-        string engine
-    ) => _fixture.CreateContextAsync<CollatedTpcContext>(engine, static options => new CollatedTpcContext(options));
+        string engine,
+        CancellationToken cancellationToken
+    ) => _fixture.CreateContextAsync<CollatedTpcContext>(engine, static options => new CollatedTpcContext(options),
+        cancellationToken: cancellationToken);
 
     /// <summary>Captures every hierarchy field and payload for exact preservation assertions.</summary>
     private static (string Id, string Scope, Guid TreeId, string? Parent, long Left, long Right, int Depth, long

@@ -25,7 +25,7 @@ public static class BenchmarkProvenance
         DateTimeOffset runStartedAtUtc,
         IReadOnlyList<Summary> summaries,
         string outcome,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -160,7 +160,7 @@ public static class BenchmarkProvenance
     /// <returns>The commit, dirty state and SHA256 identity of the exact working source.</returns>
     public static Task<BenchmarkSourceIdentity> ReadSourceIdentityAsync(
         string directory,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     ) => ReadSourceIdentityAsync(directory, null, cancellationToken);
 
     /// <summary>Excludes this run's generated artifacts while identifying the working source.</summary>

@@ -22,7 +22,9 @@ public abstract partial class SignalReportTests : ProviderTest
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
         var request = data.Request();
         probe.Reset();
@@ -47,7 +49,9 @@ public abstract partial class SignalReportTests : ProviderTest
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 6, false, CancellationToken.None, Guid.NewGuid());
         var request = data.Request() with
         {
@@ -79,7 +83,9 @@ public abstract partial class SignalReportTests : ProviderTest
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 6, false, CancellationToken.None, Guid.NewGuid());
         var first = SignalReportDataset.FirstDay.AddDays(firstAllowedDay);
         await context.LinkAvailability.Where(period => period.TenantId == data.TenantId
@@ -106,7 +112,9 @@ public abstract partial class SignalReportTests : ProviderTest
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 6, false, CancellationToken.None, Guid.NewGuid());
         DateOnly? end = maximumEnd ? DateOnly.MaxValue : null;
         await context.LinkAvailability.Where(period => period.TenantId == data.TenantId
@@ -129,7 +137,9 @@ public abstract partial class SignalReportTests : ProviderTest
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 6, false, CancellationToken.None, Guid.NewGuid());
         context.LinkAvailability.AddRange(
             new LinkWindow
@@ -167,7 +177,9 @@ public abstract partial class SignalReportTests : ProviderTest
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 6, false, CancellationToken.None, Guid.NewGuid());
         context.LinkAvailability.Add(new LinkWindow
         {
@@ -203,7 +215,9 @@ public abstract partial class SignalReportTests : ProviderTest
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 8, true, CancellationToken.None, Guid.NewGuid());
         var request = data.Request(nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any, moduleClass, false) with
         {
@@ -232,7 +246,9 @@ public abstract partial class SignalReportTests : ProviderTest
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 8, true, CancellationToken.None, Guid.NewGuid());
 
         if (matchingOwner)
@@ -260,11 +276,13 @@ public abstract partial class SignalReportTests : ProviderTest
     /// <summary>
     /// Runs one actual sample context in the provider's existing database without duplicating schema setup.
     /// </summary>
-    private Task<SignalLabContext> CreateContextAsync(SignalReportProbe probe)
-        => CreateContextAsync<SignalLabContext>(_fixture, static options => new SignalLabContext(options), probe);
+    private Task<SignalLabContext> CreateContextAsync(SignalReportProbe probe, CancellationToken cancellationToken)
+        => CreateContextAsync<SignalLabContext>(_fixture, static options => new SignalLabContext(options), probe,
+            cancellationToken: cancellationToken);
 
     /// <summary>Creates every sample model with the same observation and snapshot prerequisites.</summary>
     /// <typeparam name="TContext">The normal or indexed sample context.</typeparam>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="database">The shared or case-owned fixture database.</param>
     /// <param name="createContext">Creates the requested context using the fixture's provider options.</param>
     /// <param name="probe">The context-specific materialization and command observer.</param>
@@ -272,12 +290,13 @@ public abstract partial class SignalReportTests : ProviderTest
     private async Task<TContext> CreateContextAsync<TContext>(
         ModelCompatibilityDatabase database,
         Func<DbContextOptions<TContext>, TContext> createContext,
-        SignalReportProbe probe
+        SignalReportProbe probe,
+        CancellationToken cancellationToken
     )
         where TContext : SignalLabContext
     {
         var context = await database.CreateContextAsync(Engine,
-            createContext, probe, TestMaterializationObserver.Instance);
+            createContext, cancellationToken: cancellationToken, probe, TestMaterializationObserver.Instance);
 
         TestMaterializationObserver.Instance.Register(context, probe.Materialized);
 
@@ -285,7 +304,7 @@ public abstract partial class SignalReportTests : ProviderTest
         {
             // WHY: Snapshot is an application database prerequisite, explicitly enabled by this owned test setup only.
             await context.Database.ExecuteSqlRawAsync("ALTER DATABASE CURRENT SET ALLOW_SNAPSHOT_ISOLATION ON",
-                CancellationToken.None);
+                cancellationToken);
         }
 
         return context;

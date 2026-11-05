@@ -24,7 +24,9 @@ public abstract partial class AncestorIndexQueryTests
         var scope = Guid.NewGuid();
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, tree, probe);
+        await using var context = await CreateContextAsync(scope, tree, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNavigationNode>().ForScope(scope).InTree(tree);
         var facts = context.Set<CompositionNavigationItem>().Where(fact => fact.Scope == scope && fact.NodeId == 3);
         var pairs = capturedFacts
@@ -82,7 +84,9 @@ public abstract partial class AncestorIndexQueryTests
         var scope = Guid.NewGuid();
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, tree, probe);
+        await using var context = await CreateContextAsync(scope, tree, probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<CompositionNavigationNode>().ForScope(scope).InTree(tree);
         var facts = context.Set<CompositionNavigationItem>().Where(fact => fact.Scope == scope && fact.NodeId == 3);
         var owners = capturedFacts

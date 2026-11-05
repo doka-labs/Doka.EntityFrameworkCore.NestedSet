@@ -3,20 +3,25 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public abstract partial class SaveChangesTests
 {
     /// <summary>Creates an isolated real-provider tree before any tracked recovery state is loaded.</summary>
-    private async Task<TestDatabase> CreateTableSharingRecoveryDatabaseAsync(string shape)
+    private async Task<TestDatabase> CreateTableSharingRecoveryDatabaseAsync(
+        string shape,
+        CancellationToken cancellationToken
+    )
     {
-        var database = await TestDatabase.CreateAsync(Engine);
+        var database = await TestDatabase.CreateAsync(Engine, cancellationToken: cancellationToken);
 
         try
         {
-            await using var context = await CreateTableSharingRecoveryContextAsync(database, shape);
-            await context.GetService<IRelationalDatabaseCreator>().CreateTablesAsync(CancellationToken.None);
+            await using var context = await CreateTableSharingRecoveryContextAsync(database, shape,
+                cancellationToken: cancellationToken);
+
+            await context.GetService<IRelationalDatabaseCreator>().CreateTablesAsync(cancellationToken);
             var tree = context.NestedSet<TableSharingRecoveryNode>();
             await tree.InsertRootAsync(NewTableSharingRecoveryNode(shape, 1, "Root"), s_treeId,
-                CancellationToken.None);
+                cancellationToken);
 
-            await tree.InsertChildAsync(NewTableSharingRecoveryNode(shape, 2, "Alpha"), 1, CancellationToken.None);
-            await tree.InsertChildAsync(NewTableSharingRecoveryNode(shape, 3, "Bravo"), 1, CancellationToken.None);
+            await tree.InsertChildAsync(NewTableSharingRecoveryNode(shape, 2, "Alpha"), 1, cancellationToken);
+            await tree.InsertChildAsync(NewTableSharingRecoveryNode(shape, 3, "Bravo"), 1, cancellationToken);
 
             if (shape == "split")
             {
@@ -26,7 +31,7 @@ public abstract partial class SaveChangesTests
                 var update = $"UPDATE {sql.DelimitIdentifier("NavigationSaveNodes")} "
                     + $"SET {sql.DelimitIdentifier("PeerValue")} = {{0}}";
 
-                await context.Database.ExecuteSqlRawAsync(update, ["original peer"], CancellationToken.None);
+                await context.Database.ExecuteSqlRawAsync(update, ["original peer"], cancellationToken);
             }
 
             return database;
@@ -53,10 +58,13 @@ public abstract partial class SaveChangesTests
     private static async Task<TableSharingRecoveryContext> CreateTableSharingRecoveryContextAsync(
         TestDatabase database,
         string shape,
+        CancellationToken cancellationToken,
         params IInterceptor[] interceptors
     )
     {
-        var options = new DbContextOptionsBuilder(await SaveSemanticsFixture.OptionsAsync(database, interceptors))
+        var options = new DbContextOptionsBuilder(await SaveSemanticsFixture.OptionsAsync(database,
+            cancellationToken: cancellationToken,
+            interceptors))
             .ReplaceService<IModelCacheKeyFactory, TestModelCacheKeyFactory>().Options;
 
         return new TableSharingRecoveryContext(options, shape);
@@ -65,7 +73,8 @@ public abstract partial class SaveChangesTests
     /// <summary>Loads the actual sharing peer before marking only the principal's order property.</summary>
     private static async Task<TableSharingRecoveryGraph> PrepareTableSharingRecoveryAsync(
         TableSharingRecoveryContext context,
-        string shape
+        string shape,
+        CancellationToken cancellationToken
     )
     {
         var query = context.Set<TableSharingRecoveryNode>().AsQueryable();
@@ -79,7 +88,7 @@ public abstract partial class SaveChangesTests
             query = query.Include(node => node.Peer);
         }
 
-        var node = await query.SingleAsync(value => value.Id == 2, CancellationToken.None);
+        var node = await query.SingleAsync(value => value.Id == 2, cancellationToken);
         context.ChangeTracker.AutoDetectChangesEnabled = false;
         var entry = context.Entry(node);
         var name = entry.Property(value => value.Name);
@@ -92,27 +101,36 @@ public abstract partial class SaveChangesTests
     }
 
     /// <summary>Changes only the stored token to cause genuine optimistic concurrency in the EF UPDATE.</summary>
-    private static async Task ChangeTableSharingStoredVersionAsync(TestDatabase database, string shape)
+    private static async Task ChangeTableSharingStoredVersionAsync(
+        TestDatabase database,
+        string shape,
+        CancellationToken cancellationToken
+    )
     {
-        await using var external = await CreateTableSharingRecoveryContextAsync(database, shape);
+        await using var external = await CreateTableSharingRecoveryContextAsync(database, shape,
+            cancellationToken: cancellationToken);
+
         var sql = external.GetService<ISqlGenerationHelper>();
         var update = $"UPDATE {sql.DelimitIdentifier("NavigationSaveNodes")} "
             + $"SET {sql.DelimitIdentifier("Version")} = {{0}} WHERE {sql.DelimitIdentifier("Id")} = {{1}}";
 
-        await external.Database.ExecuteSqlRawAsync(update, [8, 2], CancellationToken.None);
+        await external.Database.ExecuteSqlRawAsync(update, [8, 2], cancellationToken);
     }
 
     /// <summary>Reads stored rows and both sides of the shared token independently of the tracked state.</summary>
     private static async Task<TableSharingRecoveryStore> ReadTableSharingRecoveryStoreAsync(
         TestDatabase database,
-        string shape
+        string shape,
+        CancellationToken cancellationToken
     )
     {
-        await using var verification = await CreateTableSharingRecoveryContextAsync(database, shape);
+        await using var verification = await CreateTableSharingRecoveryContextAsync(database, shape,
+            cancellationToken: cancellationToken);
+
         var nodes = await verification.Set<TableSharingRecoveryNode>().OrderBy(node => node.Id)
             .Select(node => new TableSharingRecoveryStoredNode(node.Id, node.TreeId, node.ParentId, node.Name,
                 node.Left, node.Right, node.Depth, node.Position, node.Version, node.Payload))
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         TableSharingRecoveryStoredPayload[] payloads;
 
@@ -120,13 +138,13 @@ public abstract partial class SaveChangesTests
         {
             payloads = await verification.Set<TableSharingRecoveryNode>().OrderBy(node => node.Id)
                 .Select(node => new TableSharingRecoveryStoredPayload(node.Id, node.Owned!.Version, node.Owned.Value))
-                .ToArrayAsync(CancellationToken.None);
+                .ToArrayAsync(cancellationToken);
         }
         else if (shape == "split")
         {
             payloads = await verification.Set<TableSharingRecoveryPeer>().OrderBy(peer => peer.Id)
                 .Select(peer => new TableSharingRecoveryStoredPayload(peer.Id, peer.Version, peer.Value))
-                .ToArrayAsync(CancellationToken.None);
+                .ToArrayAsync(cancellationToken);
         }
         else
         {
@@ -134,7 +152,7 @@ public abstract partial class SaveChangesTests
         }
 
         var validation = await verification.NestedSet<TableSharingRecoveryNode>().InTree(s_treeId)
-            .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+            .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken);
 
         return new TableSharingRecoveryStore(nodes, payloads, validation.TotalIssueCount);
     }

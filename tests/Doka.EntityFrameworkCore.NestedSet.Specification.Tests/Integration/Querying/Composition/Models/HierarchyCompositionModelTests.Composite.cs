@@ -27,6 +27,7 @@ public abstract partial class HierarchyCompositionModelTests
         await using var context = await _fixture.CreateContextAsync<CompositeKeyContext>(
             Engine,
             static options => new CompositeKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe,
             TestMaterializationObserver.Instance);
 
@@ -82,6 +83,7 @@ public abstract partial class HierarchyCompositionModelTests
         await using var context = await _fixture.CreateContextAsync<CompositeKeyContext>(
             Engine,
             static options => new CompositeKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         foreach (var tenant in new[] { scope, otherScope })

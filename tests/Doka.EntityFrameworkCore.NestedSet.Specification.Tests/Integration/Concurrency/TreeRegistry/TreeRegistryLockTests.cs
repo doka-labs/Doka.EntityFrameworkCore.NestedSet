@@ -18,7 +18,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
     public async Task ActiveTreeIdCannotBeReservedAgain()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var treeId = Guid.NewGuid();
         await using (var setup = database.CreateContext())
         {
@@ -51,7 +51,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
     public async Task ExistingLockPreservesExistingRevision()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var treeId = Guid.NewGuid();
         await using (var setup = database.CreateContext())
         {
@@ -64,7 +64,8 @@ public abstract class TreeRegistryLockTests : ProviderTest
         }
 
         await using var context = database.CreateContext();
-        var revisionBefore = await TreeRegistryLockTestSupport.ReadRevisionAsync(context, 7, treeId);
+        var revisionBefore = await TreeRegistryLockTestSupport.ReadRevisionAsync(context, 7, treeId,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         await TreeRegistryLockTestSupport.AcquireAsync(
@@ -76,7 +77,8 @@ public abstract class TreeRegistryLockTests : ProviderTest
 
         // Assert
         await using var verification = database.CreateContext();
-        Assert.Equal(revisionBefore, await TreeRegistryLockTestSupport.ReadRevisionAsync(verification, 7, treeId));
+        Assert.Equal(revisionBefore, await TreeRegistryLockTestSupport.ReadRevisionAsync(verification, 7, treeId,
+            cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Explicitly reserving a new tree creates its registry without a structural revision.</summary>
@@ -84,7 +86,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
     public async Task NewReservationStartsAtRevisionZero()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var treeId = Guid.NewGuid();
         await using var context = database.CreateContext();
 
@@ -98,7 +100,8 @@ public abstract class TreeRegistryLockTests : ProviderTest
 
         // Assert
         await using var verification = database.CreateContext();
-        Assert.Equal(0, await TreeRegistryLockTestSupport.ReadRevisionAsync(verification, 7, treeId));
+        Assert.Equal(0, await TreeRegistryLockTestSupport.ReadRevisionAsync(verification, 7, treeId,
+            cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>A tombstone rejects operations that require an existing active tree.</summary>
@@ -106,7 +109,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
     public async Task TombstonedTreeIdRejectsExistingLock()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var treeId = Guid.NewGuid();
         await using (var setup = database.CreateContext())
         {
@@ -117,7 +120,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
                 NestedSetTreeLockMode.New,
                 CancellationToken.None);
 
-            await TombstoneAsync(setup, 7, treeId);
+            await TombstoneAsync(setup, 7, treeId, cancellationToken: TestContext.Current.CancellationToken);
         }
 
         await using var context = database.CreateContext();
@@ -139,7 +142,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
     public async Task TombstonedTreeIdRejectsNewReservation()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var treeId = Guid.NewGuid();
         await using (var setup = database.CreateContext())
         {
@@ -150,7 +153,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
                 NestedSetTreeLockMode.New,
                 CancellationToken.None);
 
-            await TombstoneAsync(setup, 7, treeId);
+            await TombstoneAsync(setup, 7, treeId, cancellationToken: TestContext.Current.CancellationToken);
         }
 
         await using var context = database.CreateContext();
@@ -172,7 +175,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
     public async Task FixtureSeedRejectsTombstonedTreeId()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var treeId = Guid.NewGuid();
         await using (var setup = database.CreateContext())
         {
@@ -183,11 +186,12 @@ public abstract class TreeRegistryLockTests : ProviderTest
                 NestedSetTreeLockMode.New,
                 CancellationToken.None);
 
-            await TombstoneAsync(setup, 7, treeId);
+            await TombstoneAsync(setup, 7, treeId, cancellationToken: TestContext.Current.CancellationToken);
         }
 
         await using var context = database.CreateContext();
-        var revisionBefore = await TreeRegistryLockTestSupport.ReadRevisionAsync(context, 7, treeId);
+        var revisionBefore = await TreeRegistryLockTestSupport.ReadRevisionAsync(context, 7, treeId,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         await context.AddAsync(
             new TreeNode
@@ -206,7 +210,8 @@ public abstract class TreeRegistryLockTests : ProviderTest
         // Assert
         Assert.Equal(NestedSetErrorCode.TreeIdUnavailable, Assert.IsType<NestedSetException>(failure).Code);
         await using var verification = database.CreateContext();
-        Assert.Equal(revisionBefore, await TreeRegistryLockTestSupport.ReadRevisionAsync(verification, 7, treeId));
+        Assert.Equal(revisionBefore, await TreeRegistryLockTestSupport.ReadRevisionAsync(verification, 7, treeId,
+            cancellationToken: TestContext.Current.CancellationToken));
         Assert.Empty(await verification.Set<TreeNode>().ToArrayAsync(CancellationToken.None));
     }
 
@@ -218,7 +223,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
     public async Task DifferentTreesInSameScopeDoNotShareALibraryLock()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var firstTree = Guid.NewGuid();
         var secondTree = Guid.NewGuid();
         await using (var setup = database.CreateContext())
@@ -263,7 +268,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
     public async Task OppositeMultiTreeRequestsCompleteWithoutDeadlock()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var firstTree = Guid.Parse("11111111-1111-1111-1111-111111111111");
         var secondTree = Guid.Parse("22222222-2222-2222-2222-222222222222");
         await using (var setup = database.CreateContext())
@@ -315,7 +320,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
             _ => 2_048,
         };
 
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext(probe);
         var entityType = context.Model.FindEntityType(typeof(TreeNode))!;
@@ -342,7 +347,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
     public async Task RowsetThresholdPreservesStringScopeLockOrder()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var treeId = Guid.NewGuid();
         var comparedScopes = new[] { "a", "B" };
         var scopes = Enumerable
@@ -415,10 +420,12 @@ public abstract class TreeRegistryLockTests : ProviderTest
         .ToArray();
 
     /// <summary>Marks an existing registry identity as deleted through its named shared entity mapping.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task TombstoneAsync(
         TreeContext context,
         int scope,
-        Guid treeId
+        Guid treeId,
+        CancellationToken cancellationToken
     )
     {
         var hierarchy = context.Model.FindEntityType(typeof(TreeNode))!;
@@ -431,6 +438,6 @@ public abstract class TreeRegistryLockTests : ProviderTest
                 setters => setters.SetProperty(
                     row => EF.Property<byte>(row, "Lifecycle"),
                     NestedSetTreeRegistryMetadata.Tombstoned),
-                CancellationToken.None);
+                cancellationToken);
     }
 }

@@ -46,21 +46,21 @@ public class ManualDetectionSaveBenchmarks : DatabaseBenchmark
     }
 
     /// <inheritdoc />
-    public override async Task PrepareAsync()
+    public override async Task PrepareAsync(CancellationToken cancellationToken)
     {
         _completed = SaveOperation.None;
 
         // WHY: Setup must not inherit the previous measured iteration's setting while rebuilding the catalog.
         Fixture.Context.ChangeTracker.AutoDetectChangesEnabled = true;
-        await base.PrepareAsync();
+        await base.PrepareAsync(cancellationToken);
 
         var key = Shape == BenchmarkShape.Deep ? Fixture.LeafKey : 3;
-        _node = await Fixture.Context.Nodes.SingleAsync(value => value.Id == key, CancellationToken.None);
+        _node = await Fixture.Context.Nodes.SingleAsync(value => value.Id == key, cancellationToken);
         Fixture.Context.ChangeTracker.AutoDetectChangesEnabled = false;
     }
 
     /// <inheritdoc />
-    public override async Task VerifyAsync()
+    public override async Task VerifyAsync(CancellationToken cancellationToken)
     {
         BenchmarkFixture.Require(_completed != SaveOperation.None, "The measured save did not execute.");
         BenchmarkFixture.Require(
@@ -68,7 +68,7 @@ public class ManualDetectionSaveBenchmarks : DatabaseBenchmark
             "The measured save changed the caller's manual-detection setting.");
 
         BenchmarkFixture.Require(
-            await Fixture.Context.Nodes.CountAsync(CancellationToken.None) == Nodes,
+            await Fixture.Context.Nodes.CountAsync(cancellationToken) == Nodes,
             "The measured save persisted an unexpected node count.");
 
         var key = PreparedNode()
@@ -77,7 +77,7 @@ public class ManualDetectionSaveBenchmarks : DatabaseBenchmark
             .Context
             .Nodes
             .AsNoTracking()
-            .SingleAsync(value => value.Id == key, CancellationToken.None);
+            .SingleAsync(value => value.Id == key, cancellationToken);
 
         BenchmarkFixture.Require(
             _completed == SaveOperation.Parent
@@ -85,7 +85,7 @@ public class ManualDetectionSaveBenchmarks : DatabaseBenchmark
                 : saved is { Name: "000-first", Position: 0 },
             "The explicitly marked hierarchy change did not persist.");
 
-        await base.VerifyAsync();
+        await base.VerifyAsync(cancellationToken);
     }
 
     /// <summary>Requires the unchanged tracked node prepared outside the observation window.</summary>

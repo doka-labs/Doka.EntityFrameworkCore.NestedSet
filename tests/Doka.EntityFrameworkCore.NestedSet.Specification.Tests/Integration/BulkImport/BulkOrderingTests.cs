@@ -18,7 +18,9 @@ public abstract class BulkOrderingTests : ProviderTest
     public async Task StrictForestMergesSubtreesInConfiguredOrder()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine);
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = context.NestedSet<OrderingNode>().ForScope(1);
         await tree.InsertRootAsync(new OrderingNode { Id = 100, Name = "Root" }, Guid.Empty, CancellationToken.None);
         await tree.InsertChildAsync(new OrderingNode { Id = 10, Name = "Middle" }, 100, CancellationToken.None);
@@ -56,7 +58,10 @@ public abstract class BulkOrderingTests : ProviderTest
     public async Task FlexibleForestPreservesExistingManualRelativeOrder()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine, "Flexible");
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "Flexible");
+
         var tree = context.NestedSet<OrderingNode>().ForScope(1);
         await tree.InsertRootAsync(new OrderingNode { Id = 100, Name = "Root" }, Guid.Empty, CancellationToken.None);
         await tree.InsertChildAsync(new OrderingNode { Id = 1, Name = "Alpha" }, 100, CancellationToken.None);
@@ -81,7 +86,10 @@ public abstract class BulkOrderingTests : ProviderTest
     public async Task ConvertedDomainRuleUsesDatabaseRepresentation()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine, "Converted");
+        await using var context = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "Converted");
+
         var tree = context.NestedSet<OrderingNode>().ForScope(1);
         var branch = new NestedSetBranch<OrderingNode>(new OrderingNode { Id = 100 },
         [

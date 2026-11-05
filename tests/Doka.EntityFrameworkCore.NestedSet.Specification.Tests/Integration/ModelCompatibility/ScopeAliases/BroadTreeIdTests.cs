@@ -43,7 +43,8 @@ public abstract class BroadTreeIdTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadTreeIdContext>(
             Engine,
-            static options => new BroadTreeIdContext(options));
+            static options => new BroadTreeIdContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Seed(context, "E", 31);
         Seed(context, "e", 34);
@@ -74,7 +75,8 @@ public abstract class BroadTreeIdTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadTreeIdContext>(
             Engine,
-            static options => new BroadTreeIdContext(options));
+            static options => new BroadTreeIdContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Seed(context, "A", 1);
         Seed(context, "a", 4);
@@ -118,7 +120,8 @@ public abstract class BroadTreeIdTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadTreeIdContext>(
             Engine,
-            static options => new BroadTreeIdContext(options));
+            static options => new BroadTreeIdContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Seed(context, "B", 11);
         Seed(context, "b", 14);
@@ -160,7 +163,8 @@ public abstract class BroadTreeIdTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadTreeIdContext>(
             Engine,
-            static options => new BroadTreeIdContext(options));
+            static options => new BroadTreeIdContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var input = new BroadTreeIdNode
         {
@@ -195,7 +199,8 @@ public abstract class BroadTreeIdTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadTreeIdContext>(
             Engine,
-            static options => new BroadTreeIdContext(options));
+            static options => new BroadTreeIdContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var input = new BroadTreeIdNode
         {

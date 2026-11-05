@@ -21,7 +21,8 @@ public abstract class TpcTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<ConcreteTpcContext>(
             Engine,
-            static options => new ConcreteTpcContext(options));
+            static options => new ConcreteTpcContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<TpcFolderNode>();
         var treeId = Guid.NewGuid();

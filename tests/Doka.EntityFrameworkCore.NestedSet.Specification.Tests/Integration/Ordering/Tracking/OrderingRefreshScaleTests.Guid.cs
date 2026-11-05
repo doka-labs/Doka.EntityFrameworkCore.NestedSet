@@ -9,7 +9,9 @@ public abstract partial class OrderingRefreshScaleTests
     public async Task GuidCollectionParameterPreservesNativeIdentityBeyondScalarLimit()
     {
         // Arrange
-        var database = await _relationalFixture.ResetAsync(Engine);
+        var database = await _relationalFixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var seed = database.CreateContext();
         var keys = Enumerable
             .Range(1, 2200)
@@ -61,7 +63,9 @@ public abstract partial class OrderingRefreshScaleTests
     public async Task GuidOrderingRefreshKeepsExactKeysAcrossBatches()
     {
         // Arrange
-        await using var setup = await _keyFixture.ResetAsync(Engine);
+        await using var setup = await _keyFixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var extensions = setup
             .GetService<IDbContextOptions>()
             .Extensions

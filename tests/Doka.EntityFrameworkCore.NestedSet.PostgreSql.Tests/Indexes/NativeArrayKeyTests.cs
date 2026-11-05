@@ -25,7 +25,7 @@ public sealed class NativeArrayKeyTests : ProviderTest,
     public async Task ArrayKeysUseNativeScalarEquality()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var source = database.CreateContext();
         var probe = new EnterpriseProbe(captureParameterBindings: true);
         var options = new DbContextOptionsBuilder<NativeArrayContext>()

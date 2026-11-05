@@ -42,15 +42,19 @@ public abstract partial class DensePathWorkTestBase : ProviderTest
     {
         // Arrange
         var scenario = DensePathWorkScenario.Chain(shape, nodes);
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var setup = database.CreateContext();
-        await DensePathWorkFixture.SeedAsync(setup, scenario, Engine);
+        await DensePathWorkFixture.SeedAsync(setup, scenario, Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
         var expected = scenario.Expected();
         var required = shape == "DenseOnPath" ? 200 : expected.RequiredEdges;
         var budget = CompositionPlanWorkBudget.ForPaths(nodes, 100, required);
 
         // Act
-        var observation = await ObserveAsync(database, scenario, expected.Rows, budget);
+        var observation = await ObserveAsync(database, scenario, expected.Rows, budget,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         AssertObservation(observation);
@@ -68,9 +72,12 @@ public abstract partial class DensePathWorkTestBase : ProviderTest
     {
         // Arrange
         var scenario = DensePathWorkScenario.Chain(shape, 100_000) with { Forest = true };
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var setup = database.CreateContext();
-        await DensePathWorkFixture.SeedAsync(setup, scenario, Engine);
+        await DensePathWorkFixture.SeedAsync(setup, scenario, Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
         var expected = scenario.Expected();
         var budget = CompositionPlanWorkBudget.ForPaths(
             scenario.StoredNodes,
@@ -80,7 +87,8 @@ public abstract partial class DensePathWorkTestBase : ProviderTest
             expected.RequiredEdges);
 
         // Act
-        var observation = await ObserveAsync(database, scenario, expected.Rows, budget);
+        var observation = await ObserveAsync(database, scenario, expected.Rows, budget,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         AssertObservation(observation);
@@ -107,9 +115,12 @@ public abstract partial class DensePathWorkTestBase : ProviderTest
     {
         // Arrange
         var scenario = DensePathWorkScenario.Disjoint(shape, forest);
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var setup = database.CreateContext();
-        await DensePathWorkFixture.SeedAsync(setup, scenario, Engine);
+        await DensePathWorkFixture.SeedAsync(setup, scenario, Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
         var expected = scenario.Expected();
         var budget = CompositionPlanWorkBudget.ForPaths(
             scenario.StoredNodes,
@@ -119,7 +130,8 @@ public abstract partial class DensePathWorkTestBase : ProviderTest
             expected.RequiredEdges);
 
         // Act
-        var observation = await ObserveAsync(database, scenario, expected.Rows, budget);
+        var observation = await ObserveAsync(database, scenario, expected.Rows, budget,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         AssertObservation(observation);

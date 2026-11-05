@@ -70,7 +70,8 @@ public sealed partial class EngineTestDiscoveryTests
         await using var tracker = new DisposalTracker();
 
         // Act
-        var rows = await attribute.GetSourceData(method.Method, tracker);
+        var rows = await attribute.GetSourceData(method.Method, tracker,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(3, rows.Count);
@@ -96,7 +97,8 @@ public sealed partial class EngineTestDiscoveryTests
         await using var tracker = new DisposalTracker();
 
         // Act
-        var rows = await attribute.GetSourceData(method.Method, tracker);
+        var rows = await attribute.GetSourceData(method.Method, tracker,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var row = Assert.IsType<EngineTheoryDataRow>(Assert.Single(rows));

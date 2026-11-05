@@ -8,7 +8,9 @@ public abstract partial class ContractTests
     public async Task DatabaseGeneratedRootKeyIsReturnedAndDetached()
     {
         // Arrange
-        await using var context = await _fixture.CreateGeneratedContextAsync(Engine);
+        await using var context = await _fixture.CreateGeneratedContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
@@ -36,7 +38,9 @@ public abstract partial class ContractTests
     public async Task DatabaseGeneratedChildKeyIsReturnedAndDetached()
     {
         // Arrange
-        await using var context = await _fixture.CreateGeneratedContextAsync(Engine);
+        await using var context = await _fixture.CreateGeneratedContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
@@ -66,7 +70,9 @@ public abstract partial class ContractTests
     public async Task DatabaseGeneratedKeysSupportValidation()
     {
         // Arrange
-        await using var context = await _fixture.CreateGeneratedContextAsync(Engine);
+        await using var context = await _fixture.CreateGeneratedContextAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);

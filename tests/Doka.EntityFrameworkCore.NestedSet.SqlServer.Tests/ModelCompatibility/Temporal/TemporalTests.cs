@@ -14,7 +14,10 @@ public sealed class TemporalTests : ProviderTest, IClassFixture<ProviderFixture<
     public async Task CurrentTableMutationPreservesTemporalQuerySupportAsync()
     {
         // Arrange
-        var connection = await (await TestDatabaseServers.GetCurrentAsync()).NewConnectionStringAsync(Engine);
+        var connection = await (await TestDatabaseServers.GetCurrentAsync(
+            cancellationToken: TestContext.Current.CancellationToken)).NewConnectionStringAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var options = new DbContextOptionsBuilder<TemporalContext>()
             .ConfigureTestWarnings()
             .UseSqlServer(connection, provider => provider.UseNestedSets())

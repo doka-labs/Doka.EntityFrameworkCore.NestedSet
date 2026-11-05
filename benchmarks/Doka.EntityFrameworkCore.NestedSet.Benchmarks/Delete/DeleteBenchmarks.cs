@@ -26,10 +26,12 @@ public class DeleteBenchmarks : DatabaseBenchmark
     }
 
     /// <inheritdoc />
-    public override async Task PrepareAsync()
+    public override async Task PrepareAsync(
+        CancellationToken cancellationToken
+    )
     {
         _deleted = false;
-        await base.PrepareAsync();
+        await base.PrepareAsync(cancellationToken);
 
         // WHY: Derive expected deletion work outside measurement, independently of persisted interval calculations.
         var descendants = new HashSet<int> { 2 };
@@ -50,16 +52,18 @@ public class DeleteBenchmarks : DatabaseBenchmark
     }
 
     /// <inheritdoc />
-    public override async Task VerifyAsync()
+    public override async Task VerifyAsync(
+        CancellationToken cancellationToken
+    )
     {
         BenchmarkFixture.Require(
-            _deleted && !await Fixture.Context.Nodes.AnyAsync(node => node.Id == 2, CancellationToken.None),
+            _deleted && !await Fixture.Context.Nodes.AnyAsync(node => node.Id == 2, cancellationToken),
             "Deletion did not occur.");
 
         BenchmarkFixture.Require(
-            await Fixture.Context.Nodes.CountAsync(CancellationToken.None) == _expected,
+            await Fixture.Context.Nodes.CountAsync(cancellationToken) == _expected,
             "Deletion removed the wrong number of nodes.");
 
-        await base.VerifyAsync();
+        await base.VerifyAsync(cancellationToken);
     }
 }

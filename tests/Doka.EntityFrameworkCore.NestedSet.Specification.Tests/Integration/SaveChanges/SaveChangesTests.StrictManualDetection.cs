@@ -13,8 +13,10 @@ public abstract partial class SaveChangesTests
     public async Task UnmarkedHierarchyChangesAreRejectedInManualMode(bool parent, bool markedPayload)
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new SaveBoundaryProbe();
         await using var context = CreateManualDetectionContext(setup, wrapped: true, probe);
         var node = await context.Set<OrderingNode>().SingleAsync(value => value.Id == 1, CancellationToken.None);
@@ -72,9 +74,11 @@ public abstract partial class SaveChangesTests
     public async Task MarkedHierarchySavesOnlyExplicitWrites(bool parent, bool currentValue, bool acceptChanges)
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
-        await SeedManualMarkersAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedManualMarkersAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = CreateManualDetectionContext(setup, wrapped: true);
         var node = await context.Set<OrderingNode>().SingleAsync(value => value.Id == 1, CancellationToken.None);
         var rows = await context.Set<OrderingMarker>().OrderBy(value => value.Id).ToArrayAsync(CancellationToken.None);
@@ -132,9 +136,11 @@ public abstract partial class SaveChangesTests
     public async Task ManualCoordinatedCallbacksSaveOnlyExplicitWrites(bool parent, bool interceptor)
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
-        await SeedManualMarkersAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedManualMarkersAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();
         await using var context = CreateManualDetectionContext(setup, wrapped: true, callback);
         var node = await context.Set<OrderingNode>().SingleAsync(value => value.Id == 1, CancellationToken.None);
@@ -198,9 +204,11 @@ public abstract partial class SaveChangesTests
     public async Task ManualHierarchyFailureRestoresExplicitPendingWrites(bool parent)
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
-        await SeedManualMarkersAsync(setup);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedManualMarkersAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var failure = new ManualSaveFailure();
         await using var context = CreateManualDetectionContext(setup, wrapped: true, failure);
         var node = await context.Set<OrderingNode>().SingleAsync(value => value.Id == 1, CancellationToken.None);
@@ -240,16 +248,16 @@ public abstract partial class SaveChangesTests
     }
 
     /// <summary>Seeds foreign payload and explicit update/delete targets before a manual save starts.</summary>
-    private static async Task SeedManualMarkersAsync(DbContext context)
+    private static async Task SeedManualMarkersAsync(DbContext context, CancellationToken cancellationToken)
     {
         await context.AddRangeAsync(
             [
                 new OrderingMarker { Id = 1, Value = "original" },
                 new OrderingMarker { Id = 2, Value = "original" },
                 new OrderingMarker { Id = 3, Value = "original" },
-            ], CancellationToken.None);
+            ], cancellationToken);
 
-        await context.SaveChangesAsync(CancellationToken.None);
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>Marks one hierarchy role using either supported public manual-tracking mechanism.</summary>

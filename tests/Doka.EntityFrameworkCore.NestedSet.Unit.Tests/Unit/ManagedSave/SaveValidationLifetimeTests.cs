@@ -35,7 +35,8 @@ public sealed class SaveValidationLifetimeTests
         state.SaveValidation = previous;
 
         // Act
-        var result = await ObserveBoundaryAsync(context, outcome, stop);
+        var result = await ObserveBoundaryAsync(context, outcome, stop,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result.During);
@@ -68,7 +69,8 @@ public sealed class SaveValidationLifetimeTests
         var factory = services.GetRequiredService<IDbContextFactory<HierarchyChangeDetectionTests.SnapshotContext>>();
 
         // Act
-        var result = await ObservePoolReuseAsync(factory, outcome);
+        var result = await ObservePoolReuseAsync(factory, outcome,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.SameContext);
@@ -145,7 +147,8 @@ public sealed class SaveValidationLifetimeTests
         var factory = services.GetRequiredService<IDbContextFactory<HierarchyChangeDetectionTests.SnapshotContext>>();
 
         // Act
-        var result = await ObserveSynchronousPoolReuseAsync(factory, outcome);
+        var result = await ObserveSynchronousPoolReuseAsync(factory, outcome,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.SameContext);
@@ -204,23 +207,27 @@ public sealed class SaveValidationLifetimeTests
     }
 
     /// <summary>Observes the returned pool slot before another save can replace a retained validation action.</summary>
+    /// <param name="factory">The pooled factory whose lease ownership is observed.</param>
+    /// <param name="outcome">The synthetic success, failure or cancellation case.</param>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
     private static async Task<SynchronousPoolObservation> ObserveSynchronousPoolReuseAsync(
         IDbContextFactory<HierarchyChangeDetectionTests.SnapshotContext> factory,
-        string outcome
+        string outcome,
+        CancellationToken cancellationToken
     )
     {
         HierarchyChangeDetectionTests.SnapshotContext initial;
         NestedSetSaveChanges.SaveState originalState;
         SynchronousObservation first;
 
-        await using (var context = await factory.CreateDbContextAsync(CancellationToken.None))
+        await using (var context = await factory.CreateDbContextAsync(cancellationToken))
         {
             initial = context;
             originalState = StateFor(context);
             first = ObserveSynchronousBoundary(context, outcome);
         }
 
-        await using var next = await factory.CreateDbContextAsync(CancellationToken.None);
+        await using var next = await factory.CreateDbContextAsync(cancellationToken);
         var state = StateFor(next);
 
         return new SynchronousPoolObservation(ReferenceEquals(initial, next),
@@ -232,12 +239,20 @@ public sealed class SaveValidationLifetimeTests
     }
 
     /// <summary>Captures the guard while an actual asynchronous delegate suspension is in progress.</summary>
+    /// <param name="context">The context used by this fixture operation.</param>
+    /// <param name="outcome">The synthetic success, failure or cancellation case.</param>
+    /// <param name="stop">The separate source controlling cancellation within the observed save boundary.</param>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
     private static async Task<BoundaryObservation> ObserveBoundaryAsync(
         HierarchyChangeDetectionTests.SnapshotContext context,
         string outcome,
-        CancellationTokenSource stop
+        CancellationTokenSource stop,
+        CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // WHY: The caller controls fixture entry; stop.Token separately proves the save's exact cancellation identity.
         var state = StateFor(context);
         Action? during = null;
         var active = false;
@@ -266,9 +281,13 @@ public sealed class SaveValidationLifetimeTests
     }
 
     /// <summary>Returns and rents the same real EF pool slot without running another save that masks leakage.</summary>
+    /// <param name="factory">The pooled factory whose lease ownership is observed.</param>
+    /// <param name="outcome">The synthetic success, failure or cancellation case.</param>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
     private static async Task<PoolObservation> ObservePoolReuseAsync(
         IDbContextFactory<HierarchyChangeDetectionTests.SnapshotContext> factory,
-        string outcome
+        string outcome,
+        CancellationToken cancellationToken
     )
     {
         using var stop = new CancellationTokenSource();
@@ -276,14 +295,14 @@ public sealed class SaveValidationLifetimeTests
         NestedSetSaveChanges.SaveState originalState;
         BoundaryObservation first;
 
-        await using (var context = await factory.CreateDbContextAsync(CancellationToken.None))
+        await using (var context = await factory.CreateDbContextAsync(cancellationToken))
         {
             initial = context;
             originalState = StateFor(context);
-            first = await ObserveBoundaryAsync(context, outcome, stop);
+            first = await ObserveBoundaryAsync(context, outcome, stop, cancellationToken: cancellationToken);
         }
 
-        await using var next = await factory.CreateDbContextAsync(CancellationToken.None);
+        await using var next = await factory.CreateDbContextAsync(cancellationToken);
         var state = StateFor(next);
 
         return new PoolObservation(ReferenceEquals(initial, next),

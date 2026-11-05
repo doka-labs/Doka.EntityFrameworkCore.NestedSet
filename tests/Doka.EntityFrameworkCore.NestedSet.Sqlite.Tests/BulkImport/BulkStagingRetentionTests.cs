@@ -20,7 +20,9 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
     public async Task ShadowAssignmentFailureReleasesTheUntrackedRoot()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<ShadowStagingContext>()
             .ConfigureTestWarnings()
@@ -39,7 +41,8 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
         Interlocked.Exchange(ref s_rejectShadowComparison, 1);
 
         // Act
-        var result = await ImportShadowWithoutRetainingInputAsync(context);
+        var result = await ImportShadowWithoutRetainingInputAsync(context,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.IsType<InjectedCommandException>(result.Error);
@@ -64,7 +67,9 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<StagingContext>()
             .ConfigureTestWarnings()
@@ -80,7 +85,8 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
         context.Attach(marker);
 
         // Act
-        var result = await ImportWithoutRetainingInputAsync(context, getter);
+        var result = await ImportWithoutRetainingInputAsync(context, getter,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.Error?.GetBaseException() is InjectedCommandException, result.Error?.ToString());
@@ -105,7 +111,9 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<StagingContext>()
             .ConfigureTestWarnings()
@@ -133,7 +141,8 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
         context.Attach(marker);
 
         // Act
-        var result = await ConflictingImportWithoutRetainingInputAsync(context, alternate);
+        var result = await ConflictingImportWithoutRetainingInputAsync(context, alternate,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.IsType<InvalidOperationException>(result.Error);

@@ -14,19 +14,21 @@ public sealed class RelationalFixture : IAsyncLifetime
 
     /// <summary>Returns an engine with empty entity tables and no nested-set lock rows.</summary>
     /// <param name="engine">The supported engine name.</param>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     /// <returns>The fixture-owned database, whose lifetime must not be disposed by individual cases.</returns>
     public async Task<TestDatabase> ResetAsync(
-        string engine
+        string engine,
+        CancellationToken cancellationToken
     )
     {
         if (!_databases.TryGetValue(engine, out var database))
         {
-            database = await TestDatabase.CreateAsync(engine);
+            database = await TestDatabase.CreateAsync(engine, cancellationToken: cancellationToken);
             _databases.Add(engine, database);
         }
 
         // WHY: Reuse this class's schema while resetting rows; other classes have separate databases on the server.
-        await database.ResetAsync();
+        await database.ResetAsync(cancellationToken: cancellationToken);
 
         return database;
     }

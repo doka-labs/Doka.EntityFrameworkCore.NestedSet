@@ -31,7 +31,8 @@ public sealed partial class QueryPlanReplayTests
         context.Database.SetCommandTimeout(configured);
 
         // Act
-        await QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer");
+        await QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer",
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(4, connection.Commands.Count);
@@ -77,7 +78,8 @@ public sealed partial class QueryPlanReplayTests
         await using var context = CreateStatisticsContext(connection);
 
         // Act
-        await QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer");
+        await QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer",
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Single(parameters);
@@ -113,7 +115,8 @@ public sealed partial class QueryPlanReplayTests
         await using var context = CreateStatisticsContext(connection);
 
         // Act
-        await QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, engine);
+        await QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, engine,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var command = Assert.Single(connection.Commands);

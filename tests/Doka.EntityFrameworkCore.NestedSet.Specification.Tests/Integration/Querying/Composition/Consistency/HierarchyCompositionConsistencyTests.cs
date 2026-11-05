@@ -18,10 +18,12 @@ public abstract partial class HierarchyCompositionConsistencyTests : ProviderTes
     /// <summary>Seeds the shared small tree and one independent payload row in a test-private scope.</summary>
     private async Task<CompositionContext> CreateContextAsync(
         Guid scope,
-        CompositionCommandProbe probe
+        CompositionCommandProbe probe,
+        CancellationToken cancellationToken
     )
     {
-        var context = await CompositionTestData.CreateContextAsync(_fixture, Engine, scope, probe);
+        var context = await CompositionTestData.CreateContextAsync(_fixture, Engine, scope, probe,
+            cancellationToken: cancellationToken);
 
         try
         {
@@ -33,9 +35,9 @@ public abstract partial class HierarchyCompositionConsistencyTests : ProviderTes
                     Date = new DateOnly(2044, 10, 1),
                     Amount = 10,
                 },
-                CancellationToken.None);
+                cancellationToken);
 
-            await context.SaveChangesAsync(CancellationToken.None);
+            await context.SaveChangesAsync(cancellationToken);
             context.ChangeTracker.Clear();
             probe.Reset();
 

@@ -11,7 +11,9 @@ public abstract partial class SignalReportTests
         // Arrange
         const string missing = "Missing-after-catalog-read";
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
         var anchors = data.Anchors.ToArray();
         var criteria = data.Request().Criteria.ToArray();
@@ -52,7 +54,9 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
         context.TagChoices.Add(new TagChoice
         {
@@ -108,7 +112,9 @@ public abstract partial class SignalReportTests
         // Arrange
         const string selected = "x' OR 1=1 --";
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
         var first = SignalReportValidation.Snapshot(data.Request() with
         {
@@ -152,7 +158,9 @@ public abstract partial class SignalReportTests
         // Arrange
         const string missing = "Missing-after-warm-catalog";
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
         var valid = data.Request() with
         {
@@ -190,7 +198,9 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
         Guid[] anchors = [SignalReportDataset.Id(1)];
         TagCriterion[] criteria = [new(SignalReportDataset.ArrayKind, "Band", "Narrow")];

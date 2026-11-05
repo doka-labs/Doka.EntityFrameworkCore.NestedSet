@@ -22,7 +22,9 @@ public sealed class SampleReadSnapshotTests
     public async Task OwnedWalSnapshotPermitsWriterCommitAndRetainsEarlierView(bool alreadyOpen)
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var context = database.CreateContext();
         await context.Database.ExecuteSqlRawAsync(
             "CREATE TABLE SnapshotReadSentinels (Value TEXT NOT NULL); "

@@ -320,12 +320,16 @@ in `Left` preorder. Applying a global business `OrderBy` to the result would no
 longer represent hierarchical traversal.
 
 The facade exposes atomic insert, move, detach, delete, bulk, validation, and
-rebuild operations. `DetachAsTreeAsync(nodeKey, newTreeId)` creates a new tree;
+rebuild operations. `DetachAsTreeAsync(nodeKey, newTreeId, cancellationToken)` creates a new tree;
 `DeleteAsync` promotes children of a non-root; `DeleteSubtreeAsync` deletes one
-branch; and `DeleteTreeAsync(treeId)` retires the complete identity.
+branch; and `DeleteTreeAsync(treeId, cancellationToken)` retires the complete identity.
 Retired TreeIds remain tombstoned. The separately authorized
-`PurgeTreeIdAsync(treeId)` administrative operation removes only an empty,
+`PurgeTreeIdAsync(treeId, cancellationToken)` administrative operation removes only an empty,
 locked tombstone and is required before deliberate identity reuse.
+
+Owned asynchronous operations require an explicit `CancellationToken`. Forward
+the caller's token, or deliberately pass `CancellationToken.None`; EF/.NET
+overrides and interface implementations retain their upstream contract.
 
 ## Ordering and tracked changes
 

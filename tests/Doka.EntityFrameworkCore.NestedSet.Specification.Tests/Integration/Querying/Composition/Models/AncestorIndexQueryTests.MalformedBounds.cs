@@ -15,10 +15,14 @@ public abstract partial class AncestorIndexQueryTests
         var foreignTree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
         await using var context = await _fixture.CreateContextAsync<AncestorIndexMappedContext>(Engine,
-            static options => new AncestorIndexMappedContext(options), probe);
+            static options => new AncestorIndexMappedContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
 
         var bounds = MalformedIntervalTestSupport.Bounds();
-        var nodes = await MalformedIntervalTestSupport.SeedAsync(context, first, tree, foreignTree, bounds);
+        var nodes = await MalformedIntervalTestSupport.SeedAsync(context, first, tree, foreignTree, bounds,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context.NestedSet<EntitySplitNode>();
         var query = includeSelf
             ? hierarchy.SelectAncestorsOrSelf(source => source.Id >= first && source.Id < first + bounds.Length,

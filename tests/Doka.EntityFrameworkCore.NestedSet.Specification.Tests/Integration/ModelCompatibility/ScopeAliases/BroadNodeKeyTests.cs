@@ -45,7 +45,8 @@ public abstract class BroadNodeKeyTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadNodeKeyContext>(
             Engine,
-            static options => new BroadNodeKeyContext(options));
+            static options => new BroadNodeKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<BroadNodeKeyNode>();
         var treeId = Guid.NewGuid();
@@ -80,7 +81,8 @@ public abstract class BroadNodeKeyTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadNodeKeyContext>(
             Engine,
-            static options => new BroadNodeKeyContext(options));
+            static options => new BroadNodeKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var root = new BroadNodeKeyNode { Id = new BroadNodeKey("P") };
         var child = new BroadNodeKeyNode { Id = new BroadNodeKey("Q") };
@@ -121,6 +123,7 @@ public abstract class BroadNodeKeyTests : ProviderTest
         await using var context = await _fixture.CreateContextAsync<BroadNodeKeyContext>(
             Engine,
             static options => new BroadNodeKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var input = new BroadNodeKeyNode { Id = new BroadNodeKey("C") };
@@ -158,6 +161,7 @@ public abstract class BroadNodeKeyTests : ProviderTest
         await using var context = await _fixture.CreateContextAsync<BroadNodeKeyContext>(
             Engine,
             static options => new BroadNodeKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var input = new BroadNodeKeyNode { Id = new BroadNodeKey("D") };
@@ -200,6 +204,7 @@ public abstract class BroadNodeKeyTests : ProviderTest
         await using var context = await _fixture.CreateContextAsync<OrderedBroadNodeKeyContext>(
             Engine,
             static options => new OrderedBroadNodeKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var input = new BroadNodeKeyNode
@@ -244,6 +249,7 @@ public abstract class BroadNodeKeyTests : ProviderTest
         await using var context = await _fixture.CreateContextAsync<OrderedBroadNodeKeyContext>(
             Engine,
             static options => new OrderedBroadNodeKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var input = new BroadNodeKeyNode

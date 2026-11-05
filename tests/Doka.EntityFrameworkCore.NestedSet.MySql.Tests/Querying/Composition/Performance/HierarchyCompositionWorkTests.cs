@@ -37,11 +37,14 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
             .Resolve(configured)
             .ResolveSubtreeQueryStrategy(configured);
 
-        await using var database = await TestDatabase.CreateAsync(Engine);
-        await PreparePairsAsync(database);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await PreparePairsAsync(database, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        var observations = await ObservePairProfilesAsync(database);
+        var observations = await ObservePairProfilesAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         // WHY: The installed typed adapter always exposes the configured family. The MySQL fixture
@@ -52,20 +55,28 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
     }
 
     /// <summary>Prepares the same independent node and payload fixture for both capability contracts.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="database">The isolated database used by the scenario.</param>
     private async Task PreparePairsAsync(
-        TestDatabase database
+        TestDatabase database,
+        CancellationToken cancellationToken
     )
     {
         await using var setup = database.CreateContext();
-        await CapacitySeed.SeedAsync(setup, Nodes);
-        await SeedPayloadAsync(setup);
-        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(setup, Engine);
-        await QueryPlanTestSupport.RefreshStatisticsAsync<UnrelatedRow>(setup, Engine);
+        await CapacitySeed.SeedAsync(setup, Nodes, cancellationToken: cancellationToken);
+        await SeedPayloadAsync(setup, cancellationToken: cancellationToken);
+        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(setup, Engine,
+            cancellationToken: cancellationToken);
+        await QueryPlanTestSupport.RefreshStatisticsAsync<UnrelatedRow>(setup, Engine,
+            cancellationToken: cancellationToken);
     }
 
     /// <summary>Executes every existing profile regardless of whether optimized work can be qualified.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="database">The isolated database used by the scenario.</param>
     private async Task<List<WorkObservation>> ObservePairProfilesAsync(
-        TestDatabase database
+        TestDatabase database,
+        CancellationToken cancellationToken
     )
     {
         var observations = new List<WorkObservation>();
@@ -74,12 +85,15 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
         {
             foreach (var direct in new[] { false, true })
             {
-                observations.Add(await ObservePairsAsync(database, anchors, 100, includeRoot: true, direct));
+                observations.Add(await ObservePairsAsync(database, anchors, 100, includeRoot: true, direct,
+                    cancellationToken: cancellationToken));
             }
         }
 
-        observations.Add(await ObservePairsAsync(database, 1_000, Nodes, includeRoot: true, direct: false));
-        observations.Add(await ObservePairsAsync(database, 1_000, Nodes, includeRoot: false, direct: false));
+        observations.Add(await ObservePairsAsync(database, 1_000, Nodes, includeRoot: true, direct: false,
+            cancellationToken: cancellationToken));
+        observations.Add(await ObservePairsAsync(database, 1_000, Nodes, includeRoot: false, direct: false,
+            cancellationToken: cancellationToken));
 
         return observations;
     }
@@ -96,10 +110,13 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var setup = database.CreateContext();
-        await CapacitySeed.SeedAsync(setup, Nodes, deep: true);
-        await SeedPayloadAsync(setup);
+        await CapacitySeed.SeedAsync(setup, Nodes, deep: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await SeedPayloadAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
 
         if (shape != "CleanLongPath")
         {
@@ -111,8 +128,10 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
                     CancellationToken.None);
         }
 
-        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(setup, Engine);
-        await QueryPlanTestSupport.RefreshStatisticsAsync<UnrelatedRow>(setup, Engine);
+        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(setup, Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await QueryPlanTestSupport.RefreshStatisticsAsync<UnrelatedRow>(setup, Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
         var firstAnchor = shape == "DenseOffPath" ? Nodes - 999 : 1;
         var expected = shape == "DenseOnPath" ? [] : Expected(firstAnchor, 10, Nodes - 9, Nodes);
         var requiredEdges = shape == "DenseOnPath"
@@ -131,19 +150,26 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
             "path-" + shape,
             context => BuildPath(context, firstAnchor),
             expected,
-            budget);
+            budget, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         AssertObservation(observation);
     }
 
     /// <summary>Observes a public subtree composition with a direct predicate or a physical payload join.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="database">The isolated database used by the scenario.</param>
+    /// <param name="anchors">The selected hierarchy anchors.</param>
+    /// <param name="facts">The synthetic consumer fact inputs.</param>
+    /// <param name="includeRoot">Whether the selected hierarchy root participates.</param>
+    /// <param name="direct">Whether the scenario bypasses consumer hierarchy composition.</param>
     private Task<WorkObservation> ObservePairsAsync(
         TestDatabase database,
         int anchors,
         int facts,
         bool includeRoot,
-        bool direct
+        bool direct,
+        CancellationToken cancellationToken
     )
     {
         var firstAnchor = Nodes - anchors + (includeRoot ? 2 : 1);
@@ -158,7 +184,7 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
             profile,
             context => BuildPairs(context, firstAnchor, firstFact, includeRoot, direct),
             expected,
-            budget);
+            budget, cancellationToken: cancellationToken);
     }
 
     /// <summary>Builds the actual library path/ancestor filters after the requested subtree source.</summary>
@@ -318,12 +344,19 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
         .ToArray();
 
     /// <summary>Retains the read-derived native plan before making deterministic work assertions.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="database">The isolated database used by the scenario.</param>
+    /// <param name="profile">The selected synthetic workload profile.</param>
+    /// <param name="build">The query factory used for construction and execution observations.</param>
+    /// <param name="expected">The independently derived expected results.</param>
+    /// <param name="budget">The unchanged native work budget.</param>
     private async Task<WorkObservation> ObserveAsync(
         TestDatabase database,
         string profile,
         Func<TreeContext, IQueryable<CompositionCapacityTotal>> build,
         CompositionCapacityTotal[] expected,
-        CompositionPlanWorkBudget budget
+        CompositionPlanWorkBudget budget,
+        CancellationToken cancellationToken
     )
     {
         var planProbe = new EnterpriseProbe(captureParameterBindings: true);
@@ -335,13 +368,15 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
 
         try
         {
-            actual = await query.ToArrayAsync(CancellationToken.None);
+            actual = await query.ToArrayAsync(cancellationToken);
         }
         catch (Exception error)
         {
+            // WHY: Failure evidence must finish even when the failed read canceled its caller token.
             await QueryPlanTestSupport.WriteEvidenceAsync(
                 "MySql-composition-work-failed-" + profile,
-                [error.ToString(), query.ToQueryString()]);
+                [error.ToString(), query.ToQueryString()],
+                cancellationToken: CancellationToken.None);
 
             throw;
         }
@@ -354,7 +389,9 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
             .Count();
 
         var parameters = planProbe.ParameterBindings[0].Length;
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, 0, Engine);
+        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, 0, Engine,
+            cancellationToken: cancellationToken);
+
         var work = CompositionPlanWork.ReadMySqlTree(plan);
         var fullPrefixLoops = CompositionPlanWork.FullTreePrefixLoops(plan);
 
@@ -368,7 +405,7 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
                 + $"operatorBudget={budget.OperatorTuples}; materializationBudget={budget.MaterializedTuples}",
                 planProbe.Commands[0],
                 plan,
-            ]);
+            ], cancellationToken: cancellationToken);
 
         return new WorkObservation(
             profile,
@@ -416,8 +453,11 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
     }
 
     /// <summary>Copies the fixture's existing node keys into payload with no second tracked population.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
     private static async Task SeedPayloadAsync(
-        TreeContext context
+        TreeContext context,
+        CancellationToken cancellationToken
     )
     {
         var sql = context.GetService<ISqlGenerationHelper>();
@@ -439,7 +479,7 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
             + $"WHERE {sourceKey} <= {Nodes.ToString(CultureInfo.InvariantCulture)}";
 
         // WHY: Only fixed fixture cardinality is interpolated; native mapping supplies every delimited identifier.
-        await context.Database.ExecuteSqlRawAsync(statement, CancellationToken.None);
+        await context.Database.ExecuteSqlRawAsync(statement, cancellationToken);
     }
 
     /// <summary>Keeps actual endpoint entities available to every public composition primitive.</summary>

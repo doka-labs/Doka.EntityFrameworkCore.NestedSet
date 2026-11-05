@@ -19,13 +19,20 @@ public abstract partial class SaveChangesTests
     public async Task MarkedParentWithSynchronizedNavigationsCommits(string navigation, bool automaticDetection)
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true);
-        var graph = await PreparePlannedParentAsync(context, navigation, automaticDetection, false, false);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var graph = await PreparePlannedParentAsync(context, navigation, automaticDetection, false, false,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         await context.SaveChangesAsync(CancellationToken.None);
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var storedParent = await verification.Set<NavigationNode>().Where(node => node.Id == 2)
             .Select(node => node.ParentId).SingleAsync(CancellationToken.None);
 
@@ -53,16 +60,25 @@ public abstract partial class SaveChangesTests
     public async Task FailedMarkedParentMoveRestoresNavigationSnapshots(string navigation, bool automaticDetection)
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var failure = new PlannedParentFailure();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, failure);
-        var graph = await PreparePlannedParentAsync(context, navigation, automaticDetection, true, true);
+        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            failure);
+
+        var graph = await PreparePlannedParentAsync(context, navigation, automaticDetection, true, true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var before = CapturePlannedParentState(context);
 
         // Act
         var error = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
         var after = CapturePlannedParentState(context);
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var storedParent = await verification.Set<NavigationNode>().Where(node => node.Id == 2)
             .Select(node => node.ParentId).SingleAsync(CancellationToken.None);
 
@@ -98,10 +114,17 @@ public abstract partial class SaveChangesTests
     public async Task MarkedParentMoveRetriesIdenticallyAfterCallbackFailure(string navigation, bool automaticDetection)
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var failure = new PlannedParentFailure();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, failure);
-        var graph = await PreparePlannedParentAsync(context, navigation, automaticDetection, true, true);
+        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            failure);
+
+        var graph = await PreparePlannedParentAsync(context, navigation, automaticDetection, true, true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var before = CapturePlannedParentState(context);
         // WHY: The failed boundary is this retry test's precondition; its observer fails only once.
         var firstError = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
@@ -109,7 +132,9 @@ public abstract partial class SaveChangesTests
 
         // Act
         await context.SaveChangesAsync(CancellationToken.None);
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var storedParent = await verification.Set<NavigationNode>().Where(node => node.Id == 2)
             .Select(node => node.ParentId).SingleAsync(CancellationToken.None);
 
@@ -143,16 +168,24 @@ public abstract partial class SaveChangesTests
     public async Task MarkedParentMoveAllowsFollowingOrdinarySave(string navigation, bool automaticDetection)
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true);
-        var graph = await PreparePlannedParentAsync(context, navigation, automaticDetection, false, false);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var graph = await PreparePlannedParentAsync(context, navigation, automaticDetection, false, false,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await context.SaveChangesAsync(CancellationToken.None);
         // WHY: Reuse the captured property entry without an incidental EntityEntry-local detection pass.
         graph.NoteValue.CurrentValue = "following payload";
 
         // Act
         await context.SaveChangesAsync(CancellationToken.None);
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var storedParent = await verification.Set<NavigationNode>().Where(node => node.Id == 2)
             .Select(node => node.ParentId).SingleAsync(CancellationToken.None);
 
@@ -178,9 +211,11 @@ public abstract partial class SaveChangesTests
     public async Task PlannedParentRejectsDifferentCallbackNavigation(bool collection, bool automaticDetection)
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        await using (var setup = await CreateNavigationContextAsync(database, wrapped: true))
+        await using (var setup = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken))
         {
             var tree = setup.NestedSet<NavigationNode>().ForScope(1);
             await tree.InsertSubtreeAsync(
@@ -195,8 +230,13 @@ public abstract partial class SaveChangesTests
 
         var callback = new SaveBoundaryCallback();
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, callback, probe);
-        var graph = await PreparePlannedParentAsync(context, "both", automaticDetection, true, true);
+        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            callback, probe);
+
+        var graph = await PreparePlannedParentAsync(context, "both", automaticDetection, true, true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var nodes = context.GetService<IUpdateAdapterFactory>().Create().Entries
             .Select(entry => entry.ToEntityEntry().Entity).OfType<NavigationNode>().ToArray();
 
@@ -220,7 +260,9 @@ public abstract partial class SaveChangesTests
         // Act
         var failure = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
         var after = CapturePlannedParentState(context);
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var storedParent = await verification.Set<NavigationNode>().Where(node => node.Id == 2)
             .Select(node => node.ParentId).SingleAsync(CancellationToken.None);
 
@@ -251,10 +293,16 @@ public abstract partial class SaveChangesTests
     public async Task PreparedOwnerInputAllowsFollowingOrdinarySave(string shape, bool automaticDetection)
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedPreparedNavigationDestinationAsync(database);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedPreparedNavigationDestinationAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, callback);
+        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            callback);
+
         var owner = await context.Set<NavigationScopeOwner>()
             .SingleAsync(value => value.Value == "owner", CancellationToken.None);
 
@@ -282,14 +330,17 @@ public abstract partial class SaveChangesTests
                 .Single(entry => ReferenceEquals(entry.ToEntityEntry().Entity, inputs[0]));
         };
 
-        await InsertPreparedNavigationShapeAsync(context, shape, inputs);
+        await InsertPreparedNavigationShapeAsync(context, shape, inputs,
+            cancellationToken: TestContext.Current.CancellationToken);
         var stateAfterInsertion = inputEntry?.EntityState;
         callback.OnSaving = null;
         noteValue.CurrentValue = "following payload";
 
         // Act
         await context.SaveChangesAsync(CancellationToken.None);
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var storedNote = await verification.Set<NavigationNote>().Select(value => value.Value)
             .SingleAsync(CancellationToken.None);
 
@@ -311,10 +362,16 @@ public abstract partial class SaveChangesTests
     public async Task AutomaticPreparedOwnerInputPreservesPendingWritePreflight(string shape)
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedPreparedNavigationDestinationAsync(database);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedPreparedNavigationDestinationAsync(database,
+            cancellationToken: TestContext.Current.CancellationToken);
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, probe);
+        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var owner = await context.Set<NavigationScopeOwner>()
             .SingleAsync(value => value.Value == "owner", CancellationToken.None);
 
@@ -322,8 +379,12 @@ public abstract partial class SaveChangesTests
         owner.Nodes.Add(inputs[0]);
 
         // Act
-        var failure = await Record.ExceptionAsync(() => InsertPreparedNavigationShapeAsync(context, shape, inputs));
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        var failure = await Record.ExceptionAsync(() => InsertPreparedNavigationShapeAsync(context, shape, inputs,
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var count = await verification.Set<NavigationNode>().CountAsync(CancellationToken.None);
 
         // Assert
@@ -341,9 +402,14 @@ public abstract partial class SaveChangesTests
     public async Task ArbitraryUntrackedOwnerMemberStillRejectsFollowingSave(bool automaticDetection)
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, probe);
+        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         var owner = await context.Set<NavigationScopeOwner>()
             .SingleAsync(value => value.Value == "owner", CancellationToken.None);
 
@@ -352,7 +418,9 @@ public abstract partial class SaveChangesTests
 
         // Act
         var failure = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var count = await verification.Set<NavigationNode>().CountAsync(CancellationToken.None);
 
         // Assert

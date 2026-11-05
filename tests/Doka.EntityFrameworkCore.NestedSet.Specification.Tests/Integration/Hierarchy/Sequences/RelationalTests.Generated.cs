@@ -27,28 +27,32 @@ public abstract partial class RelationalTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var random = new Random(1729);
 
         // WHY: Replaying only the prefix preserves the old intermediate checks as independently discoverable cases.
         for (var step = 0; step < prefix; step++)
         {
-            await ApplyGeneratedMutationAsync(context, random, step);
+            await ApplyGeneratedMutationAsync(context, random, step,
+                cancellationToken: TestContext.Current.CancellationToken);
         }
 
         // Act
-        await ApplyGeneratedMutationAsync(context, random, prefix);
+        await ApplyGeneratedMutationAsync(context, random, prefix,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        await AssertValidAsync(context, 1);
+        await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Applies one deterministic generated operation without assertions or further test phases.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task ApplyGeneratedMutationAsync(
         TreeContext context,
         Random random,
-        int step
+        int step,
+        CancellationToken cancellationToken
     )
     {
         var tree = context
@@ -60,7 +64,7 @@ public abstract partial class RelationalTests
             .AsNoTracking()
             .Where(node => node.Tree == 1)
             .OrderBy(x => x.NodeId)
-            .ToListAsync(CancellationToken.None);
+            .ToListAsync(cancellationToken);
 
         if (step < 12)
         {
@@ -68,18 +72,18 @@ public abstract partial class RelationalTests
             if (nodes.Count == 0
                 || random.Next(3) == 0)
             {
-                await tree.InsertRootAsync(Node(id), Guid.NewGuid(), CancellationToken.None);
+                await tree.InsertRootAsync(Node(id), Guid.NewGuid(), cancellationToken);
             }
             else
             {
                 var parent = nodes[random.Next(nodes.Count)].NodeId;
                 if (random.Next(2) == 0)
                 {
-                    await tree.InsertAsFirstChildAsync(Node(id), parent, CancellationToken.None);
+                    await tree.InsertAsFirstChildAsync(Node(id), parent, cancellationToken);
                 }
                 else
                 {
-                    await tree.InsertAsLastChildAsync(Node(id), parent, CancellationToken.None);
+                    await tree.InsertAsLastChildAsync(Node(id), parent, cancellationToken);
                 }
             }
         }
@@ -93,7 +97,7 @@ public abstract partial class RelationalTests
 
             if (targets.Length == 0)
             {
-                await tree.DetachAsTreeAsync(source.NodeId, Guid.NewGuid(), CancellationToken.None);
+                await tree.DetachAsTreeAsync(source.NodeId, Guid.NewGuid(), cancellationToken);
             }
             else
             {
@@ -105,11 +109,11 @@ public abstract partial class RelationalTests
                             && target.Parent != null
                             && source.TreeId == target.TreeId)
                         {
-                            await tree.MoveBeforeAsync(source.NodeId, target.NodeId, CancellationToken.None);
+                            await tree.MoveBeforeAsync(source.NodeId, target.NodeId, cancellationToken);
                         }
                         else
                         {
-                            await tree.MoveToAsync(source.NodeId, target.NodeId, CancellationToken.None);
+                            await tree.MoveToAsync(source.NodeId, target.NodeId, cancellationToken);
                         }
 
                         break;
@@ -118,11 +122,11 @@ public abstract partial class RelationalTests
                             && target.Parent != null
                             && source.TreeId == target.TreeId)
                         {
-                            await tree.MoveAfterAsync(source.NodeId, target.NodeId, CancellationToken.None);
+                            await tree.MoveAfterAsync(source.NodeId, target.NodeId, cancellationToken);
                         }
                         else
                         {
-                            await tree.MoveToAsync(source.NodeId, target.NodeId, CancellationToken.None);
+                            await tree.MoveToAsync(source.NodeId, target.NodeId, cancellationToken);
                         }
 
                         break;
@@ -137,19 +141,19 @@ public abstract partial class RelationalTests
                             && source.TreeId == firstChild.TreeId
                             && firstChild.NodeId != source.NodeId)
                         {
-                            await tree.MoveBeforeAsync(source.NodeId, firstChild.NodeId, CancellationToken.None);
+                            await tree.MoveBeforeAsync(source.NodeId, firstChild.NodeId, cancellationToken);
                         }
                         else
                         {
-                            await tree.MoveToAsync(source.NodeId, target.NodeId, CancellationToken.None);
+                            await tree.MoveToAsync(source.NodeId, target.NodeId, cancellationToken);
                         }
 
                         break;
                     case 3:
-                        await tree.MoveToAsync(source.NodeId, target.NodeId, CancellationToken.None);
+                        await tree.MoveToAsync(source.NodeId, target.NodeId, cancellationToken);
                         break;
                     default:
-                        await tree.DetachAsTreeAsync(source.NodeId, Guid.NewGuid(), CancellationToken.None);
+                        await tree.DetachAsTreeAsync(source.NodeId, Guid.NewGuid(), cancellationToken);
                         break;
                 }
             }

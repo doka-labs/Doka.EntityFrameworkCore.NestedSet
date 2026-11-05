@@ -18,17 +18,19 @@ public sealed class ModelCompatibilityDatabase : IAsyncDisposable
     /// <param name="engine">The relational provider to use.</param>
     /// <param name="create">Constructs the mapped context from configured provider options.</param>
     /// <param name="interceptors">Optional observers for this context only.</param>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     /// <returns>The context and its ready schema.</returns>
     internal async Task<TContext> CreateContextAsync<TContext>(
         string engine,
         Func<DbContextOptions<TContext>, TContext> create,
+        CancellationToken cancellationToken,
         params IInterceptor[] interceptors
     )
         where TContext : DbContext
     {
         if (!_databases.TryGetValue(engine, out var database))
         {
-            database = await TestDatabase.CreateAsync(engine);
+            database = await TestDatabase.CreateAsync(engine, cancellationToken: cancellationToken);
             _databases.Add(engine, database);
         }
 
@@ -47,7 +49,7 @@ public sealed class ModelCompatibilityDatabase : IAsyncDisposable
                 // WHY: Each model has distinct tables, so a provider container can be reused without sharing rows.
                 await context
                     .GetService<IRelationalDatabaseCreator>()
-                    .CreateTablesAsync(CancellationToken.None);
+                    .CreateTablesAsync(cancellationToken);
             }
 
             return context;

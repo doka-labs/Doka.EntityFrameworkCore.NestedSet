@@ -6,6 +6,22 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 [Collection("BulkPlanAllocation")]
 public sealed class ManagedHeapObservationTests
 {
+    /// <summary>Expired calibration work rejects before launching a separate process and preserves token identity.</summary>
+    [Fact]
+    public async Task CanceledCalibrationDoesNotStartIndependentProcess()
+    {
+        // Arrange
+        using var stop = new CancellationTokenSource();
+        await stop.CancelAsync();
+
+        // Act
+        var error = await Record.ExceptionAsync(() => ManagedHeapProbe.RunIsolatedAsync("not-a-shape", stop.Token));
+
+        // Assert
+        Assert.Equal(stop.Token,
+            Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
+    }
+
     /// <summary>A preceding global count proves the newer anchor is before the recorded background cycle.</summary>
     /// <param name="snapshotIndex">The represented collection's start identity.</param>
     /// <param name="collections">The stable observed global collection count.</param>
@@ -256,7 +272,8 @@ public sealed class ManagedHeapObservationTests
         const int expectedObjects = 100_000;
 
         // Act
-        var measurement = await ManagedHeapProbe.RunIsolatedAsync(shape);
+        var measurement = await ManagedHeapProbe.RunIsolatedAsync(shape,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         // WHY: The child isolates ownership rather than tolerating arbitrary runner-state release. Keep the

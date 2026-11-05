@@ -13,14 +13,18 @@ public sealed partial class SafeMigrationTests
     )
     {
         // Arrange
-        await using var selected = await CreateDatabaseAsync(engine, true);
-        await using var foreign = await CreateDatabaseAsync(engine, true);
+        await using var selected = await CreateDatabaseAsync(engine, true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using var foreign = await CreateDatabaseAsync(engine, true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var selectedBaseline = selected.Scaffold(MigrationStage.Baseline, "SafeSelectedBaseline");
         var foreignBaseline = foreign.Scaffold(MigrationStage.Baseline, "SafeForeignBaseline");
-        await selected.MigrateAsync(selectedBaseline);
-        await foreign.MigrateAsync(foreignBaseline);
-        await selected.SeedAsync();
-        await foreign.SeedAsync();
+        await selected.MigrateAsync(selectedBaseline, cancellationToken: TestContext.Current.CancellationToken);
+        await foreign.MigrateAsync(foreignBaseline, cancellationToken: TestContext.Current.CancellationToken);
+        await selected.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await foreign.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // WHY: Analysis requires the runtime model and migration snapshot to agree before checking qualifiers.
         var selectedUpgrade = selected.Scaffold(MigrationStage.Current, "SafeSelectedScopeKey", selectedBaseline);
@@ -35,10 +39,16 @@ public sealed partial class SafeMigrationTests
                 .SequenceEqual(["tree_scope", "tree_id", "left_bound"]));
 
         var definition = ((EnsureIndexIntent)operation.Intent).Definition;
-        var selectedIndexesBefore = IndexSignatures(await selected.ReadIndexesAsync());
-        var foreignIndexesBefore = IndexSignatures(await foreign.ReadIndexesAsync());
-        var selectedNodesBefore = await selected.ReadNodesAsync();
-        var foreignNodesBefore = await foreign.ReadNodesAsync();
+        var selectedIndexesBefore = IndexSignatures(await selected.ReadIndexesAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        var foreignIndexesBefore = IndexSignatures(await foreign.ReadIndexesAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        var selectedNodesBefore = await selected.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var foreignNodesBefore = await foreign.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // WHY: Both databases have the same table and data. Stripping or honoring the foreign qualifier would
         // create the missing index in one database, so both physical catalogs must remain unchanged.
@@ -52,7 +62,8 @@ public sealed partial class SafeMigrationTests
                 CancellationToken.None);
 
         var exception = await Record.ExceptionAsync(() =>
-            SafeMigrationTestServices.ExecuteOperationsAsync(selectedContext, [operation]));
+            SafeMigrationTestServices.ExecuteOperationsAsync(selectedContext, [operation],
+                cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         Assert.NotNull(foreign.Schema);
@@ -70,9 +81,13 @@ public sealed partial class SafeMigrationTests
 
         var databaseException = Assert.IsType<DbException>(runtimeException.InnerException, exactMatch: false);
         Assert.Contains("doka_sm_unsupported", databaseException.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(selectedIndexesBefore, IndexSignatures(await selected.ReadIndexesAsync()));
-        Assert.Equal(foreignIndexesBefore, IndexSignatures(await foreign.ReadIndexesAsync()));
-        Assert.Equal(selectedNodesBefore, await selected.ReadNodesAsync());
-        Assert.Equal(foreignNodesBefore, await foreign.ReadNodesAsync());
+        Assert.Equal(selectedIndexesBefore, IndexSignatures(await selected.ReadIndexesAsync(
+            cancellationToken: TestContext.Current.CancellationToken)));
+        Assert.Equal(foreignIndexesBefore, IndexSignatures(await foreign.ReadIndexesAsync(
+            cancellationToken: TestContext.Current.CancellationToken)));
+        Assert.Equal(selectedNodesBefore, await selected.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(foreignNodesBefore, await foreign.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
     }
 }

@@ -79,10 +79,14 @@ internal static class ProviderTestContract
     }
 
     /// <summary>Validates every raw member variant with method, member, and row exclusions composed.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     internal static async Task<IReadOnlyCollection<string>> FindSharedDataErrorsAsync(
-        MethodInfo method
+        MethodInfo method,
+        CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var errors = new List<string>();
         var methodExclusions = MethodExclusions(method);
         var hasRows = method.CustomAttributes.Any(attribute =>
@@ -93,7 +97,7 @@ internal static class ProviderTestContract
 
         foreach (var member in method.GetCustomAttributes<MemberDataAttributeBase>())
         {
-            var rows = await ReadRawMemberRowsAsync(member, method, tracker);
+            var rows = await ReadRawMemberRowsAsync(member, method, tracker, cancellationToken: cancellationToken);
             AddEmptySourceError(errors, method, member, rows.Count);
             hasRows |= rows.Count > 0;
             var exclusions = methodExclusions
@@ -127,11 +131,15 @@ internal static class ProviderTestContract
     }
 
     /// <summary>Audits effective provider-local declarations against the concrete leaf's executable owner.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     internal static async Task<IReadOnlyCollection<string>> FindDeclaredOwnershipErrorsAsync(
         Type suite,
-        string assemblyName
+        string assemblyName,
+        CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         // WHY: Inherited local family bodies run on both leaves; shared-library declarations have a separate audit.
         var methods = LocalMethods(suite)
             .Where(IsTestMethod)
@@ -156,7 +164,7 @@ internal static class ProviderTestContract
             foreach (var member in method.GetCustomAttributes<MemberDataAttributeBase>())
             {
                 // WHY: Raw source validation cannot be bypassed by discovery exclusions or a genuinely empty factory.
-                var rows = await ReadRawMemberRowsAsync(member, method, tracker);
+                var rows = await ReadRawMemberRowsAsync(member, method, tracker, cancellationToken: cancellationToken);
                 AddEmptySourceError(errors, method, member, rows.Count);
                 var index = 0;
 
@@ -297,18 +305,23 @@ internal static class ProviderTestContract
     ) => method.CustomAttributes.Any(attribute => typeof(IFactAttribute).IsAssignableFrom(attribute.AttributeType));
 
     /// <summary>Reads every source row without applying current-engine discovery selection.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static ValueTask<IReadOnlyCollection<ITheoryDataRow>> ReadRawMemberRowsAsync(
         MemberDataAttributeBase member,
         MethodInfo method,
-        DisposalTracker tracker
+        DisposalTracker tracker,
+        CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         // WHY: xUnit supplies the concrete ReflectedType for an unset MemberType; explicit sources stay intact.
         member.MemberType ??= method.ReflectedType;
 
         return member switch
         {
-            EngineMemberDataAttribute conditional => conditional.GetSourceData(method, tracker),
+            EngineMemberDataAttribute conditional => conditional.GetSourceData(method, tracker,
+                cancellationToken: cancellationToken),
             _ => member.GetData(method, tracker),
         };
     }

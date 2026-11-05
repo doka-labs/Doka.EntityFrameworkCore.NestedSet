@@ -25,7 +25,9 @@ public sealed class AmbientTransactionTests : ProviderTest,
     public async Task UnrelatedSavePreservesAmbientTransactionOwnership()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new SaveBoundaryProbe();
         var options = SaveBoundaryTestSupport.Options(setup, probe).Options;
         var saved = 0;

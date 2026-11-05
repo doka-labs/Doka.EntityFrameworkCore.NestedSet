@@ -20,11 +20,15 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var commands = new SupervisorCommandProbe();
-        await using var seeded = await CreateAsync(new SupervisorCommandProbe());
+        await using var seeded = await CreateAsync(new SupervisorCommandProbe(),
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var first = await App.SupervisorScenarioData.CreateAsync(seeded, Guid.NewGuid(), CancellationToken.None);
-        await SeedOriginProfileAsync(seeded, first, 1, varyCardinality ? 16 : fields);
+        await SeedOriginProfileAsync(seeded, first, 1, varyCardinality ? 16 : fields,
+            cancellationToken: TestContext.Current.CancellationToken);
         var second = await App.SupervisorScenarioData.CreateAsync(seeded, Guid.NewGuid(), CancellationToken.None);
-        await SeedOriginProfileAsync(seeded, second, 1, varyCardinality ? 16 : fields);
+        await SeedOriginProfileAsync(seeded, second, 1, varyCardinality ? 16 : fields,
+            cancellationToken: TestContext.Current.CancellationToken);
         var firstFields = s_profileFields.Take(fields).ToArray();
         var secondFields = firstFields.ToArray();
         if (varyCardinality)
