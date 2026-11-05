@@ -46,7 +46,7 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
         if (bulk)
         {
             await hierarchy.InsertForestAsync(
-                [new NestedSetTreeImport<TreeNode, Guid>(s_insertedTree, new NestedSetBranch<TreeNode>(inserted)),],
+                [new NestedSetTreeImport<TreeNode, Guid>(s_insertedTree, new NestedSetBranch<TreeNode>(inserted))],
                 CancellationToken.None);
         }
         else
@@ -63,7 +63,12 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
                 .Where(node => node.NodeId == 10)
                 .Select(node => node.Payload)
                 .SingleAsync(CancellationToken.None));
-        Assert.Equal(2, await verification.Set<TreeNode>().CountAsync(CancellationToken.None));
+
+        Assert.Equal(
+            2,
+            await verification
+                .Set<TreeNode>()
+                .CountAsync(CancellationToken.None));
     }
 
     /// <summary>A late failure restores an unaffected hierarchy payload to its pending modified state.</summary>
@@ -94,19 +99,24 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
         // Act
         var error = await Record.ExceptionAsync(() => bulk
             ? hierarchy.InsertForestAsync(
-                [new NestedSetTreeImport<TreeNode, Guid>(s_insertedTree, new NestedSetBranch<TreeNode>(inserted)),],
+                [new NestedSetTreeImport<TreeNode, Guid>(s_insertedTree, new NestedSetBranch<TreeNode>(inserted))],
                 CancellationToken.None)
             : hierarchy.InsertRootAsync(inserted, s_insertedTree, CancellationToken.None));
 
         // Assert
         Assert.Same(failure.Error, error);
-        Assert.Equal(EntityState.Modified, context.Entry(tracked).State);
+        Assert.Equal(
+            EntityState.Modified,
+            context.Entry(tracked)
+                .State);
+
         Assert.Equal(
             "stored",
             context
                 .Entry(tracked)
                 .Property(node => node.Payload)
                 .OriginalValue);
+
         Assert.Equal("updated", tracked.Payload);
         await using var verification = database.CreateContext();
         Assert.Equal(
@@ -116,7 +126,12 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
                 .Where(node => node.NodeId == 10)
                 .Select(node => node.Payload)
                 .SingleAsync(CancellationToken.None));
-        Assert.Equal(1, await verification.Set<TreeNode>().CountAsync(CancellationToken.None));
+
+        Assert.Equal(
+            1,
+            await verification
+                .Set<TreeNode>()
+                .CountAsync(CancellationToken.None));
     }
 
     /// <summary>A callback cannot modify another tree's structural columns during insertion.</summary>
@@ -144,9 +159,18 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
             CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         await using var verification = database.CreateContext();
-        Assert.Equal(1, await verification.Set<TreeNode>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            1,
+            await verification
+                .Set<TreeNode>()
+                .CountAsync(CancellationToken.None));
+
         Assert.Equal(
             1,
             await verification
@@ -161,7 +185,8 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
     public async Task CallbackOrderingWriteToUnaffectedTreeIsRejected()
     {
         // Arrange
-        await using (var setup = await _orderingFixture.ResetAsync(Engine,
+        await using (var setup = await _orderingFixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken))
         {
             var existing = setup
@@ -179,9 +204,11 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
         }
 
         var callback = new SaveBoundaryCallback();
-        await using var context = await _orderingFixture.CreateContextAsync(Engine,
+        await using var context = await _orderingFixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict", callback);
+            "Strict",
+            callback);
 
         var tracked = await context
             .Set<OrderingNode>()
@@ -203,11 +230,21 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
             CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(error).Code);
-        await using var verification = await _orderingFixture.CreateContextAsync(Engine,
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
+        await using var verification = await _orderingFixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.Equal(1, await verification.Set<OrderingNode>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            1,
+            await verification
+                .Set<OrderingNode>()
+                .CountAsync(CancellationToken.None));
+
         Assert.Equal(
             "stored",
             await verification

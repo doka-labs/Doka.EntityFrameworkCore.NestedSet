@@ -16,7 +16,9 @@ public sealed class DatabasePlatformTests
     {
         // Arrange
         var attribute = new DatabasePlatformAttribute();
-        var method = typeof(DatabasePlatformTests).GetMethod(nameof(MixedRowProbe), BindingFlags.NonPublic | BindingFlags.Static)!;
+        var method = typeof(DatabasePlatformTests).GetMethod(
+            nameof(MixedRowProbe),
+            BindingFlags.NonPublic | BindingFlags.Static)!;
 
         // Act
         var resolved = attribute.ResolveEngine(method, ["SqlServer", engine]);
@@ -61,7 +63,9 @@ public sealed class DatabasePlatformTests
     {
         // Arrange
         var attribute = new DatabasePlatformAttribute();
-        var method = typeof(DatabasePlatformTests).GetMethod(nameof(MixedRowProbe), BindingFlags.NonPublic | BindingFlags.Static)!;
+        var method = typeof(DatabasePlatformTests).GetMethod(
+            nameof(MixedRowProbe),
+            BindingFlags.NonPublic | BindingFlags.Static)!;
 
         // Act
         var exception = Record.Exception(() => attribute.ResolveEngine(method, ["SqlServer", null]));

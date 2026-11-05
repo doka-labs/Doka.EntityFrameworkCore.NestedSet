@@ -17,14 +17,18 @@ public class ForestImportBenchmarks : DatabaseBenchmark
     }
 
     /// <inheritdoc />
-    public override async Task PrepareAsync(CancellationToken cancellationToken)
+    public override async Task PrepareAsync(
+        CancellationToken cancellationToken
+    )
     {
         _imported = false;
         await base.PrepareAsync(cancellationToken);
     }
 
     /// <inheritdoc />
-    public override async Task VerifyAsync(CancellationToken cancellationToken)
+    public override async Task VerifyAsync(
+        CancellationToken cancellationToken
+    )
     {
         BenchmarkFixture.Require(
             _imported && await Fixture.Context.Nodes.CountAsync(cancellationToken) == Nodes,

@@ -11,21 +11,21 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     where TTreeId : notnull
     where TScope : notnull
 {
-    private readonly NestedSetStore<TEntity, TKey, TTreeId, TScope> _store;
     private readonly IProperty[] _generatedProperties;
     private readonly IClrPropertySetter[] _generatedSetters;
-    private readonly bool _parentHasNoNavigations;
-    private readonly bool _parentHasDependency;
     private readonly bool _hasInputNavigations;
+    private readonly HashSet<TEntity> _knownTracked;
+    private readonly bool _parentHasDependency;
+    private readonly bool _parentHasNoNavigations;
     private readonly TScope _stagedScope;
     private readonly TTreeId _stagedTreeId;
-    private readonly HashSet<TEntity> _knownTracked;
+    private readonly NestedSetStore<TEntity, TKey, TTreeId, TScope> _store;
     private EntityEntry[]? _activeEntries;
     private Dictionary<IUpdateEntry, NestedSetInsertionTracking.Identity>? _activeIdentities;
-    private List<(EntityEntry Owner, INavigationBase Navigation, object Entity)>? _activeRelationships;
-    private List<NestedSetInsertionValues.Snapshot>? _ownedValues;
-    private EntityEntry<TEntity>[]? _activeRoots;
     private int _activeOffset;
+    private List<(EntityEntry Owner, INavigationBase Navigation, object Entity)>? _activeRelationships;
+    private EntityEntry<TEntity>[]? _activeRoots;
+    private List<NestedSetInsertionValues.Snapshot>? _ownedValues;
     private int _validatedThrough;
 
     /// <summary>Validates the complete topology before the executor can open a database write boundary.</summary>
@@ -46,8 +46,12 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
             .Map
             .EntityType
             .GetDerivedTypesInclusive()
-            .Any(type => type.GetNavigations().Any()
-                || type.GetSkipNavigations().Any());
+            .Any(type => type
+                    .GetNavigations()
+                    .Any()
+                || type
+                    .GetSkipNavigations()
+                    .Any());
 
         _generatedProperties = NestedSetRefreshProperties
             .Generated(store.Map.EntityType)
@@ -131,7 +135,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
                 item.Branch.Entity,
                 store.Map,
                 item.Parent,
-                item.Parent < 0 ? 0 : checked(Nodes[item.Parent].RelativeDepth + 1),
+                item.Parent < 0
+                    ? 0
+                    : checked(Nodes[item.Parent].RelativeDepth + 1),
                 assignedKey);
 
             var nodeIndex = Nodes.Count;
@@ -154,6 +160,15 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
 
         Width = checked((long)Nodes.Count * 2);
     }
+
+    /// <summary>Gets each input entity once, with compact structural state and its parent index.</summary>
+    internal List<Node> Nodes { get; } = [];
+
+    /// <summary>Gets the indices of new sibling roots at the destination.</summary>
+    internal List<int> Roots { get; } = [];
+
+    /// <summary>Gets the single interval width reserved for the whole import.</summary>
+    internal long Width { get; }
 
     /// <summary>Captures existing hierarchy identities once for all branches in one insertion boundary.</summary>
     /// <param name="context">The context whose pre-import tracked entries must remain present.</param>
@@ -205,15 +220,6 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         parent.LastChild = childIndex;
         parent.ChildCount++;
     }
-
-    /// <summary>Gets each input entity once, with compact structural state and its parent index.</summary>
-    internal List<Node> Nodes { get; } = [];
-
-    /// <summary>Gets the indices of new sibling roots at the destination.</summary>
-    internal List<int> Roots { get; } = [];
-
-    /// <summary>Gets the single interval width reserved for the whole import.</summary>
-    internal long Width { get; }
 
     /// <summary>Rejects impossible destination depths and sibling positions before any structural write.</summary>
     internal void RequireCapacity(

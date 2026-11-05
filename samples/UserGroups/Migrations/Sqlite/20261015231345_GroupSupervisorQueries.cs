@@ -8,7 +8,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Samples.UserGroups.Migrations.Sqlit
 public partial class GroupSupervisorQueries : Migration
 {
     /// <inheritdoc />
-    protected override void Up(MigrationBuilder migrationBuilder)
+    protected override void Up(
+        MigrationBuilder migrationBuilder
+    )
     {
         migrationBuilder.AddColumn<bool>(
             name: "Visible",
@@ -71,20 +73,38 @@ public partial class GroupSupervisorQueries : Migration
                 ParentId = table.Column<int>(type: "INTEGER", nullable: false),
                 ChildId = table.Column<int>(type: "INTEGER", nullable: false),
                 FromDate = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                ToDate = table.Column<DateOnly>(type: "TEXT", nullable: true)
+                ToDate = table.Column<DateOnly>(type: "TEXT", nullable: true),
             },
             constraints: table =>
             {
-                table.PrimaryKey("PK_GroupRelationPeriods", x => new { x.TenantId, x.ParentId, x.ChildId, x.FromDate });
+                table.PrimaryKey(
+                    "PK_GroupRelationPeriods",
+                    x => new
+                    {
+                        x.TenantId,
+                        x.ParentId,
+                        x.ChildId,
+                        x.FromDate,
+                    });
+
                 table.ForeignKey(
                     name: "FK_GroupRelationPeriods_UserGroups_TenantId_ChildId",
-                    columns: x => new { x.TenantId, x.ChildId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.ChildId,
+                    },
                     principalTable: "UserGroups",
                     principalColumns: ["TenantId", "Id"],
                     onDelete: ReferentialAction.Restrict);
+
                 table.ForeignKey(
                     name: "FK_GroupRelationPeriods_UserGroups_TenantId_ParentId",
-                    columns: x => new { x.TenantId, x.ParentId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.ParentId,
+                    },
                     principalTable: "UserGroups",
                     principalColumns: ["TenantId", "Id"],
                     onDelete: ReferentialAction.Restrict);
@@ -96,11 +116,17 @@ public partial class GroupSupervisorQueries : Migration
             {
                 TenantId = table.Column<Guid>(type: "TEXT", nullable: false),
                 Id = table.Column<int>(type: "INTEGER", nullable: false),
-                Name = table.Column<string>(type: "TEXT", maxLength: 80, nullable: false)
+                Name = table.Column<string>(type: "TEXT", maxLength: 80, nullable: false),
             },
             constraints: table =>
             {
-                table.PrimaryKey("PK_GroupTypes", x => new { x.TenantId, x.Id });
+                table.PrimaryKey(
+                    "PK_GroupTypes",
+                    x => new
+                    {
+                        x.TenantId,
+                        x.Id,
+                    });
             });
 
         migrationBuilder.CreateTable(
@@ -113,20 +139,39 @@ public partial class GroupSupervisorQueries : Migration
                 RoleId = table.Column<Guid>(type: "TEXT", nullable: false),
                 Visible = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: true),
                 FromDate = table.Column<DateOnly>(type: "TEXT", nullable: true),
-                ToDate = table.Column<DateOnly>(type: "TEXT", nullable: true)
+                ToDate = table.Column<DateOnly>(type: "TEXT", nullable: true),
             },
             constraints: table =>
             {
-                table.PrimaryKey("PK_MembershipRoles", x => new { x.TenantId, x.UserId, x.UserGroupId, x.RoleId });
+                table.PrimaryKey(
+                    "PK_MembershipRoles",
+                    x => new
+                    {
+                        x.TenantId,
+                        x.UserId,
+                        x.UserGroupId,
+                        x.RoleId,
+                    });
+
                 table.ForeignKey(
                     name: "FK_MembershipRoles_Roles_TenantId_RoleId",
-                    columns: x => new { x.TenantId, x.RoleId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.RoleId,
+                    },
                     principalTable: "Roles",
                     principalColumns: ["TenantId", "Id"],
                     onDelete: ReferentialAction.Restrict);
+
                 table.ForeignKey(
                     name: "FK_MembershipRoles_UserGroupMemberships_TenantId_UserId_UserGroupId",
-                    columns: x => new { x.TenantId, x.UserId, x.UserGroupId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.UserId,
+                        x.UserGroupId,
+                    },
                     principalTable: "UserGroupMemberships",
                     principalColumns: ["TenantId", "UserId", "UserGroupId"],
                     onDelete: ReferentialAction.Cascade);
@@ -138,11 +183,17 @@ public partial class GroupSupervisorQueries : Migration
             {
                 TenantId = table.Column<Guid>(type: "TEXT", nullable: false),
                 FieldCode = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false, collation: "BINARY"),
-                ValueKind = table.Column<string>(type: "TEXT", maxLength: 16, nullable: false)
+                ValueKind = table.Column<string>(type: "TEXT", maxLength: 16, nullable: false),
             },
             constraints: table =>
             {
-                table.PrimaryKey("PK_UserMetadataDefinitions", x => new { x.TenantId, x.FieldCode });
+                table.PrimaryKey(
+                    "PK_UserMetadataDefinitions",
+                    x => new
+                    {
+                        x.TenantId,
+                        x.FieldCode,
+                    });
             });
 
         migrationBuilder.CreateTable(
@@ -154,20 +205,37 @@ public partial class GroupSupervisorQueries : Migration
                 RoleId = table.Column<Guid>(type: "TEXT", nullable: false),
                 Visible = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: true),
                 FromDate = table.Column<DateOnly>(type: "TEXT", nullable: true),
-                ToDate = table.Column<DateOnly>(type: "TEXT", nullable: true)
+                ToDate = table.Column<DateOnly>(type: "TEXT", nullable: true),
             },
             constraints: table =>
             {
-                table.PrimaryKey("PK_UserRoles", x => new { x.TenantId, x.UserId, x.RoleId });
+                table.PrimaryKey(
+                    "PK_UserRoles",
+                    x => new
+                    {
+                        x.TenantId,
+                        x.UserId,
+                        x.RoleId,
+                    });
+
                 table.ForeignKey(
                     name: "FK_UserRoles_Roles_TenantId_RoleId",
-                    columns: x => new { x.TenantId, x.RoleId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.RoleId,
+                    },
                     principalTable: "Roles",
                     principalColumns: ["TenantId", "Id"],
                     onDelete: ReferentialAction.Restrict);
+
                 table.ForeignKey(
                     name: "FK_UserRoles_Users_TenantId_UserId",
-                    columns: x => new { x.TenantId, x.UserId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.UserId,
+                    },
                     principalTable: "Users",
                     principalColumns: ["TenantId", "Id"],
                     onDelete: ReferentialAction.Cascade);
@@ -180,14 +248,26 @@ public partial class GroupSupervisorQueries : Migration
                 TenantId = table.Column<Guid>(type: "TEXT", nullable: false),
                 FieldCode = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false, collation: "BINARY"),
                 GroupTypeId = table.Column<int>(type: "INTEGER", nullable: false),
-                ValueKind = table.Column<string>(type: "TEXT", maxLength: 16, nullable: false)
+                ValueKind = table.Column<string>(type: "TEXT", maxLength: 16, nullable: false),
             },
             constraints: table =>
             {
-                table.PrimaryKey("PK_GroupMetadataDefinitions", x => new { x.TenantId, x.GroupTypeId, x.FieldCode });
+                table.PrimaryKey(
+                    "PK_GroupMetadataDefinitions",
+                    x => new
+                    {
+                        x.TenantId,
+                        x.GroupTypeId,
+                        x.FieldCode,
+                    });
+
                 table.ForeignKey(
                     name: "FK_GroupMetadataDefinitions_GroupTypes_TenantId_GroupTypeId",
-                    columns: x => new { x.TenantId, x.GroupTypeId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.GroupTypeId,
+                    },
                     principalTable: "GroupTypes",
                     principalColumns: ["TenantId", "Id"],
                     onDelete: ReferentialAction.Restrict);
@@ -200,15 +280,26 @@ public partial class GroupSupervisorQueries : Migration
                 TenantId = table.Column<Guid>(type: "TEXT", nullable: false),
                 FieldCode = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false, collation: "BINARY"),
                 GroupTypeId = table.Column<int>(type: "INTEGER", nullable: false),
-                ValueKind = table.Column<string>(type: "TEXT", maxLength: 16, nullable: false)
+                ValueKind = table.Column<string>(type: "TEXT", maxLength: 16, nullable: false),
             },
             constraints: table =>
             {
                 table.PrimaryKey(
-                    "PK_MembershipMetadataDefinitions", x => new { x.TenantId, x.GroupTypeId, x.FieldCode });
+                    "PK_MembershipMetadataDefinitions",
+                    x => new
+                    {
+                        x.TenantId,
+                        x.GroupTypeId,
+                        x.FieldCode,
+                    });
+
                 table.ForeignKey(
                     name: "FK_MembershipMetadataDefinitions_GroupTypes_TenantId_GroupTypeId",
-                    columns: x => new { x.TenantId, x.GroupTypeId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.GroupTypeId,
+                    },
                     principalTable: "GroupTypes",
                     principalColumns: ["TenantId", "Id"],
                     onDelete: ReferentialAction.Restrict);
@@ -221,20 +312,37 @@ public partial class GroupSupervisorQueries : Migration
                 TenantId = table.Column<Guid>(type: "TEXT", nullable: false),
                 UserId = table.Column<int>(type: "INTEGER", nullable: false),
                 FieldCode = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false, collation: "BINARY"),
-                Value = table.Column<string>(type: "TEXT", maxLength: 120, nullable: true, collation: "BINARY")
+                Value = table.Column<string>(type: "TEXT", maxLength: 120, nullable: true, collation: "BINARY"),
             },
             constraints: table =>
             {
-                table.PrimaryKey("PK_UserMetadatas", x => new { x.TenantId, x.UserId, x.FieldCode });
+                table.PrimaryKey(
+                    "PK_UserMetadatas",
+                    x => new
+                    {
+                        x.TenantId,
+                        x.UserId,
+                        x.FieldCode,
+                    });
+
                 table.ForeignKey(
                     name: "FK_UserMetadatas_UserMetadataDefinitions_TenantId_FieldCode",
-                    columns: x => new { x.TenantId, x.FieldCode },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.FieldCode,
+                    },
                     principalTable: "UserMetadataDefinitions",
                     principalColumns: ["TenantId", "FieldCode"],
                     onDelete: ReferentialAction.Restrict);
+
                 table.ForeignKey(
                     name: "FK_UserMetadatas_Users_TenantId_UserId",
-                    columns: x => new { x.TenantId, x.UserId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.UserId,
+                    },
                     principalTable: "Users",
                     principalColumns: ["TenantId", "Id"],
                     onDelete: ReferentialAction.Cascade);
@@ -248,20 +356,38 @@ public partial class GroupSupervisorQueries : Migration
                 UserGroupId = table.Column<int>(type: "INTEGER", nullable: false),
                 FieldCode = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false, collation: "BINARY"),
                 GroupTypeId = table.Column<int>(type: "INTEGER", nullable: false),
-                Value = table.Column<string>(type: "TEXT", maxLength: 120, nullable: true, collation: "BINARY")
+                Value = table.Column<string>(type: "TEXT", maxLength: 120, nullable: true, collation: "BINARY"),
             },
             constraints: table =>
             {
-                table.PrimaryKey("PK_GroupMetadatas", x => new { x.TenantId, x.UserGroupId, x.FieldCode });
+                table.PrimaryKey(
+                    "PK_GroupMetadatas",
+                    x => new
+                    {
+                        x.TenantId,
+                        x.UserGroupId,
+                        x.FieldCode,
+                    });
+
                 table.ForeignKey(
                     name: "FK_GroupMetadatas_GroupMetadataDefinitions_TenantId_GroupTypeId_FieldCode",
-                    columns: x => new { x.TenantId, x.GroupTypeId, x.FieldCode },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.GroupTypeId,
+                        x.FieldCode,
+                    },
                     principalTable: "GroupMetadataDefinitions",
                     principalColumns: ["TenantId", "GroupTypeId", "FieldCode"],
                     onDelete: ReferentialAction.Restrict);
+
                 table.ForeignKey(
                     name: "FK_GroupMetadatas_UserGroups_TenantId_UserGroupId",
-                    columns: x => new { x.TenantId, x.UserGroupId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.UserGroupId,
+                    },
                     principalTable: "UserGroups",
                     principalColumns: ["TenantId", "Id"],
                     onDelete: ReferentialAction.Cascade);
@@ -276,21 +402,40 @@ public partial class GroupSupervisorQueries : Migration
                 UserGroupId = table.Column<int>(type: "INTEGER", nullable: false),
                 FieldCode = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false, collation: "BINARY"),
                 GroupTypeId = table.Column<int>(type: "INTEGER", nullable: false),
-                Value = table.Column<string>(type: "TEXT", maxLength: 120, nullable: true, collation: "BINARY")
+                Value = table.Column<string>(type: "TEXT", maxLength: 120, nullable: true, collation: "BINARY"),
             },
             constraints: table =>
             {
                 table.PrimaryKey(
-                    "PK_MembershipMetadatas", x => new { x.TenantId, x.UserId, x.UserGroupId, x.FieldCode });
+                    "PK_MembershipMetadatas",
+                    x => new
+                    {
+                        x.TenantId,
+                        x.UserId,
+                        x.UserGroupId,
+                        x.FieldCode,
+                    });
+
                 table.ForeignKey(
                     name: "FK_MembershipMetadatas_MembershipMetadataDefinitions_TenantId_GroupTypeId_FieldCode",
-                    columns: x => new { x.TenantId, x.GroupTypeId, x.FieldCode },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.GroupTypeId,
+                        x.FieldCode,
+                    },
                     principalTable: "MembershipMetadataDefinitions",
                     principalColumns: ["TenantId", "GroupTypeId", "FieldCode"],
                     onDelete: ReferentialAction.Restrict);
+
                 table.ForeignKey(
                     name: "FK_MembershipMetadatas_UserGroupMemberships_TenantId_UserId_UserGroupId",
-                    columns: x => new { x.TenantId, x.UserId, x.UserGroupId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.UserId,
+                        x.UserGroupId,
+                    },
                     principalTable: "UserGroupMemberships",
                     principalColumns: ["TenantId", "UserId", "UserGroupId"],
                     onDelete: ReferentialAction.Cascade);
@@ -341,7 +486,9 @@ public partial class GroupSupervisorQueries : Migration
     }
 
     /// <inheritdoc />
-    protected override void Down(MigrationBuilder migrationBuilder)
+    protected override void Down(
+        MigrationBuilder migrationBuilder
+    )
     {
         migrationBuilder.DropForeignKey(
             name: "FK_UserGroups_GroupTypes_TenantId_TypeId",

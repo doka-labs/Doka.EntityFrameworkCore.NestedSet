@@ -67,8 +67,22 @@ public abstract partial class RelationalTests
 
         // Assert
         var expected = first
-            ? new[] { 7, 3, 4, 2, 5 }
-            : new[] { 3, 4, 2, 5, 7 };
+            ? new[]
+            {
+                7,
+                3,
+                4,
+                2,
+                5,
+            }
+            : new[]
+            {
+                3,
+                4,
+                2,
+                5,
+                7,
+            };
 
         await AssertOrderAsync(tree.ChildrenOf(1), cancellationToken: TestContext.Current.CancellationToken, expected);
         await AssertDepthsAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken, (7, 1));
@@ -94,9 +108,15 @@ public abstract partial class RelationalTests
         await tree.InsertBeforeAsync(Node(7), 2, CancellationToken.None);
 
         // Assert
-        await AssertOrderAsync(tree.ChildrenOf(1),
+        await AssertOrderAsync(
+            tree.ChildrenOf(1),
             cancellationToken: TestContext.Current.CancellationToken,
-            3, 4, 7, 2, 5);
+            3,
+            4,
+            7,
+            2,
+            5);
+
         await AssertDepthsAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken, (7, 1));
         await AssertOrderAsync(tree.ParentOf(7), cancellationToken: TestContext.Current.CancellationToken, 1);
         Assert.Empty(context.ChangeTracker.Entries());
@@ -121,9 +141,15 @@ public abstract partial class RelationalTests
         await tree.InsertAfterAsync(Node(7), 2, CancellationToken.None);
 
         // Assert
-        await AssertOrderAsync(tree.ChildrenOf(1),
+        await AssertOrderAsync(
+            tree.ChildrenOf(1),
             cancellationToken: TestContext.Current.CancellationToken,
-            3, 4, 2, 7, 5);
+            3,
+            4,
+            2,
+            7,
+            5);
+
         await AssertDepthsAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken, (7, 1));
         await AssertOrderAsync(tree.ParentOf(7), cancellationToken: TestContext.Current.CancellationToken, 1);
         Assert.Empty(context.ChangeTracker.Entries());
@@ -148,10 +174,16 @@ public abstract partial class RelationalTests
             .ForScope(1);
 
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var firstInsert = InsertAfterGateAsync(tree, 1, gate.Task,
+        var firstInsert = InsertAfterGateAsync(
+            tree,
+            1,
+            gate.Task,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var secondInsert = InsertAfterGateAsync(secondTree, 2, gate.Task,
+        var secondInsert = InsertAfterGateAsync(
+            secondTree,
+            2,
+            gate.Task,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
@@ -166,6 +198,7 @@ public abstract partial class RelationalTests
                 .AsNoTracking()
                 .Where(node => node.Tree == 1)
                 .CountAsync(CancellationToken.None));
+
         await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
 }

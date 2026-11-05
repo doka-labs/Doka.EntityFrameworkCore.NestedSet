@@ -92,7 +92,8 @@ internal static class UserGroupBenchmarkData
             .InsertSubtreeAsync(branches[0], data.Groups[0], cancellationToken);
 
         // WHY: Derive added link windows from the synthetic fixture instead of a copied calendar date.
-        var observationDay = data.Request().OnDay
+        var observationDay = data.Request()
+                .OnDay
             ?? throw new InvalidOperationException("The synthetic supervisor fixture requires an observation day.");
 
         foreach (var group in groups)
@@ -110,7 +111,7 @@ internal static class UserGroupBenchmarkData
         var baseOrigins = new HashSet<int>
         {
             data.Groups[5],
-            data.Groups[6]
+            data.Groups[6],
         };
 
         var extra = origins == 1
@@ -137,17 +138,20 @@ internal static class UserGroupBenchmarkData
         await context.SaveChangesAsync(cancellationToken);
         context.ChangeTracker.Clear();
         await AddFieldsAsync(context, data, matches, cancellationToken);
-        var request = data.Request(group: origins == 1 ? data.Groups[5] : null) with
-        {
-            Matches = Fields
-                .Take(matches)
-                .Select(field => new MetadataMatch(
-                    MetadataOwner.SourceUser,
-                    field,
-                    MetadataOwner.CandidateMembership,
-                    field))
-                .ToArray(),
-        };
+        var request = data.Request(
+                group: origins == 1
+                    ? data.Groups[5]
+                    : null) with
+            {
+                Matches = Fields
+                    .Take(matches)
+                    .Select(field => new MetadataMatch(
+                        MetadataOwner.SourceUser,
+                        field,
+                        MetadataOwner.CandidateMembership,
+                        field))
+                    .ToArray(),
+            };
 
         BenchmarkFixture.Require(
             await context
@@ -184,7 +188,7 @@ internal static class UserGroupBenchmarkData
                 {
                     member.UserId,
                     member.UserGroupId,
-                    GroupType = group.TypeId!.Value
+                    GroupType = group.TypeId!.Value,
                 })
             .ToArrayAsync(cancellationToken);
 
@@ -193,8 +197,8 @@ internal static class UserGroupBenchmarkData
             StringComparer.Ordinal);
 
         foreach (var field in Fields
-                     .Skip(1)
-                     .Take(matches - 1))
+            .Skip(1)
+            .Take(matches - 1))
         {
             if (!oldFields.Contains(field))
             {

@@ -104,6 +104,7 @@ public sealed class InvalidContext : DbContext, ITestModelVariant
                         x.Start,
                     })
                     .IsUnique();
+
                 break;
             case "unique-sibling":
                 entity
@@ -114,6 +115,7 @@ public sealed class InvalidContext : DbContext, ITestModelVariant
                         x.Position,
                     })
                     .IsUnique();
+
                 break;
             case "unique-depth":
                 entity
@@ -123,51 +125,61 @@ public sealed class InvalidContext : DbContext, ITestModelVariant
                         x.Depth,
                     })
                     .IsUnique();
+
                 break;
             case "generated-boundary":
                 entity
                     .Property(x => x.Start)
                     .ValueGeneratedOnAdd();
+
                 break;
             case "generated-depth":
                 entity
                     .Property(x => x.Depth)
                     .ValueGeneratedOnAdd();
+
                 break;
             case "generated-position":
                 entity
                     .Property(x => x.Position)
                     .ValueGeneratedOnAdd();
+
                 break;
             case "converted-key":
                 entity
                     .Property(x => x.NodeId)
                     .HasConversion<string>();
+
                 break;
             case "converted-scope":
                 entity
                     .Property(x => x.Tree)
                     .HasConversion<string>();
+
                 break;
             case "converted-parent":
                 entity
                     .Property(x => x.Parent)
                     .HasConversion<string>();
+
                 break;
             case "converted-position":
                 entity
                     .Property(x => x.Position)
                     .HasConversion<string>();
+
                 break;
             case "converted-depth":
                 entity
                     .Property(x => x.Depth)
                     .HasConversion<string>();
+
                 break;
             case "converted-boundary":
                 entity
                     .Property(x => x.Start)
                     .HasConversion<string>();
+
                 break;
             case "duplicate-role":
                 entity.HasNestedSet(x => x
@@ -177,23 +189,27 @@ public sealed class InvalidContext : DbContext, ITestModelVariant
                     .HasScope(n => n.Tree)
                     .HasParent(n => n.Parent)
                     .HasPosition(n => n.Position));
+
                 break;
             case "duplicate-depth-role":
                 // WHY: Structural roles now have distinct CLR widths, so alias another int role deliberately.
                 entity.HasNestedSet(x => x
                     .HasTreeId(n => n.TreeId)
                     .HasDepth(n => n.Tree));
+
                 break;
             case "duplicate-position-role":
                 // WHY: Structural roles now have distinct CLR widths, so alias another long role deliberately.
                 entity.HasNestedSet(x => x
                     .HasTreeId(n => n.TreeId)
                     .HasPosition(n => n.Start));
+
                 break;
             case "required-parent":
                 entity
                     .Property(x => x.Parent)
                     .IsRequired();
+
                 break;
             case "split":
                 entity.SplitToTable(
@@ -203,11 +219,13 @@ public sealed class InvalidContext : DbContext, ITestModelVariant
                         split.Property(x => x.Start);
                         split.Property(x => x.End);
                     });
+
                 break;
             case "inheritance":
                 modelBuilder
                     .Entity<DerivedTreeNode>()
                     .HasBaseType<TreeNode>();
+
                 break;
             case "shared-table":
                 entity.ToTable("SharedNodes");
@@ -217,6 +235,7 @@ public sealed class InvalidContext : DbContext, ITestModelVariant
                     .HasOne<TreeNode>()
                     .WithOne()
                     .HasForeignKey<SharedNode>(x => x.Id);
+
                 break;
             case "cascade":
                 entity
@@ -224,6 +243,7 @@ public sealed class InvalidContext : DbContext, ITestModelVariant
                     .WithMany()
                     .HasForeignKey(x => x.Parent)
                     .OnDelete(DeleteBehavior.Cascade);
+
                 break;
         }
     }

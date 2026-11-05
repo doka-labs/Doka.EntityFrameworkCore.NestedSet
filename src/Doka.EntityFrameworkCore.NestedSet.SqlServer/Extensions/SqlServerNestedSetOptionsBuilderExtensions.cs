@@ -1,3 +1,5 @@
+using Doka.EntityFrameworkCore.NestedSet.SqlServer;
+
 namespace Doka.EntityFrameworkCore.NestedSet;
 
 /// <summary>Registers nested-set services within the SQL Server provider's native options callback.</summary>
@@ -16,7 +18,7 @@ public static class SqlServerNestedSetOptionsBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(optionsBuilder);
         var core = ((IRelationalDbContextOptionsBuilderInfrastructure)optionsBuilder).OptionsBuilder;
-        NestedSetProviderRegistration.Register(core, SqlServer.SqlServerNestedSetProvider.Instance);
+        NestedSetProviderRegistration.Register(core, SqlServerNestedSetProvider.Instance);
 
         return optionsBuilder;
     }

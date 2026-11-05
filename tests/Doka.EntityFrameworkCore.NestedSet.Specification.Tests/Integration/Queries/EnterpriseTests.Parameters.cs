@@ -14,10 +14,38 @@ public abstract partial class EnterpriseTests
         await using var setup = database.CreateContext();
         await setup.AddRangeAsync(
             [
-                new TreeNode { NodeId = 101, Tree = 17, Start = 1, End = 4 },
-                new TreeNode { NodeId = 102, Tree = 17, Start = 2, End = 3, Parent = 101, Depth = 1 },
-                new TreeNode { NodeId = 202, Tree = 29, Start = 1, End = 4 },
-                new TreeNode { NodeId = 203, Tree = 29, Start = 2, End = 3, Parent = 202, Depth = 1 },
+                new TreeNode
+                {
+                    NodeId = 101,
+                    Tree = 17,
+                    Start = 1,
+                    End = 4,
+                },
+                new TreeNode
+                {
+                    NodeId = 102,
+                    Tree = 17,
+                    Start = 2,
+                    End = 3,
+                    Parent = 101,
+                    Depth = 1,
+                },
+                new TreeNode
+                {
+                    NodeId = 202,
+                    Tree = 29,
+                    Start = 1,
+                    End = 4,
+                },
+                new TreeNode
+                {
+                    NodeId = 203,
+                    Tree = 29,
+                    Start = 2,
+                    End = 3,
+                    Parent = 202,
+                    Depth = 1,
+                },
             ],
             CancellationToken.None);
 

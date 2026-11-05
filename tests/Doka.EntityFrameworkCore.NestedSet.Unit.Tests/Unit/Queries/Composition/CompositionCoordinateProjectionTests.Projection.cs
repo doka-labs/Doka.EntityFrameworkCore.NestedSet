@@ -29,9 +29,10 @@ public sealed partial class CompositionCoordinateProjectionTests
             .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets());
 
         using var provider = CoordinateServices(options.Options);
-        using var context = new CompositionGuardContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        using var context = new CompositionGuardContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var entity = context.Model.FindEntityType(CompositionGuardContext.FirstMapping)!;
         var root = new NestedSetQuery<CompositionGuardNode>(context, entity);
@@ -98,7 +99,9 @@ public sealed partial class CompositionCoordinateProjectionTests
                 : ancestors
                     ? upper.Id
                     : lower.Id,
-            shape == "unused-distance" ? -1 : 5,
+            shape == "unused-distance"
+                ? -1
+                : 5,
         };
 
         if (shape == "nested-collection")
@@ -133,9 +136,10 @@ public sealed partial class CompositionCoordinateProjectionTests
             .AddInterceptors(boundary);
 
         await using var provider = CoordinateServices(options);
-        await using var context = new CoordinateContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new CoordinateContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var hierarchy = context
             .NestedSet<CoordinateNode>()
@@ -143,7 +147,8 @@ public sealed partial class CompositionCoordinateProjectionTests
 
         // Act
         var query = includeSelf
-            ? hierarchy.SelectAncestorsOrSelf(node => node.Id == 3,
+            ? hierarchy.SelectAncestorsOrSelf(
+                node => node.Id == 3,
                 (source, ancestor, distance) => new
                 {
                     source.Id,
@@ -154,7 +159,8 @@ public sealed partial class CompositionCoordinateProjectionTests
                         .Select(item => item.Id)
                         .ToList(),
                 })
-            : hierarchy.SelectAncestors(node => node.Id == 3,
+            : hierarchy.SelectAncestors(
+                node => node.Id == 3,
                 (source, ancestor, distance) => new
                 {
                     source.Id,

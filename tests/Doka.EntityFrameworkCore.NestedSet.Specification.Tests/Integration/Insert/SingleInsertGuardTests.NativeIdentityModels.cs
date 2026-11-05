@@ -2,6 +2,16 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class SingleInsertGuardTests
 {
+    /// <summary>Runs a one-shot application snapshot callback before creating an independent key.</summary>
+    private static SingleIdentityKey SnapshotSingleKey(
+        SingleIdentityKey key
+    )
+    {
+        key.OnSnapshot?.Invoke();
+
+        return new SingleIdentityKey(key.Value);
+    }
+
     /// <summary>Maps converted mutable identities, owned payload, and a generated-key positive control.</summary>
     private sealed class SingleIdentityContext : DbContext
     {
@@ -28,15 +38,22 @@ public abstract partial class SingleInsertGuardTests
                         (left, right) => left != null && right != null && left.Value == right.Value,
                         value => value.Value,
                         value => SnapshotSingleKey(value)));
+
             node.Ignore(entity => entity.ReadKey);
             node
                 .Property(entity => entity.ParentId)
                 .HasConversion(
-                    key => key == null ? (int?)null : key.Value,
-                    value => value.HasValue ? new SingleIdentityKey(value.Value) : null);
+                    key => key == null
+                        ? (int?)null
+                        : key.Value,
+                    value => value.HasValue
+                        ? new SingleIdentityKey(value.Value)
+                        : null);
+
             node
                 .Property(entity => entity.GeneratedValue)
                 .HasDefaultValue(42);
+
             node.OwnsOne(
                 entity => entity.Details,
                 details =>
@@ -44,6 +61,7 @@ public abstract partial class SingleInsertGuardTests
                     details
                         .WithOwner()
                         .HasForeignKey(value => value.OwnerId);
+
                     details.HasKey(value => value.OwnerId);
                     details
                         .Property(value => value.OwnerId)
@@ -55,19 +73,23 @@ public abstract partial class SingleInsertGuardTests
                                 (left, right) => left != null && right != null && left.Value == right.Value,
                                 value => value.Value,
                                 value => SnapshotSingleKey(value)));
+
                     details.Property(value => value.Label);
                     details
                         .Property(value => value.GeneratedValue)
                         .HasDefaultValue(43);
+
                     details
                         .HasOne(value => value.Foreign)
                         .WithMany()
                         .HasForeignKey("OwnedForeignId");
                 });
+
             node
                 .HasOne(entity => entity.Foreign)
                 .WithMany()
                 .HasForeignKey("ForeignId");
+
             node.HasNestedSet(nestedSet => nestedSet
                 .HasNodeKey(entity => entity.Id)
                 .HasTreeId(entity => entity.TreeId)
@@ -81,6 +103,7 @@ public abstract partial class SingleInsertGuardTests
             generated
                 .Property(entity => entity.Scope)
                 .HasMaxLength(64);
+
             generated.HasNestedSet(nestedSet => nestedSet
                 .HasTreeId(entity => entity.TreeId)
                 .HasScope(entity => entity.Scope)
@@ -91,22 +114,13 @@ public abstract partial class SingleInsertGuardTests
                 .ToTable("SingleIdentityMarkers")
                 .Property(entity => entity.Id)
                 .ValueGeneratedNever();
+
             modelBuilder
                 .Entity<SingleIdentityForeign>()
                 .ToTable("SingleIdentityForeign")
                 .Property(entity => entity.Id)
                 .ValueGeneratedNever();
         }
-    }
-
-    /// <summary>Runs a one-shot application snapshot callback before creating an independent key.</summary>
-    private static SingleIdentityKey SnapshotSingleKey(
-        SingleIdentityKey key
-    )
-    {
-        key.OnSnapshot?.Invoke();
-
-        return new SingleIdentityKey(key.Value);
     }
 
     /// <summary>Exposes a mutable provider identity with an independent application comparer snapshot.</summary>
@@ -131,7 +145,7 @@ public abstract partial class SingleInsertGuardTests
     private sealed class SingleIdentityDetails
     {
         /// <summary>Gets or sets the public ownership key propagated by EF despite never being generated.</summary>
-        public SingleIdentityKey OwnerId { get; set; } = new(0);
+        public SingleIdentityKey OwnerId { get; } = new(0);
 
         /// <summary>Gets or sets the application payload.</summary>
         internal string Label { get; set; } = "";

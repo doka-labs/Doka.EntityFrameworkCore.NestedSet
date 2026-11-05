@@ -98,7 +98,7 @@ internal static class CompositionBenchmarkQueries
                 && child.Right < row.Anchor.Right
                 && child.Name != "blocked-edge"
                 && nodes.Any(parent => parent.Id == child.ParentId
-                    && (long)child.Depth == (long)parent.Depth + 1
+                    && child.Depth == (long)parent.Depth + 1
                     && parent.Left >= row.Anchor.Left
                     && parent.Right <= row.Anchor.Right
                     && parent.Left < child.Left
@@ -127,7 +127,7 @@ internal static class CompositionBenchmarkQueries
                 && child.Right >= row.Node.Right
                 && child.Right < owner.Right
                 && nodes.Any(parent => parent.Id == child.ParentId
-                    && (long)child.Depth == (long)parent.Depth + 1
+                    && child.Depth == (long)parent.Depth + 1
                     && parent.Left >= owner.Left
                     && parent.Right <= owner.Right
                     && parent.Left < child.Left

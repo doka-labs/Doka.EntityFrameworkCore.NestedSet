@@ -14,13 +14,15 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();
         var factory = new PooledDbContextFactory<SaveBoundaryContext>(
-            SaveBoundaryTestSupport.Options(setup, callback).Options,
+            SaveBoundaryTestSupport.Options(setup, callback)
+                .Options,
             poolSize: 1);
 
         var first = await factory.CreateDbContextAsync(CancellationToken.None);
@@ -72,7 +74,10 @@ public abstract partial class SaveChangesTests
             .Select(value => value.Id)
             .ToArrayAsync(CancellationToken.None);
 
-        await using var verification = new SaveBoundaryContext(SaveBoundaryTestSupport.Options(setup).Options);
+        await using var verification = new SaveBoundaryContext(
+            SaveBoundaryTestSupport.Options(setup)
+                .Options);
+
         var errors = await verification
             .NestedSet<OrderingNode>()
             .ForScope(1)

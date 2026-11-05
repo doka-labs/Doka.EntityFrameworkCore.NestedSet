@@ -27,21 +27,27 @@ public sealed partial class ComplexPeerRollbackTests
     )
     {
         // Arrange
-        await using var context = mode == "plain" ? new PlainPeerContext() : new PeerContext();
+        await using var context = mode == "plain"
+            ? new PlainPeerContext()
+            : new PeerContext();
+
         var entry = Track(context);
         var peer = entry.Entity;
         ChangeCollection(peer, change);
 
         if (mode == "modified")
         {
-            entry.Property(value => value.Marker).IsModified = true;
+            entry.Property(value => value.Marker)
+                .IsModified = true;
         }
 
         var update = Update(context, peer);
         var beforeState = update.EntityState;
-        var markerOriginal = entry.Property(value => value.Marker).OriginalValue;
+        var markerOriginal = entry.Property(value => value.Marker)
+            .OriginalValue;
 
-        var markerModified = entry.Property(value => value.Marker).IsModified;
+        var markerModified = entry.Property(value => value.Marker)
+            .IsModified;
 
         var collectionBefore = ObserveCollection(entry);
         var snapshot = NestedSetTrackerSnapshot.Capture(context);
@@ -57,19 +63,35 @@ public sealed partial class ComplexPeerRollbackTests
         snapshot.Restore();
 
         // Assert
-        Assert.Equal(mode == "modified" ? EntityState.Modified : EntityState.Unchanged, beforeState);
+        Assert.Equal(
+            mode == "modified"
+                ? EntityState.Modified
+                : EntityState.Unchanged,
+            beforeState);
+
         Assert.Equal(beforeState, update.EntityState);
         AssertCollection(entry, collectionBefore);
         Assert.Equal("Pending marker", peer.Marker);
-        Assert.Equal(markerOriginal,
-            entry.Property(value => value.Marker).OriginalValue);
-        Assert.Equal(markerModified,
-            entry.Property(value => value.Marker).IsModified);
-        Assert.False(entry.Property(value => value.Id).IsModified);
+        Assert.Equal(
+            markerOriginal,
+            entry.Property(value => value.Marker)
+                .OriginalValue);
+
+        Assert.Equal(
+            markerModified,
+            entry.Property(value => value.Marker)
+                .IsModified);
+
+        Assert.False(
+            entry.Property(value => value.Id)
+                .IsModified);
+
         Assert.Equal(7, peer.Id);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Optional complex edits, replacements and literal null retain independent originals and flags.</summary>
@@ -91,7 +113,10 @@ public sealed partial class ComplexPeerRollbackTests
     )
     {
         // Arrange
-        await using var context = mode == "plain" ? new PlainPeerContext() : new PeerContext();
+        await using var context = mode == "plain"
+            ? new PlainPeerContext()
+            : new PeerContext();
+
         var entry = Track(context);
         var peer = entry.Entity;
 
@@ -106,6 +131,7 @@ public sealed partial class ComplexPeerRollbackTests
                     Text = "Replacement reference",
                     Code = "Replacement code",
                 };
+
                 break;
             case "null":
                 peer.Optional = null;
@@ -116,7 +142,8 @@ public sealed partial class ComplexPeerRollbackTests
 
         if (mode == "modified")
         {
-            entry.Property(value => value.Marker).IsModified = true;
+            entry.Property(value => value.Marker)
+                .IsModified = true;
         }
 
         var update = Update(context, peer);
@@ -143,20 +170,32 @@ public sealed partial class ComplexPeerRollbackTests
         snapshot.Restore();
 
         // Assert
-        Assert.Equal(mode == "modified" ? EntityState.Modified : EntityState.Unchanged, beforeState);
+        Assert.Equal(
+            mode == "modified"
+                ? EntityState.Modified
+                : EntityState.Unchanged,
+            beforeState);
+
         Assert.Equal(beforeState, update.EntityState);
         Assert.Same(instance, peer.Optional);
         Assert.Equal(text, peer.Optional?.Text);
         Assert.Equal(code, peer.Optional?.Code);
         Assert.Equal(modified, reference.IsModified);
-        Assert.Equal(originals,
+        Assert.Equal(
+            originals,
             reference.Properties.Select(property => (property.Metadata.Name, property.OriginalValue)));
+
         AssertCollection(entry, collectionBefore);
-        Assert.False(entry.Property(value => value.Id).IsModified);
+        Assert.False(
+            entry.Property(value => value.Id)
+                .IsModified);
+
         Assert.Equal(7, peer.Id);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>An originally Modified complex collection retains its independent modification flags.</summary>
@@ -184,10 +223,15 @@ public sealed partial class ComplexPeerRollbackTests
         Assert.Equal(EntityState.Modified, update.EntityState);
         AssertCollection(entry, before);
         Assert.True(collection.IsModified);
-        Assert.False(entry.Property(value => value.Id).IsModified);
+        Assert.False(
+            entry.Property(value => value.Id)
+                .IsModified);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>A peer without a direct non-key scalar still preserves its complex graph storage.</summary>
@@ -230,12 +274,20 @@ public sealed partial class ComplexPeerRollbackTests
         Assert.Same(instance, entry.Entity.Optional);
         AssertCollection(entry, before);
         Assert.Equal(7, entry.Entity.Id);
-        Assert.Equal(7,
-            entry.Property(value => value.Id).OriginalValue);
-        Assert.False(entry.Property(value => value.Id).IsModified);
+        Assert.Equal(
+            7,
+            entry.Property(value => value.Id)
+                .OriginalValue);
+
+        Assert.False(
+            entry.Property(value => value.Id)
+                .IsModified);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>An outer element state change cannot reject its pending nested collection graph.</summary>
@@ -251,9 +303,17 @@ public sealed partial class ComplexPeerRollbackTests
         await using var context = new PeerContext();
         var entry = Track(context);
         var peer = entry.Entity;
-        peer.Items[0].Tags[0].Text = "Raw nested edit";
-        peer.Items[0].Tags.Add(new ComplexTag { Text = "Raw nested added" });
-        var outer = entry.ComplexCollection(value => value.Items)[0];
+        peer
+            .Items[0]
+            .Tags[0].Text = "Raw nested edit";
+
+        peer
+            .Items[0]
+            .Tags
+            .Add(new ComplexTag { Text = "Raw nested added" });
+
+        var outer = entry
+            .ComplexCollection(value => value.Items)[0];
 
         var nested = outer.ComplexCollection(nameof(ComplexItem.Tags));
         var tags = peer.Items[0].Tags;
@@ -309,10 +369,15 @@ public sealed partial class ComplexPeerRollbackTests
             Assert.Equal(expected.Modified, property.IsModified);
         }
 
-        Assert.False(entry.Property(value => value.Id).IsModified);
+        Assert.False(
+            entry.Property(value => value.Id)
+                .IsModified);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>A required key-only peer returns to Unchanged without ever modifying its shared primary key.</summary>
@@ -335,6 +400,7 @@ public sealed partial class ComplexPeerRollbackTests
             .Entry(root)
             .Property(value => value.Name)
             .IsModified = true;
+
         var entry = context.Entry(peer);
         var update = Update(context, peer);
         var beforeState = update.EntityState;
@@ -350,14 +416,22 @@ public sealed partial class ComplexPeerRollbackTests
         Assert.Equal(EntityState.Unchanged, beforeState);
         Assert.Equal(EntityState.Unchanged, update.EntityState);
         Assert.Equal(7, peer.Id);
-        Assert.Equal(7,
-            entry.Property(value => value.Id).OriginalValue);
-        Assert.False(entry.Property(value => value.Id).IsModified);
+        Assert.Equal(
+            7,
+            entry.Property(value => value.Id)
+                .OriginalValue);
+
+        Assert.False(
+            entry.Property(value => value.Id)
+                .IsModified);
+
         Assert.Same(peer, root.KeyPeer);
         Assert.Same(root, peer.Root);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Tracks a valid loaded graph with stored originals before any raw complex mutation.</summary>
@@ -444,7 +518,9 @@ public sealed partial class ComplexPeerRollbackTests
             .GetService<IUpdateAdapterFactory>()
             .Create()
             .Entries
-            .Single(entry => ReferenceEquals(entry.ToEntityEntry().Entity,
+            .Single(entry => ReferenceEquals(
+                entry.ToEntityEntry()
+                    .Entity,
                 entity));
 
     /// <summary>Captures observable element references and independent current/original/flag/state storage.</summary>
@@ -463,7 +539,8 @@ public sealed partial class ComplexPeerRollbackTests
         {
             var element = collection[index];
             var property = element.Property(nameof(ComplexItem.Text));
-            elements[index] = new ElementObservation(values[index],
+            elements[index] = new ElementObservation(
+                values[index],
                 element.State,
                 property.CurrentValue,
                 property.OriginalValue,

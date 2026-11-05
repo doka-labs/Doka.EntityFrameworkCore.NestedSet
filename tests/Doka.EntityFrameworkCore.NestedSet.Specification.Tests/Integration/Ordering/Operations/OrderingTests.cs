@@ -22,7 +22,7 @@ public abstract partial class OrderingTests : ProviderTest
     {
         Id = id,
         Name = name,
-        Priority = priority
+        Priority = priority,
     };
 
     /// <summary>Selects the public hierarchy facade for one application partition.</summary>
@@ -140,6 +140,7 @@ public abstract partial class OrderingTests : ProviderTest
                     ancestors.LastOrDefault()
                         ?.Id,
                     node.ParentId);
+
                 Assert.Equal(ancestors.Length, node.Depth);
                 Assert.Equal(0, (node.Right - node.Left + 1) % 2);
             }
@@ -166,6 +167,8 @@ public abstract partial class OrderingTests : ProviderTest
         OrderingContext context,
         CancellationToken cancellationToken
     ) => context.Database.BeginTransactionAsync(
-        context.Database.IsSqlite() ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+        context.Database.IsSqlite()
+            ? IsolationLevel.Serializable
+            : IsolationLevel.ReadCommitted,
         cancellationToken);
 }

@@ -1,12 +1,16 @@
 using System.Runtime.CompilerServices;
+using Doka.EntityFrameworkCore.NestedSet.Diagnostics;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Requires explicit cancellation choices without changing framework contracts or token semantics.</summary>
 public sealed class CancellationContractTests
 {
-    private const BindingFlags DeclaredMembers = BindingFlags.Public | BindingFlags.NonPublic
-        | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly;
+    private const BindingFlags DeclaredMembers = BindingFlags.Public
+        | BindingFlags.NonPublic
+        | BindingFlags.Instance
+        | BindingFlags.Static
+        | BindingFlags.DeclaredOnly;
 
     /// <summary>Owned methods in every package require an explicit token, including internal execution paths.</summary>
     /// <param name="assemblyName">The package assembly whose declared contracts are inspected.</param>
@@ -27,8 +31,11 @@ public sealed class CancellationContractTests
         // Act
         var optional = assembly
             .GetTypes()
-            .SelectMany(type => type.GetMethods(DeclaredMembers).Cast<MethodBase>()
+            .SelectMany(type => type
+                .GetMethods(DeclaredMembers)
+                .Cast<MethodBase>()
                 .Concat(type.GetConstructors(DeclaredMembers)))
+
             // WHY: C# async base-call bridges copy EF's optional parameter metadata; they are compiler output.
             .Where(member => !member.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false))
             .Where(member => !IsFrameworkContract(member))
@@ -58,7 +65,8 @@ public sealed class CancellationContractTests
         // Arrange
         var assembly = Assembly.Load(new AssemblyName(assemblyName));
         string[] expected = assemblyName == "Doka.EntityFrameworkCore.NestedSet"
-            ? [
+            ?
+            [
                 "Doka.EntityFrameworkCore.NestedSet.Diagnostics.NestedSetTelemetry.TrackRows",
                 "Doka.EntityFrameworkCore.NestedSet.Diagnostics.NestedSetTelemetry.TrackRowsAsync",
                 "Doka.EntityFrameworkCore.NestedSet.Execution.NestedSetTransaction.RollbackSavepointAsync",
@@ -68,13 +76,16 @@ public sealed class CancellationContractTests
         // Act
         var tokenless = assembly
             .GetTypes()
+
             // WHY: Compiler-generated closures carry captured tokens; their signatures are not authored APIs.
             .Where(type => !type.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false))
             .SelectMany(type => type.GetMethods(DeclaredMembers))
             .Where(method => !method.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false)
                 && !IsFrameworkContract(method)
                 && IsAsyncResult(method.ReturnType)
-                && !method.GetParameters().Any(parameter => parameter.ParameterType == typeof(CancellationToken)))
+                && !method
+                    .GetParameters()
+                    .Any(parameter => parameter.ParameterType == typeof(CancellationToken)))
             .Select(method => $"{method.DeclaringType}.{method.Name}")
             .Order(StringComparer.Ordinal)
             .ToArray();
@@ -95,19 +106,23 @@ public sealed class CancellationContractTests
         using var listener = new ActivityListener
         {
             ShouldListenTo = source => source.Name == NestedSetDiagnostics.ActivitySourceName,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            Sample = (ref _) => ActivitySamplingResult.AllData,
         };
 
         ActivitySource.AddActivityListener(listener);
 
         // Act
-        var operation = Diagnostics.NestedSetTelemetry.ExecuteAsync(context, "insert", _ =>
-        {
-            var tracked = Diagnostics.NestedSetTelemetry.TrackRows(command.Task);
-            trackedSeparately = !ReferenceEquals(tracked, command.Task);
+        var operation = NestedSetTelemetry.ExecuteAsync(
+            context,
+            "insert",
+            _ =>
+            {
+                var tracked = NestedSetTelemetry.TrackRows(command.Task);
+                trackedSeparately = !ReferenceEquals(tracked, command.Task);
 
-            return tracked;
-        }, cancellation.Token);
+                return tracked;
+            },
+            cancellation.Token);
 
         await cancellation.CancelAsync();
         var pendingAfterCancellation = !operation.IsCompleted;
@@ -132,14 +147,17 @@ public sealed class CancellationContractTests
         using var listener = new ActivityListener
         {
             ShouldListenTo = source => source.Name == NestedSetDiagnostics.ActivitySourceName,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            Sample = (ref _) => ActivitySamplingResult.AllData,
         };
 
         ActivitySource.AddActivityListener(listener);
 
         // Act
-        var operation = Diagnostics.NestedSetTelemetry.ExecuteAsync(context, "insert",
-            _ => Diagnostics.NestedSetTelemetry.TrackRows(command.Task), cancellation.Token);
+        var operation = NestedSetTelemetry.ExecuteAsync(
+            context,
+            "insert",
+            _ => NestedSetTelemetry.TrackRows(command.Task),
+            cancellation.Token);
 
         await cancellation.CancelAsync();
         command.SetException(failure);
@@ -166,10 +184,14 @@ public sealed class CancellationContractTests
         var method = type
             .GetMethods(DeclaredMembers)
             .Single(member => member.Name == methodName
-                && member.GetParameters().Any(parameter => parameter.ParameterType == typeof(CancellationToken)));
+                && member
+                    .GetParameters()
+                    .Any(parameter => parameter.ParameterType == typeof(CancellationToken)));
 
         // Act
-        var token = method.GetParameters().Single(parameter => parameter.ParameterType == typeof(CancellationToken));
+        var token = method
+            .GetParameters()
+            .Single(parameter => parameter.ParameterType == typeof(CancellationToken));
 
         // Assert
         Assert.True(IsFrameworkContract(method));
@@ -210,18 +232,24 @@ public sealed class CancellationContractTests
         // Arrange
         await using var context = new TokenContext();
         using var cancellation = new CancellationTokenSource();
-        var token = cancellable ? cancellation.Token : CancellationToken.None;
+        var token = cancellable
+            ? cancellation.Token
+            : CancellationToken.None;
+
         var observed = CancellationToken.None;
         var calls = 0;
 
         // Act
-        var saved = await context.SaveNestedSetChangesAsync(false, received =>
-        {
-            observed = received;
-            calls++;
+        var saved = await context.SaveNestedSetChangesAsync(
+            false,
+            received =>
+            {
+                observed = received;
+                calls++;
 
-            return Task.FromResult(7);
-        }, token);
+                return Task.FromResult(7);
+            },
+            token);
 
         // Assert
         Assert.Equal(7, saved);
@@ -240,12 +268,15 @@ public sealed class CancellationContractTests
         var calls = 0;
 
         // Act
-        var exception = await Record.ExceptionAsync(() => context.SaveNestedSetChangesAsync(false, _ =>
-        {
-            calls++;
+        var exception = await Record.ExceptionAsync(() => context.SaveNestedSetChangesAsync(
+            false,
+            _ =>
+            {
+                calls++;
 
-            return Task.FromResult(7);
-        }, cancellation.Token));
+                return Task.FromResult(7);
+            },
+            cancellation.Token));
 
         // Assert
         var canceled = Assert.IsAssignableFrom<OperationCanceledException>(exception);
@@ -263,7 +294,9 @@ public sealed class CancellationContractTests
             return false;
         }
 
-        if (IsFrameworkAssembly(method.GetBaseDefinition().DeclaringType!.Assembly))
+        if (IsFrameworkAssembly(
+            method.GetBaseDefinition()
+                .DeclaringType!.Assembly))
         {
             return true;
         }
@@ -273,13 +306,17 @@ public sealed class CancellationContractTests
         return type
             .GetInterfaces()
             .Where(contract => IsFrameworkAssembly(contract.Assembly))
-            .Any(contract => type.GetInterfaceMap(contract).TargetMethods.Contains(method));
+            .Any(contract => type
+                .GetInterfaceMap(contract)
+                .TargetMethods
+                .Contains(method));
     }
 
     /// <summary>Recognizes the external framework owners of cancellation contracts.</summary>
     private static bool IsFrameworkAssembly(
         Assembly assembly
-    ) => assembly.GetName().Name is { } name
+    ) => assembly.GetName()
+            .Name is { } name
         && (name.StartsWith("Microsoft.", StringComparison.Ordinal)
             || name.StartsWith("System.", StringComparison.Ordinal));
 
@@ -288,16 +325,18 @@ public sealed class CancellationContractTests
         Type type
     ) => typeof(Task).IsAssignableFrom(type)
         || type == typeof(ValueTask)
-        || (type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(ValueTask<>)
-            || type.GetGenericTypeDefinition() == typeof(IAsyncEnumerable<>)
-            || type.GetGenericTypeDefinition() == typeof(IAsyncEnumerator<>)));
+        || (type.IsGenericType
+            && (type.GetGenericTypeDefinition() == typeof(ValueTask<>)
+                || type.GetGenericTypeDefinition() == typeof(IAsyncEnumerable<>)
+                || type.GetGenericTypeDefinition() == typeof(IAsyncEnumerator<>)));
 
     /// <summary>Provides actual EF services for a save delegate without opening a database connection.</summary>
     private sealed class TokenContext : DbContext
     {
         /// <summary>Registers the SQLite adapter while keeping the model free of persistence work.</summary>
-        internal TokenContext() : base(new DbContextOptionsBuilder<TokenContext>()
-            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
-            .Options) { }
+        internal TokenContext() : base(
+            new DbContextOptionsBuilder<TokenContext>()
+                .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
+                .Options) { }
     }
 }

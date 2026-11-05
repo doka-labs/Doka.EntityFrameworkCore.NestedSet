@@ -1,5 +1,3 @@
-using App = Doka.EntityFrameworkCore.NestedSet.Samples.UserGroups;
-
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples.UserGroups;
 
 /// <summary>
@@ -27,38 +25,38 @@ public sealed class SupervisorPayloadValidationTests
     )
     {
         // Arrange
-        var options = new DbContextOptionsBuilder<App.UserGroupContext>()
+        var options = new DbContextOptionsBuilder<UserGroupContext>()
             .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
             .Options;
 
-        await using var context = new App.UserGroupContext(options);
+        await using var context = new UserGroupContext(options);
         object payload = shape switch
         {
-            "unknown-field" => new App.UserMetadataDefinition
+            "unknown-field" => new UserMetadataDefinition
             {
                 FieldCode = "Unknown",
                 ValueKind = "Text",
             },
-            "unsupported-kind" => new App.UserMetadataDefinition
+            "unsupported-kind" => new UserMetadataDefinition
             {
                 FieldCode = "Route",
                 ValueKind = "Int32",
             },
-            "reversed-period" => new App.GroupRelationPeriod
+            "reversed-period" => new GroupRelationPeriod
             {
                 ParentId = 1,
                 ChildId = 2,
                 FromDate = new DateOnly(2026, 10, 2),
                 ToDate = new DateOnly(2026, 10, 1),
             },
-            "reversed-membership" => new App.UserGroupMembership
+            "reversed-membership" => new UserGroupMembership
             {
                 UserId = 1,
                 UserGroupId = 2,
                 FromDate = new DateOnly(2026, 10, 2),
                 ToDate = new DateOnly(2026, 10, 1),
             },
-            "reversed-local-role" => new App.MembershipRole
+            "reversed-local-role" => new MembershipRole
             {
                 UserId = 1,
                 UserGroupId = 2,
@@ -66,14 +64,14 @@ public sealed class SupervisorPayloadValidationTests
                 FromDate = new DateOnly(2026, 10, 2),
                 ToDate = new DateOnly(2026, 10, 1),
             },
-            "reversed-global-role" => new App.UserRole
+            "reversed-global-role" => new UserRole
             {
                 UserId = 1,
                 RoleId = Guid.NewGuid(),
                 FromDate = new DateOnly(2026, 10, 2),
                 ToDate = new DateOnly(2026, 10, 1),
             },
-            _ => new App.UserMetadata
+            _ => new UserMetadata
             {
                 UserId = 1,
                 FieldCode = "Route",
@@ -90,7 +88,7 @@ public sealed class SupervisorPayloadValidationTests
         await context.AddAsync(payload, CancellationToken.None);
 
         // Act
-        var error = Record.Exception(() => App.SupervisorPayloadValidation.Validate(context));
+        var error = Record.Exception(() => SupervisorPayloadValidation.Validate(context));
 
         // Assert
         if (invalid)
@@ -102,7 +100,9 @@ public sealed class SupervisorPayloadValidationTests
             Assert.Null(error);
         }
 
-        Assert.NotEqual(ConnectionState.Open,
-            context.Database.GetDbConnection().State);
+        Assert.NotEqual(
+            ConnectionState.Open,
+            context.Database.GetDbConnection()
+                .State);
     }
 }

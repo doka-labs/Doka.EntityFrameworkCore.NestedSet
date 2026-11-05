@@ -28,13 +28,17 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new SaveBoundaryProbe();
         await using var context = CreateManualDetectionContext(setup, wrapped, probe);
-        var node = await context.Set<OrderingNode>().SingleAsync(value => value.Id == 1, CancellationToken.None);
+        var node = await context
+            .Set<OrderingNode>()
+            .SingleAsync(value => value.Id == 1, CancellationToken.None);
+
         var originalLeft = node.Left;
         context.ChangeTracker.AutoDetectChangesEnabled = automaticDetection;
         var detections = 0;
@@ -63,21 +67,37 @@ public abstract partial class SaveChangesTests
         };
 
         // Act
-        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(context, synchronous,
+        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(
+            context,
+            synchronous,
             cancellationToken: TestContext.Current.CancellationToken));
 
-        var storedLeft = await setup.Set<OrderingNode>().Where(value => value.Id == 1)
-            .Select(value => value.Left).SingleAsync(CancellationToken.None);
+        var storedLeft = await setup
+            .Set<OrderingNode>()
+            .Where(value => value.Id == 1)
+            .Select(value => value.Left)
+            .SingleAsync(CancellationToken.None);
 
-        var storedMarkers = await setup.Set<OrderingMarker>().CountAsync(CancellationToken.None);
+        var storedMarkers = await setup
+            .Set<OrderingMarker>()
+            .CountAsync(CancellationToken.None);
 
         // Assert
         Assert.True(invoked);
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Equal(0, probe.PayloadCommands);
         Assert.Equal(originalLeft, storedLeft);
         Assert.Equal(0, storedMarkers);
-        var expectedDetections = automaticDetection ? (wrapped && !synchronous ? 2 : 1) : 1;
+        var expectedDetections = automaticDetection
+            ? wrapped && !synchronous
+                ? 2
+                : 1
+            : 1;
+
         Assert.Equal(expectedDetections, detections);
         Assert.Equal(automaticDetection, context.ChangeTracker.AutoDetectChangesEnabled);
     }

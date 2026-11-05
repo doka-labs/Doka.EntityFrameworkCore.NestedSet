@@ -34,7 +34,10 @@ internal sealed class NestedSetModelDescriptor
     )
     {
         NodeKey = NestedSetPropertyDescriptor.Create(nodeKey);
-        Scope = scope is null ? null : NestedSetPropertyDescriptor.Create(scope);
+        Scope = scope is null
+            ? null
+            : NestedSetPropertyDescriptor.Create(scope);
+
         TreeId = NestedSetPropertyDescriptor.Create(treeId);
         Parent = NestedSetPropertyDescriptor.Create(parent);
         Left = NestedSetPropertyDescriptor.Create(left);
@@ -48,7 +51,8 @@ internal sealed class NestedSetModelDescriptor
         OrderMode = orderMode;
 
         NestedSetPropertyDescriptor[] structuralProperties = Scope is { } scopeDescriptor
-            ? [
+            ?
+            [
                 NodeKey,
                 scopeDescriptor,
                 TreeId,
@@ -58,7 +62,8 @@ internal sealed class NestedSetModelDescriptor
                 Depth,
                 Position,
             ]
-            : [
+            :
+            [
                 NodeKey,
                 TreeId,
                 Parent,
@@ -85,6 +90,42 @@ internal sealed class NestedSetModelDescriptor
         Order = Array.AsReadOnly(order);
     }
 
+    /// <summary>Gets the stable hierarchy identity.</summary>
+    internal NestedSetPropertyDescriptor NodeKey { get; }
+
+    /// <summary>Gets the optional application partition.</summary>
+    internal NestedSetPropertyDescriptor? Scope { get; }
+
+    /// <summary>Gets the stable tree identity.</summary>
+    internal NestedSetPropertyDescriptor TreeId { get; }
+
+    /// <summary>Gets the nullable direct-parent identity.</summary>
+    internal NestedSetPropertyDescriptor Parent { get; }
+
+    /// <summary>Gets the Int64 left boundary.</summary>
+    internal NestedSetPropertyDescriptor Left { get; }
+
+    /// <summary>Gets the Int64 right boundary.</summary>
+    internal NestedSetPropertyDescriptor Right { get; }
+
+    /// <summary>Gets the Int32 node depth.</summary>
+    internal NestedSetPropertyDescriptor Depth { get; }
+
+    /// <summary>Gets the Int64 sibling position.</summary>
+    internal NestedSetPropertyDescriptor Position { get; }
+
+    /// <summary>Gets the optional generated nonleaf scalar without treating it as writable hierarchy structure.</summary>
+    internal NestedSetPropertyDescriptor? AncestorIndexProperty { get; }
+
+    /// <summary>Gets every structural property, with Scope present only for scoped entities.</summary>
+    internal IReadOnlyList<NestedSetPropertyDescriptor> StructuralProperties { get; }
+
+    /// <summary>Gets copied domain sort properties and their directions.</summary>
+    internal IReadOnlyList<NestedSetOrderPropertyDescriptor> Order { get; }
+
+    /// <summary>Gets the configured order policy, or null for explicitly positioned siblings.</summary>
+    internal NestedSetOrderMode? OrderMode { get; }
+
     /// <summary>Creates the immutable runtime descriptor from already validated finalized metadata.</summary>
     /// <param name="entity">The finalized nested-set entity.</param>
     /// <returns>A copied descriptor that does not retain annotation arrays.</returns>
@@ -106,10 +147,17 @@ internal sealed class NestedSetModelDescriptor
                 $"Nested-set ancestor-index property '{flagName}' on '{entity.Name}' is not mapped.")
             : null;
 
-        var namesValue = entity.FindAnnotation(NestedSetAnnotationNames.OrderProperties)?.Value;
-        var directionsValue = entity.FindAnnotation(NestedSetAnnotationNames.OrderDescending)?.Value;
-        var nullSortValue = entity.FindAnnotation(NestedSetAnnotationNames.OrderNullSort)?.Value;
-        var modeValue = entity.FindAnnotation(NestedSetAnnotationNames.OrderMode)?.Value;
+        var namesValue = entity.FindAnnotation(NestedSetAnnotationNames.OrderProperties)
+            ?.Value;
+
+        var directionsValue = entity.FindAnnotation(NestedSetAnnotationNames.OrderDescending)
+            ?.Value;
+
+        var nullSortValue = entity.FindAnnotation(NestedSetAnnotationNames.OrderNullSort)
+            ?.Value;
+
+        var modeValue = entity.FindAnnotation(NestedSetAnnotationNames.OrderMode)
+            ?.Value;
 
         if (namesValue is null
             && directionsValue is null
@@ -157,7 +205,9 @@ internal sealed class NestedSetModelDescriptor
             .ToArray();
 
         var nullSortOrders = nullSort
-            .Select(innerValue => innerValue == -1 ? (NullSortOrder?)null : (NullSortOrder)innerValue)
+            .Select(innerValue => innerValue == -1
+                ? (NullSortOrder?)null
+                : (NullSortOrder)innerValue)
             .ToArray();
 
         return new NestedSetModelDescriptor(
@@ -176,42 +226,6 @@ internal sealed class NestedSetModelDescriptor
             ancestorIndex);
     }
 
-    /// <summary>Gets the stable hierarchy identity.</summary>
-    internal NestedSetPropertyDescriptor NodeKey { get; }
-
-    /// <summary>Gets the optional application partition.</summary>
-    internal NestedSetPropertyDescriptor? Scope { get; }
-
-    /// <summary>Gets the stable tree identity.</summary>
-    internal NestedSetPropertyDescriptor TreeId { get; }
-
-    /// <summary>Gets the nullable direct-parent identity.</summary>
-    internal NestedSetPropertyDescriptor Parent { get; }
-
-    /// <summary>Gets the Int64 left boundary.</summary>
-    internal NestedSetPropertyDescriptor Left { get; }
-
-    /// <summary>Gets the Int64 right boundary.</summary>
-    internal NestedSetPropertyDescriptor Right { get; }
-
-    /// <summary>Gets the Int32 node depth.</summary>
-    internal NestedSetPropertyDescriptor Depth { get; }
-
-    /// <summary>Gets the Int64 sibling position.</summary>
-    internal NestedSetPropertyDescriptor Position { get; }
-
-    /// <summary>Gets the optional generated nonleaf scalar without treating it as writable hierarchy structure.</summary>
-    internal NestedSetPropertyDescriptor? AncestorIndexProperty { get; }
-
-    /// <summary>Gets every structural property, with Scope present only for scoped entities.</summary>
-    internal IReadOnlyList<NestedSetPropertyDescriptor> StructuralProperties { get; }
-
-    /// <summary>Gets copied domain sort properties and their directions.</summary>
-    internal IReadOnlyList<NestedSetOrderPropertyDescriptor> Order { get; }
-
-    /// <summary>Gets the configured order policy, or null for explicitly positioned siblings.</summary>
-    internal NestedSetOrderMode? OrderMode { get; }
-
     /// <summary>Resolves one required finalized role property.</summary>
     private static IReadOnlyProperty RequiredProperty(
         IReadOnlyEntityType entity,
@@ -223,7 +237,8 @@ internal sealed class NestedSetModelDescriptor
     private static IReadOnlyProperty? OptionalProperty(
         IReadOnlyEntityType entity,
         string role
-    ) => entity.FindAnnotation(NestedSetAnnotationNames.Prefix + role)?.Value is string name
+    ) => entity.FindAnnotation(NestedSetAnnotationNames.Prefix + role)
+        ?.Value is string name
         ? entity.FindProperty(name)
         : null;
 }

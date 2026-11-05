@@ -24,6 +24,15 @@ internal sealed class BenchmarkSelection : IDisposable
     /// <summary>Gets whether any selected case requires a launcher-owned database.</summary>
     internal bool RequiresDatabase => DatabaseCases.Count > 0;
 
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        foreach (var runInfo in _runInfos)
+        {
+            runInfo.Dispose();
+        }
+    }
+
     /// <summary>Checks native parsed selectors before the framework's inaccessible interactive prompt.</summary>
     /// <param name="options">The native options after aliases and response files have been parsed.</param>
     /// <returns>Whether a native filter, category or attribute explicitly selects execution cases.</returns>
@@ -124,13 +133,4 @@ internal sealed class BenchmarkSelection : IDisposable
         (BenchmarkShape)benchmarkCase.Parameters[nameof(DatabaseBenchmark.Shape)],
         (int)benchmarkCase.Parameters[nameof(DatabaseBenchmark.Trees)],
         (int)benchmarkCase.Parameters[nameof(DatabaseBenchmark.Tracked)]);
-
-    /// <inheritdoc />
-    public void Dispose()
-    {
-        foreach (var runInfo in _runInfos)
-        {
-            runInfo.Dispose();
-        }
-    }
 }

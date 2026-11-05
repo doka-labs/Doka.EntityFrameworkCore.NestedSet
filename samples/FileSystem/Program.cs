@@ -53,7 +53,9 @@ internal static class Program
                 await SampleDatabase.PrepareAsync(preparation, configuration, command.Reset, token);
             }
 
-            var selected = command.Scenario == "all" ? Scenarios : [command.Scenario];
+            var selected = command.Scenario == "all"
+                ? Scenarios
+                : [command.Scenario];
 
             foreach (var scenario in selected)
             {
@@ -77,9 +79,9 @@ internal static class Program
             return 130;
         }
         catch (Exception exception) when (exception is ArgumentException
-                                              or InvalidOperationException
-                                              or DbException
-                                              or IOException)
+            or InvalidOperationException
+            or DbException
+            or IOException)
         {
             await Console.Error.WriteLineAsync(
                 $"FileSystem failed: {exception.Message}".AsMemory(),

@@ -23,10 +23,12 @@ public sealed partial class BulkStagingRetentionTests
             node
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             node
                 .Property(value => value.Version)
                 .HasDefaultValue(0)
                 .ValueGeneratedOnAddOrUpdate();
+
             node
                 .Property<int>("ShadowScope")
                 .Metadata
@@ -42,6 +44,7 @@ public sealed partial class BulkStagingRetentionTests
                 .HasTreeId(value => value.TreeId)
                 .HasScope("ShadowScope")
                 .HasParent(value => value.ParentId));
+
             builder
                 .Entity<StagingMarker>()
                 .ToTable("ShadowStagingRetentionMarkers");
@@ -66,10 +69,12 @@ public sealed partial class BulkStagingRetentionTests
             node
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             node.HasAlternateKey(value => value.Alias);
             node
                 .Property(value => value.Left)
                 .UsePropertyAccessMode(PropertyAccessMode.Property);
+
             node
                 .Property(value => value.Version)
                 .HasDefaultValue(0)
@@ -82,6 +87,7 @@ public sealed partial class BulkStagingRetentionTests
                 .HasTreeId(value => value.TreeId)
                 .HasScope(value => value.Scope)
                 .HasParent(value => value.ParentId));
+
             node.OwnsOne(
                 value => value.Payload,
                 payload => payload
@@ -91,6 +97,7 @@ public sealed partial class BulkStagingRetentionTests
             modelBuilder
                 .Entity<StagingMarker>()
                 .ToTable("StagingRetentionMarkers");
+
             modelBuilder
                 .Entity<StagingForeign>()
                 .ToTable("StagingRetentionForeigns");
@@ -103,17 +110,8 @@ public sealed partial class BulkStagingRetentionTests
         private long _left;
         private int _version;
 
-        /// <inheritdoc />
-        public int Id { get; set; }
-
         /// <summary>Gets or sets the secondary identity used to exercise partially installed key maps.</summary>
         public string Alias { get; set; } = "input";
-
-        /// <inheritdoc />
-        public Guid TreeId { get; set; }
-
-        /// <summary>Gets or sets the configured scope.</summary>
-        public int Scope { get; set; }
 
         /// <summary>Gets or sets the nullable parent identity.</summary>
         public int? ParentId { get; set; }
@@ -126,6 +124,32 @@ public sealed partial class BulkStagingRetentionTests
 
         /// <summary>Gets or sets whether the next left-bound assignment throws.</summary>
         public bool FailSetter { get; set; }
+
+        /// <summary>Gets or sets the generated value whose initial capture can fail.</summary>
+        public int Version
+        {
+            get
+            {
+                if (FailGetter)
+                {
+                    FailGetter = false;
+
+                    throw new InjectedCommandException();
+                }
+
+                return _version;
+            }
+            set => _version = value;
+        }
+
+        /// <inheritdoc />
+        public int Id { get; set; }
+
+        /// <inheritdoc />
+        public Guid TreeId { get; set; }
+
+        /// <summary>Gets or sets the configured scope.</summary>
+        public int Scope { get; set; }
 
         /// <inheritdoc />
         public long Left
@@ -152,23 +176,6 @@ public sealed partial class BulkStagingRetentionTests
 
         /// <inheritdoc />
         public long Position { get; set; }
-
-        /// <summary>Gets or sets the generated value whose initial capture can fail.</summary>
-        public int Version
-        {
-            get
-            {
-                if (FailGetter)
-                {
-                    FailGetter = false;
-
-                    throw new InjectedCommandException();
-                }
-
-                return _version;
-            }
-            set => _version = value;
-        }
     }
 
     /// <summary>Provides a separately tracked owned child in the partial insertion graph.</summary>

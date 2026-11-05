@@ -16,9 +16,9 @@ internal sealed class NestedSetPhysicalDelete<TEntity, TKey, TTreeId, TScope>
     private const int MaximumParameters = 900;
 
     private static readonly ConditionalWeakTable<IEntityType, DeletePlan> s_plans = new();
+    private readonly DeletePlan _plan;
 
     private readonly NestedSetStore<TEntity, TKey, TTreeId, TScope> _store;
-    private readonly DeletePlan _plan;
 
     /// <summary>Resolves the immutable physical plan for the store's EF model.</summary>
     internal NestedSetPhysicalDelete(
@@ -43,6 +43,7 @@ internal sealed class NestedSetPhysicalDelete<TEntity, TKey, TTreeId, TScope>
     {
         var sql = _store.Context.GetService<ISqlGenerationHelper>();
         var keyProperties = _plan.KeyProperties;
+
         // WHY: Batches bound memory and stay below provider parameter limits, including composite keys.
         var batchSize = Math.Min(MaximumRows, MaximumParameters / keyProperties.Length);
         var affected = 0;
@@ -198,7 +199,7 @@ internal sealed class NestedSetPhysicalDelete<TEntity, TKey, TTreeId, TScope>
         /// <summary>Gets the ordered logical key components supplying each table's provider parameter mappings.</summary>
         internal IProperty[] KeyProperties { get; }
 
-        /// <summary>Gets the key-vector projection whose component order matches <see cref="KeyProperties"/>.</summary>
+        /// <summary>Gets the key-vector projection whose component order matches <see cref="KeyProperties" />.</summary>
         internal Expression<Func<TEntity, object?[]>> KeyProjection { get; }
 
         /// <summary>Gets the physical fragments ordered so their dependents are deleted before their principals.</summary>
@@ -220,7 +221,10 @@ internal sealed class NestedSetPhysicalDelete<TEntity, TKey, TTreeId, TScope>
             StoreObjectIdentifier store
         )
         {
-            var keyProperties = entity.FindPrimaryKey()?.Properties.ToArray()
+            var keyProperties = entity
+                    .FindPrimaryKey()
+                    ?.Properties
+                    .ToArray()
                 ?? throw new InvalidOperationException("A nested-set entity requires a primary key for deletion.");
 
             var mappedTypes = new HashSet<IEntityType>();

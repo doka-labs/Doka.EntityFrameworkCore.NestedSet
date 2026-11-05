@@ -88,7 +88,7 @@ internal sealed partial class NestedSetQuery<TEntity>
                 key,
                 (pair, related) => new
                 {
-                    Source = pair.Source,
+                    pair.Source,
                     Related = related,
                 });
 
@@ -231,7 +231,9 @@ internal sealed partial class NestedSetQuery<TEntity>
         // which exhausted its sample container during branched chains. Neither path deduplicates pairs.
         var completeMatches = _capabilities.RequiresCompletedAncestorMatches(_context);
         var matchParameter = Expression.Parameter(typeof(IQueryable<AncestorIndexKeyPair>), "matchedAncestors");
-        var sharedMatches = completeMatches ? _nodes.Provider.CreateQuery<AncestorIndexKeyPair>(matchParameter) : keys;
+        var sharedMatches = completeMatches
+            ? _nodes.Provider.CreateQuery<AncestorIndexKeyPair>(matchParameter)
+            : keys;
 
         var entity = Expression.Parameter(typeof(TEntity), "entity");
         var key = Expression.Lambda<Func<TEntity, object>>(
@@ -245,22 +247,22 @@ internal sealed partial class NestedSetQuery<TEntity>
             (pair, source) => new
             {
                 Source = source,
-                Related = pair.Related,
+                pair.Related,
             });
 
         // WHY: Matching has completed before owner payload is read. Direct only this hydration edge;
         // the source identity lookup remains an ordinary join and can keep its native access plan.
         if (!_capabilities.TryOrderedJoin(
-                sourceNodes,
-                _nodes,
-                pair => pair.Related,
-                key,
-                (pair, related) => new AncestorIndexMappedPair
-                {
-                    Source = pair.Source,
-                    Related = related,
-                },
-                out var pairs))
+            sourceNodes,
+            _nodes,
+            pair => pair.Related,
+            key,
+            (pair, related) => new AncestorIndexMappedPair
+            {
+                Source = pair.Source,
+                Related = related,
+            },
+            out var pairs))
         {
             throw new NotSupportedException(
                 "The bounded ancestor owner hydration requires the selected adapter's ordered-join primitive.");
@@ -293,7 +295,9 @@ internal sealed partial class NestedSetQuery<TEntity>
             completed.Expression,
             sourceParameter);
 
-        return _capabilities.TryBindSource(sources, compose, out var bound) ? bound : null;
+        return _capabilities.TryBindSource(sources, compose, out var bound)
+            ? bound
+            : null;
     }
 
     /// <summary>Builds flat mapped structural roles without property-name closures or unmapped null columns.</summary>

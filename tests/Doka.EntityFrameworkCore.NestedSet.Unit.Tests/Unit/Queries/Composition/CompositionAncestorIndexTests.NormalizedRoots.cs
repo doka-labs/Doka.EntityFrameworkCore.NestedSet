@@ -45,14 +45,23 @@ public sealed partial class CompositionAncestorIndexTests
         };
 
         var marker = RootMarker(context);
-        var first = WithNormalizedBinding(marker,
+        var first = WithNormalizedBinding(
+            marker,
             NormalizedBinding(entity, new QueryParameterExpression("scope", typeof(int)), 0, null),
             entity);
 
-        var second = WithNormalizedBinding(marker,
-            NormalizedBinding(secondEntity,
-                new QueryParameterExpression(difference == "parameter" ? "anotherScope" : "scope", typeof(int)),
-                difference == "literal" ? 1 : 0,
+        var second = WithNormalizedBinding(
+            marker,
+            NormalizedBinding(
+                secondEntity,
+                new QueryParameterExpression(
+                    difference == "parameter"
+                        ? "anotherScope"
+                        : "scope",
+                    typeof(int)),
+                difference == "literal"
+                    ? 1
+                    : 0,
                 null),
             secondEntity);
 
@@ -65,7 +74,8 @@ public sealed partial class CompositionAncestorIndexTests
         // Assert
         Assert.NotSame(first.Arguments[0], second.Arguments[0]);
         Assert.Equal(same, ReferenceEquals(canonicalFirst.Arguments[0], canonicalSecond.Arguments[0]));
-        Assert.Equal(difference != "mapping" && difference != "model",
+        Assert.Equal(
+            difference != "mapping" && difference != "model",
             ReferenceEquals(canonicalFirst.Arguments[1], canonicalSecond.Arguments[1]));
     }
 
@@ -137,7 +147,8 @@ public sealed partial class CompositionAncestorIndexTests
             .NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
             .ForScope(17)
             .InTree(Guid.Empty)
-            .SelectAncestorsOrSelf(node => nodes.Any(other => other.Id == node.Id),
+            .SelectAncestorsOrSelf(
+                node => nodes.Any(other => other.Id == node.Id),
                 (node, owner, distance) => owner.Id);
 
         return Assert.IsAssignableFrom<MethodCallExpression>(query.Expression);
@@ -170,7 +181,8 @@ public sealed partial class CompositionAncestorIndexTests
         var node = Expression.Parameter(typeof(CompositionGuardNode), "node");
         Expression condition = Expression.AndAlso(
             Expression.Equal(Expression.Property(node, nameof(CompositionGuardNode.Scope)), scope),
-            Expression.GreaterThan(Expression.Property(node, nameof(CompositionGuardNode.Id)),
+            Expression.GreaterThan(
+                Expression.Property(node, nameof(CompositionGuardNode.Id)),
                 Expression.Constant(literal)));
 
         if (extra is not null)
@@ -178,7 +190,8 @@ public sealed partial class CompositionAncestorIndexTests
             condition = Expression.AndAlso(condition, extra);
         }
 
-        return Expression.Call(typeof(Queryable),
+        return Expression.Call(
+            typeof(Queryable),
             nameof(Queryable.Where),
             [typeof(CompositionGuardNode)],
             new EntityQueryRootExpression(entity),
@@ -271,7 +284,7 @@ public sealed partial class CompositionAncestorIndexTests
         {
             probe.Read();
 
-            return Expression.Constant(true);
+            return Constant(true);
         }
 
         /// <inheritdoc />

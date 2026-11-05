@@ -27,7 +27,8 @@ public abstract class DatabasePoolLifecycleTestBase : ProviderTest
     {
         // Arrange
         var cancellationToken = TestContext.Current.CancellationToken;
-        await using var live = await TestDatabase.CreateAsync(Engine,
+        await using var live = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var liveContext = live.CreateContext();
@@ -48,7 +49,9 @@ public abstract class DatabasePoolLifecycleTestBase : ProviderTest
 
         await using var completed = initializationFailure
             ? null
-            : await TestDatabase.CreateAsync(Engine, InitializeAsync,
+            : await TestDatabase.CreateAsync(
+                Engine,
+                InitializeAsync,
                 cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
@@ -63,7 +66,8 @@ public abstract class DatabasePoolLifecycleTestBase : ProviderTest
                     await InitializeAsync(context, cancellationToken: token);
 
                     throw failure;
-                }, cancellationToken: TestContext.Current.CancellationToken));
+                },
+                cancellationToken: TestContext.Current.CancellationToken));
         }
         else if (deletionFailure)
         {
@@ -98,9 +102,9 @@ public abstract class DatabasePoolLifecycleTestBase : ProviderTest
             + "WHERE ID IN (@completed, @active, @idle)";
 
         foreach (var (name, value) in new[]
-                 {
-                     ("@completed", completedSession), ("@active", activeSession), ("@idle", idleSession),
-                 })
+            {
+                ("@completed", completedSession), ("@active", activeSession), ("@idle", idleSession),
+            })
         {
             var parameter = command.CreateParameter();
             parameter.ParameterName = name;
@@ -114,7 +118,7 @@ public abstract class DatabasePoolLifecycleTestBase : ProviderTest
         // WHY: ClearPool sends COM_QUIT and closes the socket without waiting for the server to remove
         // its session. Observe that remote completion while keeping a real pool leak a bounded failure.
         while (sessions.ContainsKey(completedSession)
-               && observation.Elapsed < TimeSpan.FromSeconds(5))
+            && observation.Elapsed < TimeSpan.FromSeconds(5))
         {
             await Task.Delay(TimeSpan.FromMilliseconds(20), cancellationToken);
             sessions = await ReadSessionsAsync(command, cancellationToken);
@@ -125,6 +129,7 @@ public abstract class DatabasePoolLifecycleTestBase : ProviderTest
         Assert.False(
             sessions.ContainsKey(completedSession),
             $"Completed session {completedSession} retained: {string.Join(", ", sessions)}");
+
         Assert.True(sessions.ContainsKey(idleSession), $"Foreign idle session {idleSession} was cleared.");
         Assert.Equal("Query", sessions[activeSession]);
         Assert.Equal("Sleep", sessions[idleSession]);

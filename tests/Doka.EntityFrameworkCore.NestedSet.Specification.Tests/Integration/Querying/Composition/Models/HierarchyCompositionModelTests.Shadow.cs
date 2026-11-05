@@ -35,23 +35,45 @@ public abstract partial class HierarchyCompositionModelTests
         for (var depth = 0; depth < 3; depth++)
         {
             var node = new CompositionShadowNode { Label = $"Node {depth}" };
+
             // WHY: Assign the full shadow key before tracking, so the next child never temporarily aliases root zero.
             var entry = context.Entry(node);
-            entry.Property(CompositionShadowContext.Scope).CurrentValue = scope;
-            entry.Property(CompositionShadowContext.Key).CurrentValue = depth;
-            entry.Property(CompositionShadowContext.Tree).CurrentValue = treeId;
-            entry.Property(CompositionShadowContext.Parent).CurrentValue = depth == 0 ? null : depth - 1;
-            entry.Property(CompositionShadowContext.Start).CurrentValue = (long)depth + 1;
-            entry.Property(CompositionShadowContext.End).CurrentValue = 6L - depth;
-            entry.Property(CompositionShadowContext.Depth).CurrentValue = depth;
-            entry.Property(CompositionShadowContext.Position).CurrentValue = 0L;
+            entry.Property(CompositionShadowContext.Scope)
+                .CurrentValue = scope;
+
+            entry.Property(CompositionShadowContext.Key)
+                .CurrentValue = depth;
+
+            entry.Property(CompositionShadowContext.Tree)
+                .CurrentValue = treeId;
+
+            entry.Property(CompositionShadowContext.Parent)
+                .CurrentValue = depth == 0
+                ? null
+                : depth - 1;
+
+            entry.Property(CompositionShadowContext.Start)
+                .CurrentValue = (long)depth + 1;
+
+            entry.Property(CompositionShadowContext.End)
+                .CurrentValue = 6L - depth;
+
+            entry.Property(CompositionShadowContext.Depth)
+                .CurrentValue = depth;
+
+            entry.Property(CompositionShadowContext.Position)
+                .CurrentValue = 0L;
+
             await context.AddAsync(node, CancellationToken.None);
         }
 
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         probe.Reset();
-        var hierarchy = context.NestedSet<CompositionShadowNode>().ForScope(scope).InTree(treeId);
+        var hierarchy = context
+            .NestedSet<CompositionShadowNode>()
+            .ForScope(scope)
+            .InTree(treeId);
 
         // Act
         var actual = await QueryDepths(hierarchy, operation, CompositionShadowContext.Depth)

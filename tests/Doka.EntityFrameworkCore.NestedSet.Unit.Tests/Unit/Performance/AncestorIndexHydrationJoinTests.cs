@@ -25,11 +25,24 @@ public sealed class AncestorIndexHydrationJoinTests
         var actual = AncestorIndexHydrationJoins.Read(sql, "FixtureNodes");
 
         // Assert
-        Assert.Equal(2,
-            sql.Split("STRAIGHT_JOIN", StringSplitOptions.None).Length
+        Assert.Equal(
+            2,
+            sql.Split("STRAIGHT_JOIN")
+                .Length
             - 1);
-        Assert.Equal(swapped ? "STRAIGHT_JOIN" : "INNER JOIN", actual.Source);
-        Assert.Equal(swapped ? "INNER JOIN" : "STRAIGHT_JOIN", actual.Owner);
+
+        Assert.Equal(
+            swapped
+                ? "STRAIGHT_JOIN"
+                : "INNER JOIN",
+            actual.Source);
+
+        Assert.Equal(
+            swapped
+                ? "INNER JOIN"
+                : "STRAIGHT_JOIN",
+            actual.Owner);
+
         Assert.Equal(!swapped, actual == ("INNER JOIN", "STRAIGHT_JOIN"));
     }
 
@@ -54,7 +67,8 @@ public sealed class AncestorIndexHydrationJoinTests
         {
             "wrong-table" => valid.Replace("`FixtureNodes`", "`OtherNodes`", StringComparison.Ordinal),
             "missing-alias" => valid.Replace("AS `owner` ON", "AS `otherOwner` ON", StringComparison.Ordinal),
-            "reused-alias" => valid.Replace("FROM `modes` AS `m`",
+            "reused-alias" => valid.Replace(
+                "FROM `modes` AS `m`",
                 "FROM `modes` AS `m` INNER JOIN `FixtureNodes` AS `owner` ON 1 = 1",
                 StringComparison.Ordinal),
             "unbalanced" => valid.Replace("STRAIGHT_JOIN (", "STRAIGHT_JOIN ", StringComparison.Ordinal),
@@ -82,8 +96,13 @@ public sealed class AncestorIndexHydrationJoinTests
             ? "(SELECT `n`.`Id` FROM `FixtureNodes` AS `n` WHERE (`n`.`Visible`))"
             : "`FixtureNodes`";
 
-        var sourceJoin = swapped ? "STRAIGHT_JOIN" : "INNER JOIN";
-        var ownerJoin = swapped ? "INNER JOIN" : "STRAIGHT_JOIN";
+        var sourceJoin = swapped
+            ? "STRAIGHT_JOIN"
+            : "INNER JOIN";
+
+        var ownerJoin = swapped
+            ? "INNER JOIN"
+            : "STRAIGHT_JOIN";
 
         return $"""
                 SELECT `source`.`Id` AS `Source`, `owner`.`Id` AS `Owner`, 0 AS `Distance`

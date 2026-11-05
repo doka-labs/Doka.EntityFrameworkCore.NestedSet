@@ -90,18 +90,26 @@ public sealed class PersistedRelationshipProofAllocationTests(
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         // Assert
-        output.WriteLine($"Persisted FK capture: nodes={nodes}; hierarchy={hierarchy}; passes={repetitions}; "
+        output.WriteLine(
+            $"Persisted FK capture: nodes={nodes}; hierarchy={hierarchy}; passes={repetitions}; "
             + $"allocated={allocated} B; maximum=2048 B.");
+
         Assert.Equal(nodes, entries.Length);
         Assert.Equal(0, completions);
         Assert.InRange(allocated, 0, 2048);
-        Assert.All(entries,
-            entry => Assert.Equal(hierarchy ? EntityState.Added : EntityState.Modified,
+        Assert.All(
+            entries,
+            entry => Assert.Equal(
+                hierarchy
+                    ? EntityState.Added
+                    : EntityState.Modified,
                 entry.EntityState));
 
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>An owner already in the insertion journal does not allocate another filtering closure.</summary>
@@ -119,8 +127,10 @@ public sealed class PersistedRelationshipProofAllocationTests(
         var initial = baseline;
         var update = NestedSetInsertionContract.Instance.Entry(context.Entry(owner));
         var navigation = update.EntityType.FindNavigation(nameof(ProbeOwner.ScopeNodes))!;
+
         // WHY: Bind the existing journal operation once; native principal resolution is not this allocation probe.
-        var capture = typeof(NestedSetCollectionBaseline).GetMethod("Capture",
+        var capture = typeof(NestedSetCollectionBaseline).GetMethod(
+                "Capture",
                 BindingFlags.Instance | BindingFlags.NonPublic)!
             .CreateDelegate<Action<IUpdateEntry, INavigation, HashSet<object>?>>(baseline);
 
@@ -156,7 +166,9 @@ public sealed class PersistedRelationshipProofAllocationTests(
         Assert.Equal(0, allocated);
         Assert.Equal(EntityState.Unchanged, entry.State);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 }

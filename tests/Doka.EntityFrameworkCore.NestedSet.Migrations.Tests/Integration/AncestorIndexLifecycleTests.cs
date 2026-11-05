@@ -58,7 +58,9 @@ public sealed partial class AncestorIndexLifecycleTests
     )
     {
         // Arrange
-        await using var database = await AncestorIndexDatabase.CreateAsync(_fixture, engine,
+        await using var database = await AncestorIndexDatabase.CreateAsync(
+            _fixture,
+            engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var chain = database.Scaffold(true, "AncestorLifecycle");
@@ -94,6 +96,7 @@ public sealed partial class AncestorIndexLifecycleTests
                         [new NestedSetBranch<MigrationNode>(new MigrationNode { NodeId = 6 })]),
                     4,
                     CancellationToken.None);
+
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(operation));
@@ -126,7 +129,11 @@ public sealed partial class AncestorIndexLifecycleTests
             _ => throw new ArgumentOutOfRangeException(nameof(operation)),
         };
 
-        Assert.Equal(expectedBranches, persisted.Where(x => x.Flag).Select(x => x.Id));
+        Assert.Equal(
+            expectedBranches,
+            persisted
+                .Where(x => x.Flag)
+                .Select(x => x.Id));
     }
 
     /// <summary>Rebuild recomputes a deliberately stale generated flag through the existing refresh boundary.</summary>
@@ -142,7 +149,9 @@ public sealed partial class AncestorIndexLifecycleTests
     )
     {
         // Arrange
-        await using var database = await AncestorIndexDatabase.CreateAsync(_fixture, engine,
+        await using var database = await AncestorIndexDatabase.CreateAsync(
+            _fixture,
+            engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var chain = database.Scaffold(true, "AncestorRebuild");
@@ -182,7 +191,10 @@ public sealed partial class AncestorIndexLifecycleTests
         // Assert
         Assert.False(before);
         Assert.Empty(context.ChangeTracker.Entries<MigrationNode>());
-        Assert.True(Assert.Single(persisted, x => x.Id == 1).Flag);
+        Assert.True(
+            Assert.Single(persisted, x => x.Id == 1)
+                .Flag);
+
         Assert.All(persisted, row => Assert.Equal(row.Right > row.Left + 1, row.Flag));
     }
 
@@ -249,7 +261,9 @@ public sealed partial class AncestorIndexLifecycleTests
     )
     {
         // Arrange
-        await using var database = await AncestorIndexDatabase.CreateAsync(_fixture, engine,
+        await using var database = await AncestorIndexDatabase.CreateAsync(
+            _fixture,
+            engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var chain = database.Scaffold(true, "AncestorTrackedSave");
@@ -261,20 +275,34 @@ public sealed partial class AncestorIndexLifecycleTests
             .OrderBy(x => x.NodeId)
             .ToArrayAsync(CancellationToken.None);
 
-        var moved = rows.Single(x => x.NodeId == (crossTree ? 2 : 3));
-        moved.ParentId = crossTree ? 4 : 1;
+        var moved = rows.Single(x => x.NodeId
+            == (crossTree
+                ? 2
+                : 3));
+
+        moved.ParentId = crossTree
+            ? 4
+            : 1;
 
         // Act
         await context.SaveChangesAsync(CancellationToken.None);
         var persisted = await ReadStatesAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var tracked = ReadTrackedStates(context);
-        int[] expectedBranches = crossTree ? [2, 4] : [1];
+        int[] expectedBranches = crossTree
+            ? [2, 4]
+            : [1];
 
         // Assert
         Assert.Equal(persisted, tracked);
         Assert.All(persisted, row => Assert.Equal(row.Right > row.Left + 1, row.Flag));
-        Assert.Equal(expectedBranches, persisted.Where(x => x.Flag).Select(x => x.Id));
-        Assert.All(context.ChangeTracker.Entries<MigrationNode>(),
+        Assert.Equal(
+            expectedBranches,
+            persisted
+                .Where(x => x.Flag)
+                .Select(x => x.Id));
+
+        Assert.All(
+            context.ChangeTracker.Entries<MigrationNode>(),
             entry => Assert.Equal(EntityState.Unchanged, entry.State));
     }
 
@@ -323,7 +351,10 @@ public sealed partial class AncestorIndexLifecycleTests
         Assert.Equal(before, persisted);
         Assert.Equal(before, tracked);
         Assert.Equal(4, moved.ParentId);
-        Assert.Equal(EntityState.Modified, context.Entry(moved).State);
+        Assert.Equal(
+            EntityState.Modified,
+            context.Entry(moved)
+                .State);
     }
 
     /// <summary>Evaluates the generated predicate safely at the largest representable valid Int64 bounds.</summary>
@@ -339,7 +370,9 @@ public sealed partial class AncestorIndexLifecycleTests
     )
     {
         // Arrange
-        await using var database = await AncestorIndexDatabase.CreateAsync(_fixture, engine,
+        await using var database = await AncestorIndexDatabase.CreateAsync(
+            _fixture,
+            engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var chain = database.Scaffold(true, "AncestorInt64Edge");
@@ -363,10 +396,14 @@ public sealed partial class AncestorIndexLifecycleTests
         };
 
         // Act
-        await database.PhysicalDatabase.InsertNodeDirectlyAsync(leaf,
+        await database.PhysicalDatabase.InsertNodeDirectlyAsync(
+            leaf,
             cancellationToken: TestContext.Current.CancellationToken);
-        await database.PhysicalDatabase.InsertNodeDirectlyAsync(branch,
+
+        await database.PhysicalDatabase.InsertNodeDirectlyAsync(
+            branch,
             cancellationToken: TestContext.Current.CancellationToken);
+
         await using var context = database.CreateContext();
         var rows = await ReadStatesAsync(context, cancellationToken: TestContext.Current.CancellationToken);
 
@@ -448,6 +485,8 @@ public sealed partial class AncestorIndexLifecycleTests
             SaveChangesCompletedEventData eventData,
             int result,
             CancellationToken cancellationToken = default
-        ) => Armed ? throw new InvalidOperationException(Message) : ValueTask.FromResult(result);
+        ) => Armed
+            ? throw new InvalidOperationException(Message)
+            : ValueTask.FromResult(result);
     }
 }

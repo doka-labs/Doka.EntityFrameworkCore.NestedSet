@@ -17,10 +17,10 @@ public class BoundsBenchmarks
     [GlobalSetup]
     public void Prepare()
     {
-        _root = new NestedSetBounds(1, ((long)Nodes * 2) + 2);
+        _root = new NestedSetBounds(1, (long)Nodes * 2 + 2);
         _bounds = Enumerable
             .Range(0, Nodes)
-            .Select(index => new NestedSetBounds((index * 2L) + 2, (index * 2L) + 3))
+            .Select(index => new NestedSetBounds(index * 2L + 2, index * 2L + 3))
             .ToArray();
     }
 

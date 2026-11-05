@@ -32,10 +32,12 @@ public abstract partial class OrderingComplexConcurrencyTests
                 {
                     nameof(ComplexConcurrencyNode.Left),
                     nameof(ComplexConcurrencyNode.Right),
-                    nameof(ComplexConcurrencyNode.Position)
+                    nameof(ComplexConcurrencyNode.Position),
                 }.Select(sql.DelimitIdentifier));
 
-            var expression = Database.IsSqlServer() ? $"CAST({sum} AS int)" : sum;
+            var expression = Database.IsSqlServer()
+                ? $"CAST({sum} AS int)"
+                : sum;
 
             // WHY: A computed scalar changes with coordinate SQL on all engines and avoids trigger timing.
             node
@@ -55,15 +57,6 @@ public abstract partial class OrderingComplexConcurrencyTests
     /// <summary>Contains ordinary ordering payload and a complex generated concurrency leaf.</summary>
     private sealed class ComplexConcurrencyNode : IScopedNestedSetNode<int, Guid, int>
     {
-        /// <summary>Gets or sets the stable tree identity.</summary>
-        public Guid TreeId { get; set; }
-
-        /// <inheritdoc />
-        public int Id { get; set; }
-
-        /// <summary>Gets or sets the forest identity.</summary>
-        public int Scope { get; set; }
-
         /// <summary>Gets or sets the direct parent identity.</summary>
         public int? ParentId { get; set; }
 
@@ -75,6 +68,15 @@ public abstract partial class OrderingComplexConcurrencyTests
 
         /// <summary>Gets or sets the mapped complex concurrency container.</summary>
         public ComplexConcurrencyDetails Details { get; set; } = new();
+
+        /// <summary>Gets or sets the stable tree identity.</summary>
+        public Guid TreeId { get; set; }
+
+        /// <inheritdoc />
+        public int Id { get; set; }
+
+        /// <summary>Gets or sets the forest identity.</summary>
+        public int Scope { get; set; }
 
         /// <inheritdoc />
         public long Left { get; set; }

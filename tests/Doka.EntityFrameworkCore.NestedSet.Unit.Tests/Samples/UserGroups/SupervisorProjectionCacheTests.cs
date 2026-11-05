@@ -32,7 +32,8 @@ public sealed class SupervisorProjectionCacheTests
         const int operations = 64;
         var boundary = new CompositionIoBoundary();
         var options = new DbContextOptionsBuilder<UserGroupContext>(
-                ModelCompatibilityDatabase.Options<UserGroupContext>(engine,
+                ModelCompatibilityDatabase.Options<UserGroupContext>(
+                    engine,
                     "Server=127.0.0.1;Database=supervisor_projection_construction;User ID=unused;Pooling=false"))
             .AddInterceptors(boundary, boundary.Commands);
 
@@ -45,16 +46,19 @@ public sealed class SupervisorProjectionCacheTests
         // WHY: An owned provider graph keeps this no-I/O calibration independent of process-wide
         // service-cache history. Initial model and selector construction are outside the observation.
         await using var provider = services.BuildServiceProvider();
-        await using var context = new UserGroupContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new UserGroupContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var tenantId = Guid.Parse("a296dbcb-a9c1-4c70-9bbb-ff506af5d546");
         var catalog = new[] { "Route", "ChannelClass", "ManagerRoute", "RoutingZone" };
         var request = new SupervisorRequest
         {
             SourceUserId = 17,
-            StartGroupId = origins == 1 ? 31 : null,
+            StartGroupId = origins == 1
+                ? 31
+                : null,
             SearchStart = SearchStart.ParentsOnly,
             Roles = new MembershipRoleFilter(Guid.Parse("358bc287-e4ec-4413-93c4-23ec6dd4ef93")),
             Groups = new NthEligibleGroup([], 1),
@@ -76,10 +80,12 @@ public sealed class SupervisorProjectionCacheTests
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < warmup; index++)
         {
-            GC.KeepAlive(SupervisorQueries.ResolutionRows(context,
-                tenantId,
-                request,
-                SupervisorSelection.RequireUnique));
+            GC.KeepAlive(
+                SupervisorQueries.ResolutionRows(
+                    context,
+                    tenantId,
+                    request,
+                    SupervisorSelection.RequireUnique));
         }
 
         var allocated = new long[batches];
@@ -107,6 +113,7 @@ public sealed class SupervisorProjectionCacheTests
         // Assert
         Assert.NotNull(last);
         Assert.All(allocated, bytes => Assert.True(bytes > 0));
+
         // WHY: The eight fixed observations use about 218-220 KB/build after projection reuse. A 224 KiB
         // ceiling leaves headroom while rejecting the original 242-244 KB path without a timing gate.
         // Every batch contributes to the mean; no favorable sample or retry chooses the result.
@@ -118,6 +125,7 @@ public sealed class SupervisorProjectionCacheTests
             $"Engine={engine}; benchmark origins={origins}; fields={fields}; warmup={warmup}; "
             + $"batches={batches}; operations/batch={operations}; "
             + $"batch bytes=[{string.Join(',', allocated)}]; mean={allocated.Average() / operations:F2} B/build.");
+
         GC.KeepAlive(last);
     }
 
@@ -169,17 +177,19 @@ public sealed class SupervisorProjectionCacheTests
         {
             "context" => Expression.Constant(context),
             "model" => Expression.Constant(new ModelBuilder().Model),
-            "query" => Expression.Constant(Array
-                .Empty<int>()
-                .AsQueryable()),
-            "request" => Expression.Constant(new SupervisorRequest
-            {
-                SourceUserId = source,
-                SearchStart = SearchStart.ParentsOnly,
-                Roles = new NoRoleFilter(),
-                Groups = new AllEligibleGroups(),
-                Matches = [],
-            }),
+            "query" => Expression.Constant(
+                Array
+                    .Empty<int>()
+                    .AsQueryable()),
+            "request" => Expression.Constant(
+                new SupervisorRequest
+                {
+                    SourceUserId = source,
+                    SearchStart = SearchStart.ParentsOnly,
+                    Roles = new NoRoleFilter(),
+                    Groups = new AllEligibleGroups(),
+                    Matches = [],
+                }),
             "closure" => (Expression)closure,
             "extension" => new UnboundProjectionExtension(),
             _ => throw new ArgumentOutOfRangeException(nameof(shape)),
@@ -222,14 +232,19 @@ public sealed class SupervisorProjectionCacheTests
         // Assert
         Assert.Equal(17, firstRow.SourceUserId);
         Assert.Equal(73, secondRow.SourceUserId);
-        Assert.All(new[] { firstRow, secondRow },
+        Assert.All(
+            new[] { firstRow, secondRow },
             row =>
             {
                 Assert.Equal(1, row.Kind);
                 Assert.Equal(31, row.StartGroupId);
                 Assert.Equal(count ?? 0, row.Count);
                 Assert.Equal(count == 1, row.HasEvidence);
-                Assert.Equal(count == 1 ? 29 : 0, row.CandidateUserId);
+                Assert.Equal(
+                    count == 1
+                        ? 29
+                        : 0,
+                    row.CandidateUserId);
             });
     }
 
@@ -253,7 +268,8 @@ public sealed class SupervisorProjectionCacheTests
         var markerType = selector.ReturnType;
         Assert.Equal(17, markerType.GetProperty("SourceUserId")!.GetValue(firstMarker));
         Assert.Equal(73, markerType.GetProperty("SourceUserId")!.GetValue(secondMarker));
-        Assert.All(new[] { firstMarker, secondMarker },
+        Assert.All(
+            new[] { firstMarker, secondMarker },
             marker =>
             {
                 Assert.Equal(31, markerType.GetProperty("StartGroupId")!.GetValue(marker));
@@ -284,7 +300,11 @@ public sealed class SupervisorProjectionCacheTests
         inputType.GetProperty("SourceUserId")!.SetValue(outcome, source);
         inputType.GetProperty("StartGroupId")!.SetValue(outcome, 31);
         inputType.GetProperty("Count")!.SetValue(outcome, count.Value);
-        inputType.GetProperty("PersonId")!.SetValue(outcome, count == 1 ? (int?)29 : null);
+        inputType.GetProperty("PersonId")!.SetValue(
+            outcome,
+            count == 1
+                ? (int?)29
+                : null);
 
         return outcome;
     }

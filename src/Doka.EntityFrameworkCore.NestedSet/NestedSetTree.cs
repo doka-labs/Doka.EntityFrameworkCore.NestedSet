@@ -7,8 +7,8 @@ public sealed partial class NestedSetTree<TEntity, TTreeId>
     where TEntity : class
     where TTreeId : notnull
 {
-    private readonly NestedSetQuery<TEntity> _query;
     private readonly NestedSetMutationBinding<TEntity> _operations;
+    private readonly NestedSetQuery<TEntity> _query;
     private readonly TTreeId _treeId;
 
     /// <summary>Creates a tree facade from its already validated identity query.</summary>
@@ -24,6 +24,7 @@ public sealed partial class NestedSetTree<TEntity, TTreeId>
         _query = query;
         Nodes = query.OrderedNodes;
         _operations = operations;
+
         // WHY: InTree already created one immutable identity for both the deferred query and maintenance.
         // Cloning again would duplicate configured snapshot work without adding an ownership boundary.
         _treeId = treeId;

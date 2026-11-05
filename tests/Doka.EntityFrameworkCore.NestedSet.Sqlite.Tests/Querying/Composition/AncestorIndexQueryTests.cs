@@ -5,5 +5,7 @@ public sealed class AncestorIndexQueryTests : Specifications.AncestorIndexQueryT
 {
     /// <summary>Uses the collection-owned SQLite model database.</summary>
     /// <param name="fixture">The exact SQLite provider fixture.</param>
-    public AncestorIndexQueryTests(ProviderFixture<ModelCompatibilityDatabase, SqliteEngine> fixture) : base(fixture) { }
+    public AncestorIndexQueryTests(
+        ProviderFixture<ModelCompatibilityDatabase, SqliteEngine> fixture
+    ) : base(fixture) { }
 }

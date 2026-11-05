@@ -13,12 +13,13 @@ public sealed partial class SignalReportValidationTests
         // Arrange
         var first = SignalReportDataset.Id(2);
         var second = SignalReportDataset.Id(1);
-        var snapshot = SignalReportValidation.Snapshot(Request() with
-        {
-            AnchorIds = [first, second],
-            ChannelIds = [SignalReportDataset.SweepChannel, SignalReportDataset.PulseChannel],
-            Sources = [CapturePort.Sweep, CapturePort.Pulse],
-        });
+        var snapshot = SignalReportValidation.Snapshot(
+            Request() with
+            {
+                AnchorIds = [first, second],
+                ChannelIds = [SignalReportDataset.SweepChannel, SignalReportDataset.PulseChannel],
+                Sources = [CapturePort.Sweep, CapturePort.Pulse],
+            });
 
         SignalReportTotal[] totals =
         [
@@ -77,7 +78,10 @@ public sealed partial class SignalReportValidationTests
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request());
-        var anchor = foreign ? SignalReportDataset.Id(99) : snapshot.AnchorIds[0];
+        var anchor = foreign
+            ? SignalReportDataset.Id(99)
+            : snapshot.AnchorIds[0];
+
         SignalReportTotal[] totals =
         [
             new()
@@ -92,7 +96,9 @@ public sealed partial class SignalReportValidationTests
                 AnchorId = anchor,
                 ChannelId = snapshot.ChannelIds[0],
                 Source = CapturePort.Pulse,
-                Value = sameValue ? 7 : 11,
+                Value = sameValue
+                    ? 7
+                    : 11,
             },
         ];
 
@@ -134,18 +140,19 @@ public sealed partial class SignalReportValidationTests
     public void GridBuildsCompleteLargeGrainWithMissingAndZeroGroups()
     {
         // Arrange
-        var snapshot = SignalReportValidation.Snapshot(Request() with
-        {
-            AnchorIds = Enumerable
-                .Range(1, 64)
-                .Select(SignalReportDataset.Id)
-                .ToArray(),
-            ChannelIds = Enumerable
-                .Range(101, 32)
-                .Select(SignalReportDataset.Id)
-                .ToArray(),
-            Sources = [CapturePort.Sweep, CapturePort.Pulse, CapturePort.Burst],
-        });
+        var snapshot = SignalReportValidation.Snapshot(
+            Request() with
+            {
+                AnchorIds = Enumerable
+                    .Range(1, 64)
+                    .Select(SignalReportDataset.Id)
+                    .ToArray(),
+                ChannelIds = Enumerable
+                    .Range(101, 32)
+                    .Select(SignalReportDataset.Id)
+                    .ToArray(),
+                Sources = [CapturePort.Sweep, CapturePort.Pulse, CapturePort.Burst],
+            });
 
         SignalReportTotal[] totals =
         [
@@ -170,18 +177,24 @@ public sealed partial class SignalReportValidationTests
 
         // Assert
         Assert.Equal(64 * 32 * 3, cells.Length);
-        Assert.Equal(new SignalReportCell(SignalReportDataset.Id(1),
+        Assert.Equal(
+            new SignalReportCell(
+                SignalReportDataset.Id(1),
                 SignalReportDataset.Id(101),
                 CapturePort.Sweep,
                 true,
                 0),
             cells[0]);
-        Assert.Equal(new SignalReportCell(SignalReportDataset.Id(64),
+
+        Assert.Equal(
+            new SignalReportCell(
+                SignalReportDataset.Id(64),
                 SignalReportDataset.Id(132),
                 CapturePort.Burst,
                 true,
                 13),
             cells[^1]);
+
         Assert.Equal(2, cells.Count(cell => cell.HasData));
         Assert.All(cells.Where(cell => !cell.HasData), cell => Assert.Equal(0, cell.Value));
     }
@@ -194,18 +207,19 @@ public sealed partial class SignalReportValidationTests
     public void GridRetainsABoundedPerCellAllocation()
     {
         // Arrange
-        var snapshot = SignalReportValidation.Snapshot(Request() with
-        {
-            AnchorIds = Enumerable
-                .Range(1, 64)
-                .Select(SignalReportDataset.Id)
-                .ToArray(),
-            ChannelIds = Enumerable
-                .Range(101, 32)
-                .Select(SignalReportDataset.Id)
-                .ToArray(),
-            Sources = [CapturePort.Sweep, CapturePort.Pulse, CapturePort.Burst],
-        });
+        var snapshot = SignalReportValidation.Snapshot(
+            Request() with
+            {
+                AnchorIds = Enumerable
+                    .Range(1, 64)
+                    .Select(SignalReportDataset.Id)
+                    .ToArray(),
+                ChannelIds = Enumerable
+                    .Range(101, 32)
+                    .Select(SignalReportDataset.Id)
+                    .ToArray(),
+                Sources = [CapturePort.Sweep, CapturePort.Pulse, CapturePort.Burst],
+            });
 
         const int cells = 64 * 32 * 3;
 

@@ -1,3 +1,6 @@
+using Doka.EntityFrameworkCore.NestedSet.Execution;
+using Doka.EntityFrameworkCore.NestedSet.Mapping;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.SqlServer;
 
 /// <summary>
@@ -22,15 +25,17 @@ public sealed class WideRowsetLockTests : ProviderTest,
     public async Task RequestedTreesAboveParameterLimitUseOneJsonRowset()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var probe = new OrderingLockProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
-        var mapping = Mapping.NestedSetMapping<OrderingLockNode<int, FirstLockHierarchy>, int, int>.For(
+        var mapping = NestedSetMapping<OrderingLockNode<int, FirstLockHierarchy>, int, int>.For(
             context,
             context.Model.FindEntityType(typeof(OrderingLockNode<int, FirstLockHierarchy>))!);
 
@@ -38,11 +43,11 @@ public sealed class WideRowsetLockTests : ProviderTest,
         var requests = Enumerable
             .Range(1, 2105)
             .Reverse()
-            .Select(scope => new Execution.NestedSetTreeLockRequest<Guid, int>(
+            .Select(scope => new NestedSetTreeLockRequest<Guid, int>(
                 mapping.EntityType,
                 scope,
                 treeId,
-                Execution.NestedSetTreeLockMode.New))
+                NestedSetTreeLockMode.New))
             .ToArray();
 
         await using var transaction = await context.Database.BeginTransactionAsync(
@@ -50,7 +55,7 @@ public sealed class WideRowsetLockTests : ProviderTest,
             CancellationToken.None);
 
         // Act
-        await Execution.NestedSetTreeLocks.AcquireAsync(context, requests, CancellationToken.None);
+        await NestedSetTreeLocks.AcquireAsync(context, requests, CancellationToken.None);
 
         // Assert
         var resolution = Assert.Single(

@@ -26,7 +26,8 @@ public sealed partial class BulkIdentityRetentionTests : ProviderTest,
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var source = database.CreateContext();
@@ -54,7 +55,9 @@ public sealed partial class BulkIdentityRetentionTests : ProviderTest,
         }
 
         // Act
-        var result = await ImportScalarAsync(context, generated,
+        var result = await ImportScalarAsync(
+            context,
+            generated,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -65,8 +68,17 @@ public sealed partial class BulkIdentityRetentionTests : ProviderTest,
         Assert.Null(await context.FindAsync<ScalarNode>([99], CancellationToken.None));
         CollectInputs();
         Assert.False(result.Input.TryGetTarget(out _));
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
-        Assert.Equal(0, await context.Set<ScalarNode>().CountAsync(CancellationToken.None));
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
+        Assert.Equal(
+            0,
+            await context
+                .Set<ScalarNode>()
+                .CountAsync(CancellationToken.None));
+
         GC.KeepAlive(context);
 
         return;
@@ -78,7 +90,9 @@ public sealed partial class BulkIdentityRetentionTests : ProviderTest,
                 .Entries<ScalarNode>()
                 .Single();
 
-            installed = (int)entry.Property(nameof(ScalarNode.Id)).CurrentValue!;
+            installed = (int)entry.Property(nameof(ScalarNode.Id))
+                .CurrentValue!;
+
             entry.Entity.Id = 99;
         }
     }
@@ -88,7 +102,8 @@ public sealed partial class BulkIdentityRetentionTests : ProviderTest,
     public async Task NativeFindResolvesTheAttachedImportedMutableIdentity()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var source = database.CreateContext();
@@ -124,8 +139,16 @@ public sealed partial class BulkIdentityRetentionTests : ProviderTest,
 
         // Assert
         Assert.Same(node, found);
-        Assert.Equal(EntityState.Unchanged, context.Entry(node).State);
-        Assert.Equal(1, await context.Set<MutableNode>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(node)
+                .State);
+
+        Assert.Equal(
+            1,
+            await context
+                .Set<MutableNode>()
+                .CountAsync(CancellationToken.None));
     }
 
     /// <summary>Later graph callbacks cannot strand an earlier scalar identity or its intermediate key.</summary>
@@ -138,7 +161,8 @@ public sealed partial class BulkIdentityRetentionTests : ProviderTest,
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var source = database.CreateContext();
@@ -187,13 +211,15 @@ public sealed partial class BulkIdentityRetentionTests : ProviderTest,
         {
             Assert.Equal(
                 "tracking-intermediate",
-                Assert.IsType<InvalidOperationException>(result.Error).Message);
+                Assert.IsType<InvalidOperationException>(result.Error)
+                    .Message);
         }
         else
         {
             Assert.Equal(
                 NestedSetErrorCode.InvalidImport,
-                Assert.IsType<NestedSetException>(result.Error).Code);
+                Assert.IsType<NestedSetException>(result.Error)
+                    .Code);
         }
 
         Assert.True(result.Restored);
@@ -203,8 +229,17 @@ public sealed partial class BulkIdentityRetentionTests : ProviderTest,
         Assert.Null(await context.FindAsync<ScalarNode>([1], CancellationToken.None));
         Assert.Null(await context.FindAsync<ScalarNode>([99], CancellationToken.None));
         Assert.Null(await context.FindAsync<ScalarNode>([100], CancellationToken.None));
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
-        Assert.Equal(0, await context.Set<ScalarNode>().CountAsync(CancellationToken.None));
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
+        Assert.Equal(
+            0,
+            await context
+                .Set<ScalarNode>()
+                .CountAsync(CancellationToken.None));
+
         GC.KeepAlive(context);
     }
 }

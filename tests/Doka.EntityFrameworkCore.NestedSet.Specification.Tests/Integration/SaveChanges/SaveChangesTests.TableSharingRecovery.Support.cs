@@ -12,12 +12,19 @@ public abstract partial class SaveChangesTests
 
         try
         {
-            await using var context = await CreateTableSharingRecoveryContextAsync(database, shape,
+            await using var context = await CreateTableSharingRecoveryContextAsync(
+                database,
+                shape,
                 cancellationToken: cancellationToken);
 
-            await context.GetService<IRelationalDatabaseCreator>().CreateTablesAsync(cancellationToken);
+            await context
+                .GetService<IRelationalDatabaseCreator>()
+                .CreateTablesAsync(cancellationToken);
+
             var tree = context.NestedSet<TableSharingRecoveryNode>();
-            await tree.InsertRootAsync(NewTableSharingRecoveryNode(shape, 1, "Root"), s_treeId,
+            await tree.InsertRootAsync(
+                NewTableSharingRecoveryNode(shape, 1, "Root"),
+                s_treeId,
                 cancellationToken);
 
             await tree.InsertChildAsync(NewTableSharingRecoveryNode(shape, 2, "Alpha"), 1, cancellationToken);
@@ -46,12 +53,18 @@ public abstract partial class SaveChangesTests
     }
 
     /// <summary>Creates owned insertion graphs; ordinary split peers are seeded after the principal rows.</summary>
-    private static TableSharingRecoveryNode NewTableSharingRecoveryNode(string shape, int id, string name)
+    private static TableSharingRecoveryNode NewTableSharingRecoveryNode(
+        string shape,
+        int id,
+        string name
+    )
         => new()
         {
             Id = id,
             Name = name,
-            Owned = shape == "owned" ? new TableSharingRecoveryOwned { Id = id } : null,
+            Owned = shape == "owned"
+                ? new TableSharingRecoveryOwned { Id = id }
+                : null,
         };
 
     /// <summary>Reuses provider options with separate EF model cache entries for the three shapes.</summary>
@@ -62,10 +75,13 @@ public abstract partial class SaveChangesTests
         params IInterceptor[] interceptors
     )
     {
-        var options = new DbContextOptionsBuilder(await SaveSemanticsFixture.OptionsAsync(database,
-            cancellationToken: cancellationToken,
-            interceptors))
-            .ReplaceService<IModelCacheKeyFactory, TestModelCacheKeyFactory>().Options;
+        var options = new DbContextOptionsBuilder(
+                await SaveSemanticsFixture.OptionsAsync(
+                    database,
+                    cancellationToken: cancellationToken,
+                    interceptors))
+            .ReplaceService<IModelCacheKeyFactory, TestModelCacheKeyFactory>()
+            .Options;
 
         return new TableSharingRecoveryContext(options, shape);
     }
@@ -77,7 +93,9 @@ public abstract partial class SaveChangesTests
         CancellationToken cancellationToken
     )
     {
-        var query = context.Set<TableSharingRecoveryNode>().AsQueryable();
+        var query = context
+            .Set<TableSharingRecoveryNode>()
+            .AsQueryable();
 
         if (shape == "owned")
         {
@@ -92,8 +110,14 @@ public abstract partial class SaveChangesTests
         context.ChangeTracker.AutoDetectChangesEnabled = false;
         var entry = context.Entry(node);
         var name = entry.Property(value => value.Name);
-        object? peer = shape == "owned" ? node.Owned : node.Peer;
-        var peerEntry = peer is null ? null : context.Entry(peer);
+        object? peer = shape == "owned"
+            ? node.Owned
+            : node.Peer;
+
+        var peerEntry = peer is null
+            ? null
+            : context.Entry(peer);
+
         node.Name = "Zulu";
         name.IsModified = true;
 
@@ -107,7 +131,9 @@ public abstract partial class SaveChangesTests
         CancellationToken cancellationToken
     )
     {
-        await using var external = await CreateTableSharingRecoveryContextAsync(database, shape,
+        await using var external = await CreateTableSharingRecoveryContextAsync(
+            database,
+            shape,
             cancellationToken: cancellationToken);
 
         var sql = external.GetService<ISqlGenerationHelper>();
@@ -124,25 +150,42 @@ public abstract partial class SaveChangesTests
         CancellationToken cancellationToken
     )
     {
-        await using var verification = await CreateTableSharingRecoveryContextAsync(database, shape,
+        await using var verification = await CreateTableSharingRecoveryContextAsync(
+            database,
+            shape,
             cancellationToken: cancellationToken);
 
-        var nodes = await verification.Set<TableSharingRecoveryNode>().OrderBy(node => node.Id)
-            .Select(node => new TableSharingRecoveryStoredNode(node.Id, node.TreeId, node.ParentId, node.Name,
-                node.Left, node.Right, node.Depth, node.Position, node.Version, node.Payload))
+        var nodes = await verification
+            .Set<TableSharingRecoveryNode>()
+            .OrderBy(node => node.Id)
+            .Select(node => new TableSharingRecoveryStoredNode(
+                node.Id,
+                node.TreeId,
+                node.ParentId,
+                node.Name,
+                node.Left,
+                node.Right,
+                node.Depth,
+                node.Position,
+                node.Version,
+                node.Payload))
             .ToArrayAsync(cancellationToken);
 
         TableSharingRecoveryStoredPayload[] payloads;
 
         if (shape == "owned")
         {
-            payloads = await verification.Set<TableSharingRecoveryNode>().OrderBy(node => node.Id)
+            payloads = await verification
+                .Set<TableSharingRecoveryNode>()
+                .OrderBy(node => node.Id)
                 .Select(node => new TableSharingRecoveryStoredPayload(node.Id, node.Owned!.Version, node.Owned.Value))
                 .ToArrayAsync(cancellationToken);
         }
         else if (shape == "split")
         {
-            payloads = await verification.Set<TableSharingRecoveryPeer>().OrderBy(peer => peer.Id)
+            payloads = await verification
+                .Set<TableSharingRecoveryPeer>()
+                .OrderBy(peer => peer.Id)
                 .Select(peer => new TableSharingRecoveryStoredPayload(peer.Id, peer.Version, peer.Value))
                 .ToArrayAsync(cancellationToken);
         }
@@ -151,14 +194,19 @@ public abstract partial class SaveChangesTests
             payloads = [];
         }
 
-        var validation = await verification.NestedSet<TableSharingRecoveryNode>().InTree(s_treeId)
+        var validation = await verification
+            .NestedSet<TableSharingRecoveryNode>()
+            .InTree(s_treeId)
             .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken);
 
         return new TableSharingRecoveryStore(nodes, payloads, validation.TotalIssueCount);
     }
 
     /// <summary>Changes ordinary CLR payload without notifying EF or marking a property modified.</summary>
-    private static void ChangeUnmarkedTableSharingPayload(TableSharingRecoveryGraph graph, string shape)
+    private static void ChangeUnmarkedTableSharingPayload(
+        TableSharingRecoveryGraph graph,
+        string shape
+    )
     {
         switch (shape)
         {
@@ -177,7 +225,10 @@ public abstract partial class SaveChangesTests
     }
 
     /// <summary>Reads caller payload independently of stored rows and original-value snapshots.</summary>
-    private static string? CurrentTableSharingPayload(TableSharingRecoveryGraph graph, string shape)
+    private static string? CurrentTableSharingPayload(
+        TableSharingRecoveryGraph graph,
+        string shape
+    )
         => shape switch
         {
             "owned" => graph.Node.Owned!.Value,
@@ -190,19 +241,34 @@ public abstract partial class SaveChangesTests
     private sealed record TableSharingRecoveryGraph(
         TableSharingRecoveryNode Node,
         EntityEntry<TableSharingRecoveryNode> Entry,
-        EntityEntry? Peer);
+        EntityEntry? Peer
+    );
 
     /// <summary>Copies all stored principal values without materializing entities into the tested tracker.</summary>
     private sealed record TableSharingRecoveryStoredNode(
-        int Id, Guid TreeId, int? ParentId, string Name, long Left, long Right, int Depth, long Position,
-        int Version, string Payload);
+        int Id,
+        Guid TreeId,
+        int? ParentId,
+        string Name,
+        long Left,
+        long Right,
+        int Depth,
+        long Position,
+        int Version,
+        string Payload
+    );
 
     /// <summary>Copies the shared token and ordinary owned or split payload.</summary>
-    private sealed record TableSharingRecoveryStoredPayload(int Id, int Version, string? Value);
+    private sealed record TableSharingRecoveryStoredPayload(
+        int Id,
+        int Version,
+        string? Value
+    );
 
     /// <summary>Holds provider evidence independent of the failed context.</summary>
     private sealed record TableSharingRecoveryStore(
         TableSharingRecoveryStoredNode[] Nodes,
         TableSharingRecoveryStoredPayload[] Payloads,
-        long Issues);
+        long Issues
+    );
 }

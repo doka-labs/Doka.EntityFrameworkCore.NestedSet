@@ -136,8 +136,8 @@ internal sealed partial class NestedSetQuery<TEntity>
                 _unboundNodes,
                 match => new
                 {
-                    Key = match.Source.Key,
-                    Tree = match.Source.Tree,
+                    match.Source.Key,
+                    match.Source.Tree,
                 },
                 node => new
                 {
@@ -153,9 +153,9 @@ internal sealed partial class NestedSetQuery<TEntity>
                 _unboundNodes,
                 match => new
                 {
-                    Key = match.Source.Key,
-                    Scope = match.Source.Scope,
-                    Tree = match.Source.Tree,
+                    match.Source.Key,
+                    match.Source.Scope,
+                    match.Source.Tree,
                 },
                 node => new
                 {
@@ -174,8 +174,8 @@ internal sealed partial class NestedSetQuery<TEntity>
                 selected,
                 match => new
                 {
-                    Key = match.Related.Key,
-                    Tree = match.Related.Tree,
+                    match.Related.Key,
+                    match.Related.Tree,
                 },
                 node => new
                 {
@@ -186,9 +186,9 @@ internal sealed partial class NestedSetQuery<TEntity>
                 selected,
                 match => new
                 {
-                    Key = match.Related.Key,
-                    Scope = match.Related.Scope,
-                    Tree = match.Related.Tree,
+                    match.Related.Key,
+                    match.Related.Scope,
+                    match.Related.Tree,
                 },
                 node => new
                 {
@@ -235,16 +235,16 @@ internal sealed partial class NestedSetQuery<TEntity>
         // WHY: Inclusive activation already validated this primitive. An unavailable ordered edge
         // must never silently execute the known unqualified ordinary-join strategy.
         if (!_capabilities.TryOrderedJoin(
-                sources,
-                candidates,
-                sourceKey,
-                candidateKey,
-                (source, owner) => new AncestorIndexCoordinatePair
-                {
-                    Source = source,
-                    Related = owner,
-                },
-                out var joined))
+            sources,
+            candidates,
+            sourceKey,
+            candidateKey,
+            (source, owner) => new AncestorIndexCoordinatePair
+            {
+                Source = source,
+                Related = owner,
+            },
+            out var joined))
         {
             throw new NotSupportedException(
                 "The indexed inclusive ancestor candidate requires the selected adapter's ordered-join primitive.");
@@ -264,16 +264,16 @@ internal sealed partial class NestedSetQuery<TEntity>
         // scans. Direct only this final dependency; ordinary source hydration must retain its cheaper
         // selected-source lookups instead of being forced to run once for every resulting pair.
         if (!_capabilities.TryOrderedJoin(
-                selected,
-                _unboundNodes,
-                matchKey,
-                ownerKey,
-                (match, owner) => new AncestorIndexMappedPair
-                {
-                    Source = match.Source,
-                    Related = owner,
-                },
-                out var joined))
+            selected,
+            _unboundNodes,
+            matchKey,
+            ownerKey,
+            (match, owner) => new AncestorIndexMappedPair
+            {
+                Source = match.Source,
+                Related = owner,
+            },
+            out var joined))
         {
             throw new NotSupportedException(
                 "The indexed inclusive owner hydration requires the selected adapter's ordered-join primitive.");
@@ -298,15 +298,19 @@ internal sealed partial class NestedSetQuery<TEntity>
         bool nonLeaf
     ) => coordinates.Select(
         _descriptor.Scope is null
-            ? (nonLeaf ? AncestorIndexMatchingProjections.NonLeaf : AncestorIndexMatchingProjections.Leaf)
-            : (nonLeaf ? AncestorIndexMatchingProjections.ScopedNonLeaf : AncestorIndexMatchingProjections.ScopedLeaf));
+            ? nonLeaf
+                ? AncestorIndexMatchingProjections.NonLeaf
+                : AncestorIndexMatchingProjections.Leaf
+            : nonLeaf
+                ? AncestorIndexMatchingProjections.ScopedNonLeaf
+                : AncestorIndexMatchingProjections.ScopedLeaf);
 
     /// <summary>Defers reusable structural projections until this optional indexed strategy is selected.</summary>
     private static class AncestorIndexMatchingProjections
     {
         /// <summary>Retains the same five native columns in both candidate arms before DISTINCT.</summary>
         internal static readonly Expression<Func<IndexedAncestorCoordinates, IndexedAncestorCoordinates>> ScopedOwn =
-            owner => new()
+            owner => new IndexedAncestorCoordinates
             {
                 Key = owner.Key,
                 Scope = owner.Scope,
@@ -317,7 +321,7 @@ internal sealed partial class NestedSetQuery<TEntity>
 
         /// <summary>Omits unconfigured Scope while aligning the native unscoped candidate columns.</summary>
         internal static readonly Expression<Func<IndexedAncestorCoordinates, IndexedAncestorCoordinates>> Own = owner =>
-            new()
+            new IndexedAncestorCoordinates
             {
                 Key = owner.Key,
                 Tree = owner.Tree,
@@ -329,7 +333,7 @@ internal sealed partial class NestedSetQuery<TEntity>
         // and mask columns precede range coordinates so the automatic index can use that prefix.
         /// <summary>Masks nonleaf matching coordinates while retaining exact unscoped identity.</summary>
         internal static readonly Expression<Func<IndexedAncestorCoordinates, AncestorIndexMatchingCoordinates>>
-            NonLeaf = owner => new()
+            NonLeaf = owner => new AncestorIndexMatchingCoordinates
             {
                 Key = owner.Key,
                 Tree = owner.Tree,
@@ -342,7 +346,7 @@ internal sealed partial class NestedSetQuery<TEntity>
 
         /// <summary>Matches unscoped leaf bounds exactly while retaining exact owner identity.</summary>
         internal static readonly Expression<Func<IndexedAncestorCoordinates, AncestorIndexMatchingCoordinates>> Leaf =
-            owner => new()
+            owner => new AncestorIndexMatchingCoordinates
             {
                 Key = owner.Key,
                 Tree = owner.Tree,
@@ -355,7 +359,7 @@ internal sealed partial class NestedSetQuery<TEntity>
 
         /// <summary>Retains scoped native identity with masked nonleaf matching coordinates.</summary>
         internal static readonly Expression<Func<IndexedAncestorCoordinates, AncestorIndexMatchingCoordinates>>
-            ScopedNonLeaf = owner => new()
+            ScopedNonLeaf = owner => new AncestorIndexMatchingCoordinates
             {
                 Key = owner.Key,
                 Scope = owner.Scope,
@@ -369,7 +373,7 @@ internal sealed partial class NestedSetQuery<TEntity>
 
         /// <summary>Retains scoped native identity and exact leaf matching coordinates.</summary>
         internal static readonly Expression<Func<IndexedAncestorCoordinates, AncestorIndexMatchingCoordinates>>
-            ScopedLeaf = owner => new()
+            ScopedLeaf = owner => new AncestorIndexMatchingCoordinates
             {
                 Key = owner.Key,
                 Scope = owner.Scope,

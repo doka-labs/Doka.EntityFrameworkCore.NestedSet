@@ -106,7 +106,9 @@ internal sealed record SupervisorSelection(
     internal void Validate()
     {
         if (!Enum.IsDefined(Kind)
-            || (Kind == SupervisorSelectionKind.NthPerson ? Number is null or <= 0 : Number is not null))
+            || (Kind == SupervisorSelectionKind.NthPerson
+                ? Number is null or <= 0
+                : Number is not null))
         {
             throw new ArgumentException("Person slots are positive and belong only to NthPerson.");
         }

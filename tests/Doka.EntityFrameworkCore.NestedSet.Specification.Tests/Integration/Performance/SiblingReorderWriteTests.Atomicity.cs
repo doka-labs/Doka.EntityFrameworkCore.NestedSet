@@ -11,7 +11,8 @@ public abstract partial class SiblingReorderWriteTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var sizes = Enumerable
@@ -30,14 +31,18 @@ public abstract partial class SiblingReorderWriteTests
             CancelAfterBounds = cancellation,
         };
 
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict", probe);
+            "Strict",
+            probe);
 
         var before = await SnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         await using var transaction = callerTransaction
             ? await context.Database.BeginTransactionAsync(
-                Engine == "Sqlite" ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+                Engine == "Sqlite"
+                    ? IsolationLevel.Serializable
+                    : IsolationLevel.ReadCommitted,
                 CancellationToken.None)
             : null;
 
@@ -46,7 +51,11 @@ public abstract partial class SiblingReorderWriteTests
 
         // Assert
         Assert.IsAssignableFrom<OperationCanceledException>(error);
-        Assert.Equal(64, Assert.Single(probe.BoundsWrites).Rows);
+        Assert.Equal(
+            64,
+            Assert.Single(probe.BoundsWrites)
+                .Rows);
+
         Assert.Equal(before, await SnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(callerTransaction, context.Database.CurrentTransaction is not null);
     }

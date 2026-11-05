@@ -25,7 +25,9 @@ public sealed partial class SafeMigrationTests
     )
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync(engine, engine == "PostgreSql",
+        await using var database = await CreateDatabaseAsync(
+            engine,
+            engine == "PostgreSql",
             cancellationToken: TestContext.Current.CancellationToken);
 
         var baseline = database.Scaffold(MigrationStage.Baseline, "SafeBaseline");
@@ -34,8 +36,10 @@ public sealed partial class SafeMigrationTests
 
         // WHY: The historical model has no checks. Direct insertion represents corrupt pre-adoption data
         // without weakening either managed hierarchy writes or the new migration's predicates.
-        await database.InsertNodeDirectlyAsync(CreateInvalidCoordinateNode(checkName),
+        await database.InsertNodeDirectlyAsync(
+            CreateInvalidCoordinateNode(checkName),
             cancellationToken: TestContext.Current.CancellationToken);
+
         var upgrade = database.Scaffold(MigrationStage.Current, "SafeScopeKey", baseline);
         await using var context = database.CreateContext(MigrationStage.Current, upgrade.Assembly);
         var operations = GetUpOperations(upgrade, context, 1)
@@ -48,8 +52,9 @@ public sealed partial class SafeMigrationTests
                 checkName,
                 StringComparison.Ordinal));
 
-        var indexesBefore = IndexSignatures(await database.ReadIndexesAsync(
-            cancellationToken: TestContext.Current.CancellationToken));
+        var indexesBefore = IndexSignatures(
+            await database.ReadIndexesAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
 
         var checksBefore = await database.ReadChecksAsync(cancellationToken: TestContext.Current.CancellationToken);
         var rowsBefore = await database.ReadNodesAsync(
@@ -59,8 +64,9 @@ public sealed partial class SafeMigrationTests
         var columnsBefore = await database.ReadColumnTypesAsync(
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var foreignKeysBefore = ForeignKeySignatures(await database.ReadForeignKeysAsync(
-            cancellationToken: TestContext.Current.CancellationToken));
+        var foreignKeysBefore = ForeignKeySignatures(
+            await database.ReadForeignKeysAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
 
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
@@ -76,11 +82,14 @@ public sealed partial class SafeMigrationTests
         // WHY: Executing only the rejected check tests its guard before mutation; a complete MySQL upgrade
         // may implicitly commit earlier DDL and cannot promise transactional rollback of the whole chain.
         var exception = await Record.ExceptionAsync(() =>
-            SafeMigrationTestServices.ExecuteOperationsAsync(context, [rejected],
+            SafeMigrationTestServices.ExecuteOperationsAsync(
+                context,
+                [rejected],
                 cancellationToken: TestContext.Current.CancellationToken));
 
-        var indexesAfter = IndexSignatures(await database.ReadIndexesAsync(
-            cancellationToken: TestContext.Current.CancellationToken));
+        var indexesAfter = IndexSignatures(
+            await database.ReadIndexesAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
 
         var checksAfter = await database.ReadChecksAsync(cancellationToken: TestContext.Current.CancellationToken);
         var rowsAfter = await database.ReadNodesAsync(
@@ -90,8 +99,9 @@ public sealed partial class SafeMigrationTests
         var columnsAfter = await database.ReadColumnTypesAsync(
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var foreignKeysAfter = ForeignKeySignatures(await database.ReadForeignKeysAsync(
-            cancellationToken: TestContext.Current.CancellationToken));
+        var foreignKeysAfter = ForeignKeySignatures(
+            await database.ReadForeignKeysAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
 
         var historyAfter = await context.Database.GetAppliedMigrationsAsync(CancellationToken.None);
 

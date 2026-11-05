@@ -71,13 +71,27 @@ internal sealed class CompositionConvertedContext : DbContext
     {
         var node = modelBuilder.Entity<CompositionConvertedNode>();
         node.ToTable("CompositionConvertedNodes");
-        node.Property(entity => entity.Id)
+        node
+            .Property(entity => entity.Id)
             .HasConversion(key => key.Value, value => new CompositionNodeKey(value))
             .ValueGeneratedNever();
-        node.Property(entity => entity.ParentId).HasConversion(
-            key => key.HasValue ? key.Value.Value : (int?)null,
-            value => value.HasValue ? new CompositionNodeKey(value.Value) : null);
-        node.HasKey(entity => new { entity.Scope, entity.Id });
+
+        node
+            .Property(entity => entity.ParentId)
+            .HasConversion(
+                key => key.HasValue
+                    ? key.Value.Value
+                    : (int?)null,
+                value => value.HasValue
+                    ? new CompositionNodeKey(value.Value)
+                    : null);
+
+        node.HasKey(entity => new
+        {
+            entity.Scope,
+            entity.Id,
+        });
+
         node.HasNestedSet(mapping => mapping
             .HasNodeKey(entity => entity.Id)
             .HasScope(entity => entity.Scope)

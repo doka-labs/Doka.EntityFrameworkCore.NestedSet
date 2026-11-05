@@ -46,7 +46,8 @@ public sealed partial class SignalReportValidationTests
         // Assert
         Assert.InRange(rows.AliveAtEof, 0, 2);
         Assert.True(rows.Disposed);
-        Assert.Equal(new SignalReportCell(snapshot.AnchorIds[0], snapshot.ChannelIds[0], CapturePort.Pulse, true, 0),
+        Assert.Equal(
+            new SignalReportCell(snapshot.AnchorIds[0], snapshot.ChannelIds[0], CapturePort.Pulse, true, 0),
             Assert.Single(cells));
     }
 
@@ -59,14 +60,24 @@ public sealed partial class SignalReportValidationTests
         private readonly WeakReference<T>[] _rows = new WeakReference<T>[256];
         private int _index;
 
-        /// <summary>Gets the current projection without a retained history of DTOs.</summary>
-        public T Current { get; private set; } = null!;
-
         /// <summary>Gets the number of earlier DTOs still reachable at EOF after a full collection.</summary>
         internal int AliveAtEof { get; private set; }
 
         /// <summary>Gets whether the consumer disposed this one-use reader.</summary>
         internal bool Disposed { get; private set; }
+
+        /// <summary>Provides the sole enumerator without adding a second retained reader state.</summary>
+        public IAsyncEnumerator<T> GetAsyncEnumerator(
+            CancellationToken cancellationToken
+        )
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            return this;
+        }
+
+        /// <summary>Gets the current projection without a retained history of DTOs.</summary>
+        public T Current { get; private set; } = null!;
 
         /// <summary>Creates one row at a time and checks collection before reporting successful EOF.</summary>
         public ValueTask<bool> MoveNextAsync()
@@ -86,16 +97,6 @@ public sealed partial class SignalReportValidationTests
             _rows[_index++] = new WeakReference<T>(Current);
 
             return ValueTask.FromResult(true);
-        }
-
-        /// <summary>Provides the sole enumerator without adding a second retained reader state.</summary>
-        public IAsyncEnumerator<T> GetAsyncEnumerator(
-            CancellationToken cancellationToken
-        )
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            return this;
         }
 
         /// <summary>Clears the last current value and records disposal.</summary>

@@ -11,18 +11,19 @@ internal static class WriteAmplificationTestSupport
     {
         await using var context = database.CreateContext();
         await context.AddRangeAsync(
-        [
-            Node(1, 1, 12, null, 0, 0),
-            Node(2, 2, 5, 1, 1, 0),
-            Node(3, 3, 4, 2, 2, 0),
-            Node(4, 6, 9, 1, 1, 1),
-            Node(5, 7, 8, 4, 2, 0),
-            Node(6, 10, 11, 1, 1, 2),
-        ], cancellationToken);
+            [
+                Node(1, 1, 12, null, 0, 0),
+                Node(2, 2, 5, 1, 1, 0),
+                Node(3, 3, 4, 2, 2, 0),
+                Node(4, 6, 9, 1, 1, 1),
+                Node(5, 7, 8, 4, 2, 0),
+                Node(6, 10, 11, 1, 1, 2),
+            ],
+            cancellationToken);
 
         for (var key = 7; key <= 107; key++)
         {
-            await context.AddAsync(Node(key, (key * 2) - 1, key * 2, null, 0, key - 6), cancellationToken);
+            await context.AddAsync(Node(key, key * 2 - 1, key * 2, null, 0, key - 6), cancellationToken);
         }
 
         // WHY: Independent TreeIds have one root. A permanent enclosing root preserves the original local

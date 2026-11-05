@@ -20,7 +20,10 @@ public sealed partial class SignalReportConstructionTests
             .CreateDelegate<Func<Guid, LambdaExpression>>();
 
         var firstType = Guid.NewGuid();
-        var secondType = sameType ? firstType : Guid.NewGuid();
+        var secondType = sameType
+            ? firstType
+            : Guid.NewGuid();
+
         var first = factory(firstType);
         var second = factory(secondType);
         var firstNode = new SignalNode { TypeId = firstType };
@@ -50,14 +53,21 @@ public sealed partial class SignalReportConstructionTests
 
         // Assert
         Assert.Equal([true, sameType, false, sameType, true, false], actual);
-        var firstSlot = Assert.IsAssignableFrom<MemberExpression>(Assert.IsAssignableFrom<BinaryExpression>(first.Body)
-            .Right);
+        var firstSlot = Assert.IsAssignableFrom<MemberExpression>(
+            Assert.IsAssignableFrom<BinaryExpression>(first.Body)
+                .Right);
 
-        var secondSlot = Assert.IsAssignableFrom<MemberExpression>(Assert
-            .IsAssignableFrom<BinaryExpression>(second.Body).Right);
+        var secondSlot = Assert.IsAssignableFrom<MemberExpression>(
+            Assert
+                .IsAssignableFrom<BinaryExpression>(second.Body)
+                .Right);
 
-        Assert.NotSame(Assert.IsType<ConstantExpression>(firstSlot.Expression).Value,
-            Assert.IsType<ConstantExpression>(secondSlot.Expression).Value);
+        Assert.NotSame(
+            Assert.IsType<ConstantExpression>(firstSlot.Expression)
+                .Value,
+            Assert.IsType<ConstantExpression>(secondSlot.Expression)
+                .Value);
+
         Assert.NotSame(first, second);
     }
 }

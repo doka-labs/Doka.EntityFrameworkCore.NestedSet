@@ -4,10 +4,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Execution;
 internal static class NestedSetInsertionValues
 {
     private static readonly ConditionalWeakTable<IEntityType, Shape> s_shapes = new();
-    private static readonly object s_missing = new();
 
     /// <summary>Represents an originally absent mapped dictionary entry independently of all CLR sentinels.</summary>
-    internal static object MissingValue => s_missing;
+    internal static object MissingValue { get; } = new();
 
     /// <summary>Snapshots generated leaves and owned identities not already owned by structural rollback.</summary>
     /// <param name="metadata">The exact root, derived, named, or owned entity metadata.</param>
@@ -42,7 +41,9 @@ internal static class NestedSetInsertionValues
 
         // WHY: Generated leaves and ownership FKs can change before a later wave fails. Capture only these
         // insertion-owned roles; ordinary payload and non-ownership business FKs remain application-owned.
-        return values is null ? null : new Snapshot(entity, values.ToArray());
+        return values is null
+            ? null
+            : new Snapshot(entity, values.ToArray());
     }
 
     /// <summary>Reads raw mapped dictionary values without normalizing missing or null entries through EF getters.</summary>
@@ -57,7 +58,9 @@ internal static class NestedSetInsertionValues
         if (property.IsIndexerProperty()
             && entity is IDictionary<string, object?> dictionary)
         {
-            return dictionary.TryGetValue(property.Name, out var value) ? value : s_missing;
+            return dictionary.TryGetValue(property.Name, out var value)
+                ? value
+                : MissingValue;
         }
 
         return property.IsShadowProperty()
@@ -70,13 +73,15 @@ internal static class NestedSetInsertionValues
     /// <summary>Distinguishes an absent mapped dictionary entry from every present value, including null.</summary>
     internal static bool IsMissing(
         object? value
-    ) => ReferenceEquals(value, s_missing);
+    ) => ReferenceEquals(value, MissingValue);
 
     /// <summary>Copies mapped mutable values while preserving the distinct absent-entry marker.</summary>
     internal static object? SnapshotValue(
         IProperty property,
         object? value
-    ) => IsMissing(value) ? value : NestedSetStructuralValue.Snapshot(property, value);
+    ) => IsMissing(value)
+        ? value
+        : NestedSetStructuralValue.Snapshot(property, value);
 
     /// <summary>Preserves EF's raw dictionary sentinel semantics before generated identity assignment.</summary>
     /// <typeparam name="TKey">The typed normalized node identity.</typeparam>

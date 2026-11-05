@@ -5,8 +5,8 @@ namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks;
 public class ManualDetectionInsertBenchmarks : DatabaseBenchmark
 {
     private BenchmarkForest? _branch;
-    private NestedSetTreeImport<BenchmarkNode, Guid>[]? _imports;
     private InsertOperation _completed;
+    private NestedSetTreeImport<BenchmarkNode, Guid>[]? _imports;
 
     /// <inheritdoc />
     protected override bool Ordered => true;
@@ -47,7 +47,9 @@ public class ManualDetectionInsertBenchmarks : DatabaseBenchmark
     }
 
     /// <inheritdoc />
-    public override async Task PrepareAsync(CancellationToken cancellationToken)
+    public override async Task PrepareAsync(
+        CancellationToken cancellationToken
+    )
     {
         _completed = InsertOperation.None;
 
@@ -65,14 +67,19 @@ public class ManualDetectionInsertBenchmarks : DatabaseBenchmark
     }
 
     /// <inheritdoc />
-    public override async Task VerifyAsync(CancellationToken cancellationToken)
+    public override async Task VerifyAsync(
+        CancellationToken cancellationToken
+    )
     {
         BenchmarkFixture.Require(_completed != InsertOperation.None, "The measured insertion did not execute.");
         BenchmarkFixture.Require(
             !Fixture.Context.ChangeTracker.AutoDetectChangesEnabled,
             "The measured insertion changed the caller's manual-detection setting.");
 
-        var expectedCount = Nodes + (_completed == InsertOperation.Single ? 1 : 10);
+        var expectedCount = Nodes
+            + (_completed == InsertOperation.Single
+                ? 1
+                : 10);
 
         BenchmarkFixture.Require(
             await Fixture.Context.Nodes.CountAsync(cancellationToken) == expectedCount,
@@ -85,7 +92,9 @@ public class ManualDetectionInsertBenchmarks : DatabaseBenchmark
             .SingleAsync(value => value.Id == Nodes + 1, cancellationToken);
 
         BenchmarkFixture.Require(
-            _completed == InsertOperation.Forest ? saved.ParentId is null : saved.ParentId == 1,
+            _completed == InsertOperation.Forest
+                ? saved.ParentId is null
+                : saved.ParentId == 1,
             "The facade-planned insertion escaped its destination.");
 
         await base.VerifyAsync(cancellationToken);

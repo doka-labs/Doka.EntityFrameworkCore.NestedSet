@@ -38,7 +38,10 @@ public sealed partial class EngineTestDiscoveryTests
     )
     {
         // Arrange
-        var types = interfaceView ? [typeof(IProviderFixture)] : Type.EmptyTypes;
+        var types = interfaceView
+            ? [typeof(IProviderFixture)]
+            : Type.EmptyTypes;
+
         var method = CreateTestMethod("MySql", nameof(DiscoveryProbe.Ordinary), types);
 
         // Act

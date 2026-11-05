@@ -241,14 +241,13 @@ public sealed class DetachedRefreshValueTests
     /// <summary>Provides scalar, field and complex storage without any state-manager requirements.</summary>
     private sealed class RefreshNode
     {
-        private int _fieldRevision = -1;
         private int _rejected;
 
         /// <summary>Gets or sets the model identity.</summary>
         public int Id { get; set; }
 
         /// <summary>Gets the configured field-backed generated value.</summary>
-        public int FieldRevision => _fieldRevision;
+        public int FieldRevision { get; } = -1;
 
         /// <summary>Gets or sets the binary representation tested with an intentionally broad comparer.</summary>
         public byte[] Token { get; set; } = [];

@@ -54,7 +54,9 @@ internal sealed partial class SqlServerNestedSetProvider
     ) => sql
         .Append(alias)
         .Append(' ')
-        .Append(property.GetRelationalTypeMapping().StoreType)
+        .Append(
+            property.GetRelationalTypeMapping()
+                .StoreType)
         .Append(" 'strict $.")
         .Append(path)
         .Append('\'');

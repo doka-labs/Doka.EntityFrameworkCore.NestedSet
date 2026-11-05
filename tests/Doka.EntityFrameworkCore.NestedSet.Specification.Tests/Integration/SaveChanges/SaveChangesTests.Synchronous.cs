@@ -16,14 +16,16 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new SaveBoundaryProbe();
         var callback = new SaveBoundaryCallback();
         await using var context = new SaveBoundaryContext(
-            SaveBoundaryTestSupport.Options(setup, probe, callback).Options);
+            SaveBoundaryTestSupport.Options(setup, probe, callback)
+                .Options);
 
         var node = await context
             .Set<OrderingNode>()
@@ -71,11 +73,15 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var probe = new SaveBoundaryProbe();
-        await using var context = new SaveBoundaryContext(SaveBoundaryTestSupport.Options(setup, probe).Options);
+        await using var context = new SaveBoundaryContext(
+            SaveBoundaryTestSupport.Options(setup, probe)
+                .Options);
+
         var marker = new OrderingMarker
         {
             Id = 1,
@@ -94,11 +100,22 @@ public abstract partial class SaveChangesTests
 
         // Assert
         Assert.Equal(1, saved);
-        Assert.Equal(automaticDetection ? 1 : 0, detections);
+        Assert.Equal(
+            automaticDetection
+                ? 1
+                : 0,
+            detections);
+
         Assert.Equal(1, probe.PayloadCommands);
         Assert.Equal(0, probe.LockCommands);
         Assert.Equal(automaticDetection, context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(acceptChanges ? EntityState.Unchanged : EntityState.Added, context.Entry(marker).State);
+        Assert.Equal(
+            acceptChanges
+                ? EntityState.Unchanged
+                : EntityState.Added,
+            context.Entry(marker)
+                .State);
+
         Assert.Equal(
             marker.Value,
             await setup
@@ -112,7 +129,8 @@ public abstract partial class SaveChangesTests
     public async Task CustomBaseRequiresExplicitSynchronousWrapper()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
@@ -140,6 +158,7 @@ public abstract partial class SaveChangesTests
             nameof(NestedSetDbContextExtensions.SaveNestedSetChanges),
             rejection.Message,
             StringComparison.Ordinal);
+
         Assert.Equal("Zulu", node.Name);
         Assert.Equal(
             "Alpha",

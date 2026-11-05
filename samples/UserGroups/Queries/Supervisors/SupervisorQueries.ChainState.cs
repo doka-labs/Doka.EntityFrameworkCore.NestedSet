@@ -53,8 +53,8 @@ internal static partial class SupervisorQueries
     internal sealed class ChainBudget(SupervisorChainRequest request)
     {
         private int _reads;
-        private int _visits;
         private int _results;
+        private int _visits;
 
         /// <summary>Gets the explicit consumer limits.</summary>
         internal SupervisorChainRequest Request { get; } = request;

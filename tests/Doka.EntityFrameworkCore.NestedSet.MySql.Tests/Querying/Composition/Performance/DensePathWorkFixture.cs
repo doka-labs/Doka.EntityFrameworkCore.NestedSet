@@ -22,7 +22,10 @@ internal static class DensePathWorkFixture
         CancellationToken cancellationToken
     )
     {
-        await CapacitySeed.SeedAsync(context, scenario.Nodes, deep: !scenario.Branches,
+        await CapacitySeed.SeedAsync(
+            context,
+            scenario.Nodes,
+            deep: !scenario.Branches,
             cancellationToken: cancellationToken);
 
         if (scenario.Branches)
@@ -33,8 +36,13 @@ internal static class DensePathWorkFixture
         if (scenario.Branches
             || scenario.Forest)
         {
-            await CloneAsync(context, scenario.Nodes, 1, DensePathWorkScenario.OtherTree,
+            await CloneAsync(
+                context,
+                scenario.Nodes,
+                1,
+                DensePathWorkScenario.OtherTree,
                 cancellationToken: cancellationToken);
+
             await CloneAsync(context, scenario.Nodes, 3, Guid.Empty, cancellationToken: cancellationToken);
         }
 
@@ -110,9 +118,14 @@ internal static class DensePathWorkFixture
             await CopyPayloadAsync(context, scenario.StoredNodes, cancellationToken: cancellationToken);
         }
 
-        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(context, engine,
+        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(
+            context,
+            engine,
             cancellationToken: cancellationToken);
-        await QueryPlanTestSupport.RefreshStatisticsAsync<UnrelatedRow>(context, engine,
+
+        await QueryPlanTestSupport.RefreshStatisticsAsync<UnrelatedRow>(
+            context,
+            engine,
             cancellationToken: cancellationToken);
     }
 
@@ -159,7 +172,10 @@ internal static class DensePathWorkFixture
         CancellationToken cancellationToken
     )
     {
-        var offset = scope == 1 ? nodes : 2 * nodes;
+        var offset = scope == 1
+            ? nodes
+            : 2 * nodes;
+
         await context
             .NestedSet<TreeNode>()
             .ForScope(scope)
@@ -196,7 +212,12 @@ internal static class DensePathWorkFixture
         var sourceId = map.Column(nameof(TreeNode.NodeId));
         var select = $"{sourceId} + {offset}, {scope}, @tree, "
             + $"{map.Column(nameof(TreeNode.Parent))} + {offset}, "
-            + string.Join(", ", names.Skip(4).Take(4).Select(map.Column))
+            + string.Join(
+                ", ",
+                names
+                    .Skip(4)
+                    .Take(4)
+                    .Select(map.Column))
             + ", 'blocked'";
 
         var statement = $"INSERT INTO {map.Table} ({columns}) SELECT {select} FROM {map.Table} "

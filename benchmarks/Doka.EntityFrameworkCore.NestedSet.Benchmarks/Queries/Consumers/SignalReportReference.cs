@@ -91,7 +91,7 @@ internal static class SignalReportReference
                 (node, anchor) => new
                 {
                     Anchor = anchor,
-                    Node = node
+                    Node = node,
                 })
             .Where(pair => Enumerable.Contains(anchors, pair.Anchor.Id));
 
@@ -108,10 +108,8 @@ internal static class SignalReportReference
                     value.TenantId,
                     value.NodeId,
                 },
-                (
-                    pair,
-                    value
-                ) => new
+                (pair,
+                    value) => new
                 {
                     pair.Anchor,
                     pair.Node,
@@ -130,10 +128,8 @@ internal static class SignalReportReference
                     definition.TenantId,
                     definition.Id,
                 },
-                (
-                    row,
-                    definition
-                ) => new Contribution
+                (row,
+                    definition) => new Contribution
                 {
                     Anchor = row.Anchor,
                     Node = row.Node,
@@ -152,7 +148,7 @@ internal static class SignalReportReference
                 && EF.Property<long>(child, SignalStorage.Right)
                 < EF.Property<long>(row.Anchor, SignalStorage.Right)
                 && nodes.Any(parent => parent.Id == EF.Property<Guid?>(child, SignalStorage.ParentId)
-                    && (long)EF.Property<int>(child, SignalStorage.Depth)
+                    && EF.Property<int>(child, SignalStorage.Depth)
                     == (long)EF.Property<int>(parent, SignalStorage.Depth) + 1
                     && EF.Property<long>(parent, SignalStorage.Left)
                     < EF.Property<long>(child, SignalStorage.Left)
@@ -216,7 +212,8 @@ internal static class SignalReportReference
 
         if (group.Mode == TagOwnerMode.Nearest)
         {
-            Expression<Func<Contribution, SignalNode, bool>> nearest = (row, owner) => owner.Id == nodes
+            Expression<Func<Contribution, SignalNode, bool>> nearest = (row, owner) => owner.Id
+                == nodes
                     .Where(candidate => candidate.TypeId == type
                         && EF.Property<long>(candidate, SignalStorage.Left)
                         <= EF.Property<long>(row.Node, SignalStorage.Left)
@@ -238,7 +235,7 @@ internal static class SignalReportReference
                     && EF.Property<long>(child, SignalStorage.Right)
                     < EF.Property<long>(owner, SignalStorage.Right)
                     && nodes.Any(parent => parent.Id == EF.Property<Guid?>(child, SignalStorage.ParentId)
-                        && (long)EF.Property<int>(child, SignalStorage.Depth)
+                        && EF.Property<int>(child, SignalStorage.Depth)
                         == (long)EF.Property<int>(parent, SignalStorage.Depth) + 1
                         && EF.Property<long>(parent, SignalStorage.Left)
                         < EF.Property<long>(child, SignalStorage.Left)

@@ -37,13 +37,15 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
             .Resolve(configured)
             .ResolveSubtreeQueryStrategy(configured);
 
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await PreparePairsAsync(database, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        var observations = await ObservePairProfilesAsync(database,
+        var observations = await ObservePairProfilesAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -65,9 +67,14 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
         await using var setup = database.CreateContext();
         await CapacitySeed.SeedAsync(setup, Nodes, cancellationToken: cancellationToken);
         await SeedPayloadAsync(setup, cancellationToken: cancellationToken);
-        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(setup, Engine,
+        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(
+            setup,
+            Engine,
             cancellationToken: cancellationToken);
-        await QueryPlanTestSupport.RefreshStatisticsAsync<UnrelatedRow>(setup, Engine,
+
+        await QueryPlanTestSupport.RefreshStatisticsAsync<UnrelatedRow>(
+            setup,
+            Engine,
             cancellationToken: cancellationToken);
     }
 
@@ -85,15 +92,34 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
         {
             foreach (var direct in new[] { false, true })
             {
-                observations.Add(await ObservePairsAsync(database, anchors, 100, includeRoot: true, direct,
-                    cancellationToken: cancellationToken));
+                observations.Add(
+                    await ObservePairsAsync(
+                        database,
+                        anchors,
+                        100,
+                        includeRoot: true,
+                        direct,
+                        cancellationToken: cancellationToken));
             }
         }
 
-        observations.Add(await ObservePairsAsync(database, 1_000, Nodes, includeRoot: true, direct: false,
-            cancellationToken: cancellationToken));
-        observations.Add(await ObservePairsAsync(database, 1_000, Nodes, includeRoot: false, direct: false,
-            cancellationToken: cancellationToken));
+        observations.Add(
+            await ObservePairsAsync(
+                database,
+                1_000,
+                Nodes,
+                includeRoot: true,
+                direct: false,
+                cancellationToken: cancellationToken));
+
+        observations.Add(
+            await ObservePairsAsync(
+                database,
+                1_000,
+                Nodes,
+                includeRoot: false,
+                direct: false,
+                cancellationToken: cancellationToken));
 
         return observations;
     }
@@ -110,12 +136,17 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var setup = database.CreateContext();
-        await CapacitySeed.SeedAsync(setup, Nodes, deep: true,
+        await CapacitySeed.SeedAsync(
+            setup,
+            Nodes,
+            deep: true,
             cancellationToken: TestContext.Current.CancellationToken);
+
         await SeedPayloadAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
 
         if (shape != "CleanLongPath")
@@ -128,12 +159,24 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
                     CancellationToken.None);
         }
 
-        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(setup, Engine,
+        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(
+            setup,
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
-        await QueryPlanTestSupport.RefreshStatisticsAsync<UnrelatedRow>(setup, Engine,
+
+        await QueryPlanTestSupport.RefreshStatisticsAsync<UnrelatedRow>(
+            setup,
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
-        var firstAnchor = shape == "DenseOffPath" ? Nodes - 999 : 1;
-        var expected = shape == "DenseOnPath" ? [] : Expected(firstAnchor, 10, Nodes - 9, Nodes);
+
+        var firstAnchor = shape == "DenseOffPath"
+            ? Nodes - 999
+            : 1;
+
+        var expected = shape == "DenseOnPath"
+            ? []
+            : Expected(firstAnchor, 10, Nodes - 9, Nodes);
+
         var requiredEdges = shape == "DenseOnPath"
             ? 200L
             : Enumerable
@@ -150,7 +193,8 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
             "path-" + shape,
             context => BuildPath(context, firstAnchor),
             expected,
-            budget, cancellationToken: TestContext.Current.CancellationToken);
+            budget,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         AssertObservation(observation);
@@ -172,7 +216,12 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
         CancellationToken cancellationToken
     )
     {
-        var firstAnchor = Nodes - anchors + (includeRoot ? 2 : 1);
+        var firstAnchor = Nodes
+            - anchors
+            + (includeRoot
+                ? 2
+                : 1);
+
         var firstFact = Nodes - facts + 1;
         var expected = ExpectedPairs(firstAnchor, firstFact, includeRoot);
         var contributions = expected.Sum(row => row.Contributions);
@@ -184,7 +233,8 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
             profile,
             context => BuildPairs(context, firstAnchor, firstFact, includeRoot, direct),
             expected,
-            budget, cancellationToken: cancellationToken);
+            budget,
+            cancellationToken: cancellationToken);
     }
 
     /// <summary>Builds the actual library path/ancestor filters after the requested subtree source.</summary>
@@ -207,7 +257,7 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
             {
                 Anchor = anchor,
                 Node = node,
-                FactKey = node.NodeId
+                FactKey = node.NodeId,
             });
 
         var source = direct
@@ -389,7 +439,11 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
             .Count();
 
         var parameters = planProbe.ParameterBindings[0].Length;
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, 0, Engine,
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            planProbe,
+            0,
+            Engine,
             cancellationToken: cancellationToken);
 
         var work = CompositionPlanWork.ReadMySqlTree(plan);
@@ -405,7 +459,8 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
                 + $"operatorBudget={budget.OperatorTuples}; materializationBudget={budget.MaterializedTuples}",
                 planProbe.Commands[0],
                 plan,
-            ], cancellationToken: cancellationToken);
+            ],
+            cancellationToken: cancellationToken);
 
         return new WorkObservation(
             profile,
@@ -449,7 +504,7 @@ public sealed class HierarchyCompositionWorkTests : ProviderTest,
         Assert.InRange(observation.Parameters, 0, 999);
         Assert.Equal(0, observation.Materialized);
         Assert.Equal(0, observation.Tracked);
-        Assert.Equal((double)observation.Actual.Length, observation.Work.RootOutputTuples);
+        Assert.Equal(observation.Actual.Length, observation.Work.RootOutputTuples);
     }
 
     /// <summary>Copies the fixture's existing node keys into payload with no second tracked population.</summary>

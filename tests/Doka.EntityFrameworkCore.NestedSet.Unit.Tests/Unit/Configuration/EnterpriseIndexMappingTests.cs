@@ -27,8 +27,16 @@ public sealed class EnterpriseIndexMappingTests
         var model = context.Model;
 
         // Assert
-        var entity = model.FindEntityType(variant == "conventional" ? typeof(GuidNode) : typeof(TreeNode))!;
-        var nodeKey = entity.FindProperty(variant == "conventional" ? "Id" : "NodeId")!;
+        var entity = model.FindEntityType(
+            variant == "conventional"
+                ? typeof(GuidNode)
+                : typeof(TreeNode))!;
+
+        var nodeKey = entity.FindProperty(
+            variant == "conventional"
+                ? "Id"
+                : "NodeId")!;
+
         var key = Assert.Single(
             entity.GetKeys(),
             candidate => candidate.Properties is [{ Name: "Tree" }, _] && candidate.Properties[1] == nodeKey);
@@ -96,6 +104,7 @@ public sealed class IndexMappingContext : DbContext, ITestModelVariant
                 builder.HasNodeKey(node => node.NodeId);
             }
         });
+
         entity.HasKey(node => node.NodeId);
     }
 }

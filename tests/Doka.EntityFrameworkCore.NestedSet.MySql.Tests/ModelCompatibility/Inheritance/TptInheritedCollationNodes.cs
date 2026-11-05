@@ -67,30 +67,35 @@ internal sealed class TptInheritedCollationContext(DbContextOptions<TptInherited
             .Property(value => value.Id)
             .HasMaxLength(64)
             .ValueGeneratedNever();
+
         node
             .Property(value => value.Scope)
             .HasMaxLength(64)
             .IsRequired();
+
         node
             .Property(value => value.ParentId)
             .HasMaxLength(64);
+
         node
             .Property(value => value.Name)
             .HasMaxLength(100);
+
         node
             .HasOne<TptInheritedCollationNode>()
             .WithMany()
             .HasPrincipalKey(value => new
             {
                 value.Scope,
-                value.Id
+                value.Id,
             })
             .HasForeignKey(value => new
             {
                 value.Scope,
-                value.ParentId
+                value.ParentId,
             })
             .OnDelete(DeleteBehavior.Restrict);
+
         node.HasNestedSet(nestedSet => nestedSet
             .HasNodeKey(value => value.Id)
             .HasScope(value => value.Scope)

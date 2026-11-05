@@ -29,17 +29,20 @@ public abstract partial class OrderingKeyTests
     )
     {
         // Arrange
-        await using var arranged = await _fixture.ResetAsync(Engine,
+        await using var arranged = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var treeId = await ArrangeConvertedKeysAsync(arranged,
+        var treeId = await ArrangeConvertedKeysAsync(
+            arranged,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var otherBefore = await ConvertedSnapshotAsync(
             arranged
                 .Set<OrderingKeyNode<int, int?>>()
                 .AsNoTracking()
-                .Where(node => node.TreeId != treeId), cancellationToken: TestContext.Current.CancellationToken);
+                .Where(node => node.TreeId != treeId),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var probe = new EnterpriseProbe();
         var providerOptions = ModelCompatibilityDatabase.Options<OrderingKeyContext>(
@@ -47,7 +50,8 @@ public abstract partial class OrderingKeyTests
             arranged.Database.GetConnectionString()!,
             mode);
 
-        var options = new DbContextOptionsBuilder<OrderingKeyContext>(providerOptions).AddInterceptors(probe).Options;
+        var options = new DbContextOptionsBuilder<OrderingKeyContext>(providerOptions).AddInterceptors(probe)
+            .Options;
 
         await using var context = new OrderingKeyContext(options);
         var root = new OrderingKeyNode<int, int?>(6, "Alpha");
@@ -69,7 +73,9 @@ public abstract partial class OrderingKeyTests
         await tree.InsertSubtreeAsync(branch, 1, CancellationToken.None);
 
         // Assert
-        var persisted = await ConvertedSnapshotAsync(tree.InTree(treeId).Nodes,
+        var persisted = await ConvertedSnapshotAsync(
+            tree.InTree(treeId)
+                .Nodes,
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(
@@ -77,6 +83,7 @@ public abstract partial class OrderingKeyTests
             persisted
                 .OrderBy(node => node.Left)
                 .Select(node => node.Id));
+
         Assert.Equal((2L, 7L, 1, 0L), (root.Left, root.Right, root.Depth, root.Position));
         Assert.Equal((3L, 4L, 2, 0L), (earlier.Left, earlier.Right, earlier.Depth, earlier.Position));
         Assert.Equal((5L, 6L, 2, 1L), (later.Left, later.Right, later.Depth, later.Position));
@@ -85,7 +92,10 @@ public abstract partial class OrderingKeyTests
             node =>
             {
                 Assert.Equal(ConvertedSnapshot(node), Assert.Single(persisted, row => row.Id == node.Id));
-                Assert.Equal(EntityState.Detached, context.Entry(node).State);
+                Assert.Equal(
+                    EntityState.Detached,
+                    context.Entry(node)
+                        .State);
             });
 
         Assert.Equal(
@@ -94,7 +104,8 @@ public abstract partial class OrderingKeyTests
                 context
                     .Set<OrderingKeyNode<int, int?>>()
                     .AsNoTracking()
-                    .Where(node => node.TreeId != treeId), cancellationToken: TestContext.Current.CancellationToken));
+                    .Where(node => node.TreeId != treeId),
+                cancellationToken: TestContext.Current.CancellationToken));
 
         var report = await tree
             .InTree(treeId)
@@ -113,14 +124,16 @@ public abstract partial class OrderingKeyTests
     )
     {
         // Arrange
-        await using var arranged = await _fixture.ResetAsync(Engine,
+        await using var arranged = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await ArrangeConvertedKeysAsync(arranged, cancellationToken: TestContext.Current.CancellationToken);
         var before = await ConvertedSnapshotAsync(
             arranged
                 .Set<OrderingKeyNode<int, int?>>()
-                .AsNoTracking(), cancellationToken: TestContext.Current.CancellationToken);
+                .AsNoTracking(),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var table = arranged.Model.FindEntityType(typeof(OrderingKeyNode<int, int?>))!.GetTableName()!;
         var refresh = new BulkIntervalRefreshProbe(table);
@@ -188,7 +201,9 @@ public abstract partial class OrderingKeyTests
             await ConvertedSnapshotAsync(
                 context
                     .Set<OrderingKeyNode<int, int?>>()
-                    .AsNoTracking(), cancellationToken: TestContext.Current.CancellationToken));
+                    .AsNoTracking(),
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Equal(original, imported.Select(ConvertedSnapshot));
         Assert.Empty(context.ChangeTracker.Entries());
         AssertConvertedRefreshBindings(commands, imported);
@@ -244,10 +259,8 @@ public abstract partial class OrderingKeyTests
     {
         var refreshIndexes = probe
             .Commands
-            .Select((
-                command,
-                index
-            ) => (command, index))
+            .Select((command,
+                index) => (command, index))
             .Where(item => item.command.Contains(NestedSetDiagnostics.BulkRefreshTag, StringComparison.Ordinal))
             .Select(item => item.index)
             .ToArray();

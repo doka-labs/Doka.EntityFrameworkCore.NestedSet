@@ -96,11 +96,11 @@ public sealed class ConfiguredIdentitySnapshotTests
             mutable.HasKey(node => node.Id);
 
             foreach (var propertyName in new[]
-                     {
-                         nameof(MutableIdentityNode.Id),
-                         nameof(MutableIdentityNode.Scope),
-                         nameof(MutableIdentityNode.TreeId),
-                     })
+                {
+                    nameof(MutableIdentityNode.Id),
+                    nameof(MutableIdentityNode.Scope),
+                    nameof(MutableIdentityNode.TreeId),
+                })
             {
                 var property = mutable.Property<MutableIdentity>(propertyName);
                 property.HasConversion(value => value.Value, value => new MutableIdentity(value));

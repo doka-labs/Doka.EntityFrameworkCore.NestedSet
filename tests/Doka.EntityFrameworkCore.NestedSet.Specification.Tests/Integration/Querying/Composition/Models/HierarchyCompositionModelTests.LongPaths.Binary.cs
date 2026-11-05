@@ -22,33 +22,50 @@ public abstract partial class HierarchyCompositionModelTests
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
         var materialized = 0;
-        await using var context = await _fixture.CreateContextAsync<CompositionBinaryContext>(Engine,
+        await using var context = await _fixture.CreateContextAsync<CompositionBinaryContext>(
+            Engine,
             static options => new CompositionBinaryContext(options),
             cancellationToken: TestContext.Current.CancellationToken,
-            probe, TestMaterializationObserver.Instance);
+            probe,
+            TestMaterializationObserver.Instance);
 
         TestMaterializationObserver.Instance.Register(context, _ => materialized++);
-        await context.AddRangeAsync(Enumerable.Range(0, 6).Select(depth => new BinaryNode
-        {
-            Id = BitConverter.GetBytes(scope + depth),
-            ParentId = depth == 0 || (missingParent && depth == 3) ? null : BitConverter.GetBytes(scope + depth - 1),
-            Tree = scope,
-            TreeId = tree,
-            Left = depth + 1,
-            Right = 12 - depth,
-            Depth = depth,
-        }), CancellationToken.None);
+        await context.AddRangeAsync(
+            Enumerable
+                .Range(0, 6)
+                .Select(depth => new BinaryNode
+                {
+                    Id = BitConverter.GetBytes(scope + depth),
+                    ParentId = depth == 0 || (missingParent && depth == 3)
+                        ? null
+                        : BitConverter.GetBytes(scope + depth - 1),
+                    Tree = scope,
+                    TreeId = tree,
+                    Left = depth + 1,
+                    Right = 12 - depth,
+                    Depth = depth,
+                }),
+            CancellationToken.None);
 
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         probe.Reset();
         materialized = 0;
-        var hierarchy = context.NestedSet<BinaryNode>().ForScope(scope).InTree(tree);
-        int[] expected = missingParent ? [] : filter == "correlated" ? [1] : [0, 1];
+        var hierarchy = context
+            .NestedSet<BinaryNode>()
+            .ForScope(scope)
+            .InTree(tree);
+
+        int[] expected = missingParent
+            ? []
+            : filter == "correlated"
+                ? [1]
+                : [0, 1];
 
         // Act
         var actual = await QueryLongDepths(hierarchy, filter)
-            .OrderBy(depth => depth).ToArrayAsync(CancellationToken.None);
+            .OrderBy(depth => depth)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(expected, actual);

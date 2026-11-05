@@ -49,7 +49,8 @@ internal static class NestedSetTreeRegistryState
             ? $"{treeId} = {{0}}"
             : $"{scope} = {{0}} AND {treeId} = {{1}}";
 
-        var statement = $"DELETE FROM {table} WHERE {predicate} AND {lifecycle} = {NestedSetTreeRegistryMetadata.Tombstoned}";
+        var statement =
+            $"DELETE FROM {table} WHERE {predicate} AND {lifecycle} = {NestedSetTreeRegistryMetadata.Tombstoned}";
 
         var affected = await context
             .Database
@@ -78,7 +79,9 @@ internal static class NestedSetTreeRegistryState
         var treeId = sql.DelimitIdentifier(mapping.TreeId.GetColumnName(mapping.Store)!);
         var revision = sql.DelimitIdentifier(mapping.Revision.GetColumnName(mapping.Store)!);
         var lifecycle = sql.DelimitIdentifier(mapping.Lifecycle.GetColumnName(mapping.Store)!);
-        var scope = mapping.Scope is null ? null : sql.DelimitIdentifier(mapping.Scope.GetColumnName(mapping.Store)!);
+        var scope = mapping.Scope is null
+            ? null
+            : sql.DelimitIdentifier(mapping.Scope.GetColumnName(mapping.Store)!);
 
         var predicate = scope is null
             ? $"{treeId} = {{0}}"
@@ -88,7 +91,8 @@ internal static class NestedSetTreeRegistryState
             ? $"{revision} = {revision} + 1, {lifecycle} = {NestedSetTreeRegistryMetadata.Tombstoned}"
             : $"{revision} = {revision} + 1";
 
-        var statement = $"UPDATE {table} SET {assignment} WHERE {predicate} AND {lifecycle} = {NestedSetTreeRegistryMetadata.Active}";
+        var statement =
+            $"UPDATE {table} SET {assignment} WHERE {predicate} AND {lifecycle} = {NestedSetTreeRegistryMetadata.Active}";
 
         var affected = await context
             .Database

@@ -19,7 +19,9 @@ public sealed partial class SqlServerCompositionStrategyTests
         Id = new BoundsKey(id),
         Scope = scope,
         TreeId = tree,
-        ParentId = parent.HasValue ? new BoundsKey(parent.Value) : null,
+        ParentId = parent.HasValue
+            ? new BoundsKey(parent.Value)
+            : null,
         Left = left,
         Right = right,
         Depth = depth,
@@ -57,13 +59,19 @@ public sealed partial class SqlServerCompositionStrategyTests
                 .Property(entity => entity.Id)
                 .HasConversion(converter)
                 .ValueGeneratedNever();
+
             node
                 .Property(entity => entity.ParentId)
                 .HasConversion(converter);
+
             node
                 .Property(entity => entity.TreeId)
                 .HasMaxLength(40)
-                .UseCollation(Database.IsSqlServer() ? "Latin1_General_100_BIN2" : "NOCASE");
+                .UseCollation(
+                    Database.IsSqlServer()
+                        ? "Latin1_General_100_BIN2"
+                        : "NOCASE");
+
             node.HasQueryFilter(entity => entity.Visible);
             node.HasNestedSet(hierarchy =>
             {

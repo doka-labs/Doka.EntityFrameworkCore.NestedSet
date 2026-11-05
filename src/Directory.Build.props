@@ -1,5 +1,5 @@
 <Project>
-  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))"/>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
   <PropertyGroup Label="Package metadata and release baseline">
     <!-- WHY: Local builds use the reviewed stable version; qualified candidates must retain this exact identity. -->
@@ -40,12 +40,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all"/>
-    <None Include="$(MSBuildThisFileDirectory)../LICENSE" Pack="true" PackagePath="/"/>
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+    <None Include="$(MSBuildThisFileDirectory)../LICENSE" Pack="true" PackagePath="/" />
     <!-- WHY: The common EF package shares the central usage guide; other packages provide their own README. -->
     <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="/"
-          Condition="!Exists('$(MSBuildProjectDirectory)/README.md')"/>
+          Condition="!Exists('$(MSBuildProjectDirectory)/README.md')" />
     <None Include="$(MSBuildProjectDirectory)/README.md" Pack="true" PackagePath="/"
-          Condition="Exists('$(MSBuildProjectDirectory)/README.md')"/>
+          Condition="Exists('$(MSBuildProjectDirectory)/README.md')" />
   </ItemGroup>
 </Project>

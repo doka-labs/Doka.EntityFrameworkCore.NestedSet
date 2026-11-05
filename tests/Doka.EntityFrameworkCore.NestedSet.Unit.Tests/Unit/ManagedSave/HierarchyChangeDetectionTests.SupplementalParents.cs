@@ -15,7 +15,7 @@ public sealed partial class HierarchyChangeDetectionTests
     {
         // Arrange
         await using var context = new SnapshotContext();
-        var root = CreateNode(1);
+        var root = CreateNode();
         var expected = CreateNode(2);
         expected.ParentId = root.Id;
         expected.Parent = root;
@@ -74,6 +74,7 @@ public sealed partial class HierarchyChangeDetectionTests
         var installedParent = movingUpdate.GetRelationshipSnapshotValue(parent.Metadata);
         var detections = 0;
         context.ChangeTracker.DetectedAllChanges += (_, _) => detections++;
+
         // WHY: C is captured only through unchanged D; it does not initially contain the pending moved member A.
         var snapshot = NestedSetTrackerSnapshot.Capture(context);
         wrongCollection.Add(moving);
@@ -82,6 +83,7 @@ public sealed partial class HierarchyChangeDetectionTests
 
         // Act
         snapshot.Restore();
+
         // WHY: Repeating recovery must not reintroduce the invalid member from a supplemental snapshot.
         snapshot.Restore();
 
@@ -98,21 +100,28 @@ public sealed partial class HierarchyChangeDetectionTests
         Assert.Equal(root.Id, parent.OriginalValue);
         Assert.Same(wrong, child.Parent);
         Assert.Equal(wrong.Id, child.ParentId);
-        Assert.False(childEntry.Property(node => node.ParentId).IsModified);
+        Assert.False(
+            childEntry.Property(node => node.ParentId)
+                .IsModified);
+
         Assert.Same(expectedUpdate, updates.FindPrincipal(movingUpdate, key));
         Assert.Same(wrongUpdate, updates.FindPrincipal(childUpdate, key));
         Assert.Equal(expectedDependents, updates.GetDependents(expectedUpdate, key));
         Assert.Same(childUpdate, Assert.Single(updates.GetDependents(wrongUpdate, key)));
         var wrongNative = Assert.IsAssignableFrom<ISet<object>>(wrongUpdate.GetRelationshipSnapshotValue(inverse));
 
-        Assert.True(nativeExpected
-            .ToHashSet(ReferenceEqualityComparer.Instance)
-            .SetEquals(expectedUpdate.GetRelationshipSnapshotValue(inverse) as IEnumerable<object> ?? []));
+        Assert.True(
+            nativeExpected
+                .ToHashSet(ReferenceEqualityComparer.Instance)
+                .SetEquals(expectedUpdate.GetRelationshipSnapshotValue(inverse) as IEnumerable<object> ?? []));
+
         Assert.Equal(installedParent, movingUpdate.GetRelationshipSnapshotValue(parent.Metadata));
         Assert.Same(child, Assert.Single(wrongNative));
         Assert.Equal(0, detections);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 }

@@ -10,13 +10,14 @@ public sealed partial class CompositionBindingExpressionTests
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync(CancellationToken.None);
         var options = new DbContextOptionsBuilder<SnapshotBindingContext>().UseSqlite(
-                connection,
-                provider => provider.UseNestedSets());
+            connection,
+            provider => provider.UseNestedSets());
 
         await using var services = Services(options.Options);
-        await using var context = new SnapshotBindingContext(options
-            .UseInternalServiceProvider(services)
-            .Options);
+        await using var context = new SnapshotBindingContext(
+            options
+                .UseInternalServiceProvider(services)
+                .Options);
 
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
         await context
@@ -49,6 +50,7 @@ public sealed partial class CompositionBindingExpressionTests
                     },
                 ],
                 CancellationToken.None);
+
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         byte[] scope = [1];
@@ -104,10 +106,11 @@ public sealed partial class CompositionBindingExpressionTests
                     .Property<byte[]>(property)
                     .HasMaxLength(8)
                     .Metadata
-                    .SetValueComparer(new ValueComparer<byte[]>(
-                        (left, right) => left != null && right != null && left.SequenceEqual(right),
-                        value => value.Aggregate(0, HashCode.Combine),
-                        value => value));
+                    .SetValueComparer(
+                        new ValueComparer<byte[]>(
+                            (left, right) => left != null && right != null && left.SequenceEqual(right),
+                            value => value.Aggregate(0, HashCode.Combine),
+                            value => value));
             }
 
             node.HasNestedSet(hierarchy => hierarchy

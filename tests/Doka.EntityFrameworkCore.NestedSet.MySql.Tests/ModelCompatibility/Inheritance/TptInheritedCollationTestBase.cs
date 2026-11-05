@@ -100,9 +100,11 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
             (firstScope, treeId, 1L, 2L, 0, 0L),
             (persistedFirst.Scope, persistedFirst.TreeId, persistedFirst.Left, persistedFirst.Right,
                 persistedFirst.Depth, persistedFirst.Position));
+
         Assert.Equal(
             (second.Id, secondScope, treeId, null, 1L, 2L, 0, 0L, second.Name, second.Payload),
             Snapshot(persistedSecond));
+
         Assert.True((await firstTree.ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
         Assert.True((await secondTree.ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
 
@@ -133,10 +135,12 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
         Assert.Null(
             designBase.FindAnnotation(RelationalAnnotationNames.Collation)
                 ?.Value);
+
         Assert.Equal(
             "utf8mb4_bin",
             designLeaf.FindAnnotation(RelationalAnnotationNames.Collation)
                 ?.Value);
+
         Assert.All(
             new[]
             {
@@ -146,7 +150,9 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
             },
             name => Assert.Null(designBase.FindProperty(name)!.GetCollation()));
 
-        var registry = NestedSetTreeRegistryMapping.For(entityType).Registry;
+        var registry = NestedSetTreeRegistryMapping.For(entityType)
+            .Registry;
+
         var designRegistry = designModel.FindEntityType(registry.Name)!;
         Assert.Equal("utf8mb4_bin", designRegistry.FindProperty(NestedSetTreeRegistryMetadata.Scope)!.GetCollation());
         var scopes = await context
@@ -199,7 +205,10 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
 
         await hierarchy.InsertChildAsync(child, root.Id, CancellationToken.None);
         context.ChangeTracker.Clear();
-        var before = await TreeSnapshotsAsync(context, scope, treeId,
+        var before = await TreeSnapshotsAsync(
+            context,
+            scope,
+            treeId,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
@@ -213,8 +222,14 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
         Assert.Equal(before[0], Snapshot(parent));
         Assert.Equal(root.Id, parent.Id);
         Assert.Equal((1L, 4L, 0, 0L), (parent.Left, parent.Right, parent.Depth, parent.Position));
-        Assert.Equal(before, await TreeSnapshotsAsync(context, scope, treeId,
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            before,
+            await TreeSnapshotsAsync(
+                context,
+                scope,
+                treeId,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         var leafType = context.Model.FindEntityType(typeof(TptInheritedCollationLeaf))!;
         Assert.Equal(
             "utf8mb4_bin",
@@ -222,14 +237,17 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
                 context,
                 leafType.FindProperty(nameof(TptInheritedCollationNode.Scope))!,
                 leafType));
+
         Assert.Equal(
             "utf8mb4_bin",
             NestedSetMapping<TptInheritedCollationLeaf, string, string>.For(context, leafType)
                 .KeyCollation);
+
         Assert.True(
             (await hierarchy
                 .InTree(treeId)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -263,7 +281,10 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
 
         await hierarchy.InsertRootAsync(root, treeId, CancellationToken.None);
         context.ChangeTracker.Clear();
-        var before = await TreeSnapshotsAsync(context, scope, treeId,
+        var before = await TreeSnapshotsAsync(
+            context,
+            scope,
+            treeId,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var child = new TptInheritedCollationLeaf
@@ -286,17 +307,26 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
             NestedSetErrorCode.NodeNotFound,
             Assert.IsType<NestedSetException>(failure)
                 .Code);
+
         Assert.Equal(inputBefore, Snapshot(child));
         Assert.Equal(
             EntityState.Detached,
             context.Entry(child)
                 .State);
-        Assert.Equal(before, await TreeSnapshotsAsync(context, scope, treeId,
-            cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal(
+            before,
+            await TreeSnapshotsAsync(
+                context,
+                scope,
+                treeId,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.True(
             (await hierarchy
                 .InTree(treeId)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -358,7 +388,10 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
         await context.SaveChangesAsync(CancellationToken.None);
 
         // Assert
-        var snapshots = await TreeSnapshotsAsync(context, scope, treeId,
+        var snapshots = await TreeSnapshotsAsync(
+            context,
+            scope,
+            treeId,
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(
@@ -370,15 +403,18 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
                     "Reparented leaf payload"),
             },
             snapshots);
+
         Assert.Equal(snapshots[2], Snapshot(changed));
         Assert.Equal(
             EntityState.Unchanged,
             context.Entry(changed)
                 .State);
+
         Assert.Same(
             changed,
             Assert.Single(context.ChangeTracker.Entries())
                 .Entity);
+
         Assert.True(
             (await hierarchy
                 .InTree(treeId)

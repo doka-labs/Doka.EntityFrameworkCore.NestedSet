@@ -36,7 +36,11 @@ internal sealed class BenchmarkForest
 
         for (var tree = 0; tree < scenario.Trees; tree++)
         {
-            var size = (scenario.Nodes / scenario.Trees) + (tree < scenario.Nodes % scenario.Trees ? 1 : 0);
+            var size = scenario.Nodes / scenario.Trees
+                + (tree < scenario.Nodes % scenario.Trees
+                    ? 1
+                    : 0);
+
             roots[tree] = offset + keyOffset + 1;
 
             for (var local = 0; local < size; local++)
@@ -56,13 +60,13 @@ internal sealed class BenchmarkForest
                 }
 
                 var parent = offset
-                    + (scenario.Shape switch
+                    + scenario.Shape switch
                     {
                         BenchmarkShape.Wide => 0,
                         BenchmarkShape.Deep => local - 1,
                         BenchmarkShape.Balanced => (local - 1) / 2,
                         _ => throw new ArgumentOutOfRangeException(nameof(scenario)),
-                    });
+                    };
 
                 parents[index] = parent + keyOffset + 1;
                 (children[parent] ??= []).Add(index);

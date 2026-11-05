@@ -96,10 +96,8 @@ internal sealed record SignalMaterializationData(
 
         var totals = grain
             .Take(totalCount)
-            .Select((
-                key,
-                index
-            ) => new SignalReportTotal
+            .Select((key,
+                index) => new SignalReportTotal
             {
                 AnchorId = key.Anchor,
                 ChannelId = key.Channel,
@@ -126,7 +124,9 @@ internal sealed record SignalMaterializationData(
                 key.Channel,
                 key.Source,
                 index < totalCount,
-                index < totalCount ? index : 0))
+                index < totalCount
+                    ? index
+                    : 0))
             .ToArray();
 
         return new SignalMaterializationData(request, catalog, totals, expected);

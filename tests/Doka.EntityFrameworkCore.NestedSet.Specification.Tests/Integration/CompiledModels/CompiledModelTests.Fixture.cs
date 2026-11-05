@@ -9,6 +9,15 @@ public sealed class CompiledModelFixture : IAsyncLifetime
     /// <inheritdoc />
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var database in _databases.Values)
+        {
+            await database.DisposeAsync();
+        }
+    }
+
     /// <summary>Builds schema through ordinary metadata, then returns a context that forbids rebuilding.</summary>
     /// <param name="engine">The real relational engine represented by the generated model.</param>
     /// <param name="compiledModel">The checked-in output of that provider's actual EF model generator.</param>
@@ -104,7 +113,8 @@ public sealed class CompiledModelFixture : IAsyncLifetime
 
         return model is null
             ? options.Options
-            : options.UseModel(model).Options;
+            : options.UseModel(model)
+                .Options;
     }
 
     /// <summary>Creates the context type whose provider generated the selected runtime model.</summary>
@@ -116,9 +126,12 @@ public sealed class CompiledModelFixture : IAsyncLifetime
     ) => engine switch
     {
         "Sqlite" =>
-            new CompiledTreeContext(await CreateOptionsAsync<CompiledTreeContext>(engine,
-                cancellationToken: cancellationToken,
-                model), model is not null),
+            new CompiledTreeContext(
+                await CreateOptionsAsync<CompiledTreeContext>(
+                    engine,
+                    cancellationToken: cancellationToken,
+                    model),
+                model is not null),
         "MySql" => new CompiledMySqlContext(
             await CreateOptionsAsync<CompiledMySqlContext>(engine, cancellationToken: cancellationToken, model),
             model is not null),
@@ -133,13 +146,4 @@ public sealed class CompiledModelFixture : IAsyncLifetime
             model is not null),
         _ => throw new ArgumentOutOfRangeException(nameof(engine)),
     };
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        foreach (var database in _databases.Values)
-        {
-            await database.DisposeAsync();
-        }
-    }
 }

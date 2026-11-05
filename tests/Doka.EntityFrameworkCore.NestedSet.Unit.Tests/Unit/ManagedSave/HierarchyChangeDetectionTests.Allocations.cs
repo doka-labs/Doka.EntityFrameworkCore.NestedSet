@@ -3,6 +3,7 @@ using Doka.EntityFrameworkCore.NestedSet.Features.ManagedSave;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Isolates the warmed scalar probe from EF entry acquisition and runner allocation.</summary>
+
 // WHY: This collection already excludes instrumentation and competing diagnostic observers from fixed budgets.
 [Collection("Allocation measurements")]
 public sealed class HierarchyChangeDetectionAllocationTests
@@ -50,7 +51,9 @@ public sealed class HierarchyChangeDetectionAllocationTests
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < entries.Count; index++)
         {
-            entries[index].Property(nameof(HierarchyChangeDetectionTests.ProbeNode.Name)).IsModified = true;
+            entries[index]
+                .Property(nameof(HierarchyChangeDetectionTests.ProbeNode.Name))
+                .IsModified = true;
         }
 
         _ = HierarchyChangeDetectionTests.CapturePlan(entries);
@@ -71,13 +74,17 @@ public sealed class HierarchyChangeDetectionAllocationTests
 
         // Assert
         var maximum = 4096L + repetitions * candidates * 1600L;
-        _output.WriteLine($"Guard capture: nodes={nodes}; candidates={candidates}; passes={repetitions}; "
+        _output.WriteLine(
+            $"Guard capture: nodes={nodes}; candidates={candidates}; passes={repetitions}; "
             + $"allocated={allocated} B; maximum={maximum} B.");
+
         Assert.InRange(allocated, 0, maximum);
         Assert.Equal(repetitions * candidates, observed);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Repeated exact-plan checks avoid scalar boxes and wrappers even with many clean entries.</summary>
@@ -93,7 +100,9 @@ public sealed class HierarchyChangeDetectionAllocationTests
 
         context.AttachRange(entities);
         var entry = context.Entry(entities[0]);
-        entry.Property(value => value.Name).IsModified = true;
+        entry.Property(value => value.Name)
+            .IsModified = true;
+
         var plan = HierarchyChangeDetectionTests.CapturePlan([entry]);
         const int repetitions = 10;
         var changes = 0;
@@ -103,7 +112,9 @@ public sealed class HierarchyChangeDetectionAllocationTests
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < repetitions; index++)
         {
-            changes += HierarchyChangeDetectionTests.PlanHasChanges(context, plan) ? 1 : 0;
+            changes += HierarchyChangeDetectionTests.PlanHasChanges(context, plan)
+                ? 1
+                : 0;
         }
 
         var before = GC.GetAllocatedBytesForCurrentThread();
@@ -114,19 +125,25 @@ public sealed class HierarchyChangeDetectionAllocationTests
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < repetitions; index++)
         {
-            changes += HierarchyChangeDetectionTests.PlanHasChanges(context, plan) ? 1 : 0;
+            changes += HierarchyChangeDetectionTests.PlanHasChanges(context, plan)
+                ? 1
+                : 0;
         }
 
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         // Assert
-        _output.WriteLine($"Guard validation: nodes=1024; candidates=1; passes={repetitions}; "
+        _output.WriteLine(
+            $"Guard validation: nodes=1024; candidates=1; passes={repetitions}; "
             + $"allocated={allocated} B.");
+
         Assert.InRange(allocated, 0, 4096);
         Assert.Equal(0, changes);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Unchanged tracked hierarchies do not introduce allocation for each node or scalar comparison.</summary>
@@ -140,9 +157,11 @@ public sealed class HierarchyChangeDetectionAllocationTests
     {
         // Arrange
         await using var context = new HierarchyChangeDetectionTests.SnapshotContext();
-        context.AttachRange(Enumerable
-            .Range(1, nodes)
-            .Select(id => HierarchyChangeDetectionTests.CreateNode(id)));
+        context.AttachRange(
+            Enumerable
+                .Range(1, nodes)
+                .Select(id => HierarchyChangeDetectionTests.CreateNode(id)));
+
         const int repetitions = 10;
         var changes = 0;
 
@@ -151,7 +170,9 @@ public sealed class HierarchyChangeDetectionAllocationTests
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < repetitions; index++)
         {
-            changes += NestedSetSaveChanges.HasHierarchyChanges(context) ? 1 : 0;
+            changes += NestedSetSaveChanges.HasHierarchyChanges(context)
+                ? 1
+                : 0;
         }
 
         var before = GC.GetAllocatedBytesForCurrentThread();
@@ -162,19 +183,24 @@ public sealed class HierarchyChangeDetectionAllocationTests
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < repetitions; index++)
         {
-            changes += NestedSetSaveChanges.HasHierarchyChanges(context) ? 1 : 0;
+            changes += NestedSetSaveChanges.HasHierarchyChanges(context)
+                ? 1
+                : 0;
         }
 
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         // Assert
         _output.WriteLine($"Hierarchy probe: nodes={nodes}; passes={repetitions}; allocated={allocated} B.");
+
         // WHY: Fixed per-call adapter/enumerator bookkeeping fits; per-node boxes or iterators do not.
         Assert.InRange(allocated, 0, 4096);
         Assert.Equal(0, changes);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Records native set-comparison enumeration cost for actual populated navigation collections.</summary>
@@ -216,7 +242,9 @@ public sealed class HierarchyChangeDetectionAllocationTests
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < repetitions; index++)
         {
-            changes += NestedSetSaveChanges.HasHierarchyChanges(context) ? 1 : 0;
+            changes += NestedSetSaveChanges.HasHierarchyChanges(context)
+                ? 1
+                : 0;
         }
 
         var before = GC.GetAllocatedBytesForCurrentThread();
@@ -227,7 +255,9 @@ public sealed class HierarchyChangeDetectionAllocationTests
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < repetitions; index++)
         {
-            changes += NestedSetSaveChanges.HasHierarchyChanges(context) ? 1 : 0;
+            changes += NestedSetSaveChanges.HasHierarchyChanges(context)
+                ? 1
+                : 0;
         }
 
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
@@ -236,18 +266,24 @@ public sealed class HierarchyChangeDetectionAllocationTests
         // WHY: HashSet.SetEquals currently allocates a 40-byte enumerator for each nonempty ObservableCollection.
         // Preserve EF reference-set/duplicate semantics; 48 bytes permits limited headroom without hiding growth.
         var maximum = 4096L + repetitions * parents * 48L;
-        _output.WriteLine($"Populated hierarchy probe: parents={parents}; nodes={parents * 2}; passes={repetitions}; "
+        _output.WriteLine(
+            $"Populated hierarchy probe: parents={parents}; nodes={parents * 2}; passes={repetitions}; "
             + $"allocated={allocated} B; maximum={maximum} B.");
+
         Assert.InRange(allocated, 0, maximum);
         Assert.Equal(0, changes);
-        Assert.Equal(parents * 2,
+        Assert.Equal(
+            parents * 2,
             context
                 .ChangeTracker
                 .Entries()
                 .Count());
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>An unchanged Int64 comparison does not box its current and original value on each probe.</summary>
@@ -268,7 +304,9 @@ public sealed class HierarchyChangeDetectionAllocationTests
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < repetitions; index++)
         {
-            changes += NestedSetTrackedProperty.HasChanged(entry, property) ? 1 : 0;
+            changes += NestedSetTrackedProperty.HasChanged(entry, property)
+                ? 1
+                : 0;
         }
 
         var before = GC.GetAllocatedBytesForCurrentThread();
@@ -279,19 +317,24 @@ public sealed class HierarchyChangeDetectionAllocationTests
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < repetitions; index++)
         {
-            changes += NestedSetTrackedProperty.HasChanged(entry, property) ? 1 : 0;
+            changes += NestedSetTrackedProperty.HasChanged(entry, property)
+                ? 1
+                : 0;
         }
 
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         // Assert
         _output.WriteLine($"Typed scalar probe: passes={repetitions}; allocated={allocated} B.");
+
         // WHY: A fixed allowance admits runtime bookkeeping while rejecting two boxed Int64 values per probe.
         Assert.InRange(allocated, 0, 4096);
         Assert.Equal(0, changes);
         Assert.Equal(EntityState.Unchanged, entry.EntityState);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 }

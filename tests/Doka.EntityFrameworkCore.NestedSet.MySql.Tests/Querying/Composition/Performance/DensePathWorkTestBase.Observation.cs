@@ -59,7 +59,11 @@ public abstract partial class DensePathWorkTestBase
 
         var parameters = probe.ParameterBindings[0].Length;
         var commandBytes = Encoding.UTF8.GetByteCount(probe.Commands[0]);
-        var plan = await Specifications.QueryPlanTestSupport.ExplainAsync(context, probe, 0, Engine,
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            probe,
+            0,
+            Engine,
             cancellationToken: cancellationToken);
 
         var planBytes = Encoding.UTF8.GetByteCount(plan);
@@ -73,9 +77,12 @@ public abstract partial class DensePathWorkTestBase
                 + $"commandBytes={commandBytes}; planBytes={planBytes}; resultRows={actual.Length}",
                 probe.Commands[0],
                 plan,
-            ], cancellationToken: cancellationToken);
+            ],
+            cancellationToken: cancellationToken);
 
-        var work = Engine == "MySql" ? DensePathNativeWork.MySql(plan) : DensePathNativeWork.MariaDb(plan);
+        var work = Engine == "MySql"
+            ? DensePathNativeWork.MySql(plan)
+            : DensePathNativeWork.MariaDb(plan);
 
         return new Observation(
             profile,
@@ -128,7 +135,7 @@ public abstract partial class DensePathWorkTestBase
 
         if (observation.Work.RootRows is { } rows)
         {
-            Assert.Equal((double)observation.Actual.Length, rows);
+            Assert.Equal(observation.Actual.Length, rows);
         }
 
         Assert.InRange(observation.Work.OperatorTuples, 0, observation.Budget.OperatorTuples);

@@ -44,20 +44,32 @@ public sealed partial class NullableParentIndexTests : ProviderTest,
         var dependent = indexes.Single(index => index.GetFilter() == columns.Parent + " IS NOT NULL");
         var roots = indexes.Single(index => index.GetFilter() == columns.Parent + " IS NULL");
         await SeedAsync(context, columns, scoped, cancellationToken: TestContext.Current.CancellationToken);
-        var scope = scoped ? $"x.{columns.Scope} = @scope AND " : string.Empty;
+        var scope = scoped
+            ? $"x.{columns.Scope} = @scope AND "
+            : string.Empty;
+
         var predicate = scope + $"x.{columns.Key} = @key";
         var principalQuery = $"SELECT 1 FROM ONLY {columns.Table} x WHERE {predicate} FOR KEY SHARE OF x";
         var dependentQuery = $"SELECT 1 FROM ONLY {columns.Table} x WHERE {scope}x.{columns.Parent} = @key";
         var rootQuery = $"SELECT x.{columns.Key} FROM {columns.Table} x WHERE {scope}x.{columns.Parent} IS NULL";
 
         // Act
-        var principalPlan = await ExplainAsync(context, principalQuery, scoped,
+        var principalPlan = await ExplainAsync(
+            context,
+            principalQuery,
+            scoped,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var dependentPlan = await ExplainAsync(context, dependentQuery, scoped,
+        var dependentPlan = await ExplainAsync(
+            context,
+            dependentQuery,
+            scoped,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var rootPlan = await ExplainAsync(context, rootQuery, scoped,
+        var rootPlan = await ExplainAsync(
+            context,
+            rootQuery,
+            scoped,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var rootKeys = scoped
@@ -74,7 +86,10 @@ public sealed partial class NullableParentIndexTests : ProviderTest,
                 .ToArrayAsync(CancellationToken.None);
 
         await QueryPlanTestSupport.WriteEvidenceAsync(
-            "PostgreSql-nullable-parent-" + (scoped ? "scoped" : "unscoped"),
+            "PostgreSql-nullable-parent-"
+            + (scoped
+                ? "scoped"
+                : "unscoped"),
             ["principal\n" + principalPlan, "dependent\n" + dependentPlan, "roots\n" + rootPlan],
             cancellationToken: TestContext.Current.CancellationToken);
 
@@ -84,11 +99,15 @@ public sealed partial class NullableParentIndexTests : ProviderTest,
         Assert.All(
             indexes.Where(index => index.GetFilter() is not null),
             index => Assert.DoesNotContain(index.GetDatabaseName(), principalIndexes));
+
         Assert.Contains(dependent.GetDatabaseName(), IndexNames(dependentPlan));
         Assert.Contains(roots.GetDatabaseName(), IndexNames(rootPlan));
         Assert.Equal(
-            scoped ? ["Tree", "NodeId", "Parent"] : ["Id", "ParentId"],
+            scoped
+                ? ["Tree", "NodeId", "Parent"]
+                : ["Id", "ParentId"],
             roots.Properties.Select(property => property.Name));
+
         Assert.Equal(1000, rootKeys.Length);
         Assert.Contains(1, rootKeys);
         Assert.Contains(19981, rootKeys);
@@ -138,6 +157,7 @@ public sealed partial class NullableParentIndexTests : ProviderTest,
             PostgresErrorCodes.ForeignKeyViolation,
             Assert.IsType<PostgresException>(exception)
                 .SqlState);
+
         Assert.Equal(20000, count);
     }
 
@@ -145,7 +165,10 @@ public sealed partial class NullableParentIndexTests : ProviderTest,
     private static IEntityType Entity(
         DbContext context,
         bool scoped
-    ) => context.Model.FindEntityType(scoped ? typeof(TreeNode) : typeof(UnscopedQueryNode))!;
+    ) => context.Model.FindEntityType(
+        scoped
+            ? typeof(TreeNode)
+            : typeof(UnscopedQueryNode))!;
 
     /// <summary>Uses actual physical columns so plans exercise the same metadata as generated migration SQL.</summary>
     private static ParentColumns Columns(

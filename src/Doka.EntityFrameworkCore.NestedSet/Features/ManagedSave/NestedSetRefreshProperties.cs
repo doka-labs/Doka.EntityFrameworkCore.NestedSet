@@ -12,7 +12,10 @@ internal static class NestedSetRefreshProperties
         IEnumerable<IProperty> structure
     )
     {
-        if (NestedSetModelMapping.For(owner.Model).Descriptor(owner).AncestorIndexProperty is { } flag)
+        if (NestedSetModelMapping
+                .For(owner.Model)
+                .Descriptor(owner)
+                .AncestorIndexProperty is { } flag)
         {
             // WHY: The generated nonleaf value follows bounds changes but must never enter writable structure.
             // Appending only for opted-in models avoids another iterator and small array on existing refresh paths.

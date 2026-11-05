@@ -1,3 +1,5 @@
+using Doka.EntityFrameworkCore.NestedSet.Sqlite;
+
 namespace Doka.EntityFrameworkCore.NestedSet;
 
 /// <summary>Registers nested-set services within the SQLite provider's native options callback.</summary>
@@ -16,7 +18,7 @@ public static class SqliteNestedSetOptionsBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(optionsBuilder);
         var core = ((IRelationalDbContextOptionsBuilderInfrastructure)optionsBuilder).OptionsBuilder;
-        NestedSetProviderRegistration.Register(core, Sqlite.SqliteNestedSetProvider.Instance);
+        NestedSetProviderRegistration.Register(core, SqliteNestedSetProvider.Instance);
 
         return optionsBuilder;
     }

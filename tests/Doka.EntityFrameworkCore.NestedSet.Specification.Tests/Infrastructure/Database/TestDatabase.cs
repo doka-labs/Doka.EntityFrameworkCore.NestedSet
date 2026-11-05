@@ -77,7 +77,9 @@ public sealed class TestDatabase : IAsyncDisposable
 
             if (deletionFailure is not null)
             {
-                ExceptionDispatchInfo.Capture(deletionFailure).Throw();
+                ExceptionDispatchInfo
+                    .Capture(deletionFailure)
+                    .Throw();
             }
         }
 
@@ -138,7 +140,9 @@ public sealed class TestDatabase : IAsyncDisposable
     /// <summary>Clears test entities and lock rows without restarting the fixture-owned engine.</summary>
     /// <param name="cancellationToken">The caller's token for the complete reset.</param>
     /// <returns>A task that completes when the database is ready for an isolated case.</returns>
-    public async Task ResetAsync(CancellationToken cancellationToken)
+    public async Task ResetAsync(
+        CancellationToken cancellationToken
+    )
     {
         await using var context = CreateContext();
 
@@ -147,21 +151,27 @@ public sealed class TestDatabase : IAsyncDisposable
         await context
             .Set<ConstrainedNode>()
             .ExecuteUpdateAsync(x => x.SetProperty(n => n.ParentId, (int?)null), cancellationToken);
+
         await context
             .Set<TreeNode>()
             .ExecuteUpdateAsync(x => x.SetProperty(n => n.Parent, (int?)null), cancellationToken);
+
         await context
             .Set<GuidNode>()
             .ExecuteUpdateAsync(x => x.SetProperty(n => n.ParentId, (Guid?)null), cancellationToken);
+
         await context
             .Set<TextNode>()
             .ExecuteUpdateAsync(x => x.SetProperty(n => n.ParentId, (string?)null), cancellationToken);
+
         await context
             .Set<BinaryNode>()
             .ExecuteUpdateAsync(x => x.SetProperty(n => n.ParentId, (byte[]?)null), cancellationToken);
+
         await context
             .Set<ConcurrentNode>()
             .ExecuteUpdateAsync(x => x.SetProperty(n => n.ParentId, (int?)null), cancellationToken);
+
         await context
             .Set<UnscopedQueryNode>()
             .IgnoreQueryFilters()
@@ -170,28 +180,36 @@ public sealed class TestDatabase : IAsyncDisposable
         await context
             .Set<ConstrainedNode>()
             .ExecuteDeleteAsync(cancellationToken);
+
         await context
             .Set<TreeNode>()
             .ExecuteDeleteAsync(cancellationToken);
+
         await context
             .Set<GuidNode>()
             .ExecuteDeleteAsync(cancellationToken);
+
         await context
             .Set<TextNode>()
             .ExecuteDeleteAsync(cancellationToken);
+
         await context
             .Set<BinaryNode>()
             .ExecuteDeleteAsync(cancellationToken);
+
         await context
             .Set<ConcurrentNode>()
             .ExecuteDeleteAsync(cancellationToken);
+
         await context
             .Set<UnscopedQueryNode>()
             .IgnoreQueryFilters()
             .ExecuteDeleteAsync(cancellationToken);
+
         await context
             .Set<UnrelatedRow>()
             .ExecuteDeleteAsync(cancellationToken);
+
         await context
             .Set<GeneratedAuditRow>()
             .ExecuteDeleteAsync(cancellationToken);
@@ -242,7 +260,8 @@ public sealed class TestDatabase : IAsyncDisposable
             else if (engine == "PostgreSql")
             {
                 var connection = await (await TestDatabaseServers.GetCurrentAsync(
-                    cancellationToken: cancellationToken)).NewConnectionStringAsync(engine,
+                    cancellationToken: cancellationToken)).NewConnectionStringAsync(
+                    engine,
                     cancellationToken: cancellationToken);
 
                 options.UseNpgsql(connection, provider => provider.UseNestedSets());
@@ -250,7 +269,8 @@ public sealed class TestDatabase : IAsyncDisposable
             else if (engine == "SqlServer")
             {
                 var connection = await (await TestDatabaseServers.GetCurrentAsync(
-                    cancellationToken: cancellationToken)).NewConnectionStringAsync(engine,
+                    cancellationToken: cancellationToken)).NewConnectionStringAsync(
+                    engine,
                     cancellationToken: cancellationToken);
 
                 options.UseSqlServer(connection, provider => provider.UseNestedSets());
@@ -258,7 +278,8 @@ public sealed class TestDatabase : IAsyncDisposable
             else if (engine == "MySql")
             {
                 var connection = await (await TestDatabaseServers.GetCurrentAsync(
-                    cancellationToken: cancellationToken)).NewConnectionStringAsync(engine,
+                    cancellationToken: cancellationToken)).NewConnectionStringAsync(
+                    engine,
                     cancellationToken: cancellationToken);
 
                 options.UseMySql(connection, DatabaseTestTargets.MySql, provider => provider.UseNestedSets());
@@ -266,7 +287,8 @@ public sealed class TestDatabase : IAsyncDisposable
             else if (engine == "MariaDb")
             {
                 var connection = await (await TestDatabaseServers.GetCurrentAsync(
-                    cancellationToken: cancellationToken)).NewConnectionStringAsync(engine,
+                    cancellationToken: cancellationToken)).NewConnectionStringAsync(
+                    engine,
                     cancellationToken: cancellationToken);
 
                 options.UseMySql(connection, DatabaseTestTargets.MariaDb, provider => provider.UseNestedSets());
@@ -275,7 +297,6 @@ public sealed class TestDatabase : IAsyncDisposable
             {
                 throw new ArgumentOutOfRangeException(nameof(engine));
             }
-
 
             database = new TestDatabase(options.Options, file, ownsServerDatabase: file is null);
             await using var context = database.CreateContext();
@@ -337,6 +358,7 @@ public sealed class TreeContext : DbContext
         node
             .Property(x => x.NodeId)
             .ValueGeneratedNever();
+
         node.HasNestedSet(x => x
             .HasNodeKey(n => n.NodeId)
             .HasBounds(n => n.Start, n => n.End)
@@ -345,18 +367,22 @@ public sealed class TreeContext : DbContext
             .HasScope(n => n.Tree)
             .HasParent(n => n.Parent)
             .HasPosition(n => n.Position));
+
         var concurrent = modelBuilder.Entity<ConcurrentNode>();
         concurrent
             .Property(x => x.Id)
             .ValueGeneratedNever();
+
         concurrent.HasNestedSet(x => x
             .HasTreeId(n => n.TreeId)
             .HasScope(n => n.Tree)
             .HasParent(n => n.ParentId));
+
         var unscoped = modelBuilder.Entity<UnscopedQueryNode>();
         unscoped
             .Property(x => x.Id)
             .ValueGeneratedNever();
+
         unscoped.HasQueryFilter(node => node.Visible);
         unscoped.HasNestedSet(nestedSet => nestedSet
             .HasNodeKey(node => node.Id)
@@ -365,64 +391,77 @@ public sealed class TreeContext : DbContext
             .HasBounds(node => node.Left, node => node.Right)
             .HasDepth(node => node.Depth)
             .HasPosition(node => node.Position));
+
         modelBuilder
             .Entity<UnrelatedRow>()
             .Property(x => x.Id)
             .ValueGeneratedNever();
+
         modelBuilder.Entity<GeneratedAuditRow>();
         var binary = modelBuilder.Entity<BinaryNode>();
         binary
             .Property(x => x.Id)
             .HasMaxLength(64)
             .ValueGeneratedNever();
+
         binary
             .Property(x => x.ParentId)
             .HasMaxLength(64);
+
         binary.HasNestedSet(x => x
             .HasTreeId(n => n.TreeId)
             .HasScope(n => n.Tree)
             .HasParent(n => n.ParentId));
+
         var constrained = modelBuilder.Entity<ConstrainedNode>();
         constrained
             .Property(x => x.Id)
             .ValueGeneratedNever();
+
         constrained
             .HasOne<ConstrainedNode>()
             .WithMany()
             .HasForeignKey(x => new
             {
                 x.Tree,
-                x.ParentId
+                x.ParentId,
             })
             .HasPrincipalKey(x => new
             {
                 x.Tree,
-                x.Id
+                x.Id,
             })
             .OnDelete(DeleteBehavior.Restrict);
+
         constrained.HasNestedSet(x => x
             .HasTreeId(n => n.TreeId)
             .HasScope(n => n.Tree)
             .HasParent(n => n.ParentId));
+
         var guid = modelBuilder.Entity<GuidNode>();
         guid
             .Property(x => x.Id)
             .ValueGeneratedNever();
+
         guid.HasNestedSet(x => x
             .HasTreeId(n => n.TreeId)
             .HasScope(n => n.Tree)
             .HasParent(n => n.ParentId));
+
         var text = modelBuilder.Entity<TextNode>();
         text
             .Property(x => x.Id)
             .HasMaxLength(64)
             .ValueGeneratedNever();
+
         text
             .Property(x => x.ParentId)
             .HasMaxLength(64);
+
         text
             .Property(x => x.Tree)
             .HasMaxLength(64);
+
         if (Database.IsSqlite())
         {
             // WHY: Deliberately leave ParentId binary: lookups must use the principal key collation.
@@ -435,6 +474,7 @@ public sealed class TreeContext : DbContext
             .HasTreeId(n => n.TreeId)
             .HasScope(n => n.Tree)
             .HasParent(n => n.ParentId));
+
         if (Database.IsNpgsql())
         {
             // WHY: Lowercase lock columns exercise mapped names instead of relying on CLR-name SQL.
@@ -483,16 +523,16 @@ public class TreeNode
 /// <summary>An optional-interface entity with a Guid key and nullable Guid parent.</summary>
 public sealed class GuidNode : IScopedNestedSetNode<Guid, Guid, int>
 {
-    /// <summary>Gets or sets the stable tree identity.</summary>
-    public Guid TreeId { get; set; }
-
     /// <summary>Gets or sets the isolated forest scope.</summary>
     public int Tree { get; set; }
 
-    int IScopedNestedSetNode<Guid, Guid, int>.Scope => Tree;
-
     /// <summary>Gets or sets the direct parent key, or null for a root.</summary>
     public Guid? ParentId { get; set; }
+
+    /// <summary>Gets or sets the stable tree identity.</summary>
+    public Guid TreeId { get; set; }
+
+    int IScopedNestedSetNode<Guid, Guid, int>.Scope => Tree;
 
     /// <summary>Gets or sets the application-assigned primary key.</summary>
     public Guid Id { get; set; }
@@ -513,16 +553,16 @@ public sealed class GuidNode : IScopedNestedSetNode<Guid, Guid, int>
 /// <summary>An optional-interface entity used to exercise string-key collation.</summary>
 public sealed class TextNode : IScopedNestedSetNode<string, Guid, string>
 {
-    /// <summary>Gets or sets the stable tree identity.</summary>
-    public Guid TreeId { get; set; }
-
     /// <summary>Gets or sets the isolated forest scope.</summary>
     public string Tree { get; set; } = "";
 
-    string IScopedNestedSetNode<string, Guid, string>.Scope => Tree;
-
     /// <summary>Gets or sets the direct parent key, or null for a root.</summary>
     public string? ParentId { get; set; }
+
+    /// <summary>Gets or sets the stable tree identity.</summary>
+    public Guid TreeId { get; set; }
+
+    string IScopedNestedSetNode<string, Guid, string>.Scope => Tree;
 
     /// <summary>Gets or sets the application-assigned primary key.</summary>
     public string Id { get; set; } = "";
@@ -543,16 +583,16 @@ public sealed class TextNode : IScopedNestedSetNode<string, Guid, string>
 /// <summary>An optional-interface entity with a restrictive self-referencing foreign key.</summary>
 public sealed class ConstrainedNode : IScopedNestedSetNode<int, Guid, int>
 {
-    /// <summary>Gets or sets the stable tree identity.</summary>
-    public Guid TreeId { get; set; }
-
     /// <summary>Gets or sets the isolated forest scope.</summary>
     public int Tree { get; set; }
 
-    int IScopedNestedSetNode<int, Guid, int>.Scope => Tree;
-
     /// <summary>Gets or sets the direct parent key, or null for a root.</summary>
     public int? ParentId { get; set; }
+
+    /// <summary>Gets or sets the stable tree identity.</summary>
+    public Guid TreeId { get; set; }
+
+    int IScopedNestedSetNode<int, Guid, int>.Scope => Tree;
 
     /// <summary>Gets or sets the application-assigned primary key.</summary>
     public int Id { get; set; }

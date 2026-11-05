@@ -86,7 +86,7 @@ internal static partial class SupervisorQueries
                 .Select(match => match.CandidateFieldCode)
                 .ToArray();
 
-            var expression = s_routingTemplates[(sourceIndex * 3) + targetIndex]
+            var expression = s_routingTemplates[sourceIndex * 3 + targetIndex]
                 .Bind(
                     row,
                     request.RoutingUserId ?? request.SourceUserId,
@@ -96,7 +96,9 @@ internal static partial class SupervisorQueries
                     source,
                     target);
 
-            condition = condition is null ? expression : Expression.AndAlso(condition, expression);
+            condition = condition is null
+                ? expression
+                : Expression.AndAlso(condition, expression);
         }
 
         return condition;
@@ -143,25 +145,38 @@ internal static partial class SupervisorQueries
             // value-equality semijoin can otherwise pair every equal-valued field with every other
             // field before applying their criterion indices (4 x 4 rather than four exact pairs).
             Expression<Func<SupervisorCandidatePath, RoutingArguments, IQueryable<SupervisorRoutingValue>,
-                IQueryable<SupervisorRoutingValue>, bool>> expression = (
-                row,
+                IQueryable<SupervisorRoutingValue>, bool>> expression = (row,
                 arguments,
                 source,
-                target
-            ) => EF
+                target) => EF
                 .Parameter(arguments.Indices)
                 .All(index => source.Any(left =>
+
                     // WHY: The text inliner replaces this marker with string comparisons before EF translation.
                     // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                     SupervisorExactText.FieldEquals(left.FieldCode, arguments.SourceFields.ElementAt(index))
-                    && left.UserId == (sourceUser ? arguments.UserId : 0)
-                    && left.GroupId == (sourceGroup ? arguments.GroupId ?? row.Candidate.StartGroupId : 0)
+                    && left.UserId
+                    == (sourceUser
+                        ? arguments.UserId
+                        : 0)
+                    && left.GroupId
+                    == (sourceGroup
+                        ? arguments.GroupId ?? row.Candidate.StartGroupId
+                        : 0)
+
                     // WHY: The text inliner replaces this marker with string comparisons before EF translation.
                     // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                     && (target.Any(right =>
                         SupervisorExactText.FieldEquals(right.FieldCode, arguments.TargetFields.ElementAt(index))
-                        && right.UserId == (targetUser ? row.Candidate.CandidateUserId : 0)
-                        && right.GroupId == (targetGroup ? row.Candidate.FoundGroupId : 0)
+                        && right.UserId
+                        == (targetUser
+                            ? row.Candidate.CandidateUserId
+                            : 0)
+                        && right.GroupId
+                        == (targetGroup
+                            ? row.Candidate.FoundGroupId
+                            : 0)
+
                         // WHY: The text inliner expands this marker to null, empty and equality checks.
                         // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                         && SupervisorExactText.ValueEquals(left.Value, right.Value))

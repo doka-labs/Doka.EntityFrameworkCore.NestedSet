@@ -40,6 +40,7 @@ internal static class NestedSetIdentityLength
         hierarchy.SetAnnotation(
             NestedSetAnnotationNames.ScopeUnicodeScalarLength,
             ResolvePolicy(descriptor.Scope?.Resolve(hierarchy), provider, typeMappings));
+
         hierarchy.SetAnnotation(
             NestedSetAnnotationNames.TreeIdUnicodeScalarLength,
             ResolvePolicy(descriptor.TreeId.Resolve(hierarchy), provider, typeMappings));
@@ -55,7 +56,8 @@ internal static class NestedSetIdentityLength
         string annotation
     )
     {
-        if (hierarchy.FindAnnotation(annotation)?.Value is bool policy)
+        if (hierarchy.FindAnnotation(annotation)
+                ?.Value is bool policy)
         {
             return policy;
         }
@@ -78,7 +80,9 @@ internal static class NestedSetIdentityLength
         }
 
         var mapping = property.FindTypeMapping()
-            ?? (property is IProperty mapped ? typeMappings.FindMapping(mapped) : null);
+            ?? (property is IProperty mapped
+                ? typeMappings.FindMapping(mapped)
+                : null);
 
         if (mapping is not RelationalTypeMapping relational)
         {

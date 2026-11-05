@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using AmbientTransaction = System.Transactions.Transaction;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Execution;
@@ -151,10 +152,7 @@ internal static class NestedSetTransaction
         if (failure is not null)
         {
             // WHY: Deferring the throw until disposal finishes must not replace the original exception's stack trace.
-            System
-                .Runtime
-                .ExceptionServices
-                .ExceptionDispatchInfo
+            ExceptionDispatchInfo
                 .Capture(failure)
                 .Throw();
         }
@@ -186,14 +184,18 @@ internal static class NestedSetTransaction
                 "The caller transaction must support savepoints.");
         }
 
-        if (transaction.GetDbTransaction().IsolationLevel != isolation)
+        if (transaction.GetDbTransaction()
+                .IsolationLevel
+            != isolation)
         {
             throw new NestedSetException(
                 NestedSetErrorCode.InvalidTransaction,
                 $"The caller transaction must use {isolation} isolation.");
         }
 
-        await provider.ValidateCallerSessionAsync(context, cancellationToken).ConfigureAwait(false);
+        await provider
+            .ValidateCallerSessionAsync(context, cancellationToken)
+            .ConfigureAwait(false);
 
         // WHY: A distinct identifier avoids application/EF collisions while staying within the supported short-name limit.
         var savepoint = $"NS{Guid.NewGuid():N}"[..32];

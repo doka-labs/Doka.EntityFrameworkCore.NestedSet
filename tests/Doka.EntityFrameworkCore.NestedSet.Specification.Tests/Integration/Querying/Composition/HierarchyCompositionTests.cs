@@ -28,9 +28,16 @@ public abstract partial class HierarchyCompositionTests : ProviderTest
         int? chainNodes = null,
         ChainOwnerMode ownerMode = ChainOwnerMode.RootValue
     ) => CompositionTestData.CreateContextAsync(
-        _fixture, Engine, scope, probe,
+        _fixture,
+        Engine,
+        scope,
+        probe,
         cancellationToken: cancellationToken,
-        hidden, closed, planProbe, chainNodes, ownerMode);
+        hidden,
+        closed,
+        planProbe,
+        chainNodes,
+        ownerMode);
 
     /// <summary>Persists three independent fact tables with identical measurement identities.</summary>
     private static async Task SeedReadingsAsync(
@@ -51,11 +58,30 @@ public abstract partial class HierarchyCompositionTests : ProviderTest
         foreach (var (nodeId, date, amount) in readings)
         {
             await context.AddRangeAsync(
-            [
-                new CompositionInputOne { Scope = scope, NodeId = nodeId, Date = date, Amount = amount },
-                new CompositionInputTwo { Scope = scope, NodeId = nodeId, Date = date, Amount = amount * 10 },
-                new CompositionInputThree { Scope = scope, NodeId = nodeId, Date = date, Amount = amount + 5 },
-            ], cancellationToken);
+                [
+                    new CompositionInputOne
+                    {
+                        Scope = scope,
+                        NodeId = nodeId,
+                        Date = date,
+                        Amount = amount,
+                    },
+                    new CompositionInputTwo
+                    {
+                        Scope = scope,
+                        NodeId = nodeId,
+                        Date = date,
+                        Amount = amount * 10,
+                    },
+                    new CompositionInputThree
+                    {
+                        Scope = scope,
+                        NodeId = nodeId,
+                        Date = date,
+                        Amount = amount + 5,
+                    },
+                ],
+                cancellationToken);
         }
 
         await context.SaveChangesAsync(cancellationToken);

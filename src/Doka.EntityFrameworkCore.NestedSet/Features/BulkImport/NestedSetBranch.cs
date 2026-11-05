@@ -29,7 +29,9 @@ public sealed class NestedSetBranch<TEntity>
             ArgumentNullException.ThrowIfNull(child);
         }
 
-        Children = snapshot.Length == 0 ? Array.Empty<NestedSetBranch<TEntity>>() : Array.AsReadOnly(snapshot);
+        Children = snapshot.Length == 0
+            ? Array.Empty<NestedSetBranch<TEntity>>()
+            : Array.AsReadOnly(snapshot);
     }
 
     /// <summary>

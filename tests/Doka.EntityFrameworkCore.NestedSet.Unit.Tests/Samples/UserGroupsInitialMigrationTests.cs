@@ -26,10 +26,12 @@ public sealed class UserGroupsInitialMigrationTests
         await context
             .GetService<IMigrator>()
             .MigrateAsync(initial, CancellationToken.None);
+
         var tenant = Guid.NewGuid();
         var tree = Guid.NewGuid();
         var role = Guid.NewGuid();
-        var timestamp = new DateTime(2026,
+        var timestamp = new DateTime(
+            2026,
             10,
             16,
             0,
@@ -37,18 +39,19 @@ public sealed class UserGroupsInitialMigrationTests
             0,
             DateTimeKind.Utc);
 
-        await context.Database.ExecuteSqlInterpolatedAsync($"""
-            INSERT INTO "UserGroups"
-                ("Id", "TenantId", "TreeId", "ParentId", "Name", "Left", "Right", "Depth", "Position", "UpdatedAtUtc")
-                VALUES (1, {tenant}, {tree}, NULL, 'Existing team', 1, 2, 0, 0, {timestamp});
-            INSERT INTO "Users"
-                ("Id", "TenantId", "SupervisorId", "Name", "Position", "Depth", "Left", "Right",
-                 "NestedSetPosition", "TreeId")
-                VALUES (1, {tenant}, NULL, 'Existing user', 'Engineer', 0, 1, 2, 0, {tree});
-            INSERT INTO "Roles" ("Id", "TenantId", "Name", "UpdatedAtUtc")
-                VALUES ({role}, {tenant}, 'Existing role', {timestamp});
-            INSERT INTO "UserGroupMemberships" ("TenantId", "UserId", "UserGroupId") VALUES ({tenant}, 1, 1);
-            """,
+        await context.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+             INSERT INTO "UserGroups"
+                 ("Id", "TenantId", "TreeId", "ParentId", "Name", "Left", "Right", "Depth", "Position", "UpdatedAtUtc")
+                 VALUES (1, {tenant}, {tree}, NULL, 'Existing team', 1, 2, 0, 0, {timestamp});
+             INSERT INTO "Users"
+                 ("Id", "TenantId", "SupervisorId", "Name", "Position", "Depth", "Left", "Right",
+                  "NestedSetPosition", "TreeId")
+                 VALUES (1, {tenant}, NULL, 'Existing user', 'Engineer', 0, 1, 2, 0, {tree});
+             INSERT INTO "Roles" ("Id", "TenantId", "Name", "UpdatedAtUtc")
+                 VALUES ({role}, {tenant}, 'Existing role', {timestamp});
+             INSERT INTO "UserGroupMemberships" ("TenantId", "UserId", "UserGroupId") VALUES ({tenant}, 1, 1);
+             """,
             CancellationToken.None);
 
         // Act

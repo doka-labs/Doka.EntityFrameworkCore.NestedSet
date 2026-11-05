@@ -34,7 +34,8 @@ public sealed class BulkDetachedRefreshTests : ProviderTest,
         context.Attach(marker);
 
         // Act
-        var inputs = await ImportWithoutRetainingInputsAsync(context,
+        var inputs = await ImportWithoutRetainingInputsAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -44,9 +45,22 @@ public sealed class BulkDetachedRefreshTests : ProviderTest,
         GC.WaitForPendingFinalizers();
         GC.Collect();
         Assert.All(inputs, input => Assert.False(input.TryGetTarget(out _)));
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
-        Assert.Equal(EntityState.Unchanged, context.Entry(marker).State);
-        Assert.Equal(129, await context.Set<TreeNode>().CountAsync(CancellationToken.None));
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(marker)
+                .State);
+
+        Assert.Equal(
+            129,
+            await context
+                .Set<TreeNode>()
+                .CountAsync(CancellationToken.None));
+
         GC.KeepAlive(context);
     }
 
@@ -56,14 +70,16 @@ public sealed class BulkDetachedRefreshTests : ProviderTest,
     {
         // Arrange
         var probe = new BulkRefreshFailure("BulkGeneratedNodes");
-        await using var context = await _generated.ResetAsync(Engine,
+        await using var context = await _generated.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         context.SavedChanges += (_, _) => probe.Inserted = true;
 
         // Act
-        var result = await FailImportWithoutRetainingInputsAsync(context,
+        var result = await FailImportWithoutRetainingInputsAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -75,7 +91,12 @@ public sealed class BulkDetachedRefreshTests : ProviderTest,
         GC.Collect();
         Assert.All(result.Inputs, input => Assert.False(input.TryGetTarget(out _)));
         Assert.Empty(context.ChangeTracker.Entries());
-        Assert.Equal(0, await context.Set<BulkGeneratedNode>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            0,
+            await context
+                .Set<BulkGeneratedNode>()
+                .CountAsync(CancellationToken.None));
+
         GC.KeepAlive(context);
     }
 
@@ -89,7 +110,8 @@ public sealed class BulkDetachedRefreshTests : ProviderTest,
     )
     {
         // Arrange
-        await using var context = await _generated.ResetAsync(Engine,
+        await using var context = await _generated.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context
@@ -143,14 +165,20 @@ public sealed class BulkDetachedRefreshTests : ProviderTest,
         {
             Assert.Equal(
                 NestedSetErrorCode.TreeIdUnavailable,
-                Assert.IsType<NestedSetException>(error).Code);
+                Assert.IsType<NestedSetException>(error)
+                    .Code);
         }
         else
         {
             Assert.IsType<InjectedCommandException>(error);
         }
 
-        Assert.Equal(beforeStaging ? 0 : 1, completedSaves);
+        Assert.Equal(
+            beforeStaging
+                ? 0
+                : 1,
+            completedSaves);
+
         Assert.All(
             nodes.Select((node, index) => (node, index)),
             item =>
@@ -163,7 +191,9 @@ public sealed class BulkDetachedRefreshTests : ProviderTest,
 
         Assert.Empty(context.ChangeTracker.Entries());
         Assert.Equal(
-            beforeStaging ? 1 : 0,
+            beforeStaging
+                ? 1
+                : 0,
             await context
                 .Set<BulkGeneratedNode>()
                 .CountAsync(CancellationToken.None));

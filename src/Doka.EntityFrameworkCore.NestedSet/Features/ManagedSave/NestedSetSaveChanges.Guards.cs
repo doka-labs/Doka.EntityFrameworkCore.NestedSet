@@ -36,7 +36,9 @@ internal static partial class NestedSetSaveChanges
         // WHY: Raw hierarchy values are checked independently of EF's flags. Enabling automatic detection here
         // would also discover unrelated application payload that the caller deliberately left unmarked.
         state.SaveValidation = VerifyCandidates;
-        state.SavePersistenceCompleted = snapshot is null ? null : snapshot.CapturePersistedRelationships;
+        state.SavePersistenceCompleted = snapshot is null
+            ? null
+            : snapshot.CapturePersistedRelationships;
 
         try
         {
@@ -110,7 +112,7 @@ internal static partial class NestedSetSaveChanges
         }
 
         if (!NestedSetModelMapping.For(context.Model)
-                .HasHierarchies)
+            .HasHierarchies)
         {
             return;
         }

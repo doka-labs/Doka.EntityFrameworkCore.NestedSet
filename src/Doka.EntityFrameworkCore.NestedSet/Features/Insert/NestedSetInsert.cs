@@ -11,9 +11,9 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
     where TTreeId : notnull
     where TScope : notnull
 {
-    private readonly NestedSetStore<TEntity, TKey, TTreeId, TScope> _store;
     private readonly NestedSetMutationExecutor<TEntity, TKey, TTreeId, TScope> _executor;
     private readonly NestedSetPlacementResolver<TEntity, TKey, TTreeId, TScope> _placement;
+    private readonly NestedSetStore<TEntity, TKey, TTreeId, TScope> _store;
 
     /// <summary>Connects the algorithm to its exact-tree store and execution boundary.</summary>
     /// <param name="store">The shared tree-bound queries and structural writes.</param>
@@ -244,25 +244,25 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
                         // WHY: This one insertion already owns its transaction, lock and structural assignment.
                         // The SaveChanges integration must not interpret it as an unauthorized direct tree addition.
                         using (var managedSave = NestedSetSaveChanges.EnterManagedSave(
-                                   _store.Context,
-                                   insertionEntries.Select(candidate => candidate.Entry.Entity),
-                                   () => RequireSavedStage(
-                                       entry,
-                                       destination,
-                                       stagedIdentity,
-                                       hasAssignedKey,
-                                       stagedKey,
-                                       stagedScope,
-                                       stagedTreeId,
-                                       stagedParent,
-                                       knownTracked),
-                                   persistenceCompleted: () =>
-                                   {
-                                       foreach (var candidate in insertionEntries)
-                                       {
-                                           candidate.Identity?.Refresh();
-                                       }
-                                   }))
+                            _store.Context,
+                            insertionEntries.Select(candidate => candidate.Entry.Entity),
+                            () => RequireSavedStage(
+                                entry,
+                                destination,
+                                stagedIdentity,
+                                hasAssignedKey,
+                                stagedKey,
+                                stagedScope,
+                                stagedTreeId,
+                                stagedParent,
+                                knownTracked),
+                            persistenceCompleted: () =>
+                            {
+                                foreach (var candidate in insertionEntries)
+                                {
+                                    candidate.Identity?.Refresh();
+                                }
+                            }))
                         {
                             var autoSavepoints = _store.Context.Database.AutoSavepointsEnabled;
 
@@ -296,6 +296,7 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
                             stagedTreeId,
                             stagedParent,
                             knownTracked);
+
                         NestedSetTelemetry.RecordRowsAffected(1);
 
                         if (automatic
@@ -317,10 +318,13 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
 
                             entry.Property<long>(_store.Map.LeftProperty)
                                 .CurrentValue = saved.Left;
+
                             entry.Property<long>(_store.Map.RightProperty)
                                 .CurrentValue = saved.Right;
+
                             entry.Property<int>(_store.Map.DepthProperty)
                                 .CurrentValue = saved.Depth;
+
                             entry.Property<long>(_store.Map.PositionProperty)
                                 .CurrentValue = saved.Position;
 
@@ -349,7 +353,9 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
 
                         DetachInsertionGraph(insertionEntries);
                     },
-                    placement is null ? NestedSetTreeLockMode.New : NestedSetTreeLockMode.Existing,
+                    placement is null
+                        ? NestedSetTreeLockMode.New
+                        : NestedSetTreeLockMode.Existing,
                     cancellationToken)
                 .ConfigureAwait(false);
         }

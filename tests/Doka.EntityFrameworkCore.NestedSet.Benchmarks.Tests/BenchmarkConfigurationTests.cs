@@ -13,16 +13,22 @@ public sealed class BenchmarkConfigurationTests
     {
         // Arrange
         var assembly = typeof(BenchmarkRunOptions).Assembly;
-        const BindingFlags members = BindingFlags.Public | BindingFlags.NonPublic
-            | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly;
+        const BindingFlags members = BindingFlags.Public
+            | BindingFlags.NonPublic
+            | BindingFlags.Instance
+            | BindingFlags.Static
+            | BindingFlags.DeclaredOnly;
 
         // Act
         var optional = assembly
             .GetTypes()
             .SelectMany(type => type.GetMethods(members))
+
             // WHY: Compiler-generated base-call bridges can copy an EF override's optional token metadata.
             .Where(method => !method.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false))
-            .Where(method => method.GetBaseDefinition().DeclaringType!.Assembly == assembly)
+            .Where(method => method.GetBaseDefinition()
+                    .DeclaringType!.Assembly
+                == assembly)
             .SelectMany(method => method.GetParameters())
             .Where(parameter => parameter.ParameterType == typeof(CancellationToken)
                 && (parameter.IsOptional || parameter.HasDefaultValue))
@@ -53,6 +59,7 @@ public sealed class BenchmarkConfigurationTests
         Assert.False(
             job.Infrastructure.HasValue(InfrastructureMode.ToolchainCharacteristic)
             && job.Infrastructure.Toolchain.IsInProcess);
+
         Assert.Equal(3, job.Run.WarmupCount);
         Assert.Equal(12, job.Run.IterationCount);
     }
@@ -102,9 +109,12 @@ public sealed class BenchmarkConfigurationTests
         Assert.Contains(configuration.GetExporters(), exporter => exporter is CsvMeasurementsExporter);
         Assert.Contains(configuration.GetDiagnosers(), diagnoser => diagnoser is MemoryDiagnoser);
         Assert.Null(
-            typeof(DatabaseBenchmark).Assembly.GetType("Doka.EntityFrameworkCore.NestedSet.Benchmarks.MutationBudgets"));
+            typeof(DatabaseBenchmark).Assembly.GetType(
+                "Doka.EntityFrameworkCore.NestedSet.Benchmarks.MutationBudgets"));
+
         Assert.Null(
-            typeof(DatabaseBenchmark).Assembly.GetType("Doka.EntityFrameworkCore.NestedSet.Benchmarks.BenchmarkMeasurement"));
+            typeof(DatabaseBenchmark).Assembly.GetType(
+                "Doka.EntityFrameworkCore.NestedSet.Benchmarks.BenchmarkMeasurement"));
     }
 
     /// <summary>Read-only signal families leave warmup, invocation calibration and precision stopping adaptive.</summary>
@@ -124,14 +134,16 @@ public sealed class BenchmarkConfigurationTests
 
         // Assert
         Assert.NotEmpty(discovery.BenchmarksCases);
-        Assert.All(discovery.BenchmarksCases, benchmark =>
-        {
-            Assert.Null(benchmark.Descriptor.IterationSetupMethod);
-            Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.InvocationCountCharacteristic));
-            Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.IterationTimeCharacteristic));
-            Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.WarmupCountCharacteristic));
-            Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.IterationCountCharacteristic));
-        });
+        Assert.All(
+            discovery.BenchmarksCases,
+            benchmark =>
+            {
+                Assert.Null(benchmark.Descriptor.IterationSetupMethod);
+                Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.InvocationCountCharacteristic));
+                Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.IterationTimeCharacteristic));
+                Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.WarmupCountCharacteristic));
+                Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.IterationCountCharacteristic));
+            });
     }
 
     /// <summary>
@@ -166,19 +178,21 @@ public sealed class BenchmarkConfigurationTests
         // Assert
         Assert.True(isSuccess);
         Assert.NotEmpty(discovery.BenchmarksCases);
-        Assert.All(discovery.BenchmarksCases, benchmark =>
-        {
-            Assert.Equal(3, benchmark.Job.Run.LaunchCount);
-            Assert.Equal(20, benchmark.Job.Run.MinWarmupIterationCount);
-            Assert.Equal(80, benchmark.Job.Run.MaxWarmupIterationCount);
-            Assert.Equal(20, benchmark.Job.Run.MinIterationCount);
-            Assert.Equal(100, benchmark.Job.Run.MaxIterationCount);
-            Assert.Equal(OutlierMode.DontRemove, benchmark.Job.Accuracy.OutlierMode);
-            Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.InvocationCountCharacteristic));
-            Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.IterationTimeCharacteristic));
-            Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.WarmupCountCharacteristic));
-            Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.IterationCountCharacteristic));
-        });
+        Assert.All(
+            discovery.BenchmarksCases,
+            benchmark =>
+            {
+                Assert.Equal(3, benchmark.Job.Run.LaunchCount);
+                Assert.Equal(20, benchmark.Job.Run.MinWarmupIterationCount);
+                Assert.Equal(80, benchmark.Job.Run.MaxWarmupIterationCount);
+                Assert.Equal(20, benchmark.Job.Run.MinIterationCount);
+                Assert.Equal(100, benchmark.Job.Run.MaxIterationCount);
+                Assert.Equal(OutlierMode.DontRemove, benchmark.Job.Accuracy.OutlierMode);
+                Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.InvocationCountCharacteristic));
+                Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.IterationTimeCharacteristic));
+                Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.WarmupCountCharacteristic));
+                Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.IterationCountCharacteristic));
+            });
     }
 
     /// <summary>
@@ -204,20 +218,28 @@ public sealed class BenchmarkConfigurationTests
 
         var (isSuccess, config, _) = ConfigParser.Parse(arguments, NullLogger.Instance, configuration);
         using var discovery = BenchmarkConverter.TypeToBenchmarks(
-            type, ManualConfig.Union(configuration, config));
+            type,
+            ManualConfig.Union(configuration, config));
 
         var validation = new ValidationParameters(discovery.BenchmarksCases, discovery.Config);
-        var maximum = warmup ? "MaxWarmupIterationCount" : "MaxIterationCount";
+        var maximum = warmup
+            ? "MaxWarmupIterationCount"
+            : "MaxIterationCount";
 
         // Act
-        var errors = discovery.Config.GetValidators().SelectMany(validator => validator.Validate(validation))
+        var errors = discovery
+            .Config
+            .GetValidators()
+            .SelectMany(validator => validator.Validate(validation))
             .ToArray();
 
         // Assert
         Assert.True(isSuccess);
-        Assert.Contains(errors, error => error.IsCritical
-            && error.Message.Contains(maximum, StringComparison.Ordinal)
-            && error.Message.Contains("must be greater than", StringComparison.Ordinal));
+        Assert.Contains(
+            errors,
+            error => error.IsCritical
+                && error.Message.Contains(maximum, StringComparison.Ordinal)
+                && error.Message.Contains("must be greater than", StringComparison.Ordinal));
     }
 
     /// <summary>The pure core benchmark consumes every prepared calculation result.</summary>
@@ -258,6 +280,7 @@ public sealed class BenchmarkConfigurationTests
             "InProcess" => job.WithToolchain(InProcessEmitToolchain.Instance),
             _ => throw new ArgumentOutOfRangeException(nameof(overrideName)),
         };
+
         var configuration = ManualConfig
             .Create(BenchmarkConfiguration.Create(new BenchmarkRunOptions()))
             .AddJob(job);

@@ -10,7 +10,9 @@ public abstract partial class GroupSupervisorTests : ProviderTest
 
     /// <summary>Uses the existing collection-owned provider database.</summary>
     /// <param name="fixture">The collection-owned database fixture for this provider.</param>
-    protected GroupSupervisorTests(IProviderFixture<ModelCompatibilityDatabase> fixture) : base(fixture)
+    protected GroupSupervisorTests(
+        IProviderFixture<ModelCompatibilityDatabase> fixture
+    ) : base(fixture)
     {
         _fixture = fixture.Value;
     }
@@ -33,24 +35,38 @@ public abstract partial class GroupSupervisorTests : ProviderTest
         var probe = new SupervisorCommandProbe();
         await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        var request = data.Request(self ? App.SearchStart.IncludeSelf : App.SearchStart.ParentsOnly);
+        var request = data.Request(
+            self
+                ? App.SearchStart.IncludeSelf
+                : App.SearchStart.ParentsOnly);
+
         probe.Enabled = true;
 
         // Act
-        var batch = await App.SupervisorQueries.ResolveAsync(context, data.TenantId, request,
-            App.SupervisorSelection.All, CancellationToken.None);
+        var batch = await App.SupervisorQueries.ResolveAsync(
+            context,
+            data.TenantId,
+            request,
+            App.SupervisorSelection.All,
+            CancellationToken.None);
 
         // Assert
         Assert.Equal(App.SupervisorBatchStatus.Completed, batch.Status);
         Assert.Equal(origins, batch.Origins.Count);
-        Assert.All(batch.Origins.SelectMany(origin => origin.Evidence), row =>
-            Assert.NotEqual(data.Users[0], row.CandidateUserId));
+        Assert.All(
+            batch.Origins.SelectMany(origin => origin.Evidence),
+            row =>
+                Assert.NotEqual(data.Users[0], row.CandidateUserId));
+
         Assert.Single(probe.Commands);
         Assert.Equal(0, probe.Entities);
         Assert.Empty(context.ChangeTracker.Entries());
         Assert.Equal(
             new[] { data.Groups[5], data.Groups[6] }.Order(),
-            batch.Origins.Select(row => row.StartGroupId!.Value).Order());
+            batch
+                .Origins
+                .Select(row => row.StartGroupId!.Value)
+                .Order());
     }
 
     /// <summary>
@@ -97,7 +113,11 @@ public abstract partial class GroupSupervisorTests : ProviderTest
 
         // Act
         var batch = await App.SupervisorQueries.ResolveAsync(
-            context, data.TenantId, request, selection, CancellationToken.None);
+            context,
+            data.TenantId,
+            request,
+            selection,
+            CancellationToken.None);
 
         // Assert
         var origin = Assert.Single(batch.Origins);
@@ -108,8 +128,17 @@ public abstract partial class GroupSupervisorTests : ProviderTest
                     ? App.SupervisorResolutionStatus.NotFound
                     : App.SupervisorResolutionStatus.Found,
             origin.Status);
-        Assert.Equal(expectedUserIndex < 0 ? [] : new[] { data.Users[expectedUserIndex] },
-            origin.Evidence.Select(row => row.CandidateUserId).Distinct().ToArray());
+
+        Assert.Equal(
+            expectedUserIndex < 0
+                ? []
+                : new[] { data.Users[expectedUserIndex] },
+            origin
+                .Evidence
+                .Select(row => row.CandidateUserId)
+                .Distinct()
+                .ToArray());
+
         Assert.Single(probe.Commands);
         Assert.Equal(0, probe.Entities);
     }
@@ -135,9 +164,12 @@ public abstract partial class GroupSupervisorTests : ProviderTest
         var request = data.Request(group: data.Groups[5]);
         if (shape == "hidden")
         {
-            await context.Users.Where(user => user.TenantId == data.TenantId && user.Id == data.Users[0])
+            await context
+                .Users
+                .Where(user => user.TenantId == data.TenantId && user.Id == data.Users[0])
                 .ExecuteUpdateAsync(
-                    setters => setters.SetProperty(user => user.Visible, false), CancellationToken.None);
+                    setters => setters.SetProperty(user => user.Visible, false),
+                    CancellationToken.None);
         }
         else if (shape == "foreign")
         {
@@ -151,8 +183,12 @@ public abstract partial class GroupSupervisorTests : ProviderTest
         probe.Enabled = true;
 
         // Act
-        var batch = await App.SupervisorQueries.ResolveAsync(context, data.TenantId, request,
-            App.SupervisorSelection.RequireUnique, CancellationToken.None);
+        var batch = await App.SupervisorQueries.ResolveAsync(
+            context,
+            data.TenantId,
+            request,
+            App.SupervisorSelection.RequireUnique,
+            CancellationToken.None);
 
         // Assert
         Assert.Equal(expected, batch.Status.ToString());
@@ -173,5 +209,7 @@ public abstract partial class GroupSupervisorTests : ProviderTest
             Engine,
             options => new App.UserGroupContext(options),
             cancellationToken: cancellationToken,
-            planProbe is null ? [probe] : [probe, planProbe]);
+            planProbe is null
+                ? [probe]
+                : [probe, planProbe]);
 }

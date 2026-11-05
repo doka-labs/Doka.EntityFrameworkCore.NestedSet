@@ -283,7 +283,10 @@ public abstract partial class RelationalTests : ProviderTest
             _ => throw new ArgumentOutOfRangeException(nameof(engine)),
         };
 
-        var wasOpen = context.Database.GetDbConnection().State == ConnectionState.Open;
+        var wasOpen = context.Database.GetDbConnection()
+                .State
+            == ConnectionState.Open;
+
         if (!wasOpen)
         {
             await context.Database.OpenConnectionAsync(cancellationToken);
@@ -411,7 +414,11 @@ public abstract partial class RelationalTests : ProviderTest
 
                 Assert.True(node.Start < node.End);
                 Assert.Equal(0, (node.End - node.Start + 1) % 2);
-                Assert.Equal(ancestors.LastOrDefault()?.NodeId, node.Parent);
+                Assert.Equal(
+                    ancestors.LastOrDefault()
+                        ?.NodeId,
+                    node.Parent);
+
                 Assert.Equal(ancestors.Length, node.Depth);
             }
 

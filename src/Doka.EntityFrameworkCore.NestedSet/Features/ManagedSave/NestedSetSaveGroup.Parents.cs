@@ -152,8 +152,11 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
             throw new DbUpdateConcurrencyException("A prepared Parent endpoint no longer exists.");
         }
 
-        var sourceTreeId = endpoints.Single(row => row.Ordinal == 0).TreeId;
-        var targetTreeId = endpoints.Single(row => row.Ordinal == 1).TreeId;
+        var sourceTreeId = endpoints.Single(row => row.Ordinal == 0)
+            .TreeId;
+
+        var targetTreeId = endpoints.Single(row => row.Ordinal == 1)
+            .TreeId;
 
         if (!_requestedTrees.TryGetValue(change.SourceScope, out var lockedTrees)
             || !lockedTrees.Contains(sourceTreeId)
@@ -280,8 +283,8 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
         var dependencies = new int[plans.Count];
         Array.Fill(dependencies, -1);
         foreach (var scopeGroup in plans
-                     .Select((plan, index) => (plan, index))
-                     .GroupBy(item => item.plan.Scope, _scopes.Comparer))
+            .Select((plan, index) => (plan, index))
+            .GroupBy(item => item.plan.Scope, _scopes.Comparer))
         {
             var trees = new Dictionary<TTreeId, ParentTreePlan>(_treeIdComparer);
 
@@ -326,12 +329,12 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
                 foreach (var (plan, index) in targets)
                 {
                     while (nextSource < sources.Length
-                           && sources[nextSource].plan.Source.Left <= plan.Target.Left)
+                        && sources[nextSource].plan.Source.Left <= plan.Target.Left)
                     {
                         var candidate = sources[nextSource++];
 
                         while (stack.TryPeek(out var enclosing)
-                               && enclosing.plan.Source.Right < candidate.plan.Source.Left)
+                            && enclosing.plan.Source.Right < candidate.plan.Source.Left)
                         {
                             stack.Pop();
                         }
@@ -340,7 +343,7 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
                     }
 
                     while (stack.TryPeek(out var enclosing)
-                           && enclosing.plan.Source.Right < plan.Target.Right)
+                        && enclosing.plan.Source.Right < plan.Target.Right)
                     {
                         stack.Pop();
                     }
@@ -357,14 +360,14 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
         var ordered = new List<ParentChange>(plans.Count);
 
         foreach (var start in Enumerable
-                     .Range(0, plans.Count)
-                     .OrderBy(index => plans[index].Source.Left))
+            .Range(0, plans.Count)
+            .OrderBy(index => plans[index].Source.Left))
         {
             var pending = new Stack<int>();
             var current = start;
 
             while (current >= 0
-                   && states[current] == 0)
+                && states[current] == 0)
             {
                 states[current] = 1;
                 pending.Push(current);

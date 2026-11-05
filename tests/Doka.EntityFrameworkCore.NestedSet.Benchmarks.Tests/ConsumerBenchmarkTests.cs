@@ -103,7 +103,8 @@ public sealed class ConsumerBenchmarkTests
             {
                 Assert.Contains(
                     "Origins <= Nodes",
-                    Assert.IsType<ArgumentException>(error).Message,
+                    Assert.IsType<ArgumentException>(error)
+                        .Message,
                     StringComparison.Ordinal);
             }
         }
@@ -197,9 +198,12 @@ public sealed class ConsumerBenchmarkTests
         // Assert
         await benchmark.VerifyAsync(cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(24, benchmark.Result.Count);
-        Assert.Contains(benchmark.Result, cell => cell.AnchorId == SignalData.Id(1)
-            && cell.ChannelId == SignalData.PulseChannel && cell.Source == SignalSource.Pulse
-            && cell is { HasData: true, Value: 70 + 40 - SignalData.SeedNodeCount });
+        Assert.Contains(
+            benchmark.Result,
+            cell => cell.AnchorId == SignalData.Id(1)
+                && cell.ChannelId == SignalData.PulseChannel
+                && cell.Source == SignalSource.Pulse
+                && cell is { HasData: true, Value: 70 + 40 - SignalData.SeedNodeCount });
     }
 
     /// <summary>Server reduction and application reduction agree on complete origin and evidence outcomes.</summary>
@@ -254,7 +258,9 @@ public sealed class ConsumerBenchmarkTests
     [InlineData(BenchmarkPersonSelection.RequireUnique)]
     [InlineData(BenchmarkPersonSelection.HighestBusinessPriority)]
     [InlineData(BenchmarkPersonSelection.SecondPerson)]
-    public async Task PreparedGroupExecutionMatchesItsCompleteReference(BenchmarkPersonSelection selection)
+    public async Task PreparedGroupExecutionMatchesItsCompleteReference(
+        BenchmarkPersonSelection selection
+    )
     {
         // Arrange
         const string variable = "NESTEDSET_BENCHMARK_OPTIONS";

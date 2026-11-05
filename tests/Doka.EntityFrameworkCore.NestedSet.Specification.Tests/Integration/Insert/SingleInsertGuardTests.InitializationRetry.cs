@@ -60,8 +60,13 @@ public abstract partial class SingleInsertGuardTests
         Assert.Equal(
             (3, Guid.Empty, 1L, 2L, 0, 0L),
             (input.Id.Value, input.TreeId, input.Left, input.Right, input.Depth, input.Position));
+
         Assert.Null(input.ParentId);
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
         Assert.Equal(
             1,
             await context
@@ -97,25 +102,44 @@ public abstract partial class SingleInsertGuardTests
             .InsertRootAsync(input, Guid.Empty, CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(error).Code);
-        Assert.Equal(EntityState.Unchanged, context.Entry(input).State);
-        Assert.Equal(EntityState.Unchanged, context.Entry(input.Details).State);
-        Assert.Equal(EntityState.Unchanged, context.Entry(marker).State);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(input)
+                .State);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(input.Details)
+                .State);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(marker)
+                .State);
+
         Assert.Equal(
             3,
             context
                 .ChangeTracker
                 .Entries()
                 .Count());
+
         Assert.Same(
             input,
             await context.FindAsync<SingleIdentityNode>([new SingleIdentityKey(3)], CancellationToken.None));
+
         Assert.Equal(
             1,
             await context
                 .Set<SingleIdentityNode>()
                 .AsNoTracking()
                 .CountAsync(CancellationToken.None));
+
         Assert.Equal(
             1,
             await context
@@ -154,30 +178,50 @@ public abstract partial class SingleInsertGuardTests
             .InsertRootAsync(input, Guid.NewGuid(), CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(error).Code);
-        Assert.Equal(EntityState.Unchanged, context.Entry(existing).State);
-        Assert.Equal(EntityState.Unchanged, context.Entry(existing.Details).State);
-        Assert.Equal(EntityState.Unchanged, context.Entry(marker).State);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(existing)
+                .State);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(existing.Details)
+                .State);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(marker)
+                .State);
+
         Assert.Equal(
             3,
             context
                 .ChangeTracker
                 .Entries()
                 .Count());
+
         Assert.Same(
             existing,
             await context.FindAsync<SingleIdentityNode>([new SingleIdentityKey(3)], CancellationToken.None));
+
         Assert.Equal(
             1,
             await context
                 .Set<SingleIdentityNode>()
                 .AsNoTracking()
                 .CountAsync(CancellationToken.None));
+
         Assert.Equal(
             1,
             await context
                 .Set<UnrelatedRow>()
                 .CountAsync(CancellationToken.None));
+
         Assert.Equal((5, 71L, 72L, 3, 4L), (input.Id.Value, input.Left, input.Right, input.Depth, input.Position));
         Assert.Same(existing.Details, input.Details);
     }
@@ -207,15 +251,28 @@ public abstract partial class SingleInsertGuardTests
             .InsertRootAsync(input, Guid.Empty, CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(error).Code);
-        Assert.Equal(EntityState.Unchanged, context.Entry(foreign).State);
-        Assert.Equal(EntityState.Unchanged, context.Entry(marker).State);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(foreign)
+                .State);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(marker)
+                .State);
+
         Assert.Equal(
             2,
             context
                 .ChangeTracker
                 .Entries()
                 .Count());
+
         Assert.Same(foreign, input.Details.Foreign);
         Assert.Same(foreign, await context.FindAsync<SingleIdentityForeign>([5], CancellationToken.None));
         Assert.Empty(
@@ -223,17 +280,20 @@ public abstract partial class SingleInsertGuardTests
                 .Set<SingleIdentityNode>()
                 .AsNoTracking()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal(
             1,
             await context
                 .Set<SingleIdentityForeign>()
                 .AsNoTracking()
                 .CountAsync(CancellationToken.None));
+
         Assert.Equal(
             1,
             await context
                 .Set<UnrelatedRow>()
                 .CountAsync(CancellationToken.None));
+
         Assert.Equal((3, 71L, 72L, 3, 4L), (input.Id.Value, input.Left, input.Right, input.Depth, input.Position));
     }
 

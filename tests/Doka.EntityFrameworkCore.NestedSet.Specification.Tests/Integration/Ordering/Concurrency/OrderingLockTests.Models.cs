@@ -8,6 +8,15 @@ public sealed class OrderingLockFixture : IAsyncLifetime
     /// <inheritdoc />
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var database in _databases.Values)
+        {
+            await database.DisposeAsync();
+        }
+    }
+
     /// <summary>Returns an empty anchored-ordering context without disturbing another fixture's tables.</summary>
     /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="engine">The real relational engine.</param>
@@ -132,7 +141,9 @@ public sealed class OrderingLockFixture : IAsyncLifetime
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        await using var source = _databases[engine].CreateContext();
+        await using var source = _databases[engine]
+            .CreateContext();
+
         var connection = source.Database.GetConnectionString()!;
         var options = new DbContextOptionsBuilder<OrderingLockContext>().ConfigureTestWarnings();
 
@@ -160,15 +171,6 @@ public sealed class OrderingLockFixture : IAsyncLifetime
         options.AddInterceptors(interceptors);
 
         return new OrderingLockContext(options.Options);
-    }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        foreach (var database in _databases.Values)
-        {
-            await database.DisposeAsync();
-        }
     }
 }
 
@@ -223,13 +225,16 @@ public sealed class OrderingLockContext : NestedSetDbContext
         node
             .Property(row => row.Id)
             .ValueGeneratedNever();
+
         node
             .Property(row => row.Name)
             .HasMaxLength(64);
+
         ConfigureScope(
             node
                 .Property(row => row.Scope)
                 .IsRequired());
+
         node.HasNestedSet(builder => builder
             .HasTreeId(row => row.TreeId)
             .HasScope(row => row.Scope)
@@ -286,6 +291,12 @@ internal sealed class OrderingLockAnchor<TScope>
 internal sealed class OrderingLockNode<TScope, THierarchy> : IScopedNestedSetNode<int, Guid, TScope>
     where TScope : notnull
 {
+    /// <summary>Gets or sets the optional direct parent.</summary>
+    public int? ParentId { get; set; }
+
+    /// <summary>Gets or sets the domain value determining sibling order.</summary>
+    public string Name { get; set; } = "";
+
     /// <summary>Gets or sets the stable tree identity.</summary>
     public Guid TreeId { get; set; }
 
@@ -294,12 +305,6 @@ internal sealed class OrderingLockNode<TScope, THierarchy> : IScopedNestedSetNod
 
     /// <summary>Gets or sets the persisted scope value, which may be a database-equal alias.</summary>
     public required TScope Scope { get; set; }
-
-    /// <summary>Gets or sets the optional direct parent.</summary>
-    public int? ParentId { get; set; }
-
-    /// <summary>Gets or sets the domain value determining sibling order.</summary>
-    public string Name { get; set; } = "";
 
     /// <inheritdoc />
     public long Left { get; set; }

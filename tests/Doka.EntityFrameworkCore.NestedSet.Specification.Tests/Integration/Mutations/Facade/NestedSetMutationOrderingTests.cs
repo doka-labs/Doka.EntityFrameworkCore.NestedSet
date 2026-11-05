@@ -18,7 +18,8 @@ public abstract class NestedSetMutationOrderingTests : ProviderTest
     public async Task AutomaticInsertUsesConfiguredOrder()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context
@@ -39,7 +40,11 @@ public abstract class NestedSetMutationOrderingTests : ProviderTest
 
         // Assert
         Assert.Equal([1, 3, 4, 2], nodes.Select(node => node.Id));
-        Assert.Equal([0L, 1L, 2L], nodes.Skip(1).Select(node => node.Position));
+        Assert.Equal(
+            [0L, 1L, 2L],
+            nodes
+                .Skip(1)
+                .Select(node => node.Position));
     }
 
     /// <summary>Configured-only ordering rejects manual placement without changing persisted structure.</summary>
@@ -47,7 +52,8 @@ public abstract class NestedSetMutationOrderingTests : ProviderTest
     public async Task StrictOrderRejectsManualPlacement()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context
@@ -80,7 +86,8 @@ public abstract class NestedSetMutationOrderingTests : ProviderTest
     public async Task FlexibleOrderAllowsManualPlacement()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             "Flexible");
 
@@ -107,5 +114,9 @@ public abstract class NestedSetMutationOrderingTests : ProviderTest
     private static OrderingNode Node(
         int id,
         string name
-    ) => new() { Id = id, Name = name };
+    ) => new()
+    {
+        Id = id,
+        Name = name,
+    };
 }

@@ -5,8 +5,8 @@ namespace Doka.EntityFrameworkCore.NestedSet;
 public sealed partial class NestedSet<TEntity>
     where TEntity : class
 {
-    private readonly NestedSetQuery<TEntity> _query;
     private readonly NestedSetMutationBinding<TEntity> _mutations;
+    private readonly NestedSetQuery<TEntity> _query;
 
     /// <summary>Creates the public facade after immediate finalized-model validation.</summary>
     /// <param name="context">The caller-owned context.</param>

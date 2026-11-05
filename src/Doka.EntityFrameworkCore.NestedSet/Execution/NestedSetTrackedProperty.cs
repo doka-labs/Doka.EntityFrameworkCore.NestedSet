@@ -31,7 +31,8 @@ internal static class NestedSetTrackedProperty
         EntityEntry entry,
         IProperty property
     ) => property.DeclaringType is IComplexType complex
-        ? ComplexProperty(entry, complex).Property(property)
+        ? ComplexProperty(entry, complex)
+            .Property(property)
         : entry.Property(property.Name);
 
     /// <summary>Traverses model metadata instead of treating complex leaf names as root properties.</summary>
@@ -43,7 +44,8 @@ internal static class NestedSetTrackedProperty
         var property = complex.ComplexProperty;
 
         return property.DeclaringType is IComplexType parent
-            ? ComplexProperty(entry, parent).ComplexProperty(property)
+            ? ComplexProperty(entry, parent)
+                .ComplexProperty(property)
             : entry.ComplexProperty(property);
     }
 
@@ -77,11 +79,11 @@ internal static class NestedSetTrackedProperty
     /// <summary>Keeps scalar reads typed while retaining EF's member/model conversion semantics.</summary>
     private sealed class ChangeReader<TValue> : ChangeReader
     {
-        private readonly IProperty _property;
         private readonly ValueComparer _comparer;
-        private readonly ValueComparer<TValue>? _typedComparer;
         private readonly ValueComparer? _keyComparer;
+        private readonly IProperty _property;
         private readonly Func<IUpdateEntry, TValue>? _relationship;
+        private readonly ValueComparer<TValue>? _typedComparer;
 
         /// <summary>Captures immutable model metadata without retaining a context or entry.</summary>
         public ChangeReader(
@@ -98,7 +100,9 @@ internal static class NestedSetTrackedProperty
                     _ => false,
                 };
 
-            _typedComparer = typedCurrent ? _comparer as ValueComparer<TValue> : null;
+            _typedComparer = typedCurrent
+                ? _comparer as ValueComparer<TValue>
+                : null;
 
             if (property.IsKey()
                 || property.IsForeignKey())
@@ -146,7 +150,9 @@ internal static class NestedSetTrackedProperty
 
             // WHY: Sidecar-aware current reads can remain equal to the installed key after raw CLR mutation.
             // Only this exceptional branch needs an entity wrapper; normal unchanged comparisons stay typed.
-            var entity = entry.ToEntityEntry().Entity;
+            var entity = entry.ToEntityEntry()
+                .Entity;
+
             var current = NestedSetClrGetter<TValue>
                 .For(_property)(entity);
 
@@ -185,6 +191,7 @@ internal static class NestedSetTrackedProperty
                 TValue left,
                 TValue right
             )
+
             // WHY: Typed equality invokes the custom expression directly; EF's object overload checks nulls first.
             => left is null
                 ? right is null

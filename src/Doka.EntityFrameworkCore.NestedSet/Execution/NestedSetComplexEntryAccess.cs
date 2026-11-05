@@ -169,6 +169,60 @@ internal static class NestedSetComplexEntryAccess
         int capacity
     ) => s_bindings.CreateCollection(property, capacity);
 
+    /// <summary>Requires the native type from the same loaded EF assembly as its public update interface.</summary>
+    private static Type RequireType(
+        Assembly assembly,
+        string name
+    ) => assembly.GetType($"Microsoft.EntityFrameworkCore.ChangeTracking.Internal.{name}")
+        ?? throw new InvalidOperationException($"EF Core does not expose the expected native type '{name}'.");
+
+    /// <summary>Requires the exact invariant infrastructure interface implemented by a public entry wrapper.</summary>
+    private static Type RequireInfrastructure(
+        Type wrapper,
+        Type native
+    )
+    {
+        var infrastructure = typeof(IInfrastructure<>).MakeGenericType(native);
+
+        if (!infrastructure.IsAssignableFrom(wrapper))
+        {
+            throw new InvalidOperationException(
+                $"EF Core's '{wrapper.Name}' does not expose the expected IInfrastructure<{native.Name}> contract.");
+        }
+
+        return infrastructure;
+    }
+
+    /// <summary>Requires a public instance signature before generating any native delegate adaptation.</summary>
+    private static MethodInfo RequireMethod(
+        Type owner,
+        string name,
+        Type result,
+        Type[] parameters
+    )
+    {
+        var method = owner.GetMethod(name, BindingFlags.Instance | BindingFlags.Public, null, parameters, null);
+
+        if (method is null
+            || method.IsStatic
+            || method.ContainsGenericParameters
+            || method.ReturnType != result)
+        {
+            throw new InvalidOperationException(
+                $"EF Core's '{owner.Name}.{name}' signature is incompatible with complex topology recovery.");
+        }
+
+        return method;
+    }
+
+    /// <summary>Requires the exact framework entry constructor without selecting another overload.</summary>
+    private static ConstructorInfo RequireConstructor(
+        Type owner,
+        Type[] parameters
+    ) => owner.GetConstructor(BindingFlags.Instance | BindingFlags.Public, null, parameters, null)
+        ?? throw new InvalidOperationException(
+            $"EF Core does not expose the expected '{owner.Name}' constructor for complex topology recovery.");
+
     /// <summary>Validates and compiles this recovery-only framework seam once for the loaded EF assembly.</summary>
     private sealed class Bindings
     {
@@ -363,7 +417,7 @@ internal static class NestedSetComplexEntryAccess
                                 typeof(bool),
                                 typeof(bool),
                                 typeof(EntityState?),
-                                typeof(EntityState?)
+                                typeof(EntityState?),
                             ]),
                         state,
                         Expression.Constant(false),
@@ -465,58 +519,4 @@ internal static class NestedSetComplexEntryAccess
         /// <summary>Gets the mapped collection factory without repeating native signature reflection.</summary>
         internal Func<IComplexProperty, int, IList> CreateCollection { get; }
     }
-
-    /// <summary>Requires the native type from the same loaded EF assembly as its public update interface.</summary>
-    private static Type RequireType(
-        Assembly assembly,
-        string name
-    ) => assembly.GetType($"Microsoft.EntityFrameworkCore.ChangeTracking.Internal.{name}")
-        ?? throw new InvalidOperationException($"EF Core does not expose the expected native type '{name}'.");
-
-    /// <summary>Requires the exact invariant infrastructure interface implemented by a public entry wrapper.</summary>
-    private static Type RequireInfrastructure(
-        Type wrapper,
-        Type native
-    )
-    {
-        var infrastructure = typeof(IInfrastructure<>).MakeGenericType(native);
-
-        if (!infrastructure.IsAssignableFrom(wrapper))
-        {
-            throw new InvalidOperationException(
-                $"EF Core's '{wrapper.Name}' does not expose the expected IInfrastructure<{native.Name}> contract.");
-        }
-
-        return infrastructure;
-    }
-
-    /// <summary>Requires a public instance signature before generating any native delegate adaptation.</summary>
-    private static MethodInfo RequireMethod(
-        Type owner,
-        string name,
-        Type result,
-        Type[] parameters
-    )
-    {
-        var method = owner.GetMethod(name, BindingFlags.Instance | BindingFlags.Public, null, parameters, null);
-
-        if (method is null
-            || method.IsStatic
-            || method.ContainsGenericParameters
-            || method.ReturnType != result)
-        {
-            throw new InvalidOperationException(
-                $"EF Core's '{owner.Name}.{name}' signature is incompatible with complex topology recovery.");
-        }
-
-        return method;
-    }
-
-    /// <summary>Requires the exact framework entry constructor without selecting another overload.</summary>
-    private static ConstructorInfo RequireConstructor(
-        Type owner,
-        Type[] parameters
-    ) => owner.GetConstructor(BindingFlags.Instance | BindingFlags.Public, null, parameters, null)
-        ?? throw new InvalidOperationException(
-            $"EF Core does not expose the expected '{owner.Name}' constructor for complex topology recovery.");
 }

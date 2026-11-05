@@ -9,8 +9,8 @@ public abstract class TypedParentContractTests : ProviderTest
     private static readonly Guid s_target = Guid.Parse("41000000-0000-0000-0000-000000000002");
     private static readonly Guid s_child = Guid.Parse("42000000-0000-0000-0000-000000000001");
     private static readonly Guid s_other = Guid.Parse("42000000-0000-0000-0000-000000000002");
-    private readonly RelationalFixture _fixture;
     private readonly ModelCompatibilityDatabase _convertedFixture;
+    private readonly RelationalFixture _fixture;
 
     /// <summary>Creates assigned-key contracts on the existing relational fixture.</summary>
     /// <param name="fixture">The owner of the reusable provider databases.</param>
@@ -41,11 +41,23 @@ public abstract class TypedParentContractTests : ProviderTest
         string keyType
     ) => keyType switch
     {
-        "Int" => InsertAsync(Engine, 1, IntegerNode, node => node.ParentId,
+        "Int" => InsertAsync(
+            Engine,
+            1,
+            IntegerNode,
+            node => node.ParentId,
             cancellationToken: TestContext.Current.CancellationToken),
-        "Guid" => InsertAsync(Engine, s_child, GuidNodeFor, node => node.ParentId,
+        "Guid" => InsertAsync(
+            Engine,
+            s_child,
+            GuidNodeFor,
+            node => node.ParentId,
             cancellationToken: TestContext.Current.CancellationToken),
-        "OperatorFree" => InsertAsync(Engine, new OperatorFreeKey(1), ConvertedNode, node => node.ParentId,
+        "OperatorFree" => InsertAsync(
+            Engine,
+            new OperatorFreeKey(1),
+            ConvertedNode,
+            node => node.ParentId,
             cancellationToken: TestContext.Current.CancellationToken),
         _ => throw new ArgumentOutOfRangeException(nameof(keyType)),
     };
@@ -59,16 +71,27 @@ public abstract class TypedParentContractTests : ProviderTest
         string keyType
     ) => keyType switch
     {
-        "Int" => ReparentAsync(Engine, 1, 2, IntegerNode, node => node.ParentId,
+        "Int" => ReparentAsync(
+            Engine,
+            1,
+            2,
+            IntegerNode,
+            node => node.ParentId,
             cancellationToken: TestContext.Current.CancellationToken),
-        "Guid" => ReparentAsync(Engine, s_child, s_other, GuidNodeFor, node => node.ParentId,
+        "Guid" => ReparentAsync(
+            Engine,
+            s_child,
+            s_other,
+            GuidNodeFor,
+            node => node.ParentId,
             cancellationToken: TestContext.Current.CancellationToken),
         "OperatorFree" => ReparentAsync(
             Engine,
             new OperatorFreeKey(1),
             new OperatorFreeKey(2),
             ConvertedNode,
-            node => node.ParentId, cancellationToken: TestContext.Current.CancellationToken),
+            node => node.ParentId,
+            cancellationToken: TestContext.Current.CancellationToken),
         _ => throw new ArgumentOutOfRangeException(nameof(keyType)),
     };
 
@@ -81,16 +104,27 @@ public abstract class TypedParentContractTests : ProviderTest
         string keyType
     ) => keyType switch
     {
-        "Int" => DetachAsync(Engine, 1, 2, IntegerNode, node => node.ParentId,
+        "Int" => DetachAsync(
+            Engine,
+            1,
+            2,
+            IntegerNode,
+            node => node.ParentId,
             cancellationToken: TestContext.Current.CancellationToken),
-        "Guid" => DetachAsync(Engine, s_child, s_other, GuidNodeFor, node => node.ParentId,
+        "Guid" => DetachAsync(
+            Engine,
+            s_child,
+            s_other,
+            GuidNodeFor,
+            node => node.ParentId,
             cancellationToken: TestContext.Current.CancellationToken),
         "OperatorFree" => DetachAsync(
             Engine,
             new OperatorFreeKey(1),
             new OperatorFreeKey(2),
             ConvertedNode,
-            node => node.ParentId, cancellationToken: TestContext.Current.CancellationToken),
+            node => node.ParentId,
+            cancellationToken: TestContext.Current.CancellationToken),
         _ => throw new ArgumentOutOfRangeException(nameof(keyType)),
     };
 
@@ -119,8 +153,15 @@ public abstract class TypedParentContractTests : ProviderTest
         await hierarchy.InsertChildAsync(child, default(TKey), cancellationToken);
 
         // Assert
-        Assert.True(parent(child).HasValue);
-        Assert.Equal(default, parent(child).GetValueOrDefault());
+        Assert.True(
+            parent(child)
+                .HasValue);
+
+        Assert.Equal(
+            default,
+            parent(child)
+                .GetValueOrDefault());
+
         Assert.Equal(
             default,
             (await hierarchy
@@ -133,12 +174,16 @@ public abstract class TypedParentContractTests : ProviderTest
             .ToArrayAsync(cancellationToken);
 
         var root = Assert.Single(stored, node => EqualityComparer<TKey>.Default.Equals(node.Id, default));
-        Assert.False(parent(root).HasValue);
+        Assert.False(
+            parent(root)
+                .HasValue);
+
         Assert.Equal(
             childKey,
             (await hierarchy
                 .ChildrenOf(default(TKey))
                 .SingleAsync(cancellationToken)).Id);
+
         Assert.Equal((1L, 4L, 0), (root.Left, root.Right, root.Depth));
         Assert.True(
             (await hierarchy
@@ -170,7 +215,7 @@ public abstract class TypedParentContractTests : ProviderTest
         await hierarchy.InsertChildAsync(create(childKey), otherRootKey, cancellationToken);
 
         // Act
-        await hierarchy.MoveToAsync(childKey, default(TKey), cancellationToken);
+        await hierarchy.MoveToAsync(childKey, default, cancellationToken);
 
         // Assert
         var child = await hierarchy
@@ -178,22 +223,32 @@ public abstract class TypedParentContractTests : ProviderTest
             .SingleAsync(cancellationToken);
 
         Assert.Equal(childKey, child.Id);
-        Assert.True(parent(child).HasValue);
-        Assert.Equal(default, parent(child).GetValueOrDefault());
+        Assert.True(
+            parent(child)
+                .HasValue);
+
+        Assert.Equal(
+            default,
+            parent(child)
+                .GetValueOrDefault());
+
         Assert.Equal((s_target, 2L, 3L, 1), (child.TreeId, child.Left, child.Right, child.Depth));
         Assert.Equal(
             default,
             (await hierarchy
                 .ParentOf(childKey)
                 .SingleAsync(cancellationToken)).Id);
+
         Assert.Empty(
             await hierarchy
                 .ChildrenOf(otherRootKey)
                 .ToArrayAsync(cancellationToken));
+
         Assert.True(
             (await hierarchy
                 .InTree(s_source)
                 .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken)).IsValid);
+
         Assert.True(
             (await hierarchy
                 .InTree(s_target)
@@ -232,8 +287,11 @@ public abstract class TypedParentContractTests : ProviderTest
             .Nodes
             .SingleAsync(cancellationToken);
 
-        Assert.Equal(default(TKey), source.Id);
-        Assert.False(parent(source).HasValue);
+        Assert.Equal(default, source.Id);
+        Assert.False(
+            parent(source)
+                .HasValue);
+
         Assert.Equal((1L, 2L, 0), (source.Left, source.Right, source.Depth));
         var detached = await hierarchy
             .InTree(s_target)
@@ -241,17 +299,29 @@ public abstract class TypedParentContractTests : ProviderTest
             .ToArrayAsync(cancellationToken);
 
         Assert.Equal(2, detached.Length);
-        Assert.False(parent(detached[0]).HasValue);
-        Assert.True(parent(detached[1]).HasValue);
-        Assert.Equal(childKey, parent(detached[1]).GetValueOrDefault());
+        Assert.False(
+            parent(detached[0])
+                .HasValue);
+
+        Assert.True(
+            parent(detached[1])
+                .HasValue);
+
+        Assert.Equal(
+            childKey,
+            parent(detached[1])
+                .GetValueOrDefault());
+
         Assert.Empty(
             await hierarchy
                 .ParentOf(childKey)
                 .ToArrayAsync(cancellationToken));
+
         Assert.Empty(
             await hierarchy
                 .ChildrenOf(default(TKey))
                 .ToArrayAsync(cancellationToken));
+
         Assert.True(
             (await hierarchy
                 .InTree(s_target)
@@ -289,7 +359,8 @@ public abstract class TypedParentContractTests : ProviderTest
 
         var context = await _convertedFixture.CreateContextAsync<OperatorFreeContext>(
             engine,
-            static options => new OperatorFreeContext(options), cancellationToken: cancellationToken);
+            static options => new OperatorFreeContext(options),
+            cancellationToken: cancellationToken);
 
         await context
             .Set<OperatorFreeNode>()
@@ -329,6 +400,9 @@ public abstract class TypedParentContractTests : ProviderTest
     /// <summary>Represents an assigned converted key whose nullable parent distinguishes zero from absence.</summary>
     private sealed class OperatorFreeNode : IScopedNestedSetNode<OperatorFreeKey, Guid, int>
     {
+        /// <summary>Gets or sets the explicitly optional converted parent key.</summary>
+        public OperatorFreeKey? ParentId { get; set; }
+
         /// <inheritdoc />
         public OperatorFreeKey Id { get; set; }
 
@@ -337,9 +411,6 @@ public abstract class TypedParentContractTests : ProviderTest
 
         /// <inheritdoc />
         public int Scope { get; set; }
-
-        /// <summary>Gets or sets the explicitly optional converted parent key.</summary>
-        public OperatorFreeKey? ParentId { get; set; }
 
         /// <inheritdoc />
         public long Left { get; set; }
@@ -374,9 +445,11 @@ public abstract class TypedParentContractTests : ProviderTest
                 .Property(value => value.Id)
                 .HasConversion(converter)
                 .ValueGeneratedNever();
+
             node
                 .Property(value => value.ParentId)
                 .HasConversion(converter);
+
             node.HasNestedSet(builder => builder
                 .HasTreeId(value => value.TreeId)
                 .HasScope(value => value.Scope)

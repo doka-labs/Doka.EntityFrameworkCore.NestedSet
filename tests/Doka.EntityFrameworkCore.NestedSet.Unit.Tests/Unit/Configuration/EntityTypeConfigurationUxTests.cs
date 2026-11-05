@@ -42,59 +42,71 @@ public sealed class EntityTypeConfigurationUxTests
         Assert.Equal(
             [nameof(ScopedNode.TenantId), nameof(ScopedNode.RecordId)],
             entity.FindPrimaryKey()!.Properties.Select(property => property.Name));
+
         Assert.Contains(
             entity.GetKeys(),
             key => key
                 .Properties
                 .Select(property => property.Name)
                 .SequenceEqual([nameof(ScopedNode.TenantId), nameof(ScopedNode.NodeKey)]));
-        Assert.Equal(nameof(ScopedNode.NodeKey),
+
+        Assert.Equal(
+            nameof(ScopedNode.NodeKey),
             entity.FindAnnotation("Doka:NestedSet:NodeKey")
                 ?.Value);
-        Assert.Equal(nameof(ScopedNode.TreeId),
+
+        Assert.Equal(
+            nameof(ScopedNode.TreeId),
             entity.FindAnnotation("Doka:NestedSet:TreeId")
                 ?.Value);
-        Assert.Equal(nameof(ScopedNode.TenantId),
+
+        Assert.Equal(
+            nameof(ScopedNode.TenantId),
             entity.FindAnnotation("Doka:NestedSet:Scope")
                 ?.Value);
+
         Assert.Equal(5, indexes.Length);
         Assert.Contains(
             indexes,
             index => index.Properties.SequenceEqual(
                 [nameof(ScopedNode.TenantId), nameof(ScopedNode.TreeId), nameof(ScopedNode.Left)]));
+
         Assert.Contains(
             indexes,
             index => index.Properties.SequenceEqual(
                 [nameof(ScopedNode.TenantId), nameof(ScopedNode.TreeId), nameof(ScopedNode.Right)]));
+
         Assert.Contains(
             indexes,
             index => index.Properties.SequenceEqual(
-                [
-                    nameof(ScopedNode.TenantId),
-                    nameof(ScopedNode.TreeId),
-                    nameof(ScopedNode.ParentId),
-                    nameof(ScopedNode.Position),
-                ]));
+            [
+                nameof(ScopedNode.TenantId),
+                nameof(ScopedNode.TreeId),
+                nameof(ScopedNode.ParentId),
+                nameof(ScopedNode.Position),
+            ]));
 
         var order = Assert.Single(
             indexes,
             index => index.Properties.SequenceEqual(
-                [
-                    nameof(ScopedNode.TenantId),
-                    nameof(ScopedNode.TreeId),
-                    nameof(ScopedNode.ParentId),
-                    nameof(ScopedNode.Name),
-                    nameof(ScopedNode.Kind),
-                    nameof(ScopedNode.NodeKey),
-                ]));
+            [
+                nameof(ScopedNode.TenantId),
+                nameof(ScopedNode.TreeId),
+                nameof(ScopedNode.ParentId),
+                nameof(ScopedNode.Name),
+                nameof(ScopedNode.Kind),
+                nameof(ScopedNode.NodeKey),
+            ]));
 
         Assert.Equal([false, false, false, false, true, false], order.Descending);
         Assert.Equal(
             [nameof(ScopedNode.TenantId), nameof(ScopedNode.ParentId)],
             parent.Properties.Select(property => property.Name));
+
         Assert.Equal(
             [nameof(ScopedNode.TenantId), nameof(ScopedNode.NodeKey)],
             parent.PrincipalKey.Properties.Select(property => property.Name));
+
         Assert.Equal(DeleteBehavior.Restrict, parent.DeleteBehavior);
         Assert.DoesNotContain(parent.Properties, property => property.Name == nameof(ScopedNode.TreeId));
         Assert.Equal(["\"Depth\" >= 0", "\"Left\" >= 1", "\"Position\" >= 0", "\"Right\" > \"Left\""], checks);
@@ -134,26 +146,34 @@ public sealed class EntityTypeConfigurationUxTests
         Assert.Equal(
             [nameof(ScopelessNode.RecordId)],
             entity.FindPrimaryKey()!.Properties.Select(property => property.Name));
+
         Assert.Contains(
             entity.GetKeys(),
             key => key
                 .Properties
                 .Select(property => property.Name)
                 .SequenceEqual([nameof(ScopelessNode.NodeKey)]));
-        Assert.Equal(nameof(ScopelessNode.NodeKey),
+
+        Assert.Equal(
+            nameof(ScopelessNode.NodeKey),
             entity.FindAnnotation("Doka:NestedSet:NodeKey")
                 ?.Value);
-        Assert.Equal(nameof(ScopelessNode.TreeId),
+
+        Assert.Equal(
+            nameof(ScopelessNode.TreeId),
             entity.FindAnnotation("Doka:NestedSet:TreeId")
                 ?.Value);
+
         Assert.Null(entity.FindAnnotation("Doka:NestedSet:Scope"));
         Assert.Equal(5, indexes.Length);
         Assert.Contains(
             indexes,
             index => index.Properties.SequenceEqual([nameof(ScopelessNode.TreeId), nameof(ScopelessNode.Left)]));
+
         Assert.Contains(
             indexes,
             index => index.Properties.SequenceEqual([nameof(ScopelessNode.TreeId), nameof(ScopelessNode.Right)]));
+
         Assert.Contains(
             indexes,
             index => index.Properties.SequenceEqual(
@@ -162,13 +182,13 @@ public sealed class EntityTypeConfigurationUxTests
         var order = Assert.Single(
             indexes,
             index => index.Properties.SequenceEqual(
-                [
-                    nameof(ScopelessNode.TreeId),
-                    nameof(ScopelessNode.ParentId),
-                    nameof(ScopelessNode.Name),
-                    nameof(ScopelessNode.Kind),
-                    nameof(ScopelessNode.NodeKey),
-                ]));
+            [
+                nameof(ScopelessNode.TreeId),
+                nameof(ScopelessNode.ParentId),
+                nameof(ScopelessNode.Name),
+                nameof(ScopelessNode.Kind),
+                nameof(ScopelessNode.NodeKey),
+            ]));
 
         Assert.Equal([false, false, false, true, false], order.Descending);
         Assert.All(indexes, index => Assert.DoesNotContain("Scope", index.Properties));
@@ -212,11 +232,13 @@ public sealed class EntityTypeConfigurationUxTests
                 node.TenantId,
                 node.RecordId,
             });
+
             builder.HasAlternateKey(node => new
             {
                 node.TenantId,
                 node.NodeKey,
             });
+
             builder.HasNestedSet(nestedSet => nestedSet
                 .HasNodeKey(node => node.NodeKey)
                 .HasScope(node => node.TenantId)

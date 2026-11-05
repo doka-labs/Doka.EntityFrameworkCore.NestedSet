@@ -119,6 +119,7 @@ public sealed class PayloadTests : ProviderTest, IClassFixture<ProviderFixture<P
             node => Assert.Equal("Root payload", node.Details.Label),
             node => Assert.Equal("Branch payload", node.Details.Label),
             node => Assert.Equal("Leaf payload", node.Details.Label));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 

@@ -64,10 +64,12 @@ public sealed partial class OptionsExtensionTests
         extension.ApplyServices(services);
 
         // Assert
-        var binding = Assert.Single(services,
+        var binding = Assert.Single(
+            services,
             descriptor => descriptor.ServiceType == typeof(INestedSetProviderBinding));
 
-        var provider = Assert.Single(services,
+        var provider = Assert.Single(
+            services,
             descriptor => descriptor.ServiceType == typeof(NestedSetProviderCapabilities));
 
         Assert.Same(NestedSetProviderRegistration.BindingService, binding);
@@ -131,13 +133,16 @@ public sealed partial class OptionsExtensionTests
     private sealed class ObservedDatabaseProvider : IDatabaseProvider
     {
         private readonly IDatabaseProvider _inner;
-        private int _nameReads;
         private int _configurationChecks;
+        private int _nameReads;
 
         /// <summary>Wraps the native singleton from an actual provider service graph.</summary>
         internal ObservedDatabaseProvider(
             IDatabaseProvider inner
-        ) => _inner = inner;
+        )
+        {
+            _inner = inner;
+        }
 
         /// <summary>Gets how often the binding inspected native provider identity.</summary>
         internal int NameReads => Volatile.Read(ref _nameReads);

@@ -84,12 +84,15 @@ public sealed partial class ComplexDeletedElementRecoveryTests
             payload
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
-            payload.ComplexCollection(value => value.Rows,
+
+            payload.ComplexCollection(
+                value => value.Rows,
                 rows =>
                 {
                     rows.ToJson("Rows");
                     rows.ComplexProperty(value => value.Data);
-                    rows.ComplexCollection(value => value.Middles,
+                    rows.ComplexCollection(
+                        value => value.Middles,
                         middles => middles.ComplexCollection(value => value.Tips));
                 });
         }

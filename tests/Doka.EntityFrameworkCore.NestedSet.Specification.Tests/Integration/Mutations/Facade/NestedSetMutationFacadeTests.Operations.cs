@@ -82,7 +82,11 @@ public abstract partial class NestedSetMutationFacadeTests
         // Assert
         Assert.Equal([1, 3, 4, 5], nodes.Select(node => node.NodeId));
         Assert.All(nodes.Skip(1), node => Assert.Equal(1, node.Parent));
-        Assert.Equal([0L, 1L, 2L], nodes.Skip(1).Select(node => node.Position));
+        Assert.Equal(
+            [0L, 1L, 2L],
+            nodes
+                .Skip(1)
+                .Select(node => node.Position));
     }
 
     /// <summary>DeleteTree removes only the selected identity and tombstones it.</summary>

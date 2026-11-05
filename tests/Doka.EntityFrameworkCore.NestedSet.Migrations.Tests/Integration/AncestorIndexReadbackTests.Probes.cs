@@ -114,7 +114,8 @@ public sealed partial class AncestorIndexReadbackTests
                             entry.Property<bool>(AncestorIndexReadbackContext.FlagProperty)
                                 .CurrentValue) with
                         {
-                            Stamp = entry.Property(node => node.Stamp).CurrentValue,
+                            Stamp = entry.Property(node => node.Stamp)
+                                .CurrentValue,
                         });
             }
 

@@ -3,8 +3,8 @@ namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks;
 /// <summary>Measures subtree deletion and deletion with adjacency-preserving child promotion.</summary>
 public class DeleteBenchmarks : DatabaseBenchmark
 {
-    private int _expected;
     private bool _deleted;
+    private int _expected;
     private int _subtreeSize;
 
     /// <summary>Deletes one branch root and promotes its immediate children.</summary>

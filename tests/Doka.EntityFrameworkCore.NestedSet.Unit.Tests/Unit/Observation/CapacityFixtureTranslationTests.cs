@@ -16,7 +16,9 @@ public sealed class CapacityFixtureTranslationTests
         // Act
         var failure =
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
-                CompositionCapacityProfiles.BalanceAsync(context, 100_001,
+                CompositionCapacityProfiles.BalanceAsync(
+                    context,
+                    100_001,
                     cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
@@ -37,9 +39,12 @@ public sealed class CapacityFixtureTranslationTests
         var failure = await Assert.ThrowsAsync<InvalidOperationException>(() => context
             .Set<TreeNode>()
             .Where(node => node.NodeId > 1)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.End,
-                    node => Math.Min((2L * nodes) - 1,
-                        1L + (((long)Math.Floor((node.NodeId - 2) / 1_000d) + 1L) * 2_000L))),
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(
+                    node => node.End,
+                    node => Math.Min(
+                        2L * nodes - 1,
+                        1L + ((long)Math.Floor((node.NodeId - 2) / 1_000d) + 1L) * 2_000L)),
                 CancellationToken.None));
 
         // Assert
@@ -66,14 +71,17 @@ public sealed class CapacityFixtureTranslationTests
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync("Sqlite",
+        await using var database = await TestDatabase.CreateAsync(
+            "Sqlite",
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var context = database.CreateContext();
         await CapacitySeed.SeedAsync(context, nodes, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        var changed = await CompositionCapacityProfiles.BalanceAsync(context, nodes,
+        var changed = await CompositionCapacityProfiles.BalanceAsync(
+            context,
+            nodes,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var rows = await context

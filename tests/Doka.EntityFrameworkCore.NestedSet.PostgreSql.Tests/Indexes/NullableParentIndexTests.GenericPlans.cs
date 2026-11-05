@@ -24,8 +24,14 @@ public sealed partial class NullableParentIndexTests
 
         await SeedAsync(context, columns, scoped, cancellationToken: TestContext.Current.CancellationToken);
         var name = PreparedName();
-        var scope = scoped ? $"x.{columns.Scope} = $1 AND " : string.Empty;
-        var parent = scoped ? "$2" : "$1";
+        var scope = scoped
+            ? $"x.{columns.Scope} = $1 AND "
+            : string.Empty;
+
+        var parent = scoped
+            ? "$2"
+            : "$1";
+
         var query = $"SELECT 1 FROM ONLY {columns.Table} x WHERE {scope}x.{columns.Parent} = {parent}";
 
         // Act
@@ -54,8 +60,14 @@ public sealed partial class NullableParentIndexTests
 
         await SeedAsync(context, columns, scoped, cancellationToken: TestContext.Current.CancellationToken);
         var name = PreparedName();
-        var scope = scoped ? $"x.{columns.Scope} = $1 AND " : string.Empty;
-        var key = scoped ? "$2" : "$1";
+        var scope = scoped
+            ? $"x.{columns.Scope} = $1 AND "
+            : string.Empty;
+
+        var key = scoped
+            ? "$2"
+            : "$1";
+
         var query = $"SELECT x.{columns.Key} FROM {columns.Table} x "
             + $"WHERE {scope}x.{columns.Key} >= {key} AND x.{columns.Parent} IS NULL";
 
@@ -83,8 +95,14 @@ public sealed partial class NullableParentIndexTests
         var indexes = DesignIndexes(context, scoped);
         await SeedAsync(context, columns, scoped, cancellationToken: TestContext.Current.CancellationToken);
         var name = PreparedName();
-        var scope = scoped ? $"x.{columns.Scope} = $1 AND " : string.Empty;
-        var key = scoped ? "$2" : "$1";
+        var scope = scoped
+            ? $"x.{columns.Scope} = $1 AND "
+            : string.Empty;
+
+        var key = scoped
+            ? "$2"
+            : "$1";
+
         var query = $"SELECT 1 FROM ONLY {columns.Table} x "
             + $"WHERE {scope}x.{columns.Key} = {key} FOR KEY SHARE OF x";
 
@@ -109,7 +127,9 @@ public sealed partial class NullableParentIndexTests
         await using var context = database.CreateContext();
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         var name = PreparedName();
-        var before = await PreparedSessionAsync(context, name,
+        var before = await PreparedSessionAsync(
+            context,
+            name,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
@@ -134,7 +154,8 @@ public sealed partial class NullableParentIndexTests
             [
                 "sqlstate=" + PostgresErrorCodes.DivisionByZero,
                 $"mode_before={before.Mode}\nmode_after={after.Mode}\nowned_statement_count={after.Count}",
-            ], cancellationToken: TestContext.Current.CancellationToken);
+            ],
+            cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Canceled execution restores a nondefault session mode without removing other statements.</summary>
@@ -147,13 +168,21 @@ public sealed partial class NullableParentIndexTests
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         var name = PreparedName();
         var retained = PreparedName();
-        var original = await PreparedSessionAsync(context, name,
+        var original = await PreparedSessionAsync(
+            context,
+            name,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        await PreparedControlAsync(context, $"PREPARE {retained} AS SELECT 1",
+        await PreparedControlAsync(
+            context,
+            $"PREPARE {retained} AS SELECT 1",
             cancellationToken: TestContext.Current.CancellationToken);
-        await SetSessionModeAsync(context, "force_custom_plan",
+
+        await SetSessionModeAsync(
+            context,
+            "force_custom_plan",
             cancellationToken: TestContext.Current.CancellationToken);
+
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 
@@ -171,13 +200,17 @@ public sealed partial class NullableParentIndexTests
             // Assert
             Assert.IsType<OperationCanceledException>(exception, exactMatch: false);
 
-            var after = await PreparedSessionAsync(context, name,
+            var after = await PreparedSessionAsync(
+                context,
+                name,
                 cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal("force_custom_plan", after.Mode);
             Assert.Equal(0, after.Count);
 
-            var other = await PreparedSessionAsync(context, retained,
+            var other = await PreparedSessionAsync(
+                context,
+                retained,
                 cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(1, other.Count);
@@ -186,18 +219,23 @@ public sealed partial class NullableParentIndexTests
                 [
                     "query_cancelled=True",
                     $"mode_after={after.Mode}\nowned_statement_count={after.Count}\nretained_statement_count={other.Count}",
-                ], cancellationToken: TestContext.Current.CancellationToken);
+                ],
+                cancellationToken: TestContext.Current.CancellationToken);
         }
         finally
         {
             try
             {
-                await PreparedControlAsync(context, $"DEALLOCATE {retained}",
+                await PreparedControlAsync(
+                    context,
+                    $"DEALLOCATE {retained}",
                     cancellationToken: TestContext.Current.CancellationToken);
             }
             finally
             {
-                await SetSessionModeAsync(context, original.Mode,
+                await SetSessionModeAsync(
+                    context,
+                    original.Mode,
                     cancellationToken: TestContext.Current.CancellationToken);
             }
         }
@@ -210,7 +248,9 @@ public sealed partial class NullableParentIndexTests
     ) => context
         .GetService<IDesignTimeModel>()
         .Model
-        .FindEntityType(Entity(context, scoped).Name)!
+        .FindEntityType(
+            Entity(context, scoped)
+                .Name)!
         .GetIndexes()
         .ToArray();
 

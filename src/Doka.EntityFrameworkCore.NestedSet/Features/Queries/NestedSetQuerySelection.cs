@@ -3,8 +3,8 @@ namespace Doka.EntityFrameworkCore.NestedSet.Features.Queries;
 /// <summary>Leaves explicitly query-bearing anchor predicates available for database decorrelation.</summary>
 internal sealed partial class NestedSetQuerySelection : ExpressionVisitor
 {
-    private bool _usesQueryOperators;
     private readonly ParameterExpression _entity;
+    private bool _usesQueryOperators;
 
     private NestedSetQuerySelection(
         ParameterExpression entity
@@ -125,6 +125,7 @@ internal sealed partial class NestedSetQuerySelection : ExpressionVisitor
     }
 
     /// <summary>Recognizes syntax and metadata whose visitor dispatch cannot execute application code.</summary>
+
     // WHY: New/indexer nodes can retain application reflection objects. Dynamic dispatch reduces through
     // extension visitation and can inspect an application-supplied delegate Type before visiting children.
     private static bool CanInspectSyntax(

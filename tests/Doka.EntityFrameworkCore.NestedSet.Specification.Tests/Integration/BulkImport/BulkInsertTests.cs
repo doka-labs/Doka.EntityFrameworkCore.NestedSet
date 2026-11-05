@@ -62,6 +62,7 @@ public abstract class BulkInsertTests : ProviderTest
                 .TreeContaining(2)
                 .Select(node => node.NodeId)
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal(
             2,
             await setup
@@ -69,6 +70,7 @@ public abstract class BulkInsertTests : ProviderTest
                 .Where(node => node.NodeId == 999)
                 .Select(node => node.End)
                 .SingleAsync(CancellationToken.None));
+
         Assert.Empty(
             (await tree
                 .InTree(Guid.Empty)
@@ -116,10 +118,12 @@ public abstract class BulkInsertTests : ProviderTest
             (await tree
                 .InTree(Guid.Empty)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).Issues);
+
         Assert.Empty(
             (await tree
                 .InTree(otherRoot.TreeId)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).Issues);
+
         Assert.NotEqual(nodes[0].TreeId, otherRoot.TreeId);
     }
 
@@ -146,8 +150,17 @@ public abstract class BulkInsertTests : ProviderTest
         };
 
         NestedSetTreeImport<TreeNode, Guid>[] trees = differentTrees
-            ? [new(Guid.Empty, new(entity)), new(Guid.NewGuid(), new(entity))]
-            : [new(Guid.Empty, new(entity, [new(entity)]))];
+            ?
+            [
+                new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(entity)),
+                new NestedSetTreeImport<TreeNode, Guid>(Guid.NewGuid(), new NestedSetBranch<TreeNode>(entity)),
+            ]
+            :
+            [
+                new NestedSetTreeImport<TreeNode, Guid>(
+                    Guid.Empty,
+                    new NestedSetBranch<TreeNode>(entity, [new NestedSetBranch<TreeNode>(entity)])),
+            ];
 
         var tree = context
             .NestedSet<TreeNode>()
@@ -159,7 +172,11 @@ public abstract class BulkInsertTests : ProviderTest
             CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidImport, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidImport,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Empty(probe.Commands);
         Assert.Equal((17, 18, 9), (entity.Start, entity.End, entity.Tree));
         Assert.Empty(context.ChangeTracker.Entries());
@@ -199,6 +216,7 @@ public abstract class BulkInsertTests : ProviderTest
             await setup
                 .Set<TreeNode>()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal(0, entity.Start);
     }
 
@@ -272,7 +290,9 @@ public abstract class BulkInsertTests : ProviderTest
         var probe = new BulkRefreshFailure(nameof(TreeNode));
         await using var context = database.CreateContext(probe);
         await using var transaction = await context.Database.BeginTransactionAsync(
-            Engine == "Sqlite" ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+            Engine == "Sqlite"
+                ? IsolationLevel.Serializable
+                : IsolationLevel.ReadCommitted,
             CancellationToken.None);
 
         var marker = new UnrelatedRow { Id = 701 };
@@ -288,23 +308,29 @@ public abstract class BulkInsertTests : ProviderTest
 
         // Act
         var error = await Record.ExceptionAsync(() => tree.InsertForestAsync(
-            [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, branch),],
+            [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, branch)],
             CancellationToken.None));
 
         // Assert
         Assert.IsType<InjectedCommandException>(error);
         Assert.Same(transaction, context.Database.CurrentTransaction);
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
         Assert.Equal(
             1,
             await context
                 .Set<UnrelatedRow>()
                 .CountAsync(CancellationToken.None));
+
         Assert.Empty(
             await tree
                 .InTree(Guid.Empty)
                 .Nodes
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal(0, root.Start);
     }
 }

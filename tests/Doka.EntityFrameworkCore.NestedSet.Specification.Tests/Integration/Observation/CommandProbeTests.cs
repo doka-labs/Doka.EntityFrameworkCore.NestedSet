@@ -34,7 +34,11 @@ public abstract class CommandProbeTests : ProviderTest
         var error = await Record.ExceptionAsync(() => context
             .Set<TreeNode>()
             .ExecuteUpdateAsync(
-                setters => setters.SetProperty(node => node.Position, node => node.Start == 1 ? 1 : 2),
+                setters => setters.SetProperty(
+                    node => node.Position,
+                    node => node.Start == 1
+                        ? 1
+                        : 2),
                 CancellationToken.None));
 
         // Assert

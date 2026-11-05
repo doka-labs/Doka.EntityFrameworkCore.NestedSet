@@ -19,6 +19,9 @@ internal abstract partial class NestedSetProviderCapabilities
     /// <summary>Gets whether a configured schema becomes part of the physical table identity.</summary>
     internal virtual bool HonorsSchemas => true;
 
+    /// <summary>Gets whether the native generated ancestor flag requires stored persistence.</summary>
+    internal virtual bool StoresAncestorFlag => false;
+
     /// <summary>Recognizes a name the provider reserves for something other than an ordinary table.</summary>
     /// <param name="name">The candidate physical table name.</param>
     /// <returns>Whether an ordinary table cannot use this name.</returns>
@@ -30,9 +33,6 @@ internal abstract partial class NestedSetProviderCapabilities
     internal virtual string AncestorFlagSql(
         string predicate
     ) => predicate;
-
-    /// <summary>Gets whether the native generated ancestor flag requires stored persistence.</summary>
-    internal virtual bool StoresAncestorFlag => false;
 
     /// <summary>Adds native finalizers after common relationship and structural-index reconciliation.</summary>
     /// <param name="conventions">The convention set used to finalize the configured model.</param>

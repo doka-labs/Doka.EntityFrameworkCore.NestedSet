@@ -8,6 +8,15 @@ public sealed class BulkGeneratedFixture : IAsyncLifetime
     /// <inheritdoc />
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var database in _databases.Values)
+        {
+            await database.DisposeAsync();
+        }
+    }
+
     /// <summary>Clears the import mapping and returns an independent context with optional command observers.</summary>
     /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     public async Task<BulkGeneratedContext> ResetAsync(
@@ -75,25 +84,31 @@ public sealed class BulkGeneratedFixture : IAsyncLifetime
                 .ExecuteUpdateAsync(
                     setters => setters.SetProperty(node => node.ParentId, (int?)null),
                     cancellationToken);
+
             await setup
                 .Set<BulkGeneratedNode>()
                 .ExecuteDeleteAsync(cancellationToken);
+
             await setup
                 .Set<BulkManualNode>()
                 .ExecuteUpdateAsync(
                     setters => setters.SetProperty(node => node.ParentId, (int?)null),
                     cancellationToken);
+
             await setup
                 .Set<BulkManualNode>()
                 .ExecuteDeleteAsync(cancellationToken);
+
             await setup
                 .Set<BulkNavigationNode>()
                 .ExecuteUpdateAsync(
                     setters => setters.SetProperty(node => node.ParentId, (int?)null),
                     cancellationToken);
+
             await setup
                 .Set<BulkNavigationNode>()
                 .ExecuteDeleteAsync(cancellationToken);
+
             // WHY: Fresh import cases must not inherit active identities or tombstones from a previous case.
             await NestedSetTestInfrastructure.ClearRegistriesAsync(setup, cancellationToken);
         }
@@ -101,15 +116,6 @@ public sealed class BulkGeneratedFixture : IAsyncLifetime
         return new BulkGeneratedContext(
             options.AddInterceptors(interceptors)
                 .Options);
-    }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        foreach (var database in _databases.Values)
-        {
-            await database.DisposeAsync();
-        }
     }
 }
 
@@ -147,6 +153,7 @@ public sealed class BulkGeneratedContext : NestedSetDbContext
             .Property(value => value.Name)
             .HasMaxLength(80)
             .HasDefaultValue("Generated");
+
         var details = node.ComplexProperty(value => value.Details);
         details
             .Property(value => value.Label)
@@ -162,10 +169,12 @@ public sealed class BulkGeneratedContext : NestedSetDbContext
                 .HasDefaultValue(0)
                 .ValueGeneratedOnAddOrUpdate()
                 .IsConcurrencyToken();
+
             details
                 .Property(value => value.Revision)
                 .HasDefaultValue(0)
                 .ValueGeneratedOnAddOrUpdate();
+
             node
                 .ComplexCollection(value => value.History)
                 .ToJson();
@@ -192,20 +201,22 @@ public sealed class BulkGeneratedContext : NestedSetDbContext
         navigation
             .Property(value => value.Id)
             .ValueGeneratedNever();
+
         navigation
             .HasOne(value => value.Parent)
             .WithMany(value => value.Children)
             .HasForeignKey(value => new
             {
                 value.Scope,
-                value.ParentId
+                value.ParentId,
             })
             .HasPrincipalKey(value => new
             {
                 value.Scope,
-                value.Id
+                value.Id,
             })
             .OnDelete(DeleteBehavior.Restrict);
+
         navigation.HasNestedSet(builder => builder
             .HasTreeId(value => value.TreeId)
             .HasScope(value => value.Scope)
@@ -216,15 +227,6 @@ public sealed class BulkGeneratedContext : NestedSetDbContext
 /// <summary>Receives its key and optional sort value from the database during the shared insertion save.</summary>
 public sealed class BulkGeneratedNode : IScopedNestedSetNode<int, Guid, int>
 {
-    /// <summary>Gets or sets the stable tree identity.</summary>
-    public Guid TreeId { get; set; }
-
-    /// <inheritdoc />
-    public int Id { get; set; }
-
-    /// <summary>Gets or sets the isolated forest scope.</summary>
-    public int Scope { get; set; }
-
     /// <summary>Gets or sets the nullable immediate foreign key.</summary>
     public int? ParentId { get; set; }
 
@@ -239,6 +241,15 @@ public sealed class BulkGeneratedNode : IScopedNestedSetNode<int, Guid, int>
 
     /// <summary>Gets or sets SQLite JSON complex elements used to verify complete mapped-value rollback.</summary>
     public List<BulkGeneratedDetails> History { get; set; } = [];
+
+    /// <summary>Gets or sets the stable tree identity.</summary>
+    public Guid TreeId { get; set; }
+
+    /// <inheritdoc />
+    public int Id { get; set; }
+
+    /// <summary>Gets or sets the isolated forest scope.</summary>
+    public int Scope { get; set; }
 
     /// <inheritdoc />
     public long Left { get; set; }
@@ -266,6 +277,9 @@ public sealed class BulkGeneratedDetails
 /// <summary>Receives database identities while retaining explicit input sibling order.</summary>
 public sealed class BulkManualNode : IScopedNestedSetNode<int, Guid, int>
 {
+    /// <summary>Gets or sets the immediate nullable parent foreign key.</summary>
+    public int? ParentId { get; set; }
+
     /// <summary>Gets or sets the stable tree identity.</summary>
     public Guid TreeId { get; set; }
 
@@ -274,9 +288,6 @@ public sealed class BulkManualNode : IScopedNestedSetNode<int, Guid, int>
 
     /// <summary>Gets or sets the isolated forest scope.</summary>
     public int Scope { get; set; }
-
-    /// <summary>Gets or sets the immediate nullable parent foreign key.</summary>
-    public int? ParentId { get; set; }
 
     /// <inheritdoc />
     public long Left { get; set; }
@@ -294,15 +305,6 @@ public sealed class BulkManualNode : IScopedNestedSetNode<int, Guid, int>
 /// <summary>Maps a full CLR self-navigation graph to verify that failed imports leave input graphs reusable.</summary>
 public sealed class BulkNavigationNode : IScopedNestedSetNode<int, Guid, int>
 {
-    /// <summary>Gets or sets the stable tree identity.</summary>
-    public Guid TreeId { get; set; }
-
-    /// <inheritdoc />
-    public int Id { get; set; }
-
-    /// <summary>Gets or sets the isolated forest scope.</summary>
-    public int Scope { get; set; }
-
     /// <summary>Gets or sets the nullable parent foreign key.</summary>
     public int? ParentId { get; set; }
 
@@ -311,6 +313,15 @@ public sealed class BulkNavigationNode : IScopedNestedSetNode<int, Guid, int>
 
     /// <summary>Gets the initially empty mapped child navigation.</summary>
     public List<BulkNavigationNode> Children { get; } = [];
+
+    /// <summary>Gets or sets the stable tree identity.</summary>
+    public Guid TreeId { get; set; }
+
+    /// <inheritdoc />
+    public int Id { get; set; }
+
+    /// <summary>Gets or sets the isolated forest scope.</summary>
+    public int Scope { get; set; }
 
     /// <inheritdoc />
     public long Left { get; set; }

@@ -13,10 +13,14 @@ public sealed partial class SafeMigrationTests
     )
     {
         // Arrange
-        await using var selected = await CreateDatabaseAsync(engine, true,
+        await using var selected = await CreateDatabaseAsync(
+            engine,
+            true,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        await using var foreign = await CreateDatabaseAsync(engine, true,
+        await using var foreign = await CreateDatabaseAsync(
+            engine,
+            true,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var selectedBaseline = selected.Scaffold(MigrationStage.Baseline, "SafeSelectedBaseline");
@@ -39,11 +43,13 @@ public sealed partial class SafeMigrationTests
                 .SequenceEqual(["tree_scope", "tree_id", "left_bound"]));
 
         var definition = ((EnsureIndexIntent)operation.Intent).Definition;
-        var selectedIndexesBefore = IndexSignatures(await selected.ReadIndexesAsync(
-            cancellationToken: TestContext.Current.CancellationToken));
+        var selectedIndexesBefore = IndexSignatures(
+            await selected.ReadIndexesAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
 
-        var foreignIndexesBefore = IndexSignatures(await foreign.ReadIndexesAsync(
-            cancellationToken: TestContext.Current.CancellationToken));
+        var foreignIndexesBefore = IndexSignatures(
+            await foreign.ReadIndexesAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
 
         var selectedNodesBefore = await selected.ReadNodesAsync(
             cancellationToken: TestContext.Current.CancellationToken);
@@ -62,7 +68,9 @@ public sealed partial class SafeMigrationTests
                 CancellationToken.None);
 
         var exception = await Record.ExceptionAsync(() =>
-            SafeMigrationTestServices.ExecuteOperationsAsync(selectedContext, [operation],
+            SafeMigrationTestServices.ExecuteOperationsAsync(
+                selectedContext,
+                [operation],
                 cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
@@ -81,13 +89,26 @@ public sealed partial class SafeMigrationTests
 
         var databaseException = Assert.IsType<DbException>(runtimeException.InnerException, exactMatch: false);
         Assert.Contains("doka_sm_unsupported", databaseException.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(selectedIndexesBefore, IndexSignatures(await selected.ReadIndexesAsync(
-            cancellationToken: TestContext.Current.CancellationToken)));
-        Assert.Equal(foreignIndexesBefore, IndexSignatures(await foreign.ReadIndexesAsync(
-            cancellationToken: TestContext.Current.CancellationToken)));
-        Assert.Equal(selectedNodesBefore, await selected.ReadNodesAsync(
-            cancellationToken: TestContext.Current.CancellationToken));
-        Assert.Equal(foreignNodesBefore, await foreign.ReadNodesAsync(
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            selectedIndexesBefore,
+            IndexSignatures(
+                await selected.ReadIndexesAsync(
+                    cancellationToken: TestContext.Current.CancellationToken)));
+
+        Assert.Equal(
+            foreignIndexesBefore,
+            IndexSignatures(
+                await foreign.ReadIndexesAsync(
+                    cancellationToken: TestContext.Current.CancellationToken)));
+
+        Assert.Equal(
+            selectedNodesBefore,
+            await selected.ReadNodesAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal(
+            foreignNodesBefore,
+            await foreign.ReadNodesAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
     }
 }

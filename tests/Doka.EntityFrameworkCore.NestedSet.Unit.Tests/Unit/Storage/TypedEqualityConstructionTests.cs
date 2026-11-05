@@ -52,7 +52,9 @@ public sealed class TypedEqualityConstructionTests(
         else
         {
             var call = Assert.IsAssignableFrom<MethodCallExpression>(actual);
-            Assert.Equal(Assert.IsAssignableFrom<MethodCallExpression>(expected).Method,
+            Assert.Equal(
+                Assert.IsAssignableFrom<MethodCallExpression>(expected)
+                    .Method,
                 call.Method);
         }
     }
@@ -120,7 +122,9 @@ public sealed class TypedEqualityConstructionTests(
     )
     {
         // Arrange
-        var prepared = nullable ? Native<OperatorProbe?>() : Native<OperatorProbe>();
+        var prepared = nullable
+            ? Native<OperatorProbe?>()
+            : Native<OperatorProbe>();
 
         // Act
         var actual = prepared.Current();
@@ -166,7 +170,8 @@ public sealed class TypedEqualityConstructionTests(
         var allocated = QueryConstructionAllocation.MeasurePaired(prepared.Reference, prepared.Current);
 
         // Assert
-        output.WriteLine($"Equality shape={shape}; reference={allocated.Baseline} B/op; "
+        output.WriteLine(
+            $"Equality shape={shape}; reference={allocated.Baseline} B/op; "
             + $"cached={allocated.Expanded} B/op.");
 
         // WHY: Native nodes remain necessary. Optimized cases must also reject restoration of operator/overload
@@ -219,14 +224,16 @@ public sealed class TypedEqualityConstructionTests(
         Expression right
     )
     {
-        var equals = typeof(T).GetMethod(nameof(object.Equals),
+        var equals = typeof(T).GetMethod(
+            nameof(object.Equals),
             BindingFlags.Public | BindingFlags.Instance | BindingFlags.ExactBinding,
             binder: null,
             types: [typeof(T)],
             modifiers: null);
 
         Func<Expression> reference = equals is null
-            ? () => Expression.Call(typeof(object),
+            ? () => Expression.Call(
+                typeof(object),
                 nameof(object.Equals),
                 [],
                 Expression.Convert(left, typeof(object)),
@@ -243,17 +250,35 @@ public sealed class TypedEqualityConstructionTests(
         int right
     ) => shape switch
     {
-        "NullableGuid" => NativeValues<Guid?>(GuidValue(left), GuidValue(right)),
-        "NullableInt" => NativeValues<int?>(left == 0 ? null : left, right == 0 ? null : right),
+        "NullableGuid" => NativeValues(GuidValue(left), GuidValue(right)),
+        "NullableInt" => NativeValues<int?>(
+            left == 0
+                ? null
+                : left,
+            right == 0
+                ? null
+                : right),
         "String" => NativeValues<string?>(
-            left == 0 ? null : left.ToString(CultureInfo.InvariantCulture),
-            right == 0 ? null : right.ToString(CultureInfo.InvariantCulture)),
+            left == 0
+                ? null
+                : left.ToString(CultureInfo.InvariantCulture),
+            right == 0
+                ? null
+                : right.ToString(CultureInfo.InvariantCulture)),
         "NullableTyped" => OperatorFreeValues<TypedIdentity?>(
-            left == 0 ? null : new TypedIdentity(IdentityValue(left)),
-            right == 0 ? null : new TypedIdentity(IdentityValue(right))),
+            left == 0
+                ? null
+                : new TypedIdentity(IdentityValue(left)),
+            right == 0
+                ? null
+                : new TypedIdentity(IdentityValue(right))),
         "NullableObject" => OperatorFreeValues<ObjectIdentity?>(
-            left == 0 ? null : new ObjectIdentity(IdentityValue(left)),
-            right == 0 ? null : new ObjectIdentity(IdentityValue(right))),
+            left == 0
+                ? null
+                : new ObjectIdentity(IdentityValue(left)),
+            right == 0
+                ? null
+                : new ObjectIdentity(IdentityValue(right))),
         _ => throw new ArgumentOutOfRangeException(nameof(shape)),
     };
 
@@ -280,7 +305,9 @@ public sealed class TypedEqualityConstructionTests(
     /// <summary>Selects stable Guid values while retaining an explicit null case.</summary>
     private static Guid? GuidValue(
         int kind
-    ) => kind == 0 ? null : new Guid(kind, 0, 0, new byte[8]);
+    ) => kind == 0
+        ? null
+        : new Guid(kind, 0, 0, new byte[8]);
 
     /// <summary>Includes an unequal model value sharing the custom identity's normalized equality value.</summary>
     private static int IdentityValue(
@@ -343,18 +370,22 @@ public sealed class TypedEqualityConstructionTests(
         private int Value { get; } = value;
 
         /// <summary>Rejects executing operator equality while its expression node is being built.</summary>
-        public static bool operator ==(
+        public static bool operator==(
             OperatorProbe left,
             OperatorProbe right
         )
-            => throw new InvalidOperationException("Construction must not invoke CLR equality.");
+        {
+            throw new InvalidOperationException("Construction must not invoke CLR equality.");
+        }
 
         /// <summary>Rejects executing operator inequality while its expression node is being built.</summary>
-        public static bool operator !=(
+        public static bool operator!=(
             OperatorProbe left,
             OperatorProbe right
         )
-            => throw new InvalidOperationException("Construction must not invoke CLR inequality.");
+        {
+            throw new InvalidOperationException("Construction must not invoke CLR inequality.");
+        }
 
         /// <inheritdoc />
         public override bool Equals(

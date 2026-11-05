@@ -10,6 +10,15 @@ public sealed class RowVersionFixture : IAsyncLifetime
     /// <inheritdoc />
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        if (_database is not null)
+        {
+            await _database.DisposeAsync();
+        }
+    }
+
     /// <summary>Returns an empty context against fixture-owned tables.</summary>
     /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
     /// <param name="readCommittedSnapshot">Whether SQL Server read-committed snapshot isolation is enabled.</param>
@@ -24,7 +33,9 @@ public sealed class RowVersionFixture : IAsyncLifetime
 
         // WHY: Locking must protect structural reads under both locking read committed and database-level RCSI.
         var isolationSql = "ALTER DATABASE CURRENT SET READ_COMMITTED_SNAPSHOT "
-            + (readCommittedSnapshot ? "ON" : "OFF")
+            + (readCommittedSnapshot
+                ? "ON"
+                : "OFF")
             + " WITH ROLLBACK IMMEDIATE";
 
         await source.Database.ExecuteSqlRawAsync(isolationSql, cancellationToken);
@@ -51,14 +62,5 @@ public sealed class RowVersionFixture : IAsyncLifetime
         await context.ClearNestedSetTreeRegistriesAsync(cancellationToken);
 
         return context;
-    }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        if (_database is not null)
-        {
-            await _database.DisposeAsync();
-        }
     }
 }

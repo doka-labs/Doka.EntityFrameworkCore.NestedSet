@@ -93,14 +93,38 @@ internal static class SupervisorOutput
             .UserGroupMemberships
             .Join(
                 tree.Nodes,
-                membership => new { membership.TenantId, Id = membership.UserId },
-                user => new { user.TenantId, user.Id },
-                (membership, user) => new { membership, user })
+                membership => new
+                {
+                    membership.TenantId,
+                    Id = membership.UserId,
+                },
+                user => new
+                {
+                    user.TenantId,
+                    user.Id,
+                },
+                (membership, user) => new
+                {
+                    membership,
+                    user,
+                })
             .Join(
                 context.Groups,
-                pair => new { pair.membership.TenantId, Id = pair.membership.UserGroupId },
-                membershipGroup => new { membershipGroup.TenantId, membershipGroup.Id },
-                (pair, membershipGroup) => new { pair.membership, membershipGroup })
+                pair => new
+                {
+                    pair.membership.TenantId,
+                    Id = pair.membership.UserGroupId,
+                },
+                membershipGroup => new
+                {
+                    membershipGroup.TenantId,
+                    membershipGroup.Id,
+                },
+                (pair, membershipGroup) => new
+                {
+                    pair.membership,
+                    membershipGroup,
+                })
             .OrderBy(row => row.membershipGroup.Name)
             .ThenBy(row => row.membershipGroup.Id)
             .Select(row => new
@@ -120,7 +144,10 @@ internal static class SupervisorOutput
         foreach (var user in users)
         {
             var groupNames = groupsByUser[user.Id];
-            var groupLabel = groupsByUser.Contains(user.Id) ? string.Join(", ", groupNames) : "none";
+            var groupLabel = groupsByUser.Contains(user.Id)
+                ? string.Join(", ", groupNames)
+                : "none";
+
             var line = new string(' ', user.Depth * 2) + $"{user.Name} - {user.Position} (groups: {groupLabel})";
 
             if (details)

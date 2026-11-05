@@ -23,7 +23,11 @@ public abstract class DatabaseLifecycleTests : ProviderTest
         // Assert
         Assert.NotNull(expected);
         Assert.Same(expected, actual);
-        Assert.NotEqual(typeof(TestDatabaseServers).Assembly, GetType().Assembly);
+        Assert.NotEqual(
+            typeof(TestDatabaseServers).Assembly,
+            GetType()
+                .Assembly);
+
         Assert.True(ProviderEngineOwnership.Includes(Engine));
     }
 
@@ -33,7 +37,9 @@ public abstract class DatabaseLifecycleTests : ProviderTest
     public async Task AssemblyFixtureRejectsForeignServer()
     {
         // Arrange
-        var foreignEngine = Engine is "MySql" or "MariaDb" ? "PostgreSql" : "MySql";
+        var foreignEngine = Engine is "MySql" or "MariaDb"
+            ? "PostgreSql"
+            : "MySql";
 
         var fixture = await TestDatabaseServers.GetCurrentAsync(TestContext.Current.CancellationToken);
 
@@ -156,14 +162,19 @@ public abstract class DatabaseLifecycleTests : ProviderTest
         var resource = new ServerResource();
         await using var fixture = new TestDatabaseServers((_, _) => startup.Task);
         var acquisition = fixture.NewConnectionStringAsync(Engine, cancellation.Token);
-        var cleanup = fixture.DisposeAsync().AsTask();
+        var cleanup = fixture
+            .DisposeAsync()
+            .AsTask();
+
         var completedBeforeStartup = cleanup.IsCompleted;
 
         // Act
         await cancellation.CancelAsync();
-        startup.SetResult(new TestDatabaseServers.Server(
-            resource,
-            "Server=localhost;Database=nestedset;User ID=test;Password=test"));
+        startup.SetResult(
+            new TestDatabaseServers.Server(
+                resource,
+                "Server=localhost;Database=nestedset;User ID=test;Password=test"));
+
         var failure = await Record.ExceptionAsync(() => acquisition);
         await cleanup;
 
@@ -204,11 +215,17 @@ public abstract class DatabaseLifecycleTests : ProviderTest
 
         // Assert
         Assert.Equal(
-            firstContext.Database.GetDbConnection().DataSource,
-            secondContext.Database.GetDbConnection().DataSource);
+            firstContext.Database.GetDbConnection()
+                .DataSource,
+            secondContext.Database.GetDbConnection()
+                .DataSource);
+
         Assert.NotEqual(
-            firstContext.Database.GetDbConnection().Database,
-            secondContext.Database.GetDbConnection().Database);
+            firstContext.Database.GetDbConnection()
+                .Database,
+            secondContext.Database.GetDbConnection()
+                .Database);
+
         Assert.Equal(0, secondCount);
     }
 

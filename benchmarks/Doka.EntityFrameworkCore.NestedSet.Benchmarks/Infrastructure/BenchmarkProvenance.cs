@@ -74,6 +74,7 @@ public static class BenchmarkProvenance
                     report.BenchmarkCase.Job.Id,
                     Runtime = report.BenchmarkCase.Job.Environment.Runtime?.Name
                         ?? RuntimeInformation.FrameworkDescription,
+
                     // WHY: BDN resolves an unset toolchain internally. Null preserves that configured/default
                     // distinction without inventing an effective toolchain that its public API does not expose.
                     Toolchain = report.BenchmarkCase.Job.Infrastructure.Toolchain?.Name,
@@ -100,7 +101,9 @@ public static class BenchmarkProvenance
         var provenance = new
         {
             SchemaVersion = 1,
-            Mode = options.Diagnostics ? "diagnostics" : "benchmark",
+            Mode = options.Diagnostics
+                ? "diagnostics"
+                : "benchmark",
             Outcome = outcome,
             CreatedAtUtc = runStartedAtUtc,
             CapturedAtUtc = DateTimeOffset.UtcNow,
@@ -129,7 +132,8 @@ public static class BenchmarkProvenance
                 Environment.ProcessorCount,
                 Cpu = cpu,
                 GCSettings.IsServerGC,
-                AvailableMemoryBytes = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes,
+                AvailableMemoryBytes = GC.GetGCMemoryInfo()
+                    .TotalAvailableMemoryBytes,
             },
             Database = environment is null
                 ? null
@@ -139,7 +143,9 @@ public static class BenchmarkProvenance
                     environment.CreatedAtUtc,
                     environment.ServerVersion,
                     environment.Image,
-                    ContainerCpuLimit = environment.Image is null ? (int?)null : BenchmarkEnvironment.CpuLimit,
+                    ContainerCpuLimit = environment.Image is null
+                        ? (int?)null
+                        : BenchmarkEnvironment.CpuLimit,
                     ContainerMemoryLimitBytes = environment.Image is null
                         ? (long?)null
                         : BenchmarkEnvironment.MemoryLimitBytes,
@@ -234,7 +240,7 @@ public static class BenchmarkProvenance
                 "--others",
                 "--exclude-standard",
                 "-z",
-                .. pathspecs
+                .. pathspecs,
             ],
             repository,
             cancellationToken);
@@ -249,10 +255,10 @@ public static class BenchmarkProvenance
         using var fingerprint = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
 
         foreach (var relativePath in inventory
-                     .Output
-                     .Split('\0', StringSplitOptions.RemoveEmptyEntries)
-                     .Distinct(StringComparer.Ordinal)
-                     .Order(StringComparer.Ordinal))
+            .Output
+            .Split('\0', StringSplitOptions.RemoveEmptyEntries)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal))
         {
             cancellationToken.ThrowIfCancellationRequested();
             fingerprint.AppendData(Encoding.UTF8.GetBytes(relativePath + "\0"));
@@ -333,7 +339,9 @@ public static class BenchmarkProvenance
                 Directory.GetCurrentDirectory(),
                 cancellationToken);
 
-            return cpu.ExitCode == 0 ? cpu.Output.Trim() : RuntimeInformation.ProcessArchitecture.ToString();
+            return cpu.ExitCode == 0
+                ? cpu.Output.Trim()
+                : RuntimeInformation.ProcessArchitecture.ToString();
         }
 
         if (OperatingSystem.IsLinux())

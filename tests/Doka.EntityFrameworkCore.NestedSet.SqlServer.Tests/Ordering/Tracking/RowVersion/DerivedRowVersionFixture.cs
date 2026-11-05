@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.SqlServer;
@@ -10,12 +11,21 @@ public sealed class DerivedRowVersionFixture : IAsyncLifetime
     /// <inheritdoc />
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        if (_database is not null)
+        {
+            await _database.DisposeAsync();
+        }
+    }
+
     /// <summary>Resets both hierarchy rows and reserved tree identities before one independent probe.</summary>
     /// <param name="interceptor">An optional scalar-refresh observation or failure probe.</param>
     /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
     public async Task<DerivedRowVersionContext> ResetAsync(
         CancellationToken cancellationToken,
-        Microsoft.EntityFrameworkCore.Diagnostics.DbCommandInterceptor? interceptor = null
+        DbCommandInterceptor? interceptor = null
     )
     {
         var initialize = _database is null;
@@ -34,21 +44,17 @@ public sealed class DerivedRowVersionFixture : IAsyncLifetime
 
         if (initialize)
         {
-            await context.GetService<IRelationalDatabaseCreator>().CreateTablesAsync(cancellationToken);
+            await context
+                .GetService<IRelationalDatabaseCreator>()
+                .CreateTablesAsync(cancellationToken);
         }
 
-        await context.Set<DerivedVersionBaseNode>().ExecuteDeleteAsync(cancellationToken);
+        await context
+            .Set<DerivedVersionBaseNode>()
+            .ExecuteDeleteAsync(cancellationToken);
+
         await context.ClearNestedSetTreeRegistriesAsync(cancellationToken);
 
         return context;
-    }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        if (_database is not null)
-        {
-            await _database.DisposeAsync();
-        }
     }
 }

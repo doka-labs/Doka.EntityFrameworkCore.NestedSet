@@ -24,14 +24,18 @@ public sealed partial class HierarchyChangeDetectionTests
         Assert.True(changed);
         Assert.Equal(EntityState.Unchanged, entry.State);
         Assert.Equal(owner.Id, node.OwnerId);
-        Assert.False(entry.Property(value => value.OwnerId).IsModified);
+        Assert.False(
+            entry.Property(value => value.OwnerId)
+                .IsModified);
+
         var foreignKey = entry.Metadata.FindNavigation(nameof(ProbeNode.Owner))!.ForeignKey;
 
         Assert.True(foreignKey.IsRequired);
         Assert.Equal(DeleteBehavior.Restrict, foreignKey.DeleteBehavior);
-        Assert.True(Assert
-            .Single(foreignKey.Properties)
-            .IsKey());
+        Assert.True(
+            Assert
+                .Single(foreignKey.Properties)
+                .IsKey());
     }
 
     /// <summary>Shared non-key ordering fields are excluded when EF severs only ordinary FK payload.</summary>
@@ -60,12 +64,19 @@ public sealed partial class HierarchyChangeDetectionTests
         Assert.Equal("Alpha", node.Name);
         Assert.Equal(owner.Id, node.OwnerId);
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.False(entry.Property(value => value.Name).IsModified);
-        Assert.False(entry.Property(value => value.OwnerId).IsModified);
+        Assert.False(
+            entry.Property(value => value.Name)
+                .IsModified);
+
+        Assert.False(
+            entry.Property(value => value.OwnerId)
+                .IsModified);
+
         var name = entry.Metadata.FindProperty(nameof(ProbeNode.Name))!;
 
         Assert.False(name.IsKey());
-        Assert.Equal(2,
+        Assert.Equal(
+            2,
             name
                 .GetContainingForeignKeys()
                 .Count());
@@ -99,11 +110,20 @@ public sealed partial class HierarchyChangeDetectionTests
         Assert.True(changed);
         Assert.Null(node.Owner);
         Assert.Equal(owner.Id, node.OwnerId);
-        Assert.Equal(owner.Id,
-            entry.Property(value => value.OwnerId).OriginalValue);
+        Assert.Equal(
+            owner.Id,
+            entry.Property(value => value.OwnerId)
+                .OriginalValue);
+
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.False(entry.Property(value => value.OwnerId).IsModified);
-        Assert.False(ownerEntry.Property(value => value.Payload).IsModified);
+        Assert.False(
+            entry.Property(value => value.OwnerId)
+                .IsModified);
+
+        Assert.False(
+            ownerEntry.Property(value => value.Payload)
+                .IsModified);
+
         var foreignKey = entry.Metadata.FindNavigation(nameof(ProbeNode.Owner))!.ForeignKey;
 
         Assert.True(foreignKey.IsRequired);
@@ -123,8 +143,11 @@ public sealed partial class HierarchyChangeDetectionTests
         await using var context = new UniqueRequiredCascadeOwnerContext();
         var owner = new ProbeOwner { Id = 9 };
         var victimOwner = new ProbeOwner { Id = 10 };
-        var replacement = occupied ? victimOwner : new ProbeOwner { Id = 11 };
-        var node = CreateNode(1);
+        var replacement = occupied
+            ? victimOwner
+            : new ProbeOwner { Id = 11 };
+
+        var node = CreateNode();
         node.OwnerId = owner.Id;
         node.Owner = owner;
         var victim = CreateNode(2);
@@ -146,8 +169,14 @@ public sealed partial class HierarchyChangeDetectionTests
         Assert.Equal(victimOwner.Id, victim.OwnerId);
         Assert.Equal(EntityState.Unchanged, entry.State);
         Assert.Equal(EntityState.Unchanged, victimEntry.State);
-        Assert.False(entry.Property(value => value.OwnerId).IsModified);
-        Assert.False(victimEntry.Property(value => value.OwnerId).IsModified);
+        Assert.False(
+            entry.Property(value => value.OwnerId)
+                .IsModified);
+
+        Assert.False(
+            victimEntry.Property(value => value.OwnerId)
+                .IsModified);
+
         var foreignKey = entry.Metadata.FindNavigation(nameof(ProbeNode.Owner))!.ForeignKey;
 
         Assert.True(foreignKey.IsUnique);
@@ -173,12 +202,21 @@ public sealed partial class HierarchyChangeDetectionTests
         // Assert
         Assert.True(changed);
         Assert.Equal(0, node.Scope);
-        Assert.Equal(0,
-            entry.Property(value => value.Scope).OriginalValue);
+        Assert.Equal(
+            0,
+            entry.Property(value => value.Scope)
+                .OriginalValue);
+
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.False(entry.Property(value => value.Scope).IsModified);
-        Assert.Equal(EntityState.Detached,
-            context.Entry(replacement).State);
+        Assert.False(
+            entry.Property(value => value.Scope)
+                .IsModified);
+
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(replacement)
+                .State);
+
         Assert.Single(context.ChangeTracker.Entries());
         var principalId = context.Model.FindEntityType(typeof(ProbeOwner))!.FindProperty(nameof(ProbeOwner.Id))!;
 
@@ -203,18 +241,28 @@ public sealed partial class HierarchyChangeDetectionTests
         // Assert
         Assert.True(changed);
         Assert.Equal(7, node.Scope);
-        Assert.Equal(7,
-            entry.Property(value => value.Scope).OriginalValue);
+        Assert.Equal(
+            7,
+            entry.Property(value => value.Scope)
+                .OriginalValue);
+
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.False(entry.Property(value => value.Scope).IsModified);
-        Assert.Equal(EntityState.Detached,
-            context.Entry(replacement).State);
+        Assert.False(
+            entry.Property(value => value.Scope)
+                .IsModified);
+
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(replacement)
+                .State);
+
         Assert.Single(context.ChangeTracker.Entries());
         var foreignKey = entry.Metadata.FindNavigation(nameof(ProbeNode.ScopeOwner))!.ForeignKey;
 
-        Assert.True(Assert
-            .Single(foreignKey.PrincipalKey.Properties)
-            .IsShadowProperty());
+        Assert.True(
+            Assert
+                .Single(foreignKey.PrincipalKey.Properties)
+                .IsShadowProperty());
     }
 
     /// <summary>Lets the real SQLite provider assign an inserted principal's zero-sentinel identity.</summary>
@@ -245,9 +293,11 @@ public sealed partial class HierarchyChangeDetectionTests
             modelBuilder
                 .Entity<ProbeOwner>()
                 .Property<int>("ShadowId");
+
             modelBuilder
                 .Entity<ProbeOwner>()
                 .HasAlternateKey("ShadowId");
+
             modelBuilder
                 .Entity<ProbeNode>()
                 .HasOne(value => value.ScopeOwner)
@@ -331,7 +381,9 @@ public sealed partial class HierarchyChangeDetectionTests
                     value.Payload,
                     value.Id,
                 });
+
             var node = modelBuilder.Entity<ProbeNode>();
+
             // WHY: Scoped Parent keys always contain Scope. Name is a guarded, non-key ordering criterion,
             // so this fixture isolates minimal-overlap selection without hiding it behind IsKey checks.
             node

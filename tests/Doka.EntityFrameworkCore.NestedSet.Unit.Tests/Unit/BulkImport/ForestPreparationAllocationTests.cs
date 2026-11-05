@@ -65,7 +65,7 @@ public sealed class ForestPreparationAllocationTests
         var planAllocated = GC.GetAllocatedBytesForCurrentThread() - beforePlan;
 
         // WHY: Allow one reference per input plus fixed orchestration costs; duplicate identity indexes exceed it.
-        var maximumOverhead = (NodeCount * (long)IntPtr.Size) + (64 * 1024);
+        var maximumOverhead = NodeCount * (long)IntPtr.Size + 64 * 1024;
         boundary.Start();
 
         // Act

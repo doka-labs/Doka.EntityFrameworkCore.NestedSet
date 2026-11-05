@@ -9,7 +9,9 @@ public abstract partial class UnicodeIdentityTestBase
     [Theory]
     [InlineData(2)]
     [InlineData(256)]
-    public async Task SupplementaryRowsetsReserveEveryDistinctIdentity(int count)
+    public async Task SupplementaryRowsetsReserveEveryDistinctIdentity(
+        int count
+    )
     {
         // Arrange
         var probe = new UnicodeIdentityCommandProbe();
@@ -20,6 +22,7 @@ public abstract partial class UnicodeIdentityTestBase
             probe);
 
         var entity = context.Model.FindEntityType(typeof(UnicodeIdentityNode<string>))!;
+
         // WHY: A case-owned Scope prevents the two transport variants from ever sharing lifecycle rows, even
         // when this fixture retains their tables for the full provider suite.
         var scope = Interlocked
@@ -42,6 +45,7 @@ public abstract partial class UnicodeIdentityTestBase
 
         var registry = NestedSetTreeRegistryMapping.For(entity)
             .Registry;
+
         probe.Reset();
 
         // Act
@@ -70,9 +74,22 @@ public abstract partial class UnicodeIdentityTestBase
             .ToArrayAsync(CancellationToken.None);
 
         Assert.Equal(expected, actual.Order(StringComparer.Ordinal));
-        Assert.All(expected, value => Assert.Equal(12, value.EnumerateRunes().Count()));
-        Assert.Equal(count == 256 ? 2 : 0, jsonCommands);
-        _output.WriteLine($"Engine={Engine}; rowset={count}; exactReservedIdentities={expected.Length}; "
+        Assert.All(
+            expected,
+            value => Assert.Equal(
+                12,
+                value
+                    .EnumerateRunes()
+                    .Count()));
+
+        Assert.Equal(
+            count == 256
+                ? 2
+                : 0,
+            jsonCommands);
+
+        _output.WriteLine(
+            $"Engine={Engine}; rowset={count}; exactReservedIdentities={expected.Length}; "
             + $"scopeCharacters=12; scopeUtf16Units={scope.Length}; scopeOctets=24; commands={commandCount}; "
             + $"jsonRowsetCommands={jsonCommands}.");
     }
@@ -84,7 +101,9 @@ public abstract partial class UnicodeIdentityTestBase
     [Theory]
     [InlineData(2)]
     [InlineData(256)]
-    public async Task SupplementaryRowsetsRejectEqualIdentities(int count)
+    public async Task SupplementaryRowsetsRejectEqualIdentities(
+        int count
+    )
     {
         // Arrange
         var probe = new UnicodeIdentityCommandProbe();
@@ -113,7 +132,9 @@ public abstract partial class UnicodeIdentityTestBase
             .Cast<INestedSetTreeLockRequest>()
             .ToArray();
 
-        var before = await RegistryCountAsync(context, entity,
+        var before = await RegistryCountAsync(
+            context,
+            entity,
             cancellationToken: TestContext.Current.CancellationToken);
 
         probe.Reset();
@@ -125,10 +146,23 @@ public abstract partial class UnicodeIdentityTestBase
             CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidImport, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidImport,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Equal(1, probe.CommandCount);
-        Assert.Equal(count == 256 ? 1 : 0, probe.JsonRowsetCommands);
-        Assert.Equal(before, await RegistryCountAsync(context, entity,
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            count == 256
+                ? 1
+                : 0,
+            probe.JsonRowsetCommands);
+
+        Assert.Equal(
+            before,
+            await RegistryCountAsync(
+                context,
+                entity,
+                cancellationToken: TestContext.Current.CancellationToken));
     }
 }

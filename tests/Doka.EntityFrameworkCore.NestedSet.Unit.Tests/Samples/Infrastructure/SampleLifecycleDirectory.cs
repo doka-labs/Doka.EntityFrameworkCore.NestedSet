@@ -11,6 +11,19 @@ internal sealed class SampleLifecycleDirectory : IAsyncDisposable
             .NewGuid()
             .ToString("N"));
 
+    /// <summary>Removes only this test's directory after all context-owned file handles have been released.</summary>
+    /// <returns>A completed value task after the fixture-owned files have been removed.</returns>
+    public ValueTask DisposeAsync()
+    {
+        if (Directory.Exists(DirectoryPath))
+        {
+            // WHY: Directory deletion has no async API; this test owner never points at user-supplied storage.
+            Directory.Delete(DirectoryPath, recursive: true);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
     /// <summary>Resolves the chosen sample's fixed filename inside this test-owned directory.</summary>
     /// <param name="sample">The known sample whose database belongs to this test.</param>
     /// <returns>The shared configuration with an explicit isolated directory.</returns>
@@ -30,7 +43,8 @@ internal sealed class SampleLifecycleDirectory : IAsyncDisposable
         var options = configuration.CreateOptions<SampleLifecycleContext>(readOnly);
         var context = new SampleLifecycleContext(options);
         var connection = new SqliteConnectionStringBuilder(
-            context.Database.GetDbConnection().ConnectionString)
+            context.Database.GetDbConnection()
+                .ConnectionString)
         {
             Pooling = false,
         };
@@ -53,7 +67,8 @@ internal sealed class SampleLifecycleDirectory : IAsyncDisposable
     )
     {
         var connection = new SqliteConnectionStringBuilder(
-            context.Database.GetDbConnection().ConnectionString);
+            context.Database.GetDbConnection()
+                .ConnectionString);
 
         // WHY: Directory creation has no async API and is limited to this test's unique database parent.
         Directory.CreateDirectory(Path.GetDirectoryName(connection.DataSource)!);
@@ -66,18 +81,5 @@ internal sealed class SampleLifecycleDirectory : IAsyncDisposable
             });
 
         await context.SaveChangesAsync(cancellationToken);
-    }
-
-    /// <summary>Removes only this test's directory after all context-owned file handles have been released.</summary>
-    /// <returns>A completed value task after the fixture-owned files have been removed.</returns>
-    public ValueTask DisposeAsync()
-    {
-        if (Directory.Exists(DirectoryPath))
-        {
-            // WHY: Directory deletion has no async API; this test owner never points at user-supplied storage.
-            Directory.Delete(DirectoryPath, recursive: true);
-        }
-
-        return ValueTask.CompletedTask;
     }
 }

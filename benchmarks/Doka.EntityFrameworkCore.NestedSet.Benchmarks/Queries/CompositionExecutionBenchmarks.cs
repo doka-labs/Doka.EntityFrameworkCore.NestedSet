@@ -2,6 +2,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks;
 
 /// <summary>Measures prepared relational execution separately from construction and fixture seeding.</summary>
 /// <remarks>Native iterations and allocations are observational; no timing threshold becomes a gate.</remarks>
+
 // WHY: BenchmarkDotNet generates a derived execution type in its isolated child process.
 public class CompositionExecutionBenchmarks : DatabaseBenchmark
 {
@@ -23,7 +24,9 @@ public class CompositionExecutionBenchmarks : DatabaseBenchmark
 
     /// <summary>Prepares both equivalent query expressions after the ordinary isolated database seed.</summary>
     /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
-    public override async Task PrepareAsync(CancellationToken cancellationToken)
+    public override async Task PrepareAsync(
+        CancellationToken cancellationToken
+    )
     {
         await base.PrepareAsync(cancellationToken);
         _result = null;
@@ -55,7 +58,9 @@ public class CompositionExecutionBenchmarks : DatabaseBenchmark
 
     /// <summary>Checks the exact independent adjacency aggregate and tracker state outside measured work.</summary>
     /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
-    public override async Task VerifyAsync(CancellationToken cancellationToken)
+    public override async Task VerifyAsync(
+        CancellationToken cancellationToken
+    )
     {
         var firstAnchor = Math.Max(2, Fixture.LeafKey - Anchors + 2);
         var firstPayload = Math.Max(1, Fixture.LeafKey - PayloadRows + 1);

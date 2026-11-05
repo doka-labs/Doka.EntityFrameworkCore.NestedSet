@@ -36,6 +36,7 @@ public sealed partial class IndexConventionTests
                     entity
                         .Property(node => node.Parent)
                         .HasColumnName("Parent \" key");
+
                     entity
                         .Property(node => node.TreeId)
                         .HasColumnName("Tree \" identity");
@@ -50,7 +51,8 @@ public sealed partial class IndexConventionTests
             });
 
         // Act
-        var model = context.GetService<IDesignTimeModel>().Model;
+        var model = context.GetService<IDesignTimeModel>()
+            .Model;
 
         var entity = model.FindEntityType(typeof(IndexNode))!;
         var indexes = entity
@@ -74,13 +76,17 @@ public sealed partial class IndexConventionTests
         var roots = Assert.Single(indexes, index => index.GetFilter() == column + " IS NULL");
         Assert.Equal(column + " IS NOT NULL", dependent.GetFilter());
         Assert.Equal(
-            scoped ? [nameof(IndexNode.Scope), nameof(IndexNode.Parent)] : [nameof(IndexNode.Parent)],
+            scoped
+                ? [nameof(IndexNode.Scope), nameof(IndexNode.Parent)]
+                : [nameof(IndexNode.Parent)],
             dependent.Properties.Select(property => property.Name));
+
         Assert.Equal(
             scoped
                 ? [nameof(IndexNode.Scope), nameof(IndexNode.Key), nameof(IndexNode.Parent)]
                 : [nameof(IndexNode.Key), nameof(IndexNode.Parent)],
             roots.Properties.Select(property => property.Name));
+
         Assert.False(dependent.IsUnique);
         Assert.False(roots.IsUnique);
         Assert.Equal(5, indexes.Length);
@@ -95,6 +101,7 @@ public sealed partial class IndexConventionTests
         Assert.All(
             indexes.Where(index => index.Properties.Contains(tree)),
             index => Assert.Equal(treeFilter, index.GetFilter()));
+
         Assert.Equal(3, operations.Count(operation => operation.Filter == treeFilter));
     }
 
@@ -138,15 +145,16 @@ public sealed partial class IndexConventionTests
                             node.Key,
                         })
                         .OnDelete(DeleteBehavior.Restrict);
+
                     ((IConventionIndex)entity.Metadata.FindIndex(
-                        [
-                            entity
-                                .Property(node => node.Scope)
-                                .Metadata,
-                            entity
-                                .Property(node => node.Parent)
-                                .Metadata,
-                        ])!).SetFilter(null, true);
+                    [
+                        entity
+                            .Property(node => node.Scope)
+                            .Metadata,
+                        entity
+                            .Property(node => node.Parent)
+                            .Metadata,
+                    ])!).SetFilter(null, true);
 
                     return;
                 }
@@ -203,13 +211,24 @@ public sealed partial class IndexConventionTests
 
         // Assert
         var dependent = Assert.Single(indexes, index => index.Properties[^1].Name == nameof(IndexNode.Parent));
-        Assert.Equal(facet == "filter" ? "\"Parent\" > 0" : null, dependent.GetFilter());
-        Assert.Equal(facet == "named" ? "ApplicationParent" : null, dependent.Name);
+        Assert.Equal(
+            facet == "filter"
+                ? "\"Parent\" > 0"
+                : null,
+            dependent.GetFilter());
+
+        Assert.Equal(
+            facet == "named"
+                ? "ApplicationParent"
+                : null,
+            dependent.Name);
+
         Assert.Equal(facet == "unique", dependent.IsUnique);
         Assert.Equal(4, indexes.Length);
         Assert.DoesNotContain(
             indexes,
-            index => index.GetFilter()
+            index => index
+                    .GetFilter()
                     ?.EndsWith("IS NULL", StringComparison.Ordinal)
                 == true);
 
@@ -225,7 +244,11 @@ public sealed partial class IndexConventionTests
 
         if (facet is "descending" or "ascending")
         {
-            Assert.Equal(facet == "descending" ? [] : null, dependent.IsDescending);
+            Assert.Equal(
+                facet == "descending"
+                    ? []
+                    : null,
+                dependent.IsDescending);
         }
     }
 
@@ -243,6 +266,7 @@ public sealed partial class IndexConventionTests
                 entity
                     .Property(node => node.Parent)
                     .IsRequired();
+
                 entity
                     .HasOne<IndexNode>()
                     .WithMany()
@@ -282,10 +306,12 @@ public sealed partial class IndexConventionTests
             .FindEntityType(typeof(IndexNode))!;
 
         // Assert
-        Assert.Equal(4,
+        Assert.Equal(
+            4,
             entity
                 .GetIndexes()
                 .Count());
+
         Assert.All(entity.GetIndexes(), index => Assert.Null(index.GetFilter()));
     }
 
@@ -392,13 +418,35 @@ public sealed partial class IndexConventionTests
             .Single(index => index.GetDatabaseName() == "ApplicationTreeDatabaseName");
 
         // Assert
-        Assert.Equal(facet == "named" ? "ApplicationTree" : null, application.Name);
-        Assert.Equal(facet == "filter" ? "\"Left\" > 0" : null, application.GetFilter());
-        Assert.Equal(facet == "unique", application.IsUnique);
-        Assert.Equal(facet == "descending" ? [] : null, application.IsDescending);
-        Assert.Equal(facet == "method" ? "hash" : null, application["Npgsql:IndexMethod"]);
         Assert.Equal(
-            facet is "filter" or "unique" or "descending" or "method" ? 6 : 5,
+            facet == "named"
+                ? "ApplicationTree"
+                : null,
+            application.Name);
+
+        Assert.Equal(
+            facet == "filter"
+                ? "\"Left\" > 0"
+                : null,
+            application.GetFilter());
+
+        Assert.Equal(facet == "unique", application.IsUnique);
+        Assert.Equal(
+            facet == "descending"
+                ? []
+                : null,
+            application.IsDescending);
+
+        Assert.Equal(
+            facet == "method"
+                ? "hash"
+                : null,
+            application["Npgsql:IndexMethod"]);
+
+        Assert.Equal(
+            facet is "filter" or "unique" or "descending" or "method"
+                ? 6
+                : 5,
             entity
                 .GetIndexes()
                 .Count());
@@ -437,7 +485,8 @@ public sealed partial class IndexConventionTests
         Assert.Equal(originalName, application.GetDatabaseName());
         Assert.Null(application.GetFilter());
         Assert.Equal(originalName + "_1", rootName);
-        Assert.Equal(6,
+        Assert.Equal(
+            6,
             entity
                 .GetIndexes()
                 .Count());
@@ -452,10 +501,37 @@ public sealed partial class IndexConventionTests
         .Model
         .FindEntityType(type)!
         .GetIndexes()
-        .Single(index => index.GetFilter()
+        .Single(index => index
+                .GetFilter()
                 ?.EndsWith("IS NULL", StringComparison.Ordinal)
             == true)
         .GetDatabaseName()!;
+
+    /// <summary>Builds otherwise identical scoped and unscoped parent relationships.</summary>
+    private static EntityTypeBuilder<IndexNode> ConfigureParentIndexNode(
+        ModelBuilder model,
+        bool scoped
+    )
+    {
+        var entity = model.Entity<IndexNode>();
+        entity.HasKey(node => node.Key);
+        entity.HasNestedSet(builder =>
+        {
+            builder
+                .HasTreeId(node => node.TreeId)
+                .HasParent(node => node.Parent)
+                .HasBounds(node => node.Left, node => node.Right)
+                .HasDepth(node => node.Depth)
+                .HasPosition(node => node.Position);
+
+            if (scoped)
+            {
+                builder.HasScope(node => node.Scope);
+            }
+        });
+
+        return entity;
+    }
 
     /// <summary>Uses the same physical structure through an independently named CLR entity.</summary>
     private sealed class PhysicalAliasNode
@@ -483,31 +559,5 @@ public sealed partial class IndexConventionTests
 
         /// <summary>Gets or sets the sibling position.</summary>
         public long Position { get; set; }
-    }
-
-    /// <summary>Builds otherwise identical scoped and unscoped parent relationships.</summary>
-    private static EntityTypeBuilder<IndexNode> ConfigureParentIndexNode(
-        ModelBuilder model,
-        bool scoped
-    )
-    {
-        var entity = model.Entity<IndexNode>();
-        entity.HasKey(node => node.Key);
-        entity.HasNestedSet(builder =>
-        {
-            builder
-                .HasTreeId(node => node.TreeId)
-                .HasParent(node => node.Parent)
-                .HasBounds(node => node.Left, node => node.Right)
-                .HasDepth(node => node.Depth)
-                .HasPosition(node => node.Position);
-
-            if (scoped)
-            {
-                builder.HasScope(node => node.Scope);
-            }
-        });
-
-        return entity;
     }
 }

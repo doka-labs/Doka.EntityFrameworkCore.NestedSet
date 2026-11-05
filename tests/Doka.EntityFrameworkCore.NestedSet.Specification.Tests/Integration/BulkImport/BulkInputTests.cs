@@ -103,7 +103,11 @@ public abstract class BulkInputTests : ProviderTest
         var error = await Record.ExceptionAsync(() => tree.InsertForestAsync(trees, CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidImport, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidImport,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Empty(probe.Commands);
         Assert.All(inputs, node => Assert.Equal((17L, 18L, 9), (node.Start, node.End, node.Tree)));
         Assert.Empty(context.ChangeTracker.Entries());
@@ -126,13 +130,16 @@ public abstract class BulkInputTests : ProviderTest
 
         // Act
         var error = await Record.ExceptionAsync(() => tree.InsertForestAsync(
-            [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(entity)),],
+            [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(entity))],
             new CancellationToken(true)));
 
         // Assert
         Assert.IsAssignableFrom<OperationCanceledException>(error);
         Assert.Empty(probe.Commands);
-        Assert.Equal(EntityState.Detached, context.Entry(entity).State);
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(entity)
+                .State);
     }
 
     /// <summary>A save callback cannot move inserted entities into another scope before the import completes.</summary>
@@ -156,17 +163,22 @@ public abstract class BulkInputTests : ProviderTest
 
         // Act
         var error = await Record.ExceptionAsync(() => tree.InsertForestAsync(
-            [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(entity)),],
+            [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(entity))],
             CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidImport, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidImport,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Equal(17, entity.Tree);
         Assert.Empty(
             await context
                 .Set<TreeNode>()
                 .AsNoTracking()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -196,18 +208,30 @@ public abstract class BulkInputTests : ProviderTest
 
         // Act
         var error = await Record.ExceptionAsync(() => tree.InsertForestAsync(
-            [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(entity)),],
+            [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(entity))],
             CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidImport, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidImport,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Empty(
             await context
                 .Set<TreeNode>()
                 .AsNoTracking()
                 .ToArrayAsync(CancellationToken.None));
-        Assert.Equal(EntityState.Detached, context.Entry(entity).State);
-        Assert.Same(unexpected, Assert.Single(context.ChangeTracker.Entries()).Entity);
+
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(entity)
+                .State);
+
+        Assert.Same(
+            unexpected,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
     }
 
     /// <summary>
@@ -220,7 +244,9 @@ public abstract class BulkInputTests : ProviderTest
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         await using var transaction = await context.Database.BeginTransactionAsync(
-            Engine == "Sqlite" ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+            Engine == "Sqlite"
+                ? IsolationLevel.Serializable
+                : IsolationLevel.ReadCommitted,
             CancellationToken.None);
 
         var tree = context
@@ -233,7 +259,7 @@ public abstract class BulkInputTests : ProviderTest
 
         // Act
         await tree.InsertForestAsync(
-            [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, branch),],
+            [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, branch)],
             CancellationToken.None);
 
         await transaction.RollbackAsync(CancellationToken.None);
@@ -244,6 +270,7 @@ public abstract class BulkInputTests : ProviderTest
             await verification
                 .Set<TreeNode>()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -288,7 +315,11 @@ public abstract class BulkInputTests : ProviderTest
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
 
         // Assert
-        Assert.Equal(EntityState.Unchanged, context.Entry(tracked).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(tracked)
+                .State);
+
         Assert.Equal(2, persistedCount);
         Assert.True(validation.IsValid);
     }

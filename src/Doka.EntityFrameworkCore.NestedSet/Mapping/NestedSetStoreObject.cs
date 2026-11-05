@@ -60,7 +60,9 @@ internal static class NestedSetStoreObject
             .Take(2)
             .ToArray();
 
-        return candidates.Length == 1 ? candidates[0] : null;
+        return candidates.Length == 1
+            ? candidates[0]
+            : null;
     }
 
     /// <summary>Enumerates primary and split table fragments from the complete inheritance chain.</summary>

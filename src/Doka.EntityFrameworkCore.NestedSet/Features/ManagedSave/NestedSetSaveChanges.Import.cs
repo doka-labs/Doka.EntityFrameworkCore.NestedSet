@@ -19,9 +19,9 @@ internal static partial class NestedSetSaveChanges
     /// <summary>Restores an outer import without leaving a completed plan attached to a pooled context.</summary>
     private sealed class ImportInputScope : IDisposable
     {
-        private readonly SaveState _state;
         private readonly NestedSetImportInputs _inputs;
         private readonly NestedSetImportInputs? _previous;
+        private readonly SaveState _state;
         private bool _disposed;
 
         /// <summary>Installs one operation-scoped proof without changing the active batch write set.</summary>

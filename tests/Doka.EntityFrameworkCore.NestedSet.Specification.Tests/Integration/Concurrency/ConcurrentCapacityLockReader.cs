@@ -7,11 +7,11 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Observes the first successfully read locked row while preserving provider reads and disposal.</summary>
 internal sealed class ConcurrentCapacityLockReader : DbDataReader
 {
-    private readonly DbDataReader _inner;
     private readonly Action _acquired;
     private readonly Func<CancellationToken, Task>? _afterReadAsync;
-    private bool _observed;
+    private readonly DbDataReader _inner;
     private bool _disposeStarted;
+    private bool _observed;
 
     /// <summary>Wraps one registry reader with lock observation and an optional asynchronous writer barrier.</summary>
     internal ConcurrentCapacityLockReader(
@@ -303,7 +303,9 @@ internal sealed class ConcurrentCapacityLockReader : DbDataReader
     }
 
     /// <inheritdoc />
-    public override Task CloseAsync() => _disposeStarted ? Task.CompletedTask : _inner.CloseAsync();
+    public override Task CloseAsync() => _disposeStarted
+        ? Task.CompletedTask
+        : _inner.CloseAsync();
 
     /// <inheritdoc />
     protected override void Dispose(

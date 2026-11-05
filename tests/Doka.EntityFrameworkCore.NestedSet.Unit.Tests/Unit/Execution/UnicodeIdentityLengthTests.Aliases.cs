@@ -21,29 +21,44 @@ public sealed partial class UnicodeIdentityLengthTests
         using var context = new BpcharContext();
         var entityType = context.Model.FindEntityType(typeof(BpcharNode))!;
         var input = "\U0001f600\U0001f601\U0001f602\U0001f603\U0001f604\U0001f605\U0001f606\U0001f607"
-            + (overflow ? "x" : string.Empty);
+            + (overflow
+                ? "x"
+                : string.Empty);
 
         NestedSetTreeLockRequest<string, string>? request = null;
 
         // Act
         var error = Record.Exception(() => request = new NestedSetTreeLockRequest<string, string>(
             entityType,
-            scopeRole ? input : "scope",
-            scopeRole ? "tree" : input,
+            scopeRole
+                ? input
+                : "scope",
+            scopeRole
+                ? "tree"
+                : input,
             NestedSetTreeLockMode.Existing));
 
         // Assert
         if (overflow)
         {
-            Assert.Equal(scopeRole ? "Scope" : "TreeId",
-                Assert.IsType<ArgumentException>(error).ParamName);
+            Assert.Equal(
+                scopeRole
+                    ? "Scope"
+                    : "TreeId",
+                Assert.IsType<ArgumentException>(error)
+                    .ParamName);
+
             Assert.Null(request);
         }
         else
         {
             Assert.Null(error);
             Assert.NotNull(request);
-            Assert.Same(input, scopeRole ? request.Scope : request.TreeId);
+            Assert.Same(
+                input,
+                scopeRole
+                    ? request.Scope
+                    : request.TreeId);
         }
 
         AssertNoDatabaseAccess(context);
@@ -61,7 +76,11 @@ public sealed partial class UnicodeIdentityLengthTests
         // Arrange
         using var context = new BpcharContext();
         var entityType = context.Model.FindEntityType(typeof(BpcharNode))!;
-        var mapping = entityType.FindProperty(scopeRole ? "Scope" : "TreeId")!.GetRelationalTypeMapping();
+        var mapping = entityType.FindProperty(
+            scopeRole
+                ? "Scope"
+                : "TreeId")!.GetRelationalTypeMapping();
+
         var clone = mapping.WithStoreTypeAndSize(mapping.StoreType, mapping.Size);
 
         // Act
@@ -74,10 +93,18 @@ public sealed partial class UnicodeIdentityLengthTests
         Assert.Equal("bpchar", clone.StoreTypeNameBase);
         Assert.Equal(
             "Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.Mapping.NpgsqlStringTypeMapping",
-            clone.GetType().FullName);
+            clone.GetType()
+                .FullName);
+
         Assert.Equal(mapping.GetType(), clone.GetType());
-        Assert.True(NestedSetTreeRegistryMapping.For(entityType).ScopeUsesUnicodeScalarLength);
-        Assert.True(NestedSetTreeRegistryMapping.For(entityType).TreeIdUsesUnicodeScalarLength);
+        Assert.True(
+            NestedSetTreeRegistryMapping.For(entityType)
+                .ScopeUsesUnicodeScalarLength);
+
+        Assert.True(
+            NestedSetTreeRegistryMapping.For(entityType)
+                .TreeIdUsesUnicodeScalarLength);
+
         AssertNoDatabaseAccess(context);
     }
 
@@ -102,14 +129,17 @@ public sealed partial class UnicodeIdentityLengthTests
             entity
                 .Property(node => node.Id)
                 .ValueGeneratedNever();
+
             entity
                 .Property(node => node.Scope)
                 .HasColumnType("bpchar(8)")
                 .HasMaxLength(8);
+
             entity
                 .Property(node => node.TreeId)
                 .HasColumnType("bpchar(8)")
                 .HasMaxLength(8);
+
             entity.HasNestedSet(node => node
                 .HasScope(value => value.Scope)
                 .HasParent(value => value.ParentId));
@@ -119,17 +149,17 @@ public sealed partial class UnicodeIdentityLengthTests
     /// <summary>Provides explicit character identities while retaining ordinary integer parent links.</summary>
     private sealed class BpcharNode : INestedSetNode<int, string>
     {
-        /// <inheritdoc />
-        public int Id { get; set; }
-
         /// <summary>Gets or sets the bounded Scope partition.</summary>
         public string Scope { get; set; } = string.Empty;
 
-        /// <inheritdoc />
-        public string TreeId { get; set; } = string.Empty;
-
         /// <summary>Gets or sets the optional direct parent key.</summary>
         public int? ParentId { get; set; }
+
+        /// <inheritdoc />
+        public int Id { get; set; }
+
+        /// <inheritdoc />
+        public string TreeId { get; set; } = string.Empty;
 
         /// <inheritdoc />
         public long Left { get; set; }

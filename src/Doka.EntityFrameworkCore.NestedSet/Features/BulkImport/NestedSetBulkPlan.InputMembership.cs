@@ -7,8 +7,8 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     where TScope : notnull
 {
     private static readonly ConditionalWeakTable<IProperty, MemberInfo> s_principalMembers = new();
-    private NestedSetParent<TKey> _destinationParent;
     private int _destinationDepth;
+    private NestedSetParent<TKey> _destinationParent;
     private bool _hasDestination;
 
     /// <summary>Shares one lazy exact-reference index across every wave and tree of a validated import.</summary>
@@ -58,7 +58,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
             // ReSharper disable once PossibleMultipleEnumeration
             inputs ??= IndexInputs(plans);
 
-            return inputs.TryGetValue(entity, out var input) ? input.Plan.InputMapping(input.Node) : null;
+            return inputs.TryGetValue(entity, out var input)
+                ? input.Plan.InputMapping(input.Node)
+                : null;
         }
     }
 
@@ -139,10 +141,10 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
                 }
             }
             else if (!TryInputValue(node, entry, property, out var value)
-                     || value is null
-                     || !key
-                         .GetKeyValueComparer()
-                         .Equals(value, principal.GetCurrentValue(key)))
+                || value is null
+                || !key
+                    .GetKeyValueComparer()
+                    .Equals(value, principal.GetCurrentValue(key)))
             {
                 return false;
             }
@@ -179,7 +181,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         {
             var current = entry.GetCurrentValue<TValue>(property);
 
-            return expected is null ? current is null : current is not null && comparer.Equals(current, expected);
+            return expected is null
+                ? current is null
+                : current is not null && comparer.Equals(current, expected);
         }
 
         return property

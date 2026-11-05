@@ -24,15 +24,26 @@ public sealed partial class EngineTestDiscoveryTests
 
         // Assert
         Assert.Equal(expectedCount, rows.Count);
-        Assert.Contains(rows,
-            row => Equals(row.GetData()[0],
+        Assert.Contains(
+            rows,
+            row => Equals(
+                row
+                    .GetData()[0],
                 43));
+
         Assert.Equal(method.Method.ReflectedType, attribute.MemberType);
-        Assert.Equal(engine != "Sqlite",
-            rows.Any(row => Equals(row.GetData()[0],
+        Assert.Equal(
+            engine != "Sqlite",
+            rows.Any(row => Equals(
+                row
+                    .GetData()[0],
                 17)));
-        Assert.Equal(engine != "PostgreSql",
-            rows.Any(row => Equals(row.GetData()[0],
+
+        Assert.Equal(
+            engine != "PostgreSql",
+            rows.Any(row => Equals(
+                row
+                    .GetData()[0],
                 29)));
     }
 
@@ -54,7 +65,8 @@ public sealed partial class EngineTestDiscoveryTests
 
         // Assert
         Assert.Equal(typeof(ExplicitDataSource), attribute.MemberType);
-        Assert.Equal<object?>([53],
+        Assert.Equal<object?>(
+            [53],
             Assert
                 .Single(rows)
                 .GetData());
@@ -70,7 +82,9 @@ public sealed partial class EngineTestDiscoveryTests
         await using var tracker = new DisposalTracker();
 
         // Act
-        var rows = await attribute.GetSourceData(method.Method, tracker,
+        var rows = await attribute.GetSourceData(
+            method.Method,
+            tracker,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -97,7 +111,9 @@ public sealed partial class EngineTestDiscoveryTests
         await using var tracker = new DisposalTracker();
 
         // Act
-        var rows = await attribute.GetSourceData(method.Method, tracker,
+        var rows = await attribute.GetSourceData(
+            method.Method,
+            tracker,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -130,7 +146,10 @@ public sealed partial class EngineTestDiscoveryTests
     {
         // Arrange
         DiscoveryProbe.SourceCalls = 0;
-        var name = delayedSource ? nameof(DiscoveryProbe.DelayedMember) : nameof(DiscoveryProbe.CountedMember);
+        var name = delayedSource
+            ? nameof(DiscoveryProbe.DelayedMember)
+            : nameof(DiscoveryProbe.CountedMember);
+
         var method = CreateTestMethod("MySql", name);
         var options = CreateDiscoveryOptions(preEnumerate);
         var attribute = Assert.Single(method.FactAttributes);
@@ -140,7 +159,11 @@ public sealed partial class EngineTestDiscoveryTests
 
         // Assert
         Assert.Equal(expectedCalls, DiscoveryProbe.SourceCalls);
-        Assert.Equal(expectedCalls == 1 ? 2 : 1, cases.Count);
+        Assert.Equal(
+            expectedCalls == 1
+                ? 2
+                : 1,
+            cases.Count);
 
         if (expectedCalls == 0)
         {
@@ -179,7 +202,10 @@ public sealed partial class EngineTestDiscoveryTests
     )
     {
         // Arrange
-        var name = overFiltered ? nameof(DiscoveryProbe.OverFiltered) : nameof(DiscoveryProbe.Empty);
+        var name = overFiltered
+            ? nameof(DiscoveryProbe.OverFiltered)
+            : nameof(DiscoveryProbe.Empty);
+
         var method = CreateTestMethod("Sqlite", name);
         var options = CreateDiscoveryOptions(preEnumerate);
         var attribute = Assert.IsType<EngineTheoryAttribute>(Assert.Single(method.FactAttributes));

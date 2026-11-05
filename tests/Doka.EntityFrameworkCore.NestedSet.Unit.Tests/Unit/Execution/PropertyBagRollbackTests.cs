@@ -55,6 +55,7 @@ public sealed class PropertyBagRollbackTests
         context
             .Set<Dictionary<string, object?>>(Mapping)
             .Attach(entity);
+
         var expected = entity
             .OrderBy(pair => pair.Key)
             .ToArray();
@@ -70,16 +71,19 @@ public sealed class PropertyBagRollbackTests
 
         // Assert
         Assert.Equal(expected, entity.OrderBy(pair => pair.Key));
-        Assert.Equal(EntityState.Unchanged,
+        Assert.Equal(
+            EntityState.Unchanged,
             context
                 .Set<Dictionary<string, object?>>(Mapping)
                 .Entry(entity)
                 .State);
-        Assert.False(context
-            .Set<Dictionary<string, object?>>(Mapping)
-            .Entry(entity)
-            .Property(Flag)
-            .IsModified);
+
+        Assert.False(
+            context
+                .Set<Dictionary<string, object?>>(Mapping)
+                .Entry(entity)
+                .Property(Flag)
+                .IsModified);
     }
 
     /// <summary>
@@ -130,17 +134,31 @@ public sealed class PropertyBagRollbackTests
 
         if (shape != "missing")
         {
-            entity[map.TreeId] = shape == "null" ? null : Guid.Empty;
+            entity[map.TreeId] = shape == "null"
+                ? null
+                : Guid.Empty;
+
             entity[map.Parent] = null;
-            entity[map.Left] = shape == "null" ? null : 0L;
-            entity[map.Right] = shape == "null" ? null : 0L;
-            entity[map.Depth] = shape == "null" ? null : 0;
-            entity[map.Position] = shape == "null" ? null : 0L;
+            entity[map.Left] = shape == "null"
+                ? null
+                : 0L;
+
+            entity[map.Right] = shape == "null"
+                ? null
+                : 0L;
+
+            entity[map.Depth] = shape == "null"
+                ? null
+                : 0;
+
+            entity[map.Position] = shape == "null"
+                ? null
+                : 0L;
         }
 
         // Act
-        var original = NestedSetBulkPlan<Dictionary<string, object?>, int, Guid, NestedSetNoScope>
-            .OriginalStructure.Capture(entity, map);
+        var original = NestedSetBulkPlan<Dictionary<string, object?>, int, Guid, NestedSetNoScope>.OriginalStructure
+            .Capture(entity, map);
 
         // Assert
         if (shape == "sentinel")
@@ -232,7 +250,8 @@ public sealed class PropertyBagRollbackTests
             .Entry(entity);
 
         var property = entry.Metadata.FindProperty("Id")!;
-        var normalized = entry.Property<int>("Id").CurrentValue;
+        var normalized = entry.Property<int>("Id")
+            .CurrentValue;
 
         // Act
         var assigned = NestedSetInsertionValues.HasAssignedKey(property, entity, normalized);
@@ -258,7 +277,9 @@ public sealed class PropertyBagRollbackTests
 
         if (shape != "missing")
         {
-            entity[Flag] = shape == "null" ? null : shape == "true";
+            entity[Flag] = shape == "null"
+                ? null
+                : shape == "true";
         }
 
         return entity;
@@ -278,12 +299,14 @@ public sealed class PropertyBagRollbackTests
             ModelBuilder modelBuilder
         )
         {
-            modelBuilder.SharedTypeEntity<Dictionary<string, object?>>(Mapping,
+            modelBuilder.SharedTypeEntity<Dictionary<string, object?>>(
+                Mapping,
                 entity =>
                 {
                     entity
                         .IndexerProperty<int>("Id")
                         .ValueGeneratedNever();
+
                     entity.HasKey("Id");
                     entity.IndexerProperty<string>("Payload");
                     entity
@@ -291,30 +314,37 @@ public sealed class PropertyBagRollbackTests
                         .ValueGeneratedOnAddOrUpdate();
                 });
 
-            modelBuilder.SharedTypeEntity<Dictionary<string, object?>>(BulkMapping,
+            modelBuilder.SharedTypeEntity<Dictionary<string, object?>>(
+                BulkMapping,
                 entity =>
                 {
                     entity
                         .IndexerProperty<int>("Id")
                         .HasSentinel(0)
                         .ValueGeneratedNever();
+
                     entity.IndexerProperty<string>("Payload");
                     entity
                         .IndexerProperty<Guid>(NestedSetPropertyRoles.TreeId)
                         .HasSentinel(Guid.Empty);
+
                     entity.IndexerProperty<int?>(NestedSetPropertyRoles.Parent);
                     entity
                         .IndexerProperty<long>(NestedSetPropertyRoles.Left)
                         .HasSentinel(0L);
+
                     entity
                         .IndexerProperty<long>(NestedSetPropertyRoles.Right)
                         .HasSentinel(0L);
+
                     entity
                         .IndexerProperty<int>(NestedSetPropertyRoles.Depth)
                         .HasSentinel(0);
+
                     entity
                         .IndexerProperty<long>(NestedSetPropertyRoles.Position)
                         .HasSentinel(0L);
+
                     entity.HasKey("Id");
                     entity.HasNestedSet(mapping => mapping
                         .HasNodeKey("Id")
@@ -329,17 +359,20 @@ public sealed class PropertyBagRollbackTests
                 .Entity<CustomIndexerEntity>()
                 .Property(entity => entity.Id)
                 .ValueGeneratedNever();
+
             modelBuilder
                 .Entity<CustomIndexerEntity>()
                 .IndexerProperty<bool>(Flag)
                 .ValueGeneratedOnAddOrUpdate();
 
-            modelBuilder.SharedTypeEntity<Dictionary<string, object?>>(GeneratedMapping,
+            modelBuilder.SharedTypeEntity<Dictionary<string, object?>>(
+                GeneratedMapping,
                 entity =>
                 {
                     entity
                         .IndexerProperty<int>("Id")
                         .ValueGeneratedOnAdd();
+
                     entity.HasKey("Id");
                 });
         }
@@ -358,8 +391,12 @@ public sealed class PropertyBagRollbackTests
             string name
         ]
         {
-            get => name == Flag ? _value : throw new ArgumentOutOfRangeException(nameof(name));
-            set => _value = name == Flag ? value : throw new ArgumentOutOfRangeException(nameof(name));
+            get => name == Flag
+                ? _value
+                : throw new ArgumentOutOfRangeException(nameof(name));
+            set => _value = name == Flag
+                ? value
+                : throw new ArgumentOutOfRangeException(nameof(name));
         }
     }
 }

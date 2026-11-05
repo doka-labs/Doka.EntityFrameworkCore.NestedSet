@@ -63,27 +63,29 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
         // Act
         var snapshot = NestedSetTrackerSnapshot.Capture(context);
         var captureAllocated = GC.GetAllocatedBytesForCurrentThread() - beforeCapture;
+
         // WHY: The failure changes accepted originals, references and list membership. Keep that callback work
         // outside both measurements; the second interval charges the complete exceptional Restore operation.
-        var failure = Record.Exception((Action)(() =>
-        {
-            context.ChangeTracker.AcceptAllChanges();
-            payload.Optional!.Text = "Callback optional";
-            payload.Optional = null;
-
-            foreach (var item in items)
+        var failure = Record.Exception(
+            (Action)(() =>
             {
-                item.Text = "Callback item";
-                item.Details = null;
-                item.Leaves![0].Text = "Callback leaf";
-                item.Leaves.Clear();
-            }
+                context.ChangeTracker.AcceptAllChanges();
+                payload.Optional!.Text = "Callback optional";
+                payload.Optional = null;
 
-            originalRows.Clear();
-            payload.Rows = [];
+                foreach (var item in items)
+                {
+                    item.Text = "Callback item";
+                    item.Details = null;
+                    item.Leaves![0].Text = "Callback leaf";
+                    item.Leaves.Clear();
+                }
 
-            throw new TopologyCallbackFailure();
-        }));
+                originalRows.Clear();
+                payload.Rows = [];
+
+                throw new TopologyCallbackFailure();
+            }));
 
         var beforeRestore = GC.GetAllocatedBytesForCurrentThread();
         snapshot.Restore();
@@ -94,8 +96,10 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
         // growing list exposes repeated full-list copies that tests of many tiny entities would conceal.
         var captureMaximum = 262_144L + rows * 8_192L;
         var restoreMaximum = 262_144L + rows * 16_384L;
-        _output.WriteLine($"Complex topology: entities=1; rows={rows}; nested leaves={rows * 2}; "
+        _output.WriteLine(
+            $"Complex topology: entities=1; rows={rows}; nested leaves={rows * 2}; "
             + $"capture={captureAllocated} B/{captureMaximum} B; restore={restoreAllocated} B/{restoreMaximum} B.");
+
         Assert.IsType<TopologyCallbackFailure>(failure);
         Assert.InRange(captureAllocated, 0, captureMaximum);
         Assert.InRange(restoreAllocated, 0, restoreMaximum);
@@ -122,8 +126,10 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
         Assert.Equal(expectedStates, ObserveStates(entry));
         Assert.Single(context.ChangeTracker.Entries());
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Builds independent complex instances and nested list storage for one physical entity.</summary>
@@ -159,17 +165,24 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
     {
         var payload = entry.Entity;
         payload.Marker = "Pending marker";
-        entry.Property(value => value.Marker).IsModified = true;
+        entry.Property(value => value.Marker)
+            .IsModified = true;
+
         payload.Rows![0].Text = "Pending first item";
-        entry.ComplexCollection(nameof(TopologyPayload.Rows))[0]
-            .Property(nameof(TopologyItem.Text)).IsModified = true;
+        entry
+            .ComplexCollection(nameof(TopologyPayload.Rows))[0]
+            .Property(nameof(TopologyItem.Text))
+            .IsModified = true;
+
         payload.Optional!.Text = "Raw unmarked optional";
         payload.Rows[^1].Details!.Code = "Raw unmarked final code";
     }
 
     /// <summary>Warms shared metadata and property restoration against a different, unchanged topology.</summary>
     /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
-    private static async Task WarmAsync(CancellationToken cancellationToken)
+    private static async Task WarmAsync(
+        CancellationToken cancellationToken
+    )
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -198,7 +211,8 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
             Add(property);
         }
 
-        foreach (var property in entry.ComplexProperty(value => value.Optional).Properties)
+        foreach (var property in entry.ComplexProperty(value => value.Optional)
+            .Properties)
         {
             Add(property);
         }
@@ -214,7 +228,8 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
             var element = collection[index];
             Add(element.Property(nameof(TopologyItem.Text)));
 
-            foreach (var property in element.ComplexProperty(nameof(TopologyItem.Details)).Properties)
+            foreach (var property in element.ComplexProperty(nameof(TopologyItem.Details))
+                .Properties)
             {
                 Add(property);
             }
@@ -226,7 +241,9 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
             // ReSharper disable once LoopCanBeConvertedToQuery
             for (var leaf = 0; leaf < rows[index].Leaves!.Count; leaf++)
             {
-                Add(nested[leaf].Property(nameof(TopologyLeaf.Text)));
+                Add(
+                    nested[leaf]
+                        .Property(nameof(TopologyLeaf.Text)));
             }
         }
 
@@ -241,8 +258,10 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
         var collection = entry.ComplexCollection(nameof(TopologyPayload.Rows));
         var result = new List<ComplexObservation>
         {
-            new(entry.State,
-                entry.ComplexProperty(value => value.Optional).IsModified),
+            new(
+                entry.State,
+                entry.ComplexProperty(value => value.Optional)
+                    .IsModified),
             new(null, collection.IsModified),
         };
 
@@ -255,8 +274,12 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
         {
             var element = collection[index];
             result.Add(new ComplexObservation(element.State, element.IsModified));
-            result.Add(new ComplexObservation(null,
-                element.ComplexProperty(nameof(TopologyItem.Details)).IsModified));
+            result.Add(
+                new ComplexObservation(
+                    null,
+                    element.ComplexProperty(nameof(TopologyItem.Details))
+                        .IsModified));
+
             var nested = element.ComplexCollection(nameof(TopologyItem.Leaves));
             result.Add(new ComplexObservation(null, nested.IsModified));
 

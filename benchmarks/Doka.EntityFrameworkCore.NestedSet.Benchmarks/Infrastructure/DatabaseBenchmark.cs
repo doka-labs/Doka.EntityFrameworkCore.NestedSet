@@ -46,6 +46,9 @@ public abstract class DatabaseBenchmark : IDatabaseBenchmark
     internal BenchmarkFixture Fixture =>
         _fixture ?? throw new InvalidOperationException("Initialize the benchmark first.");
 
+    /// <summary>Gets diagnostic counters after an operation but before verification reads.</summary>
+    internal CommandObservation Observation => Fixture.Counter;
+
     /// <summary>Creates the provider configuration and fixture in the isolated benchmark child.</summary>
     /// <remarks>Database creation and seeding complete in iteration preparation.</remarks>
     [GlobalSetup]
@@ -59,14 +62,6 @@ public abstract class DatabaseBenchmark : IDatabaseBenchmark
             CancellationToken.None);
     }
 
-    /// <summary>Fully completes asynchronous setup before BDN starts timing or allocation observation.</summary>
-    [IterationSetup]
-    public void Prepare() => BenchmarkLifecycle.Complete(PrepareAsync(CancellationToken.None));
-
-    /// <summary>Fully completes result verification after BDN finishes timing and allocation observation.</summary>
-    [IterationCleanup]
-    public void Verify() => BenchmarkLifecycle.Complete(VerifyAsync(CancellationToken.None));
-
     /// <summary>Prepares fresh state; diagnostic and functional test execution uses the same lifecycle.</summary>
     /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
     public virtual Task PrepareAsync(
@@ -75,7 +70,9 @@ public abstract class DatabaseBenchmark : IDatabaseBenchmark
 
     /// <summary>Validates every remaining tree; feature families add independent effect assertions.</summary>
     /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
-    public virtual Task VerifyAsync(CancellationToken cancellationToken) => Fixture.ValidateAsync(cancellationToken);
+    public virtual Task VerifyAsync(
+        CancellationToken cancellationToken
+    ) => Fixture.ValidateAsync(cancellationToken);
 
     /// <summary>Releases the child-owned context after all iterations and diagnostic passes.</summary>
     [GlobalCleanup]
@@ -88,9 +85,14 @@ public abstract class DatabaseBenchmark : IDatabaseBenchmark
         }
     }
 
-    /// <summary>Gets diagnostic counters after an operation but before verification reads.</summary>
-    internal CommandObservation Observation => Fixture.Counter;
-
     /// <inheritdoc />
     CommandObservation IDatabaseBenchmark.Observation => Observation;
+
+    /// <summary>Fully completes asynchronous setup before BDN starts timing or allocation observation.</summary>
+    [IterationSetup]
+    public void Prepare() => BenchmarkLifecycle.Complete(PrepareAsync(CancellationToken.None));
+
+    /// <summary>Fully completes result verification after BDN finishes timing and allocation observation.</summary>
+    [IterationCleanup]
+    public void Verify() => BenchmarkLifecycle.Complete(VerifyAsync(CancellationToken.None));
 }

@@ -3,17 +3,6 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Verifies change tracking, key equality, and configured property access on every supported engine.</summary>
 public abstract partial class ContractTests : ProviderTest
 {
-    private readonly ContractFixture _fixture;
-
-    /// <summary>Creates a case using fixture-owned databases and isolated contract tables.</summary>
-    /// <param name="fixture">The shared database owner.</param>
-    protected ContractTests(
-        IProviderFixture<ContractFixture> fixture
-    ) : base(fixture)
-    {
-        _fixture = fixture.Value;
-    }
-
     private static readonly (long Left, long Right, int Depth, long Position)[] s_threeLevelChain =
     [
         (1, 6, 0, 0),
@@ -39,6 +28,17 @@ public abstract partial class ContractTests : ProviderTest
         (1, 2, 0, 0),
         (1, 2, 0, 0),
     ];
+
+    private readonly ContractFixture _fixture;
+
+    /// <summary>Creates a case using fixture-owned databases and isolated contract tables.</summary>
+    /// <param name="fixture">The shared database owner.</param>
+    protected ContractTests(
+        IProviderFixture<ContractFixture> fixture
+    ) : base(fixture)
+    {
+        _fixture = fixture.Value;
+    }
 
     /// <summary>Arranges a three-level hierarchy with independently allocated binary identity values.</summary>
     /// <param name="context">The empty context whose connection and schema will be initialized.</param>

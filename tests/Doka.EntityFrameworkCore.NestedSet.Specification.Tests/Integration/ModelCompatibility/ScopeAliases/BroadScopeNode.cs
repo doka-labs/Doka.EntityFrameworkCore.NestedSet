@@ -100,9 +100,11 @@ internal class BroadScopeContext : DbContext
         node
             .Property(entity => entity.Id)
             .ValueGeneratedNever();
+
         node
             .Property(entity => entity.Name)
             .HasMaxLength(40);
+
         node
             .HasOne<BroadScopeNode>()
             .WithMany()
@@ -112,6 +114,7 @@ internal class BroadScopeContext : DbContext
                 entity.ParentId,
             })
             .OnDelete(DeleteBehavior.Restrict);
+
         node.HasNestedSet(nestedSet => nestedSet
             .HasNodeKey(entity => entity.Id)
             .HasScope(entity => entity.Scope)

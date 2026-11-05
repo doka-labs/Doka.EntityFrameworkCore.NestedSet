@@ -32,8 +32,11 @@ internal sealed class SqliteInstructionBudget : IDisposable
 
         // WHY: Returning a native interrupt code bounds CPU work even though SQLite executes async reads
         // synchronously. Throwing through a native callback would bypass the provider's normal error boundary.
-        raw.sqlite3_progress_handler(_handle, Quantum,
-            static state => ((SqliteInstructionBudget)state).Observe(), this);
+        raw.sqlite3_progress_handler(
+            _handle,
+            Quantum,
+            static state => ((SqliteInstructionBudget)state).Observe(),
+            this);
     }
 
     /// <summary>The callback count multiplied by its approximate instruction interval.</summary>
@@ -59,6 +62,8 @@ internal sealed class SqliteInstructionBudget : IDisposable
     {
         ObservedInstructions += Quantum;
 
-        return Exceeded ? 1 : 0;
+        return Exceeded
+            ? 1
+            : 0;
     }
 }

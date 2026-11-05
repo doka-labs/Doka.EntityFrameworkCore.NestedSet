@@ -204,9 +204,15 @@ internal static class NestedSetAncestorIndex
 
             if (property.Name == Name(entity)
                 || property.GetConfigurationSource() != ConfigurationSource.Convention
-                || property.GetContainingIndexes().Any()
-                || property.GetContainingKeys().Any()
-                || property.GetContainingForeignKeys().Any()
+                || property
+                    .GetContainingIndexes()
+                    .Any()
+                || property
+                    .GetContainingKeys()
+                    .Any()
+                || property
+                    .GetContainingForeignKeys()
+                    .Any()
                 || property
                     .GetAnnotations()
                     .Any(annotation => annotation.GetConfigurationSource() != ConfigurationSource.Convention))
@@ -251,13 +257,19 @@ internal static class NestedSetAncestorIndex
             || property.GetValueConverter() is not null
             || property.GetProviderClrType() is not null
             || property.IsConcurrencyToken
-            || property.GetContainingKeys().Any()
-            || property.GetContainingForeignKeys().Any()
-            || (entity.FindAnnotation(NestedSetAnnotationNames.OrderProperties)?.Value is string[] ordering
+            || property
+                .GetContainingKeys()
+                .Any()
+            || property
+                .GetContainingForeignKeys()
+                .Any()
+            || (entity.FindAnnotation(NestedSetAnnotationNames.OrderProperties)
+                    ?.Value is string[] ordering
                 && ordering.Contains(property.Name, StringComparer.Ordinal))
             || NestedSetPropertyRoles.All
-                .Any(role => (entity.FindAnnotation(NestedSetAnnotationNames.Prefix + role)?.Value as string)
-                == property.Name))
+                .Any(role => entity.FindAnnotation(NestedSetAnnotationNames.Prefix + role)
+                        ?.Value as string
+                    == property.Name))
         {
             throw Invalid(
                 entity,

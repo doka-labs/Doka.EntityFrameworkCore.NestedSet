@@ -160,7 +160,10 @@ public abstract class CompositeKeyTests : ProviderTest
         Assert.Equal((4L, 5L, 1L), (changed.Left, changed.Right, changed.Position));
         Assert.Equal((2L, 3L, 0L), (foreign.Left, foreign.Right, foreign.Position));
         Assert.Equal("Foreign", foreign.Name);
-        Assert.Equal(EntityState.Unchanged, context.Entry(foreign).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(foreign)
+                .State);
     }
 
     /// <summary>Tracked move refresh cannot adopt coordinates from another scope's equal node keys.</summary>
@@ -252,6 +255,9 @@ public abstract class CompositeKeyTests : ProviderTest
         // Assert
         Assert.Equal((3L, 4L, 2, 300), (moved.Left, moved.Right, moved.Depth, moved.ParentNodeKey));
         Assert.Equal((2L, 3L, 1, 100), (foreign.Left, foreign.Right, foreign.Depth, foreign.ParentNodeKey));
-        Assert.Equal(EntityState.Unchanged, context.Entry(foreign).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(foreign)
+                .State);
     }
 }

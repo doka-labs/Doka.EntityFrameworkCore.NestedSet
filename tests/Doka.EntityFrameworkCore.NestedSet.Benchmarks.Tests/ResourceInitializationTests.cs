@@ -15,7 +15,10 @@ public sealed class ResourceInitializationTests
         // Arrange
         await using var resource = new StartupResource();
         using var cancellation = new CancellationTokenSource();
-        var token = cancellable ? cancellation.Token : CancellationToken.None;
+        var token = cancellable
+            ? cancellation.Token
+            : CancellationToken.None;
+
         var initialized = false;
         var observed = CancellationToken.None;
 
@@ -28,7 +31,8 @@ public sealed class ResourceInitializationTests
                 initialized = true;
 
                 return Task.CompletedTask;
-            }, token);
+            },
+            token);
 
         // Assert
         Assert.True(initialized);
@@ -47,7 +51,8 @@ public sealed class ResourceInitializationTests
         // Act
         var error = await Record.ExceptionAsync(() => BenchmarkLifecycle.InitializeAsync(
             resource,
-            _ => Task.FromException(original), cancellationToken: TestContext.Current.CancellationToken));
+            _ => Task.FromException(original),
+            cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         Assert.Same(original, error);
@@ -65,7 +70,8 @@ public sealed class ResourceInitializationTests
         // Act
         var error = await Record.ExceptionAsync(() => BenchmarkLifecycle.InitializeAsync(
             resource,
-            _ => Task.FromException(original), cancellationToken: TestContext.Current.CancellationToken));
+            _ => Task.FromException(original),
+            cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         Assert.Same(original, error);
@@ -84,7 +90,8 @@ public sealed class ResourceInitializationTests
         // Act
         var error = await Record.ExceptionAsync(() => BenchmarkLifecycle.InitializeAsync(
             resource,
-            _ => Task.FromException(original), cancellationToken: TestContext.Current.CancellationToken));
+            _ => Task.FromException(original),
+            cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         var aggregate = Assert.IsType<AggregateException>(error);
@@ -196,7 +203,9 @@ public sealed class ResourceInitializationTests
         {
             DisposeCalls++;
 
-            return cleanup is null ? ValueTask.CompletedTask : ValueTask.FromException(cleanup);
+            return cleanup is null
+                ? ValueTask.CompletedTask
+                : ValueTask.FromException(cleanup);
         }
     }
 }

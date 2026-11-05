@@ -49,6 +49,7 @@ internal static partial class SupervisorQueries
 
         var allOccurrences = selection.Kind == SupervisorSelectionKind.All;
         var continuation = resolution.Continuation;
+
         // WHY: Unique selection already supplies its canonical occurrence. A one-element collection here
         // would allocate an extra array for every logical path without retaining any additional evidence.
         var count = allOccurrences
@@ -63,7 +64,10 @@ internal static partial class SupervisorQueries
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < count; index++)
         {
-            var evidence = allOccurrences ? resolution.Evidence[index] : continuation!;
+            var evidence = allOccurrences
+                ? resolution.Evidence[index]
+                : continuation!;
+
             if (evidence.CandidateUserId == initialUser
                 || previous?.Contains(evidence.CandidateUserId) == true)
             {
@@ -72,7 +76,11 @@ internal static partial class SupervisorQueries
                     return false;
                 }
 
-                completed.Add(new SupervisorChainBranch(SupervisorChainStatus.CycleDetected, initialGroup, previous?.Materialize() ?? []));
+                completed.Add(
+                    new SupervisorChainBranch(
+                        SupervisorChainStatus.CycleDetected,
+                        initialGroup,
+                        previous?.Materialize() ?? []));
 
                 continue;
             }
@@ -89,7 +97,10 @@ internal static partial class SupervisorQueries
                 return false;
             }
 
-            var tree = previous is null ? evidence.StartTreeId : initialTree;
+            var tree = previous is null
+                ? evidence.StartTreeId
+                : initialTree;
+
             var item = new SupervisorHop(hop, initialUser, initialGroup, tree, evidence);
             next.Add(new ChainPath(item, previous, initialGroup, tree));
         }

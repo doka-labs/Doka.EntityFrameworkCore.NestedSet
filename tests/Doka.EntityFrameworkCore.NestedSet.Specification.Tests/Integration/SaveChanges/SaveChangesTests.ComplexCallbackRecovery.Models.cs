@@ -6,36 +6,66 @@ public abstract partial class SaveChangesTests
     private sealed class ComplexCallbackContext(DbContextOptions options) : NestedSetDbContext(options)
     {
         /// <inheritdoc />
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        protected override void OnModelCreating(
+            ModelBuilder modelBuilder
+        )
         {
             ConfigureNavigationModel(modelBuilder);
             var row = modelBuilder.Entity<ComplexCallbackRow>();
             row.ToTable("ComplexCallbackRows");
-            row.Property(value => value.Id).ValueGeneratedNever();
-            row.Property(value => value.Label).HasMaxLength(128);
-            row.Property(value => value.Version).IsConcurrencyToken();
-            row.ComplexCollection(value => value.Items, items =>
-            {
-                items.ToJson("Items");
-                items.IsRequired(false);
-                items.Property(value => value.Text).IsRequired();
-                items.ComplexCollection(value => value.Parts, parts =>
+            row
+                .Property(value => value.Id)
+                .ValueGeneratedNever();
+
+            row
+                .Property(value => value.Label)
+                .HasMaxLength(128);
+
+            row
+                .Property(value => value.Version)
+                .IsConcurrencyToken();
+
+            row.ComplexCollection(
+                value => value.Items,
+                items =>
                 {
-                    parts.IsRequired(false);
-                    parts.Property(value => value.Text).IsRequired();
+                    items.ToJson("Items");
+                    items.IsRequired(false);
+                    items
+                        .Property(value => value.Text)
+                        .IsRequired();
+
+                    items.ComplexCollection(
+                        value => value.Parts,
+                        parts =>
+                        {
+                            parts.IsRequired(false);
+                            parts
+                                .Property(value => value.Text)
+                                .IsRequired();
+                        });
                 });
-            });
-            row.ComplexProperty(value => value.Address, address =>
-            {
-                address.ToJson("Address");
-                address.IsRequired(false);
-                address.Property(value => value.Text).IsRequired();
-                address.ComplexCollection(value => value.Tags, tags =>
+
+            row.ComplexProperty(
+                value => value.Address,
+                address =>
                 {
-                    tags.IsRequired(false);
-                    tags.Property(value => value.Text).IsRequired();
+                    address.ToJson("Address");
+                    address.IsRequired(false);
+                    address
+                        .Property(value => value.Text)
+                        .IsRequired();
+
+                    address.ComplexCollection(
+                        value => value.Tags,
+                        tags =>
+                        {
+                            tags.IsRequired(false);
+                            tags
+                                .Property(value => value.Text)
+                                .IsRequired();
+                        });
                 });
-            });
         }
     }
 

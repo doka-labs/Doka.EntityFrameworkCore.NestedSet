@@ -34,8 +34,10 @@ public abstract class ProviderAnnotationTests : ProviderTest
         foreach (var method in methods)
         {
             errors.AddRange(ProviderTestContract.FindSharedAnnotationErrors(method));
-            errors.AddRange(await ProviderTestContract.FindSharedDataErrorsAsync(method,
-                cancellationToken: TestContext.Current.CancellationToken));
+            errors.AddRange(
+                await ProviderTestContract.FindSharedDataErrorsAsync(
+                    method,
+                    cancellationToken: TestContext.Current.CancellationToken));
         }
 
         // Assert
@@ -79,8 +81,13 @@ public abstract class ProviderAnnotationTests : ProviderTest
     {
         // Arrange
         var shared = typeof(ProviderAnnotationTests).Assembly;
-        var provider = GetType().Assembly;
-        var engines = ProviderTestContract.OwnedEngines(provider.GetName().Name!);
+        var provider = GetType()
+            .Assembly;
+
+        var engines = ProviderTestContract.OwnedEngines(
+            provider.GetName()
+                .Name!);
+
         var candidates = provider
             .GetExportedTypes()
             .Where(type => !type.IsAbstract)
@@ -107,7 +114,9 @@ public abstract class ProviderAnnotationTests : ProviderTest
                     .ToArray();
 
                 var required = ProviderTestContract.RequiresSharedWrapper(suite, engine);
-                var expected = required ? 1 : 0;
+                var expected = required
+                    ? 1
+                    : 0;
 
                 if (matching.Length != expected)
                 {
@@ -151,7 +160,9 @@ public abstract class ProviderAnnotationTests : ProviderTest
     public void ConcurrentWriterMetadataMatchesEngineCapabilities()
     {
         // Arrange
-        var provider = GetType().Assembly;
+        var provider = GetType()
+            .Assembly;
+
         var families = new[] { typeof(ConcurrentWriterTests), typeof(ConcurrentCapacityTests) };
 
         var suites = provider
@@ -179,7 +190,8 @@ public abstract class ProviderAnnotationTests : ProviderTest
             .ToArray();
 
         var collections = suites
-            .Select(type => type.GetCustomAttribute<CollectionAttribute>()?.Type)
+            .Select(type => type.GetCustomAttribute<CollectionAttribute>()
+                ?.Type)
             .ToArray();
 
         var definitions = collections
@@ -211,8 +223,12 @@ public abstract class ProviderAnnotationTests : ProviderTest
     public async Task ProviderAssemblyContainsOnlyOwnedSuites()
     {
         // Arrange
-        var provider = GetType().Assembly;
-        var assemblyName = provider.GetName().Name!;
+        var provider = GetType()
+            .Assembly;
+
+        var assemblyName = provider.GetName()
+            .Name!;
+
         var suites = provider
             .GetExportedTypes()
             .Where(type => !type.IsAbstract
@@ -228,8 +244,12 @@ public abstract class ProviderAnnotationTests : ProviderTest
         // Act
         foreach (var suite in suites)
         {
-            errors.AddRange(await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, assemblyName,
-                cancellationToken: TestContext.Current.CancellationToken));
+            errors.AddRange(
+                await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(
+                    suite,
+                    assemblyName,
+                    cancellationToken: TestContext.Current.CancellationToken));
+
             errors.AddRange(ProviderFixtureContract.FindErrors(suite));
 
             if (!ProviderTestContract.HasLocalTestCases(suite))
@@ -273,7 +293,8 @@ public abstract class ProviderAnnotationTests : ProviderTest
         var model = definitions.Single(entry => entry.Definition!.Name == "Model compatibility");
         var registrationErrors = ProviderCollectionFixtureContract.FindErrors(
             model.Type,
-            provider.GetName().Name!);
+            provider.GetName()
+                .Name!);
 
         // Assert
         Assert.True(ProviderEngineOwnership.Includes(Engine));

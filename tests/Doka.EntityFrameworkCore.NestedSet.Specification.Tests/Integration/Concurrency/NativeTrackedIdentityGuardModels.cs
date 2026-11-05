@@ -31,6 +31,7 @@ internal sealed class ConvertedBroadScopeContext(DbContextOptions<ConvertedBroad
         node
             .Property(value => value.Id)
             .HasConversion(converter);
+
         node
             .Property(value => value.ParentId)
             .HasConversion(converter);

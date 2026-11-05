@@ -6,7 +6,9 @@ internal static class ProviderEngineOwnership
     private const string MySqlAssembly = "Doka.EntityFrameworkCore.NestedSet.MySql.Tests";
 
     // WHY: Read-only entries and storage prevent callers from changing any ownership projection independently.
-    private static readonly IReadOnlyList<ProviderEngineDefinition> s_engines =
+
+    /// <summary>Gets the immutable built-in name, marker, and executable ownership catalog.</summary>
+    internal static IReadOnlyList<ProviderEngineDefinition> Engines { get; } =
         Array.AsReadOnly<ProviderEngineDefinition>(
         [
             Define<MySqlEngine>(MySqlAssembly),
@@ -15,9 +17,6 @@ internal static class ProviderEngineOwnership
             Define<SqlServerEngine>("Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests"),
             Define<SqliteEngine>("Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests"),
         ]);
-
-    /// <summary>Gets the immutable built-in name, marker, and executable ownership catalog.</summary>
-    internal static IReadOnlyList<ProviderEngineDefinition> Engines => s_engines;
 
     /// <summary>Returns whether the current test assembly owns the specified provider case.</summary>
     internal static bool Includes(
@@ -38,7 +37,7 @@ internal static class ProviderEngineOwnership
     )
     {
         // WHY: Validate before filtering, so a misspelled engine cannot disappear from every provider project.
-        var definition = s_engines.FirstOrDefault(entry => entry.Name == engine)
+        var definition = Engines.FirstOrDefault(entry => entry.Name == engine)
             ?? throw new InvalidOperationException($"Unknown integration test provider '{engine}'.");
 
         ValidateAssembly(assembly);
@@ -49,7 +48,7 @@ internal static class ProviderEngineOwnership
     /// <summary>Identifies the exact provider names accepted by the shared database fixture.</summary>
     internal static bool IsKnown(
         string? engine
-    ) => s_engines.Any(entry => entry.Name == engine);
+    ) => Engines.Any(entry => entry.Name == engine);
 
     /// <summary>Gets every built-in definition belonging to a known executable test assembly.</summary>
     internal static IEnumerable<ProviderEngineDefinition> OwnedBy(
@@ -58,7 +57,7 @@ internal static class ProviderEngineOwnership
     {
         ValidateAssembly(assemblyName);
 
-        return s_engines.Where(entry => entry.AssemblyName == assemblyName);
+        return Engines.Where(entry => entry.AssemblyName == assemblyName);
     }
 
     /// <summary>Rejects unknown executables before an empty projection could hide a missing owner.</summary>
@@ -66,7 +65,7 @@ internal static class ProviderEngineOwnership
         string assemblyName
     )
     {
-        if (s_engines.All(entry => entry.AssemblyName != assemblyName))
+        if (Engines.All(entry => entry.AssemblyName != assemblyName))
         {
             throw new InvalidOperationException($"Unknown integration test assembly '{assemblyName}'.");
         }

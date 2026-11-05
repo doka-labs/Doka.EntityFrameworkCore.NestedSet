@@ -42,16 +42,27 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
             }
 
             var original = node.Original;
-            var originalKey = node.HasAssignedKey ? node.CurrentKey : _store.Map.KeyProperty.Sentinel;
-            RestoreValue(node, _store.Map.KeyProperty,
-                original is null ? originalKey : original.KeyOr(originalKey), 1 << 7, ref errors);
+            var originalKey = node.HasAssignedKey
+                ? node.CurrentKey
+                : _store.Map.KeyProperty.Sentinel;
+
+            RestoreValue(
+                node,
+                _store.Map.KeyProperty,
+                original is null
+                    ? originalKey
+                    : original.KeyOr(originalKey),
+                1 << 7,
+                ref errors);
 
             if (_store.Map.ScopeProperty is { } scope)
             {
                 RestoreValue(
                     node,
                     scope,
-                    original is null ? scope.Sentinel : original.ScopeOr(scope.Sentinel),
+                    original is null
+                        ? scope.Sentinel
+                        : original.ScopeOr(scope.Sentinel),
                     1 << 0,
                     ref errors);
             }
@@ -77,7 +88,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
             RestoreValue(
                 node,
                 _store.Map.LeftProperty,
-                original is null ? _store.Map.LeftProperty.Sentinel : original.LeftOr(_store.Map.LeftProperty.Sentinel),
+                original is null
+                    ? _store.Map.LeftProperty.Sentinel
+                    : original.LeftOr(_store.Map.LeftProperty.Sentinel),
                 1 << 3,
                 ref errors);
 
@@ -158,7 +171,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
                 continue;
             }
 
-            var original = node.OriginalGeneratedValues is { } values ? values[index] : property.Sentinel;
+            var original = node.OriginalGeneratedValues is { } values
+                ? values[index]
+                : property.Sentinel;
 
             try
             {
@@ -166,9 +181,10 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
                 // compiled CLR setter restores their exact snapshots without retaining detached entry handles.
                 if (!NestedSetInsertionValues.RestoreDictionaryValue(node.Entity, property, original))
                 {
-                    _generatedSetters[index].SetClrValueUsingContainingEntity(
-                        node.Entity,
-                        NestedSetStructuralValue.Snapshot(property, original));
+                    _generatedSetters[index]
+                        .SetClrValueUsingContainingEntity(
+                            node.Entity,
+                            NestedSetStructuralValue.Snapshot(property, original));
                 }
             }
             catch (Exception exception)
@@ -190,12 +206,15 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         try
         {
             var original = node.Original?.IsMissing(field) == true
-                ? NestedSetInsertionValues.MissingValue : value;
+                ? NestedSetInsertionValues.MissingValue
+                : value;
 
             if (!NestedSetInsertionValues.RestoreDictionaryValue(node.Entity, property, original))
             {
                 NestedSetStructuralValue.Assign(
-                    node.Entity, property, NestedSetStructuralValue.Snapshot(property, original));
+                    node.Entity,
+                    property,
+                    NestedSetStructuralValue.Snapshot(property, original));
             }
         }
         catch (Exception exception)
@@ -205,7 +224,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     }
 
     /// <summary>Attempts every owned detachment and retains failures for the operation boundary to aggregate.</summary>
-    private List<Exception>? DetachActiveBatch(bool failed = false)
+    private List<Exception>? DetachActiveBatch(
+        bool failed = false
+    )
     {
         if (_activeEntries is not { } entries)
         {
@@ -302,7 +323,10 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     }
 
     /// <summary>Checks only the failed batch's touched native maps without replacing its original error.</summary>
-    private static void VerifyFailedCleanup(IReadOnlyList<EntityEntry> entries, ref List<Exception>? errors)
+    private static void VerifyFailedCleanup(
+        IReadOnlyList<EntityEntry> entries,
+        ref List<Exception>? errors
+    )
     {
         try
         {
@@ -348,9 +372,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         }
 
         foreach (var navigation in entityType
-                     .GetNavigations()
-                     .Cast<INavigationBase>()
-                     .Concat(entityType.GetSkipNavigations()))
+            .GetNavigations()
+            .Cast<INavigationBase>()
+            .Concat(entityType.GetSkipNavigations()))
         {
             var value = navigation
                 .GetGetter()
@@ -358,7 +382,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
 
             if (value is not null
                 && (value is not IEnumerable sequence
-                    || sequence.Cast<object>().Any())
+                    || sequence
+                        .Cast<object>()
+                        .Any())
                 && !navigation.TargetEntityType.IsOwned())
             {
                 throw new NestedSetException(

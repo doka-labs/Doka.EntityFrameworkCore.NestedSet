@@ -42,8 +42,13 @@ public sealed partial class UnicodeIdentityLengthTests
         for (var index = 0; index < characters.Length / 2; index++)
         {
             var offset = index * 2;
-            characters[offset] = varyHighSurrogate ? (char)(0xd800 + index) : '\ud800';
-            characters[offset + 1] = varyHighSurrogate ? '\udc00' : (char)(0xdc00 + index);
+            characters[offset] = varyHighSurrogate
+                ? (char)(0xd800 + index)
+                : '\ud800';
+
+            characters[offset + 1] = varyHighSurrogate
+                ? '\udc00'
+                : (char)(0xdc00 + index);
         }
 
         var input = new string(characters);
@@ -67,11 +72,13 @@ public sealed partial class UnicodeIdentityLengthTests
             .ToArray();
 
         // Act
-        var failures = Array.ConvertAll(inputs,
+        var failures = Array.ConvertAll(
+            inputs,
             input => Record.Exception(() => NestedSetIdentityLength.CountUnicodeScalars(input, "Scope")));
 
         // Assert
-        Assert.All(failures,
+        Assert.All(
+            failures,
             failure =>
             {
                 var error = Assert.IsType<ArgumentException>(failure);

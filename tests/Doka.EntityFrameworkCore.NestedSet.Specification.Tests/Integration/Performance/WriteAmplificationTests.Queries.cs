@@ -8,8 +8,10 @@ public abstract partial class WriteAmplificationTests
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        await WriteAmplificationTestSupport.SeedAsync(database,
+        await WriteAmplificationTestSupport.SeedAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new StructuralWriteProbe();
         await using var context = database.CreateContext(probe);
         var service = context
@@ -35,8 +37,10 @@ public abstract partial class WriteAmplificationTests
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        await WriteAmplificationTestSupport.SeedAsync(database,
+        await WriteAmplificationTestSupport.SeedAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new StructuralWriteProbe();
         await using var context = database.CreateContext(probe);
         var service = context
@@ -60,8 +64,10 @@ public abstract partial class WriteAmplificationTests
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        await WriteAmplificationTestSupport.SeedAsync(database,
+        await WriteAmplificationTestSupport.SeedAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new StructuralWriteProbe();
         await using var context = database.CreateContext(probe);
         var service = context
@@ -86,8 +92,10 @@ public abstract partial class WriteAmplificationTests
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        await WriteAmplificationTestSupport.SeedAsync(database,
+        await WriteAmplificationTestSupport.SeedAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new StructuralWriteProbe();
         await using var context = database.CreateContext(probe);
         var service = context

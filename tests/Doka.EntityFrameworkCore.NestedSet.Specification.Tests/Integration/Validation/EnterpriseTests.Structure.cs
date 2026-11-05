@@ -16,8 +16,11 @@ public abstract partial class EnterpriseTests
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(3),
+        await EnterpriseForestTestSupport.SeedForestAsync(
+            setup,
+            EnterpriseForestTestSupport.CreateForest(3),
             cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
         var tree = context
@@ -32,6 +35,7 @@ public abstract partial class EnterpriseTests
         Assert.DoesNotContain(
             probe.Commands,
             command => command.Contains("Payload", StringComparison.OrdinalIgnoreCase));
+
         Assert.NotEmpty(probe.Commands);
         Assert.Empty(context.ChangeTracker.Entries());
         await using var verification = database.CreateContext();
@@ -51,8 +55,11 @@ public abstract partial class EnterpriseTests
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var expected = EnterpriseForestTestSupport.CreateForest(129);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, expected,
+        await EnterpriseForestTestSupport.SeedForestAsync(
+            setup,
+            expected,
             cancellationToken: TestContext.Current.CancellationToken);
+
         var registryBefore = await RegistryStateAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
@@ -69,8 +76,12 @@ public abstract partial class EnterpriseTests
         Assert.Equal(0, probe.NodeUpdates);
         Assert.Equal(0, probe.MaterializedNodes);
         await using var verification = database.CreateContext();
-        Assert.Equal(Snapshot(expected), await SnapshotAsync(verification,
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            Snapshot(expected),
+            await SnapshotAsync(
+                verification,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Equal(
             registryBefore with { Revision = registryBefore.Revision + 1 },
             await RegistryStateAsync(verification, cancellationToken: TestContext.Current.CancellationToken));
@@ -85,9 +96,12 @@ public abstract partial class EnterpriseTests
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var expected = EnterpriseForestTestSupport.CreateForest(129);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, expected,
+        await EnterpriseForestTestSupport.SeedForestAsync(
+            setup,
+            expected,
             cancellationToken: TestContext.Current.CancellationToken,
             true);
+
         var registryBefore = await RegistryStateAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
@@ -106,8 +120,12 @@ public abstract partial class EnterpriseTests
         Assert.InRange(probe.MaximumUpdateParameters, 1, 577);
         Assert.Equal(0, probe.MaterializedNodes);
         await using var verification = database.CreateContext();
-        Assert.Equal(Snapshot(expected), await SnapshotAsync(verification,
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            Snapshot(expected),
+            await SnapshotAsync(
+                verification,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Equal(
             registryBefore with { Revision = registryBefore.Revision + 1 },
             await RegistryStateAsync(verification, cancellationToken: TestContext.Current.CancellationToken));
@@ -121,9 +139,12 @@ public abstract partial class EnterpriseTests
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(129),
+        await EnterpriseForestTestSupport.SeedForestAsync(
+            setup,
+            EnterpriseForestTestSupport.CreateForest(129),
             cancellationToken: TestContext.Current.CancellationToken,
             true);
+
         var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var registryBefore = await RegistryStateAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe { FailSecondNodeUpdate = true };
@@ -142,10 +163,17 @@ public abstract partial class EnterpriseTests
         Assert.Equal(1, probe.CompletedNodeUpdates);
         Assert.Null(context.Database.CurrentTransaction);
         await using var verification = database.CreateContext();
-        Assert.Equal(before, await SnapshotAsync(verification,
-            cancellationToken: TestContext.Current.CancellationToken));
-        Assert.Equal(registryBefore, await RegistryStateAsync(verification,
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            before,
+            await SnapshotAsync(
+                verification,
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal(
+            registryBefore,
+            await RegistryStateAsync(
+                verification,
+                cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Verifies that cancellation at a repair boundary rolls back an executed earlier batch.</summary>
@@ -156,9 +184,12 @@ public abstract partial class EnterpriseTests
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(129),
+        await EnterpriseForestTestSupport.SeedForestAsync(
+            setup,
+            EnterpriseForestTestSupport.CreateForest(129),
             cancellationToken: TestContext.Current.CancellationToken,
             true);
+
         var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var registryBefore = await RegistryStateAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         using var cancellation = new CancellationTokenSource();
@@ -178,10 +209,17 @@ public abstract partial class EnterpriseTests
         Assert.Equal(1, probe.CompletedNodeUpdates);
         Assert.Null(context.Database.CurrentTransaction);
         await using var verification = database.CreateContext();
-        Assert.Equal(before, await SnapshotAsync(verification,
-            cancellationToken: TestContext.Current.CancellationToken));
-        Assert.Equal(registryBefore, await RegistryStateAsync(verification,
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            before,
+            await SnapshotAsync(
+                verification,
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal(
+            registryBefore,
+            await RegistryStateAsync(
+                verification,
+                cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Verifies valid wide and deep forests without recursive traversal or entity materialization.</summary>
@@ -197,8 +235,11 @@ public abstract partial class EnterpriseTests
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(2049, deep),
+        await EnterpriseForestTestSupport.SeedForestAsync(
+            setup,
+            EnterpriseForestTestSupport.CreateForest(2049, deep),
             cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
         var tree = context
@@ -227,8 +268,11 @@ public abstract partial class EnterpriseTests
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(3),
+        await EnterpriseForestTestSupport.SeedForestAsync(
+            setup,
+            EnterpriseForestTestSupport.CreateForest(3),
             cancellationToken: TestContext.Current.CancellationToken);
+
         var firstProbe = new EnterpriseProbe();
         var secondProbe = new EnterpriseProbe();
         await using var first = database.CreateContext((IInterceptor)firstProbe);
@@ -267,11 +311,13 @@ public abstract partial class EnterpriseTests
                 await tree
                     .InTree(Guid.Empty)
                     .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken);
+
                 break;
             case "Rebuild":
                 await tree
                     .InTree(Guid.Empty)
                     .RebuildAsync(cancellationToken);
+
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(operation));

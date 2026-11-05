@@ -60,6 +60,7 @@ internal sealed class NestedSetCrossTreeMover<TEntity, TKey, TTreeId, TScope>
         TTreeId targetTreeId,
         CancellationToken cancellationToken
     ) => NestedSetSaveChanges.IsManagedMutation(_context)
+
         // WHY: The outer SaveChanges transaction owns both registry locks and the rollback boundary. Reusing
         // the transfer algorithm directly avoids acquiring more locks or creating another savepoint per parent.
         ? MoveToCoreAsync(Store(sourceTreeId), Store(targetTreeId), sourceKey, parentKey, cancellationToken)
@@ -177,9 +178,9 @@ internal sealed class NestedSetCrossTreeMover<TEntity, TKey, TTreeId, TScope>
                 NestedSetGuards.RequireBounds(source);
 
                 if (await targetStore
-                        .Nodes
-                        .AnyAsync(token)
-                        .ConfigureAwait(false))
+                    .Nodes
+                    .AnyAsync(token)
+                    .ConfigureAwait(false))
                 {
                     throw new NestedSetException(
                         NestedSetErrorCode.InvalidStructure,

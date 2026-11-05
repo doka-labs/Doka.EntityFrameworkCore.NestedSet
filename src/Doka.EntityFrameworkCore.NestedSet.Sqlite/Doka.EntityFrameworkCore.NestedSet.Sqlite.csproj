@@ -6,8 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup Label="Common hierarchy and native provider">
-    <ProjectReference Include="../Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj"/>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite"/>
+    <ProjectReference Include="../Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
   </ItemGroup>
 
   <ItemGroup Label="IDE file nesting">

@@ -61,7 +61,7 @@ internal sealed partial class MySqlNestedSetProvider
     )
     {
         if (key.GetTypeMapping()
-                .Converter is not null)
+            .Converter is not null)
         {
             return false;
         }

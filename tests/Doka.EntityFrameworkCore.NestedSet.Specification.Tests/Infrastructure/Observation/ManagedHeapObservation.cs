@@ -4,16 +4,16 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 internal sealed class ManagedHeapObservation
 {
     private readonly Lock _gate = new();
-    private long _gcIndex;
     private long _collectedOccupied;
-    private long _intervalStart;
-    private long _previousSampleAllocated;
     private int _fullCollections;
     private long _fullStart;
-    private long _previousFullStart;
-    private int _previousSampleCollections;
     private int _fullStartCollections;
+    private long _gcIndex;
+    private long _intervalStart;
     private bool _knownCollectionEpoch;
+    private long _previousFullStart;
+    private long _previousSampleAllocated;
+    private int _previousSampleCollections;
 
     /// <summary>Gets occupied bytes after the collected, caller-owned input baseline.</summary>
     internal long Baseline { get; private set; }
@@ -61,8 +61,8 @@ internal sealed class ManagedHeapObservation
                 fullAfter = GC.CollectionCount(GC.MaxGeneration);
                 collectionsAfter = GC.CollectionCount(0);
             } while (before.Index != after.Index
-                     || fullBefore != fullAfter
-                     || collectionsBefore != collectionsAfter);
+                || fullBefore != fullAfter
+                || collectionsBefore != collectionsAfter);
 
             _knownCollectionEpoch &= collectionsAfter >= 0 && collectionsAfter >= _previousSampleCollections;
 

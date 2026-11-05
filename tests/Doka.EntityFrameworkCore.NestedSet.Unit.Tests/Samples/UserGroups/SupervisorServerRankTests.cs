@@ -68,49 +68,56 @@ public sealed class SupervisorServerRankTests
     /// <param name="evidenceCount">The number of retained original occurrences.</param>
     /// <param name="cursorGroupIndex">The canonical continuation group, or a negative unresolved sentinel.</param>
     [Theory]
-    [InlineData(false,
+    [InlineData(
+        false,
         1,
         false,
         "Found",
         2,
         1,
         4)]
-    [InlineData(false,
+    [InlineData(
+        false,
         2,
         false,
         "Found",
         1,
         2,
         4)]
-    [InlineData(false,
+    [InlineData(
+        false,
         1,
         true,
         "Ambiguous",
         -1,
         0,
         -1)]
-    [InlineData(false,
+    [InlineData(
+        false,
         2,
         true,
         "Ambiguous",
         -1,
         0,
         -1)]
-    [InlineData(false,
+    [InlineData(
+        false,
         99,
         false,
         "NotFound",
         -1,
         0,
         -1)]
-    [InlineData(false,
+    [InlineData(
+        false,
         int.MaxValue,
         false,
         "NotFound",
         -1,
         0,
         -1)]
-    [InlineData(true,
+    [InlineData(
+        true,
         1,
         false,
         "Found",
@@ -139,45 +146,58 @@ public sealed class SupervisorServerRankTests
             .UserGroupMemberships
             .Where(member => member.TenantId == data.TenantId
                 && member.UserId == data.Users[1])
-            .ExecuteUpdateAsync(setters => setters.SetProperty(member => member.LeadershipPriority,
-                    tie ? 0 : int.MaxValue),
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(
+                    member => member.LeadershipPriority,
+                    tie
+                        ? 0
+                        : int.MaxValue),
                 CancellationToken.None);
+
         await context
             .UserGroupMemberships
             .Where(member => member.TenantId == data.TenantId
                 && member.UserId == data.Users[2])
-            .ExecuteUpdateAsync(setters => setters.SetProperty(member => member.LeadershipPriority, 0),
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(member => member.LeadershipPriority, 0),
                 CancellationToken.None);
-        context.UserGroupMemberships.Add(new UserGroupMembership
-        {
-            TenantId = data.TenantId,
-            UserId = data.Users[1],
-            UserGroupId = data.Groups[2],
-            LeadershipPriority = int.MinValue,
-        });
 
-        context.MembershipRoles.Add(new MembershipRole
-        {
-            TenantId = data.TenantId,
-            UserId = data.Users[1],
-            UserGroupId = data.Groups[2],
-            RoleId = data.ManagerRoleId,
-        });
+        context.UserGroupMemberships.Add(
+            new UserGroupMembership
+            {
+                TenantId = data.TenantId,
+                UserId = data.Users[1],
+                UserGroupId = data.Groups[2],
+                LeadershipPriority = int.MinValue,
+            });
 
-        context.MembershipMetadatas.Add(new MembershipMetadata
-        {
-            TenantId = data.TenantId,
-            UserId = data.Users[1],
-            UserGroupId = data.Groups[2],
-            GroupTypeId = 1,
-            FieldCode = "Route",
-            Value = "lane-blue",
-        });
+        context.MembershipRoles.Add(
+            new MembershipRole
+            {
+                TenantId = data.TenantId,
+                UserId = data.Users[1],
+                UserGroupId = data.Groups[2],
+                RoleId = data.ManagerRoleId,
+            });
+
+        context.MembershipMetadatas.Add(
+            new MembershipMetadata
+            {
+                TenantId = data.TenantId,
+                UserId = data.Users[1],
+                UserGroupId = data.Groups[2],
+                GroupTypeId = 1,
+                FieldCode = "Route",
+                Value = "lane-blue",
+            });
 
         await context.SaveChangesAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         var request = data.Request(group: data.Groups[5]) with { Groups = new AllEligibleGroups() };
-        var selection = highest ? SupervisorSelection.HighestBusinessPriority : SupervisorSelection.NthPerson(slot);
+        var selection = highest
+            ? SupervisorSelection.HighestBusinessPriority
+            : SupervisorSelection.NthPerson(slot);
+
         probe.Enabled = true;
 
         // Act
@@ -192,11 +212,21 @@ public sealed class SupervisorServerRankTests
         Assert.Equal(SupervisorBatchStatus.Completed, result.Status);
         var origin = Assert.Single(result.Origins);
         Assert.Equal(expected, origin.Status.ToString());
-        Assert.Equal(personIndex < 0 ? null : data.Users[personIndex], origin.Continuation?.CandidateUserId);
-        Assert.Equal(cursorGroupIndex < 0 ? null : data.Groups[cursorGroupIndex],
+        Assert.Equal(
+            personIndex < 0
+                ? null
+                : data.Users[personIndex],
+            origin.Continuation?.CandidateUserId);
+
+        Assert.Equal(
+            cursorGroupIndex < 0
+                ? null
+                : data.Groups[cursorGroupIndex],
             origin.Continuation?.FoundGroupId);
+
         Assert.Equal(evidenceCount, origin.Evidence.Count);
-        Assert.All(origin.Evidence,
+        Assert.All(
+            origin.Evidence,
             row =>
             {
                 Assert.Equal(data.Users[personIndex], row.CandidateUserId);
@@ -228,37 +258,40 @@ public sealed class SupervisorServerRankTests
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
         var data = await SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        context.UserGroupMemberships.Add(new UserGroupMembership
-        {
-            TenantId = data.TenantId,
-            UserId = data.Users[1],
-            UserGroupId = data.Groups[5],
-            LeadershipPriority = int.MinValue,
-        });
+        context.UserGroupMemberships.Add(
+            new UserGroupMembership
+            {
+                TenantId = data.TenantId,
+                UserId = data.Users[1],
+                UserGroupId = data.Groups[5],
+                LeadershipPriority = int.MinValue,
+            });
 
-        context.MembershipRoles.Add(new MembershipRole
-        {
-            TenantId = data.TenantId,
-            UserId = data.Users[1],
-            UserGroupId = data.Groups[5],
-            RoleId = data.ManagerRoleId,
-        });
+        context.MembershipRoles.Add(
+            new MembershipRole
+            {
+                TenantId = data.TenantId,
+                UserId = data.Users[1],
+                UserGroupId = data.Groups[5],
+                RoleId = data.ManagerRoleId,
+            });
 
-        context.MembershipMetadatas.Add(new MembershipMetadata
-        {
-            TenantId = data.TenantId,
-            UserId = data.Users[1],
-            UserGroupId = data.Groups[5],
-            GroupTypeId = 4,
-            FieldCode = "Route",
-            Value = "lane-blue",
-        });
+        context.MembershipMetadatas.Add(
+            new MembershipMetadata
+            {
+                TenantId = data.TenantId,
+                UserId = data.Users[1],
+                UserGroupId = data.Groups[5],
+                GroupTypeId = 4,
+                FieldCode = "Route",
+                Value = "lane-blue",
+            });
 
         await context.SaveChangesAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         var request = data.Request(SearchStart.IncludeSelf, data.Groups[5]) with
         {
-            Groups = new AllEligibleGroups([4]),
+            Groups = new AllEligibleGroups(4),
         };
 
         probe.Enabled = true;
@@ -273,10 +306,26 @@ public sealed class SupervisorServerRankTests
 
         // Assert
         var origin = Assert.Single(result.Origins);
-        Assert.Equal(found ? SupervisorResolutionStatus.Found : SupervisorResolutionStatus.NotFound, origin.Status);
-        Assert.Equal(found ? data.Users[1] : (int?)null, origin.Continuation?.CandidateUserId);
-        Assert.Equal(found ? 1 : 0, origin.Evidence.Count);
-        Assert.All(origin.Evidence,
+        Assert.Equal(
+            found
+                ? SupervisorResolutionStatus.Found
+                : SupervisorResolutionStatus.NotFound,
+            origin.Status);
+
+        Assert.Equal(
+            found
+                ? data.Users[1]
+                : null,
+            origin.Continuation?.CandidateUserId);
+
+        Assert.Equal(
+            found
+                ? 1
+                : 0,
+            origin.Evidence.Count);
+
+        Assert.All(
+            origin.Evidence,
             row =>
             {
                 Assert.Equal(0, row.Distance);
@@ -327,7 +376,8 @@ public sealed class SupervisorServerRankTests
     )
     {
         var services = new ServiceCollection();
-        foreach (var extension in Options().Extensions)
+        foreach (var extension in Options()
+            .Extensions)
         {
             extension.ApplyServices(services);
         }
@@ -346,9 +396,10 @@ public sealed class SupervisorServerRankTests
     private static UserGroupContext CreateContext(
         IServiceProvider services
     )
-        => new(new DbContextOptionsBuilder<UserGroupContext>(Options())
-            .UseInternalServiceProvider(services)
-            .Options);
+        => new(
+            new DbContextOptionsBuilder<UserGroupContext>(Options())
+                .UseInternalServiceProvider(services)
+                .Options);
 
     /// <summary>Uses the actual sample model and standard in-memory SQLite provider configuration.</summary>
     private static DbContextOptions<UserGroupContext> Options()

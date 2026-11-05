@@ -9,7 +9,10 @@ internal sealed class OrderingSeedProbe : DbCommandInterceptor
     /// <param name="failOnWrite">The one-based native attempt to reject, or zero for ordinary observation.</param>
     internal OrderingSeedProbe(
         int failOnWrite = 0
-    ) => _failOnWrite = failOnWrite;
+    )
+    {
+        _failOnWrite = failOnWrite;
+    }
 
     /// <summary>Gets the exact injected failure so rollback tests reject unrelated setup failures.</summary>
     internal InvalidOperationException Failure { get; } = new("Injected ordering fixture seed failure.");

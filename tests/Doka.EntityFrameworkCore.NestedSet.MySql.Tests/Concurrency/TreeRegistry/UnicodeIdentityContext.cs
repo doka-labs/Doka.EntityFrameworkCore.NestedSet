@@ -24,14 +24,19 @@ internal abstract class UnicodeIdentityContext<TIdentity>(DbContextOptions optio
     {
         modelBuilder.HasCharSet("utf8mb4");
         var node = modelBuilder.Entity<UnicodeIdentityNode<TIdentity>>();
-        node.ToTable(GetType().Name);
+        node.ToTable(
+            GetType()
+                .Name);
+
         node.HasKey(entity => entity.Id);
         node
             .Property(entity => entity.Id)
             .ValueGeneratedNever();
+
         node
             .Property(entity => entity.Name)
             .HasMaxLength(32);
+
         ConfigureIdentity(node.Property(entity => entity.TreeId));
 
         if (Scoped)

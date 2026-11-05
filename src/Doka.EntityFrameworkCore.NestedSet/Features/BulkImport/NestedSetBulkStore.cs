@@ -11,9 +11,9 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
     where TTreeId : notnull
     where TScope : notnull
 {
-    private readonly NestedSetStore<TEntity, TKey, TTreeId, TScope> _store;
-    private readonly NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope> _plan;
     private readonly NestedSetMappedBatch<TEntity, TKey, TTreeId, TScope> _batch;
+    private readonly NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope> _plan;
+    private readonly NestedSetStore<TEntity, TKey, TTreeId, TScope> _store;
     private readonly Dictionary<(int Count, bool Geometry), string> _templates = new();
 
     /// <summary>Shares metadata and parameter templates for one transaction-owned import.</summary>
@@ -66,7 +66,9 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
 
             if (updated == NestedSetBatch.MaximumRows)
             {
-                await WriteAsync(updated, geometry, parameters, cancellationToken).ConfigureAwait(false);
+                await WriteAsync(updated, geometry, parameters, cancellationToken)
+                    .ConfigureAwait(false);
+
                 parameters.Clear();
                 updated = 0;
             }
@@ -74,7 +76,8 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
 
         if (updated != 0)
         {
-            await WriteAsync(updated, geometry, parameters, cancellationToken).ConfigureAwait(false);
+            await WriteAsync(updated, geometry, parameters, cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 
@@ -121,11 +124,11 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
         // WHY: Database collation, null placement, converters and generated criteria must define sibling order.
         // The global rank is used only within each input sibling group, never to flatten hierarchy levels.
         await foreach (var key in order
-                           .Apply(imported)
-                           .Select(_store.Property<TKey>(_store.Map.Key))
-                           .AsAsyncEnumerable()
-                           .WithCancellation(cancellationToken)
-                           .ConfigureAwait(false))
+            .Apply(imported)
+            .Select(_store.Property<TKey>(_store.Map.Key))
+            .AsAsyncEnumerable()
+            .WithCancellation(cancellationToken)
+            .ConfigureAwait(false))
         {
             ranks.Add(key, ranks.Count);
         }
@@ -153,12 +156,15 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
                 _store.Map.ParentProperty,
             }
             .Concat(
-                NestedSetRefreshProperties.Generated(_store.Map.EntityType)
+                NestedSetRefreshProperties
+                    .Generated(_store.Map.EntityType)
                     .Where(property => (property.ValueGenerated & ValueGenerated.OnUpdate) != 0))
             .Distinct()
             .ToArray();
 
-        var setters = properties.Select(CreateRefreshSetter).ToArray();
+        var setters = properties
+            .Select(CreateRefreshSetter)
+            .ToArray();
 
         // WHY: Refresh applies arbitrary provider-generated and complex scalar metadata values. This heterogeneous
         // row exists only at the materialization/metadata-assignment boundary; expected identities remain typed.
@@ -203,10 +209,10 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
             var refreshed = 0;
 
             await foreach (var values in query
-                               .Select(projection)
-                               .AsAsyncEnumerable()
-                               .WithCancellation(cancellationToken)
-                               .ConfigureAwait(false))
+                .Select(projection)
+                .AsAsyncEnumerable()
+                .WithCancellation(cancellationToken)
+                .ConfigureAwait(false))
             {
                 var key = (TKey)values[0];
 
@@ -276,10 +282,10 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
         // WHY: Explicit placement retains the plan's preorder inside one contiguous interval. The TreeId/Left
         // index streams that same order, avoiding both per-batch reads and a second entry dictionary per node.
         await foreach (var values in imported
-                           .Select(projection)
-                           .AsAsyncEnumerable()
-                           .WithCancellation(cancellationToken)
-                           .ConfigureAwait(false))
+            .Select(projection)
+            .AsAsyncEnumerable()
+            .WithCancellation(cancellationToken)
+            .ConfigureAwait(false))
         {
             if (refreshed == keys.Length
                 || !NestedSetTypedValue<TKey>.Matches(_store.Map.KeyProperty, (TKey)values[0], keys[refreshed]))
@@ -399,12 +405,12 @@ internal sealed class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
         if (geometry)
         {
             foreach (var (property, prefix) in new[]
-                     {
-                         (_store.Map.Left, "l"),
-                         (_store.Map.Right, "r"),
-                         (_store.Map.Depth, "d"),
-                         (_store.Map.Position, "o"),
-                     })
+                {
+                    (_store.Map.Left, "l"),
+                    (_store.Map.Right, "r"),
+                    (_store.Map.Depth, "d"),
+                    (_store.Map.Position, "o"),
+                })
             {
                 sql.Append(", ");
                 AppendAssignment(sql, property, prefix, count);

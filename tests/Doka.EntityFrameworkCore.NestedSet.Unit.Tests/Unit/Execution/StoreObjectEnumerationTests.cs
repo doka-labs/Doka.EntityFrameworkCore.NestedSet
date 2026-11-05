@@ -41,7 +41,9 @@ public sealed class StoreObjectEnumerationTests
         // Assert
         Assert.Equal(1, enumerations);
         Assert.Equal(StoreObjectIdentifier.Table(entity.GetTableName()!, entity.GetSchema()), resolved);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 }

@@ -6,11 +6,11 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
 [EventSource(Name = "NestedSet.AllocationProfile")]
 internal sealed class NativeReadProfileEvents : EventSource
 {
-    /// <summary>Gets the process-local marker source used by native allocation profiling.</summary>
-    internal static NativeReadProfileEvents Log { get; } = new();
-
     /// <summary>Keeps the event source process-local and prevents additional marker identities.</summary>
     private NativeReadProfileEvents() { }
+
+    /// <summary>Gets the process-local marker source used by native allocation profiling.</summary>
+    internal static NativeReadProfileEvents Log { get; } = new();
 
     /// <summary>Emits an optional start marker before the allocation and timing counters begin.</summary>
     [NonEvent]

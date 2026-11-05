@@ -32,9 +32,10 @@ public sealed class EntitySplitRollbackTests : ProviderTest
             static (id, name) => new EntitySplitNode
             {
                 Id = id,
-                Name = name
+                Name = name,
             },
-            null, cancellationToken: TestContext.Current.CancellationToken);
+            null,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var sql = context.GetService<ISqlGenerationHelper>();
         var trigger = sql.DelimitIdentifier($"NestedSetRollback_{scenario.Seed}");
@@ -63,10 +64,22 @@ public sealed class EntitySplitRollbackTests : ProviderTest
         // Assert
         Assert.NotNull(error);
         Assert.Contains("forced rollback", error.ToString(), StringComparison.Ordinal);
-        Assert.Equal(5, await MappingDeleteTestSupport.CountRowsAsync(context, "EntitySplitPayload", scenario.Seed,
-            cancellationToken: TestContext.Current.CancellationToken));
-        Assert.Equal(5, await MappingDeleteTestSupport.CountRowsAsync(context, "EntitySplitStructure", scenario.Seed,
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            5,
+            await MappingDeleteTestSupport.CountRowsAsync(
+                context,
+                "EntitySplitPayload",
+                scenario.Seed,
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal(
+            5,
+            await MappingDeleteTestSupport.CountRowsAsync(
+                context,
+                "EntitySplitStructure",
+                scenario.Seed,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.True(
             (await context
                 .NestedSet<EntitySplitNode>()

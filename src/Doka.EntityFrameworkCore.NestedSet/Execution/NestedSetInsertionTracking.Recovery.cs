@@ -62,8 +62,8 @@ internal static partial class NestedSetInsertionTracking
                 // touched maps once, matching this bounded entry set without clearing or changing other rows.
                 // ReSharper disable once LoopCanBeConvertedToQuery
                 foreach (var entry in Contract
-                             .Map(map.GetType())
-                             .Entries(map))
+                    .Map(map.GetType())
+                    .Entries(map))
                 {
                     retained |= introduced.Contains(entry);
                 }

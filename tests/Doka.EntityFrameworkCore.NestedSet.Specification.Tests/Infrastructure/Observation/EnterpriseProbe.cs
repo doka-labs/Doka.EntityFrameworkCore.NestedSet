@@ -5,8 +5,8 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Observes structural SQL and injects deterministic faults at repair batch boundaries.</summary>
 public sealed class EnterpriseProbe : DbCommandInterceptor
 {
-    private readonly string _tableName;
     private readonly bool _captureParameterBindings;
+    private readonly string _tableName;
 
     /// <summary>Creates an observer for one hierarchy table without counting lock-table updates.</summary>
     /// <param name="tableName">The mapped hierarchy table name used by the test fixture.</param>

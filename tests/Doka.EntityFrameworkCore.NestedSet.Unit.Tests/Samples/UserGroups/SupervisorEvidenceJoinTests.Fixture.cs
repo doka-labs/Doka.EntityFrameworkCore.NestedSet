@@ -26,19 +26,27 @@ public sealed partial class SupervisorEvidenceJoinTests
                 && row.UserId != data.Users[1]
                 && row.UserId != data.Users[6])
             .ExecuteDeleteAsync(cancellationToken);
+
         await context
             .MembershipMetadatas
             .Where(row => row.TenantId == data.TenantId
                 && row.UserGroupId == data.Groups[6])
-            .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.Value, "lane-orange"),
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(row => row.Value, "lane-orange"),
                 cancellationToken);
+
         await context
             .Users
             .Where(user => user.TenantId == data.TenantId
-                && (user.Id == data.Users[5] || sharedWinner && user.Id == data.Users[6]))
+                && (user.Id == data.Users[5] || (sharedWinner && user.Id == data.Users[6])))
             .ExecuteUpdateAsync(setters => setters.SetProperty(user => user.Visible, false), cancellationToken);
-        var otherWinner = sharedWinner ? data.Users[1] : data.Users[2];
-        await context.UserGroupMemberships.AddRangeAsync([
+
+        var otherWinner = sharedWinner
+            ? data.Users[1]
+            : data.Users[2];
+
+        await context.UserGroupMemberships.AddRangeAsync(
+            [
                 new UserGroupMembership
                 {
                     TenantId = data.TenantId,
@@ -62,7 +70,8 @@ public sealed partial class SupervisorEvidenceJoinTests
             ],
             cancellationToken);
 
-        await context.MembershipRoles.AddRangeAsync([
+        await context.MembershipRoles.AddRangeAsync(
+            [
                 new MembershipRole
                 {
                     TenantId = data.TenantId,
@@ -80,7 +89,8 @@ public sealed partial class SupervisorEvidenceJoinTests
             ],
             cancellationToken);
 
-        await context.MembershipMetadatas.AddRangeAsync([
+        await context.MembershipMetadatas.AddRangeAsync(
+            [
                 new MembershipMetadata
                 {
                     TenantId = data.TenantId,
@@ -112,7 +122,8 @@ public sealed partial class SupervisorEvidenceJoinTests
             cancellationToken);
 
         // WHY: A second valid role source and overlapping periods are existence witnesses, never extra occurrences.
-        await context.UserRoles.AddRangeAsync([
+        await context.UserRoles.AddRangeAsync(
+            [
                 new UserRole
                 {
                     TenantId = data.TenantId,
@@ -128,7 +139,8 @@ public sealed partial class SupervisorEvidenceJoinTests
             ],
             cancellationToken);
 
-        await context.GroupRelationPeriods.AddAsync(new GroupRelationPeriod
+        await context.GroupRelationPeriods.AddAsync(
+            new GroupRelationPeriod
             {
                 TenantId = data.TenantId,
                 ParentId = data.Groups[4],
@@ -145,7 +157,9 @@ public sealed partial class SupervisorEvidenceJoinTests
                 .Where(row => row.TenantId == data.TenantId
                     && row.ParentId == data.Groups[2]
                     && row.ChildId == data.Groups[3])
-                .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.ToDate,
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(
+                        row => row.ToDate,
                         new DateOnly(2026, 10, 15)),
                     cancellationToken);
         }
@@ -159,7 +173,8 @@ public sealed partial class SupervisorEvidenceJoinTests
     )
     {
         var services = new ServiceCollection();
-        foreach (var extension in Options().Extensions)
+        foreach (var extension in Options()
+            .Extensions)
         {
             extension.ApplyServices(services);
         }
@@ -173,9 +188,10 @@ public sealed partial class SupervisorEvidenceJoinTests
     private static UserGroupContext CreateContext(
         IServiceProvider services
     )
-        => new(new DbContextOptionsBuilder<UserGroupContext>(Options())
-            .UseInternalServiceProvider(services)
-            .Options);
+        => new(
+            new DbContextOptionsBuilder<UserGroupContext>(Options())
+                .UseInternalServiceProvider(services)
+                .Options);
 
     /// <summary>Creates the standard sample provider configuration without opening a connection.</summary>
     private static DbContextOptions<UserGroupContext> Options()

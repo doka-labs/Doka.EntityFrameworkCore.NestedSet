@@ -16,6 +16,9 @@ internal abstract partial class NestedSetProviderCapabilities
     /// <summary>Gets whether transaction creation acquires the hierarchy's database writer lock.</summary>
     internal virtual bool MeasureTransactionBeginLockWait => false;
 
+    /// <summary>Gets the read-only transaction isolation covering a multi-statement inspection.</summary>
+    internal abstract IsolationLevel ReadSnapshotIsolation { get; }
+
     /// <summary>Reserves one complete identity and reports whether this operation created it.</summary>
     internal abstract Task<bool> ReserveTreeAsync(
         NestedSetTreeLock treeLock,
@@ -70,9 +73,6 @@ internal abstract partial class NestedSetProviderCapabilities
         IsolationLevel? isolation
     );
 
-    /// <summary>Gets the read-only transaction isolation covering a multi-statement inspection.</summary>
-    internal abstract IsolationLevel ReadSnapshotIsolation { get; }
-
     /// <summary>Renders a trusted model collation using the native identifier grammar.</summary>
     /// <param name="sql">The actual provider helper that owns identifier quoting and escaping.</param>
     /// <param name="collation">The collation name configured in the model.</param>
@@ -81,6 +81,7 @@ internal abstract partial class NestedSetProviderCapabilities
             ISqlGenerationHelper sql,
             string collation
         )
+
         // WHY: The actual provider helper owns identifier escaping; adapters override only different native grammar.
         => sql.DelimitIdentifier(collation);
 

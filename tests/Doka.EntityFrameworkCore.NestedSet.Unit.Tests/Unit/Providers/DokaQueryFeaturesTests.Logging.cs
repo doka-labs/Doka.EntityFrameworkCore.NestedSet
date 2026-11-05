@@ -111,7 +111,8 @@ public sealed partial class DokaQueryFeaturesTests
                 if (eventId.Name?.StartsWith(QueryEventPrefix, StringComparison.Ordinal) is true)
                 {
                     var template = state is IReadOnlyList<KeyValuePair<string, object?>> values
-                        ? values.Single(pair => pair.Key == "{OriginalFormat}").Value as string
+                        ? values.Single(pair => pair.Key == "{OriginalFormat}")
+                            .Value as string
                         : null;
 
                     owner.Events.Add((category, logLevel, eventId, formatter(state, exception), template));

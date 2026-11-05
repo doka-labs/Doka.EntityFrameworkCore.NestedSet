@@ -23,17 +23,17 @@ public abstract class ConvertedTextCollationTests : ProviderTest
         foreach (var model in Enumerable.Range(0, 4))
         {
             foreach (var operation in new[]
-                     {
-                         "query",
-                         "projection",
-                         "delete",
-                         "move",
-                         "maintenance",
-                         "managed",
-                         "missing",
-                         "cycle",
-                         "rollback",
-                     })
+                {
+                    "query",
+                    "projection",
+                    "delete",
+                    "move",
+                    "maintenance",
+                    "managed",
+                    "missing",
+                    "cycle",
+                    "rollback",
+                })
             {
                 yield return new TheoryDataRow<int, string>(model, operation);
             }
@@ -57,28 +57,36 @@ public abstract class ConvertedTextCollationTests : ProviderTest
                     options => new ReferenceTextCollationContext(options),
                     value => new ReferenceTextKey(value),
                     value => new ReferenceTextKey(value),
-                    operation, cancellationToken: TestContext.Current.CancellationToken);
+                    operation,
+                    cancellationToken: TestContext.Current.CancellationToken);
+
                 break;
             case 1:
                 await RunAsync<ValueTextCollationContext, ValueTextKey, ValueTextKey?>(
                     options => new ValueTextCollationContext(options),
                     value => new ValueTextKey(value),
                     value => new ValueTextKey(value),
-                    operation, cancellationToken: TestContext.Current.CancellationToken);
+                    operation,
+                    cancellationToken: TestContext.Current.CancellationToken);
+
                 break;
             case 2:
                 await RunAsync<EnumTextCollationContext, EnumTextKey, EnumTextKey?>(
                     options => new EnumTextCollationContext(options),
                     value => Enum.Parse<EnumTextKey>(value, true),
                     value => Enum.Parse<EnumTextKey>(value, true),
-                    operation, cancellationToken: TestContext.Current.CancellationToken);
+                    operation,
+                    cancellationToken: TestContext.Current.CancellationToken);
+
                 break;
             case 3:
                 await RunAsync<ImplicitEnumTextCollationContext, EnumTextKey, EnumTextKey?>(
                     options => new ImplicitEnumTextCollationContext(options),
                     value => Enum.Parse<EnumTextKey>(value, true),
                     value => Enum.Parse<EnumTextKey>(value, true),
-                    operation, cancellationToken: TestContext.Current.CancellationToken);
+                    operation,
+                    cancellationToken: TestContext.Current.CancellationToken);
+
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(model));
@@ -98,7 +106,9 @@ public abstract class ConvertedTextCollationTests : ProviderTest
         var options = ModelCompatibilityDatabase.Options<ImplicitRegistryTextCollationContext>(Engine, connection);
         using var source = new ImplicitRegistryTextCollationContext(options);
         var model = source.Model;
-        var designModel = source.GetService<IDesignTimeModel>().Model;
+        var designModel = source.GetService<IDesignTimeModel>()
+            .Model;
+
         var node = model.FindEntityType(typeof(ConvertedTextCollationNode<EnumTextKey, EnumTextKey?>))!;
         var designNode = designModel.FindEntityType(node.Name)!;
         var store = StoreObjectIdentifier.Table(designNode.GetTableName()!, designNode.GetSchema());
@@ -109,7 +119,8 @@ public abstract class ConvertedTextCollationTests : ProviderTest
 
         // Act
         using var supplied = new ImplicitRegistryTextCollationContext(
-            new DbContextOptionsBuilder<ImplicitRegistryTextCollationContext>(options).UseModel(model).Options);
+            new DbContextOptionsBuilder<ImplicitRegistryTextCollationContext>(options).UseModel(model)
+                .Options);
 
         var suppliedNode = supplied.Model.FindEntityType(node.Name)!;
         var parentSql = supplied
@@ -137,7 +148,11 @@ public abstract class ConvertedTextCollationTests : ProviderTest
 
             if (name is "Scope" or "NativeTree")
             {
-                var property = registry.FindProperty(name == "Scope" ? "Scope" : "TreeId")!;
+                var property = registry.FindProperty(
+                    name == "Scope"
+                        ? "Scope"
+                        : "TreeId")!;
+
                 Assert.Equal(expected, property.GetCollation());
                 Assert.Equal(
                     node.FindProperty(name)!.GetTypeMapping()
@@ -202,8 +217,10 @@ public abstract class ConvertedTextCollationTests : ProviderTest
             ],
             CancellationToken.None);
 
-        await LowerParentsAsync<EnumTextKey?, EnumTextKey?>(context,
+        await LowerParentsAsync<EnumTextKey?, EnumTextKey?>(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
+
         context.ChangeTracker.Clear();
 
         // Act
@@ -227,6 +244,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
             EnumTextKey.Root,
             Assert.Single(stored, node => node.Id == EnumTextKey.Child)
                 .ParentId);
+
         var property = context.Model.FindEntityType(typeof(ConvertedTextCollationNode<EnumTextKey?, EnumTextKey?>))!
             .FindProperty(nameof(ConvertedTextCollationNode<EnumTextKey?, EnumTextKey?>.Id))!;
 
@@ -250,7 +268,9 @@ public abstract class ConvertedTextCollationTests : ProviderTest
         where TContext : DbContext
         where TKey : notnull
     {
-        await using var context = await _fixture.CreateContextAsync(Engine, create,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
+            create,
             cancellationToken: cancellationToken);
 
         await context
@@ -319,8 +339,14 @@ public abstract class ConvertedTextCollationTests : ProviderTest
                 break;
             case "missing":
             case "cycle":
-                await RejectAsync(context, hierarchy, key, treeId, operation == "missing",
+                await RejectAsync(
+                    context,
+                    hierarchy,
+                    key,
+                    treeId,
+                    operation == "missing",
                     cancellationToken: cancellationToken);
+
                 break;
             case "rollback":
                 await RollbackAsync(context, hierarchy, key, parent, treeId, cancellationToken: cancellationToken);
@@ -376,11 +402,20 @@ public abstract class ConvertedTextCollationTests : ProviderTest
             .ToArrayAsync(cancellationToken);
 
         // Assert
-        Assert.Equal(key("ROOT"), Assert.Single(parentRows).Id);
-        Assert.Equal(new[] { key("CHILD"), key("OTHER") }, childRows.Select(node => node.Id));
-        Assert.Equal(key("CHILD"), Assert.Single(leafParents).Id);
+        Assert.Equal(
+            key("ROOT"),
+            Assert.Single(parentRows)
+                .Id);
 
-        if (property.GetTypeMapping().Converter!.ProviderClrType == typeof(string))
+        Assert.Equal(new[] { key("CHILD"), key("OTHER") }, childRows.Select(node => node.Id));
+        Assert.Equal(
+            key("CHILD"),
+            Assert.Single(leafParents)
+                .Id);
+
+        if (property.GetTypeMapping()
+                .Converter!.ProviderClrType
+            == typeof(string))
         {
             Assert.NotNull(collation);
             Assert.Contains(collation, parents.ToQueryString(), StringComparison.Ordinal);
@@ -390,9 +425,17 @@ public abstract class ConvertedTextCollationTests : ProviderTest
         {
             // WHY: SQLite and Doka select an integral enum converter even for a declared text column. Collation must
             // follow the effective conversion rather than inferring text identity from the column type name.
-            Assert.Equal(typeof(int), property.GetTypeMapping().Converter!.ProviderClrType);
-            Assert.True(context.Database.IsSqlite()
-                || context.GetService<IDatabaseProvider>().Name == DatabaseTestTargets.MySqlProviderName);
+            Assert.Equal(
+                typeof(int),
+                property.GetTypeMapping()
+                    .Converter!.ProviderClrType);
+
+            Assert.True(
+                context.Database.IsSqlite()
+                || context.GetService<IDatabaseProvider>()
+                    .Name
+                == DatabaseTestTargets.MySqlProviderName);
+
             Assert.Null(collation);
             Assert.DoesNotContain(" COLLATE ", parents.ToQueryString(), StringComparison.OrdinalIgnoreCase);
         }
@@ -425,8 +468,14 @@ public abstract class ConvertedTextCollationTests : ProviderTest
 
         // Assert
         Assert.Equal(4, stored.Length);
-        Assert.False(Assert.Single(stored, node => node.Key.Equals(key("ROOT"))).Parent.HasValue);
-        Assert.True(Assert.Single(stored, node => node.Key.Equals(key("LEAF"))).Parent.HasValue);
+        Assert.False(
+            Assert.Single(stored, node => node.Key.Equals(key("ROOT")))
+                .Parent.HasValue);
+
+        Assert.True(
+            Assert.Single(stored, node => node.Key.Equals(key("LEAF")))
+                .Parent.HasValue);
+
         Assert.DoesNotContain("CASE", sql, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Name", sql, StringComparison.Ordinal);
         Assert.Contains("ParentId", sql, StringComparison.Ordinal);
@@ -460,6 +509,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
             (await hierarchy
                 .ParentOf(key("lEaF"))
                 .SingleAsync(cancellationToken)).Id);
+
         await AssertValidAsync(hierarchy, treeId, cancellationToken: cancellationToken);
     }
 
@@ -496,11 +546,13 @@ public abstract class ConvertedTextCollationTests : ProviderTest
             (await hierarchy
                 .ParentOf(key("cHiLd"))
                 .SingleAsync(cancellationToken)).Id);
+
         Assert.Equal(
             key("CHILD"),
             (await hierarchy
                 .ParentOf(key("lEaF"))
                 .SingleAsync(cancellationToken)).Id);
+
         var stored = await hierarchy
             .InTree(treeId)
             .Nodes
@@ -514,6 +566,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
                 Assert.Equal(
                     (row.Left, row.Right, row.Depth, row.Position),
                     (node.Left, node.Right, node.Depth, node.Position));
+
                 Assert.Equal(
                     EntityState.Unchanged,
                     context.Entry(node)
@@ -545,16 +598,19 @@ public abstract class ConvertedTextCollationTests : ProviderTest
             await hierarchy
                 .ChildrenOf(key("cHiLd"))
                 .ToArrayAsync(cancellationToken));
+
         Assert.Equal(
             key("LEAF"),
             (await hierarchy
                 .ChildrenOf(key("oThEr"))
                 .SingleAsync(cancellationToken)).Id);
+
         Assert.Equal(
             key("OTHER"),
             (await hierarchy
                 .ParentOf(key("lEaF"))
                 .SingleAsync(cancellationToken)).Id);
+
         await AssertValidAsync(hierarchy, treeId, cancellationToken: cancellationToken);
     }
 
@@ -591,6 +647,7 @@ public abstract class ConvertedTextCollationTests : ProviderTest
             (await hierarchy
                 .ParentOf(key("lEaF"))
                 .SingleAsync(cancellationToken)).Id);
+
         await AssertValidAsync(hierarchy, treeId, cancellationToken: cancellationToken);
     }
 
@@ -622,7 +679,12 @@ public abstract class ConvertedTextCollationTests : ProviderTest
             : hierarchy.MoveToAsync(key("rOoT"), key("lEaF"), cancellationToken));
 
         // Assert
-        Assert.Equal(missing ? NestedSetErrorCode.NodeNotFound : NestedSetErrorCode.CycleDetected, failure.Code);
+        Assert.Equal(
+            missing
+                ? NestedSetErrorCode.NodeNotFound
+                : NestedSetErrorCode.CycleDetected,
+            failure.Code);
+
         Assert.Equal(before, await SnapshotAsync<TKey, TParent>(context, cancellationToken: cancellationToken));
         await AssertValidAsync(hierarchy, treeId, cancellationToken: cancellationToken);
     }
@@ -667,7 +729,11 @@ public abstract class ConvertedTextCollationTests : ProviderTest
         Assert.Equal(before, await SnapshotAsync<TKey, TParent>(context, cancellationToken: cancellationToken));
         Assert.Equal(parent("oThEr"), child.ParentId);
         Assert.Equal("Z", child.Name);
-        Assert.Equal(EntityState.Modified, context.Entry(child).State);
+        Assert.Equal(
+            EntityState.Modified,
+            context.Entry(child)
+                .State);
+
         await AssertValidAsync(hierarchy, treeId, cancellationToken: cancellationToken);
     }
 

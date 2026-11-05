@@ -12,13 +12,13 @@ public class PreparedOwnerImportBenchmarks : IDatabaseBenchmark, IAsyncDisposabl
     private static readonly Guid s_firstTree = new(-1, 0, 0, new byte[8]);
     private static readonly Guid s_secondTree = new(-2, 0, 0, new byte[8]);
     private readonly CommandObservation _observation = new();
-    private PreparedOwnerContext? _context;
-    private PreparedOwner? _owner;
-    private PreparedOwnerNode[] _inputs = [];
     private NestedSetBranch<PreparedOwnerNode>? _branch;
-    private NestedSetTreeImport<PreparedOwnerNode, Guid>[] _forest = [];
     private ImportOperation _completed;
+    private PreparedOwnerContext? _context;
     private int _detectionPasses;
+    private NestedSetTreeImport<PreparedOwnerNode, Guid>[] _forest = [];
+    private PreparedOwnerNode[] _inputs = [];
+    private PreparedOwner? _owner;
 
     /// <summary>Gets or sets the explicitly selected import size, including multi-wave scaling cases.</summary>
     [ParamsSource(nameof(NodeCounts))]
@@ -50,6 +50,22 @@ public class PreparedOwnerImportBenchmarks : IDatabaseBenchmark, IAsyncDisposabl
         _context ?? throw new InvalidOperationException("Initialize the prepared-owner benchmark first.");
 
     /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        if (_context is not null)
+        {
+            await _context.DisposeAsync();
+            _context = null;
+        }
+
+        _owner = null;
+        _inputs = [];
+        _branch = null;
+        _forest = [];
+        GC.SuppressFinalize(this);
+    }
+
+    /// <inheritdoc />
     CommandObservation IDatabaseBenchmark.Observation => _observation;
 
     /// <summary>Acquires the existing launcher's provider without creating a second resource owner.</summary>
@@ -68,14 +84,6 @@ public class PreparedOwnerImportBenchmarks : IDatabaseBenchmark, IAsyncDisposabl
         _context = new PreparedOwnerContext(ConsumerBenchmarkDatabase.Options(_observation));
         _context.ChangeTracker.DetectedAllChanges += (_, _) => _detectionPasses++;
     }
-
-    /// <summary>Completes setup before timing and allocation observations begin.</summary>
-    [IterationSetup]
-    public void Prepare() => BenchmarkLifecycle.Complete(PrepareAsync(CancellationToken.None));
-
-    /// <summary>Completes functional and follow-up-save checks outside the observation window.</summary>
-    [IterationCleanup]
-    public void Verify() => BenchmarkLifecycle.Complete(VerifyAsync(CancellationToken.None));
 
     /// <summary>Creates identical persisted rows and detached plans for all three owner states.</summary>
     /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
@@ -145,31 +153,6 @@ public class PreparedOwnerImportBenchmarks : IDatabaseBenchmark, IAsyncDisposabl
         _observation.Reset();
     }
 
-    /// <summary>Imports one complete prepared branch through several bounded waves.</summary>
-    [Benchmark]
-    public async Task Subtree()
-    {
-        var branch = _branch ?? throw new InvalidOperationException("Prepare the detached branch first.");
-        await Context
-            .NestedSet<PreparedOwnerNode>()
-            .ForScope(1)
-            .InsertSubtreeAsync(branch, 1, CancellationToken.None);
-
-        _completed = ImportOperation.Subtree;
-    }
-
-    /// <summary>Imports two independent prepared plans while their shared owner exposes both complete inputs.</summary>
-    [Benchmark]
-    public async Task Forest()
-    {
-        await Context
-            .NestedSet<PreparedOwnerNode>()
-            .ForScope(1)
-            .InsertForestAsync(_forest, CancellationToken.None);
-
-        _completed = ImportOperation.Forest;
-    }
-
     /// <summary>Checks exact persisted topology, owner reuse, full validation, and an ordinary marked save.</summary>
     /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
     public async Task VerifyAsync(
@@ -198,7 +181,9 @@ public class PreparedOwnerImportBenchmarks : IDatabaseBenchmark, IAsyncDisposabl
             var row = rows[index + 1];
             var second = index >= split;
             int? expectedParent = _completed == ImportOperation.Subtree
-                ? index == 0 ? 1 : 2
+                ? index == 0
+                    ? 1
+                    : 2
                 : index == 0 || index == split
                     ? null
                     : second
@@ -217,8 +202,8 @@ public class PreparedOwnerImportBenchmarks : IDatabaseBenchmark, IAsyncDisposabl
         }
 
         foreach (var treeId in rows
-                     .Select(node => node.TreeId)
-                     .Distinct())
+            .Select(node => node.TreeId)
+            .Distinct())
         {
             var report = await Context
                 .NestedSet<PreparedOwnerNode>()
@@ -259,6 +244,43 @@ public class PreparedOwnerImportBenchmarks : IDatabaseBenchmark, IAsyncDisposabl
             "The saved owner could not be reused without automatic detection.");
     }
 
+    /// <summary>Releases only the child-owned context; the existing launcher owns the database.</summary>
+    [GlobalCleanup]
+    public async Task CleanupAsync() => await DisposeAsync();
+
+    /// <summary>Completes setup before timing and allocation observations begin.</summary>
+    [IterationSetup]
+    public void Prepare() => BenchmarkLifecycle.Complete(PrepareAsync(CancellationToken.None));
+
+    /// <summary>Completes functional and follow-up-save checks outside the observation window.</summary>
+    [IterationCleanup]
+    public void Verify() => BenchmarkLifecycle.Complete(VerifyAsync(CancellationToken.None));
+
+    /// <summary>Imports one complete prepared branch through several bounded waves.</summary>
+    [Benchmark]
+    public async Task Subtree()
+    {
+        var branch = _branch ?? throw new InvalidOperationException("Prepare the detached branch first.");
+        await Context
+            .NestedSet<PreparedOwnerNode>()
+            .ForScope(1)
+            .InsertSubtreeAsync(branch, 1, CancellationToken.None);
+
+        _completed = ImportOperation.Subtree;
+    }
+
+    /// <summary>Imports two independent prepared plans while their shared owner exposes both complete inputs.</summary>
+    [Benchmark]
+    public async Task Forest()
+    {
+        await Context
+            .NestedSet<PreparedOwnerNode>()
+            .ForScope(1)
+            .InsertForestAsync(_forest, CancellationToken.None);
+
+        _completed = ImportOperation.Forest;
+    }
+
     /// <summary>Creates one wide branch without setting non-owned CLR navigation backreferences.</summary>
     private NestedSetBranch<PreparedOwnerNode> Branch(
         int start,
@@ -270,26 +292,6 @@ public class PreparedOwnerImportBenchmarks : IDatabaseBenchmark, IAsyncDisposabl
             .Take(count - 1)
             .Select(node => new NestedSetBranch<PreparedOwnerNode>(node))
             .ToArray());
-
-    /// <summary>Releases only the child-owned context; the existing launcher owns the database.</summary>
-    [GlobalCleanup]
-    public async Task CleanupAsync() => await DisposeAsync();
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        if (_context is not null)
-        {
-            await _context.DisposeAsync();
-            _context = null;
-        }
-
-        _owner = null;
-        _inputs = [];
-        _branch = null;
-        _forest = [];
-        GC.SuppressFinalize(this);
-    }
 
     /// <summary>Distinguishes verified import effects from an unexecuted workload.</summary>
     private enum ImportOperation

@@ -20,7 +20,9 @@ public abstract class SubtreeDeleteWriteTests : ProviderTest
     public async Task ConventionOwnedRestrictiveForeignKeyRemainsSafe()
     {
         // Arrange
-        var expectedUnlinks = Engine is "PostgreSql" or "SqlServer" ? 0 : 39;
+        var expectedUnlinks = Engine is "PostgreSql" or "SqlServer"
+            ? 0
+            : 39;
 
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
@@ -44,11 +46,13 @@ public abstract class SubtreeDeleteWriteTests : ProviderTest
                 .NodeUpdates
                 .Where(write => SqlAssignments.Assigns(write.Sql, "ParentId"))
                 .Sum(write => write.Rows));
+
         Assert.Empty(
             await service
                 .InTree(Guid.Empty)
                 .Nodes
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal(
             1,
             await context
@@ -56,7 +60,9 @@ public abstract class SubtreeDeleteWriteTests : ProviderTest
                 .CountAsync(CancellationToken.None));
 
         var entityType = context.Model.FindEntityType(typeof(ConstrainedNode))!;
-        var registry = NestedSetTreeRegistryMapping.For(entityType).Registry;
+        var registry = NestedSetTreeRegistryMapping.For(entityType)
+            .Registry;
+
         var lifecycle = await context
             .Set<NestedSetTreeRegistry>(registry.Name)
             .AsNoTracking()
@@ -81,7 +87,9 @@ public abstract class SubtreeDeleteWriteTests : ProviderTest
         var probe = new DeleteFailureProbe();
         await using var context = CreateContext(setup, probe);
         await using var transaction = await context.Database.BeginTransactionAsync(
-            Engine == "Sqlite" ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+            Engine == "Sqlite"
+                ? IsolationLevel.Serializable
+                : IsolationLevel.ReadCommitted,
             CancellationToken.None);
 
         var service = context
@@ -134,7 +142,9 @@ public abstract class SubtreeDeleteWriteTests : ProviderTest
                 {
                     Id = key,
                     Tree = 1,
-                    ParentId = key == 1 ? null : key - 1,
+                    ParentId = key == 1
+                        ? null
+                        : key - 1,
                     Left = key,
                     Right = 81 - key,
                     Depth = key - 1,
@@ -204,6 +214,7 @@ public abstract class SubtreeDeleteWriteTests : ProviderTest
             node
                 .Property(entity => entity.Id)
                 .ValueGeneratedNever();
+
             node.HasNestedSet(builder => builder
                 .HasTreeId(entity => entity.TreeId)
                 .HasScope(entity => entity.Tree)

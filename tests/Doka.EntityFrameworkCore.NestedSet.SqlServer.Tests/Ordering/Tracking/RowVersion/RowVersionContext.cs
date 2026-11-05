@@ -18,9 +18,11 @@ public sealed class RowVersionContext : NestedSetDbContext
         node
             .Property(row => row.Version)
             .IsRowVersion();
+
         node
             .Property(row => row.Name)
             .HasMaxLength(100);
+
         node.HasNestedSet(builder => builder
             .HasTreeId(row => row.TreeId)
             .HasScope(row => row.Scope)
@@ -32,15 +34,6 @@ public sealed class RowVersionContext : NestedSetDbContext
 /// <summary>A generated-key hierarchy with a database-generated token changed by every real UPDATE.</summary>
 public sealed class SqlServerVersionNode : IScopedNestedSetNode<int, Guid, int>
 {
-    /// <summary>Gets or sets the stable tree identity.</summary>
-    public Guid TreeId { get; set; }
-
-    /// <inheritdoc />
-    public int Id { get; set; }
-
-    /// <summary>Gets or sets the isolated forest scope.</summary>
-    public int Scope { get; set; } = 1;
-
     /// <summary>Gets or sets the direct parent key.</summary>
     public int? ParentId { get; set; }
 
@@ -49,6 +42,15 @@ public sealed class SqlServerVersionNode : IScopedNestedSetNode<int, Guid, int>
 
     /// <summary>Gets or sets the native SQL Server concurrency token.</summary>
     public byte[] Version { get; set; } = [];
+
+    /// <summary>Gets or sets the stable tree identity.</summary>
+    public Guid TreeId { get; set; }
+
+    /// <inheritdoc />
+    public int Id { get; set; }
+
+    /// <summary>Gets or sets the isolated forest scope.</summary>
+    public int Scope { get; set; } = 1;
 
     /// <inheritdoc />
     public long Left { get; set; }

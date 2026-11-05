@@ -45,8 +45,11 @@ public sealed class CompositionArgumentTests
         var error = Record.Exception(() => WithNullArgument(hierarchy, source, argument));
 
         // Assert
-        Assert.Equal(expectedParameter,
-            Assert.IsType<ArgumentNullException>(error).ParamName);
+        Assert.Equal(
+            expectedParameter,
+            Assert.IsType<ArgumentNullException>(error)
+                .ParamName);
+
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
     }
@@ -79,12 +82,14 @@ public sealed class CompositionArgumentTests
         // Act
         var error = Record.Exception(() => operation switch
         {
-            "ancestors" => (IQueryable)hierarchy.SelectAncestors(node => true,
+            "ancestors" => hierarchy.SelectAncestors(
+                node => true,
                 (node, ancestor, distance) => distance),
             "ancestors-or-self" => hierarchy.SelectAncestorsOrSelf(
                 node => true,
                 (node, ancestor, distance) => distance),
-            "subtrees" => hierarchy.SelectSubtrees(node => true,
+            "subtrees" => hierarchy.SelectSubtrees(
+                node => true,
                 (node, descendant, distance) => distance),
             _ => CompositionEndpointTests.Filter(hierarchy, source, operation),
         });
@@ -102,14 +107,16 @@ public sealed class CompositionArgumentTests
         string argument
     ) => argument switch
     {
-        "ancestors.nodes" => hierarchy.SelectAncestors<int>(null!,
+        "ancestors.nodes" => hierarchy.SelectAncestors(
+            null!,
             (node, ancestor, distance) => distance),
         "ancestors.projection" => hierarchy.SelectAncestors<int>(node => true, null!),
-        "ancestors-or-self.nodes" => hierarchy.SelectAncestorsOrSelf<int>(
+        "ancestors-or-self.nodes" => hierarchy.SelectAncestorsOrSelf(
             null!,
             (node, ancestor, distance) => distance),
         "ancestors-or-self.projection" => hierarchy.SelectAncestorsOrSelf<int>(node => true, null!),
-        "subtrees.anchors" => hierarchy.SelectSubtrees<int>(null!,
+        "subtrees.anchors" => hierarchy.SelectSubtrees(
+            null!,
             (node, descendant, distance) => distance),
         "subtrees.projection" => hierarchy.SelectSubtrees<int>(node => true, null!),
         "path.source" => hierarchy.WherePathEdges<CompositionGuardRow>(
@@ -117,11 +124,13 @@ public sealed class CompositionArgumentTests
             row => row.Upper,
             row => row.Lower,
             (row, parent, child) => true),
-        "path.anchor" => hierarchy.WherePathEdges(source,
+        "path.anchor" => hierarchy.WherePathEdges(
+            source,
             null!,
             row => row.Lower,
             (row, parent, child) => true),
-        "path.node" => hierarchy.WherePathEdges(source,
+        "path.node" => hierarchy.WherePathEdges(
+            source,
             row => row.Upper,
             null!,
             (row, parent, child) => true),
@@ -130,11 +139,13 @@ public sealed class CompositionArgumentTests
             null!,
             row => row.Lower,
             (row, owner) => true),
-        "any.node" => hierarchy.WhereAnyAncestorOrSelf(source,
+        "any.node" => hierarchy.WhereAnyAncestorOrSelf(
+            source,
             null!,
             (row, owner) => true),
         "any.predicate" => hierarchy.WhereAnyAncestorOrSelf(source, row => row.Lower, null!),
-        "nearest.source" => hierarchy.WhereNearestAncestorOrSelf<CompositionGuardRow>(null!,
+        "nearest.source" => hierarchy.WhereNearestAncestorOrSelf<CompositionGuardRow>(
+            null!,
             row => row.Lower,
             (row, owner) => true,
             (row, owner) => true),

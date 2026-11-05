@@ -42,7 +42,8 @@ public abstract class BroadScopeTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadScopeContext>(
             Engine,
-            static options => new BroadScopeContext(options), cancellationToken: TestContext.Current.CancellationToken);
+            static options => new BroadScopeContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var firstTree = Guid.NewGuid();
         var secondTree = Guid.NewGuid();
@@ -55,8 +56,11 @@ public abstract class BroadScopeTests : ProviderTest
             .Set<BroadScopeNode>()
             .ToArrayAsync(CancellationToken.None);
 
-        tracked.Single(node => node.Scope.Value == "A" && node.Id == 2).Name = "Zulu";
-        tracked.Single(node => node.Scope.Value == "a" && node.Id == 2).Name = "Zulu";
+        tracked.Single(node => node.Scope.Value == "A" && node.Id == 2)
+            .Name = "Zulu";
+
+        tracked.Single(node => node.Scope.Value == "a" && node.Id == 2)
+            .Name = "Zulu";
 
         // Act
         await context.SaveNestedSetChangesAsync(
@@ -81,6 +85,7 @@ public abstract class BroadScopeTests : ProviderTest
                 .ForScope(new BroadScope("A"))
                 .InTree(firstTree)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+
         Assert.True(
             (await context
                 .NestedSet<BroadScopeNode>()
@@ -96,7 +101,8 @@ public abstract class BroadScopeTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadScopeContext>(
             Engine,
-            static options => new BroadScopeContext(options), cancellationToken: TestContext.Current.CancellationToken);
+            static options => new BroadScopeContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var firstTree = Guid.NewGuid();
         var secondTree = Guid.NewGuid();
@@ -124,13 +130,18 @@ public abstract class BroadScopeTests : ProviderTest
         Assert.Equal(2, moved.Depth);
         Assert.Equal((2L, 3L, 0L), Bounds(foreign));
         Assert.Equal(1, foreign.Depth);
-        Assert.Equal(EntityState.Unchanged, context.Entry(foreign).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(foreign)
+                .State);
+
         Assert.True(
             (await context
                 .NestedSet<BroadScopeNode>()
                 .ForScope(new BroadScope("B"))
                 .InTree(firstTree)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+
         Assert.True(
             (await context
                 .NestedSet<BroadScopeNode>()
@@ -146,7 +157,8 @@ public abstract class BroadScopeTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadScopeContext>(
             Engine,
-            static options => new BroadScopeContext(options), cancellationToken: TestContext.Current.CancellationToken);
+            static options => new BroadScopeContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var input = new BroadScopeNode
         {
@@ -166,7 +178,11 @@ public abstract class BroadScopeTests : ProviderTest
             .InsertRootAsync(input, Guid.NewGuid(), CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidStructure, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidStructure,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Equal("original", input.Scope.Value);
         Assert.Equal(
             0,
@@ -182,7 +198,8 @@ public abstract class BroadScopeTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadScopeContext>(
             Engine,
-            static options => new BroadScopeContext(options), cancellationToken: TestContext.Current.CancellationToken);
+            static options => new BroadScopeContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var input = new BroadScopeNode
         {
@@ -206,7 +223,11 @@ public abstract class BroadScopeTests : ProviderTest
             .InsertForestAsync([tree], CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidImport, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidImport,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Equal("original", input.Scope.Value);
         Assert.Equal(
             0,

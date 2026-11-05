@@ -2,6 +2,43 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class OrderingTrackerTests
 {
+    /// <summary>Maps equivalent computed concurrency properties for coordinated and ordinary EF contexts.</summary>
+    private static void ConfigureNode(
+        ModelBuilder modelBuilder,
+        string table,
+        DbContext context
+    )
+    {
+        var sql = context.GetService<ISqlGenerationHelper>();
+        var node = modelBuilder.Entity<TrackerNode>();
+        node.ToTable(table);
+        node
+            .Property(value => value.Id)
+            .ValueGeneratedNever();
+
+        node
+            .Property(value => value.Name)
+            .HasMaxLength(128)
+            .IsRequired();
+
+        // WHY: Deterministic computed values expose generated-value handling without timing or random tokens.
+        node
+            .Property(value => value.NameToken)
+            .HasMaxLength(128)
+            .HasComputedColumnSql(sql.DelimitIdentifier(nameof(TrackerNode.Name)), stored: true)
+            .IsConcurrencyToken();
+
+        var position = sql.DelimitIdentifier(nameof(TrackerNode.Position));
+        var coordinateExpression = context.Database.IsSqlServer()
+            ? $"CAST({position} AS int) + 100"
+            : position + " + 100";
+
+        node
+            .Property(value => value.CoordinateToken)
+            .HasComputedColumnSql(coordinateExpression, stored: true)
+            .IsConcurrencyToken();
+    }
+
     /// <summary>Combines ordered nodes with unrelated generated identities and required relationships.</summary>
     private sealed class TrackerContext : NestedSetDbContext
     {
@@ -23,23 +60,28 @@ public abstract partial class OrderingTrackerTests
                     .HasScope(node => node.Scope)
                     .HasParent(node => node.ParentId)
                     .OrderBy(node => node.Name));
+
             modelBuilder
                 .Entity<TrackerAddition>()
                 .ToTable("TrackerAdditions");
+
             modelBuilder
                 .Entity<TrackerAddition>()
                 .Property(addition => addition.Id)
                 .ValueGeneratedOnAdd();
+
             modelBuilder
                 .Entity<TrackerOwner>()
                 .ToTable("TrackerOwners")
                 .Property(owner => owner.Id)
                 .ValueGeneratedNever();
+
             modelBuilder
                 .Entity<TrackerChild>()
                 .ToTable("TrackerChildren")
                 .Property(child => child.Id)
                 .ValueGeneratedNever();
+
             modelBuilder
                 .Entity<TrackerChild>()
                 .HasOne(child => child.Owner)
@@ -64,54 +106,9 @@ public abstract partial class OrderingTrackerTests
         ) => ConfigureNode(modelBuilder, "PlainTrackerNodes", this);
     }
 
-    /// <summary>Maps equivalent computed concurrency properties for coordinated and ordinary EF contexts.</summary>
-    private static void ConfigureNode(
-        ModelBuilder modelBuilder,
-        string table,
-        DbContext context
-    )
-    {
-        var sql = context.GetService<ISqlGenerationHelper>();
-        var node = modelBuilder.Entity<TrackerNode>();
-        node.ToTable(table);
-        node
-            .Property(value => value.Id)
-            .ValueGeneratedNever();
-        node
-            .Property(value => value.Name)
-            .HasMaxLength(128)
-            .IsRequired();
-
-        // WHY: Deterministic computed values expose generated-value handling without timing or random tokens.
-        node
-            .Property(value => value.NameToken)
-            .HasMaxLength(128)
-            .HasComputedColumnSql(sql.DelimitIdentifier(nameof(TrackerNode.Name)), stored: true)
-            .IsConcurrencyToken();
-
-        var position = sql.DelimitIdentifier(nameof(TrackerNode.Position));
-        var coordinateExpression = context.Database.IsSqlServer()
-            ? $"CAST({position} AS int) + 100"
-            : position + " + 100";
-
-        node
-            .Property(value => value.CoordinateToken)
-            .HasComputedColumnSql(coordinateExpression, stored: true)
-            .IsConcurrencyToken();
-    }
-
     /// <summary>Contains payload and structural concurrency tokens that change for different reasons.</summary>
     private sealed class TrackerNode : IScopedNestedSetNode<int, Guid, int>
     {
-        /// <summary>Gets or sets the stable tree identity.</summary>
-        public Guid TreeId { get; set; }
-
-        /// <inheritdoc />
-        public int Id { get; set; }
-
-        /// <summary>Gets or sets the isolated forest.</summary>
-        public int Scope { get; set; }
-
         /// <summary>Gets or sets the direct parent.</summary>
         public int? ParentId { get; set; }
 
@@ -123,6 +120,15 @@ public abstract partial class OrderingTrackerTests
 
         /// <summary>Gets or sets the database-generated structural concurrency value.</summary>
         public int CoordinateToken { get; set; }
+
+        /// <summary>Gets or sets the stable tree identity.</summary>
+        public Guid TreeId { get; set; }
+
+        /// <inheritdoc />
+        public int Id { get; set; }
+
+        /// <summary>Gets or sets the isolated forest.</summary>
+        public int Scope { get; set; }
 
         /// <inheritdoc />
         public long Left { get; set; }

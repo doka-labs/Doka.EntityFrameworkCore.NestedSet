@@ -112,9 +112,9 @@ public sealed class UserGroupMembershipTests
         // Act
         var exception = await Record.ExceptionAsync(() => context.Database.ExecuteSqlInterpolatedAsync(
             $"""
-            INSERT INTO "UserGroupMemberships" ("TenantId", "UserId", "UserGroupId")
-                VALUES ({tenantId}, {user.Id}, {group.Id})
-            """,
+             INSERT INTO "UserGroupMemberships" ("TenantId", "UserId", "UserGroupId")
+                 VALUES ({tenantId}, {user.Id}, {group.Id})
+             """,
             CancellationToken.None));
 
         var persistedCount = await context
@@ -201,6 +201,7 @@ public sealed class UserGroupMembershipTests
             .NestedSet<User>()
             .ForScope(tenantId)
             .InsertRootAsync(user, Guid.NewGuid(), CancellationToken.None);
+
         var removed = new UserGroupMembership
         {
             TenantId = tenantId,

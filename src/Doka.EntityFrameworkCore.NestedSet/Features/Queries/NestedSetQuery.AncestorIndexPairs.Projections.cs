@@ -7,12 +7,6 @@ internal sealed partial class NestedSetQuery<TEntity>
     {
         private static readonly ConditionalWeakTable<IEntityType, AncestorIndexCoordinateProjections> s_cache = new();
 
-        /// <summary>Gets the source selector without a generated flag that its consumer does not read.</summary>
-        internal Expression<Func<TEntity, IndexedAncestorCoordinates>> Source { get; }
-
-        /// <summary>Gets the candidate selector with the exact configured generated Boolean.</summary>
-        internal Expression<Func<TEntity, IndexedAncestorCoordinates>> Candidate { get; }
-
         /// <summary>Creates context-free selectors without closing over mutable property-name holders.</summary>
         private AncestorIndexCoordinateProjections(
             NestedSetModelDescriptor descriptor,
@@ -26,10 +20,17 @@ internal sealed partial class NestedSetQuery<TEntity>
             Candidate = Create(descriptor, entityType, nonLeaf);
         }
 
+        /// <summary>Gets the source selector without a generated flag that its consumer does not read.</summary>
+        internal Expression<Func<TEntity, IndexedAncestorCoordinates>> Source { get; }
+
+        /// <summary>Gets the candidate selector with the exact configured generated Boolean.</summary>
+        internal Expression<Func<TEntity, IndexedAncestorCoordinates>> Candidate { get; }
+
         /// <summary>Publishes selectors without rooting a context, request, model, or another named mapping.</summary>
         internal static AncestorIndexCoordinateProjections For(
                 IEntityType entityType
             )
+
             // WHY: A CLR type can have different roles in named mappings and later finalized models.
             // The weak exact metadata key preserves those boundaries and allows the entire model to collect.
             => s_cache.GetValue(
@@ -66,6 +67,7 @@ internal sealed partial class NestedSetQuery<TEntity>
             // object-valued identities above keep their native converter and equality semantics.
             bindings.Add(
                 BindMapped(entity, nameof(IndexedAncestorCoordinates.Left), descriptor.Left.Resolve(entityType)));
+
             bindings.Add(
                 BindMapped(entity, nameof(IndexedAncestorCoordinates.Right), descriptor.Right.Resolve(entityType)));
 

@@ -4,6 +4,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples.SignalLab;
 
 /// <summary>Measures request snapshots separately from parallel functional validation tests.</summary>
 /// <param name="output">Records the complete fixed-profile allocation result.</param>
+
 // WHY: Only the allocation probe needs the existing nonparallel measurement collection; ordinary
 // validation tests keep their previous scheduling. Work, warmup and allocation budget are unchanged.
 [Collection("Allocation measurements")]
@@ -28,7 +29,8 @@ public sealed class SignalReportSnapshotAllocationTests(
                 }))
             .ToArray();
 
-        var request = new SignalReportRequest(Guid.NewGuid(),
+        var request = new SignalReportRequest(
+            Guid.NewGuid(),
             Guid.NewGuid(),
             [SignalReportDataset.Id(1)],
             [SignalReportDataset.PulseChannel],

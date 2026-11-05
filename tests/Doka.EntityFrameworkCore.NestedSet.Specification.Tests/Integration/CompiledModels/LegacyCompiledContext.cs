@@ -29,12 +29,15 @@ public sealed class LegacyCompiledContext : DbContext
             .HasMaxLength(64)
             .ValueGeneratedNever()
             .UseCollation(collation);
+
         node
             .Property(row => row.ParentId)
             .HasMaxLength(64);
+
         node
             .Property(row => row.Tree)
             .HasMaxLength(64);
+
         node.HasNestedSet(builder => builder
             .HasTreeId(row => row.TreeId)
             .HasScope(row => row.Tree)

@@ -70,6 +70,7 @@ internal static class UpdateScenario
         SampleConsole.Require(
             receiverCount == 195,
             $"Updated Receiver array should total 195 pulses, found {receiverCount}.");
+
         SampleConsole.Require(
             totalCount == 275,
             $"The updated station tree should total 275 pulses, found {totalCount}.");

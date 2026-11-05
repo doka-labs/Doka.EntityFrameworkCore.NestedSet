@@ -212,14 +212,93 @@ internal sealed class NestedSetTrackerSnapshot
         }
     }
 
+    /// <summary>Clears provider-induced aggregate flags only inside an originally Unchanged complex graph.</summary>
+    /// <param name="references">The direct complex references whose nested collections may retain flags.</param>
+    /// <param name="collections">The direct complex collections belonging to the current containing entry.</param>
+    private static void ClearUnmodifiedComplexCollections(
+        IEnumerable<ComplexPropertyEntry> references,
+        IEnumerable<ComplexCollectionEntry> collections
+    )
+    {
+        foreach (var reference in references)
+        {
+            if (reference.CurrentValue is not null)
+            {
+                ClearUnmodifiedComplexCollections(reference.ComplexProperties, reference.ComplexCollections);
+            }
+        }
+
+        foreach (var collection in collections)
+        {
+            if (collection.CurrentValue is IList values)
+            {
+                // WHY: Settle nested aggregates before their containing collection. The public aggregate
+                // setter visits flattened elements; originally Modified graphs never enter this clearing path.
+                // ReSharper disable once ForCanBeConvertedToForeach
+                // ReSharper disable once LoopCanBeConvertedToQuery
+                for (var index = 0; index < values.Count; index++)
+                {
+                    if (values[index] is not null)
+                    {
+                        var element = collection[index];
+
+                        // WHY: EF's ComplexElementEntry.ComplexProperties also enumerates collections.
+                        // Filter metadata before constructing reference entries, since wrapping a collection throws.
+                        ClearUnmodifiedComplexCollections(
+                            element
+                                .Metadata
+                                .ComplexType
+                                .GetComplexProperties()
+                                .Where(property => !property.IsCollection)
+                                .Select(element.ComplexProperty),
+                            element.ComplexCollections);
+                    }
+                }
+            }
+
+            if (collection.IsModified)
+            {
+                collection.IsModified = false;
+            }
+        }
+    }
+
+    /// <summary>Writes a mapped CLR field, property or indexer without changing tracker state or flags.</summary>
+    internal static void SetMappedClrValue(
+        object instance,
+        IPropertyBase metadata,
+        object? value
+    )
+    {
+        var member = metadata.GetMemberInfo(forMaterialization: false, forSet: true);
+
+        switch (member)
+        {
+            case FieldInfo field:
+                field.SetValue(instance, value);
+
+                break;
+            case PropertyInfo property when metadata.IsIndexerProperty():
+                property.SetValue(instance, value, [metadata.Name]);
+
+                break;
+            case PropertyInfo property:
+                property.SetValue(instance, value);
+
+                break;
+            default:
+                throw new InvalidOperationException("The mapped CLR member cannot be restored after rollback.");
+        }
+    }
+
     /// <summary>Captures one entity and the scalar state of its nested complex values.</summary>
     private sealed class EntrySnapshot
     {
+        private readonly NestedSetComplexSnapshot? _complex;
         private readonly EntityEntry _entry;
+        private readonly PropertySnapshot[] _properties;
         private readonly EntityState _state;
         private readonly IUpdateEntry _updateEntry;
-        private readonly PropertySnapshot[] _properties;
-        private readonly NestedSetComplexSnapshot? _complex;
 
         /// <summary>Copies comparer snapshots while retaining the original entry and complex instances.</summary>
         /// <param name="entry">The existing tracked entry whose pending state must survive rollback.</param>
@@ -279,7 +358,9 @@ internal sealed class NestedSetTrackerSnapshot
             // WHY: ChangeTracker.Clear drops identity maps but leaves entries reporting their old state, and a later
             // same-state restore would never track them again. A fresh lookup exposes that loss through public API.
             if (_entry.State != EntityState.Detached
-                && _entry.Context.Entry(_entry.Entity).State == EntityState.Detached)
+                && _entry.Context.Entry(_entry.Entity)
+                    .State
+                == EntityState.Detached)
             {
                 // WHY: Clear already zeroed EF's pending count. This transition would subtract this entry again,
                 // and SaveChanges returns without writing while that count is zero.
@@ -347,7 +428,8 @@ internal sealed class NestedSetTrackerSnapshot
                 // collections. An explicit false scalar flag can finish EF's flagless sharing-peer transition
                 // without rejecting that graph. False is legal on a key too; no non-key scalar is required.
                 ClearUnmodifiedComplexCollections(_entry.ComplexProperties, _entry.ComplexCollections);
-                _entry.Property(_entry.Metadata.FindPrimaryKey()!.Properties[0].Name).IsModified = false;
+                _entry.Property(_entry.Metadata.FindPrimaryKey()!.Properties[0].Name)
+                    .IsModified = false;
             }
         }
 
@@ -506,7 +588,10 @@ internal sealed class NestedSetTrackerSnapshot
                             continue;
                         }
 
-                        var element = deleted ? collection.GetOriginalEntry(index) : collection[index];
+                        var element = deleted
+                            ? collection.GetOriginalEntry(index)
+                            : collection[index];
+
                         var instance = values[index];
                         var currentPath = hasCurrentPath && !deleted;
 
@@ -518,6 +603,7 @@ internal sealed class NestedSetTrackerSnapshot
                             // for an empty recursive visit adds allocation without retaining any more state.
                             ordinals.Add(index);
                             CaptureComplexValues(
+
                                 // ReSharper disable once PossibleMultipleEnumeration
                                 elementComplexProperties,
                                 element.ComplexProperty,
@@ -538,10 +624,15 @@ internal sealed class NestedSetTrackerSnapshot
 
                 // WHY: A public CurrentValue beneath a Deleted owner reads an original the reference does not
                 // track. The retained container is that owner's actual CLR storage in every lifecycle state.
-                var owner = container is ComplexClrLocation location ? location.Captured : container;
+                var owner = container is ComplexClrLocation location
+                    ? location.Captured
+                    : container;
+
                 var referenceValue = owner is null
                     ? null
-                    : property.GetGetter().GetClrValue(owner);
+                    : property
+                        .GetGetter()
+                        .GetClrValue(owner);
 
                 var referenceLocation = referenceValue is not null && property.ComplexType.ClrType.IsValueType
                     ? new ComplexClrLocation(
@@ -563,6 +654,7 @@ internal sealed class NestedSetTrackerSnapshot
                 {
                     // WHY: A scalar-only reference needs no recursive accessor delegates or ordinal work.
                     CaptureComplexValues(
+
                         // ReSharper disable once PossibleMultipleEnumeration
                         referenceComplexProperties,
                         reference.ComplexProperty,
@@ -576,64 +668,14 @@ internal sealed class NestedSetTrackerSnapshot
         }
     }
 
-    /// <summary>Clears provider-induced aggregate flags only inside an originally Unchanged complex graph.</summary>
-    /// <param name="references">The direct complex references whose nested collections may retain flags.</param>
-    /// <param name="collections">The direct complex collections belonging to the current containing entry.</param>
-    private static void ClearUnmodifiedComplexCollections(
-        IEnumerable<ComplexPropertyEntry> references,
-        IEnumerable<ComplexCollectionEntry> collections
-    )
-    {
-        foreach (var reference in references)
-        {
-            if (reference.CurrentValue is not null)
-            {
-                ClearUnmodifiedComplexCollections(reference.ComplexProperties, reference.ComplexCollections);
-            }
-        }
-
-        foreach (var collection in collections)
-        {
-            if (collection.CurrentValue is IList values)
-            {
-                // WHY: Settle nested aggregates before their containing collection. The public aggregate
-                // setter visits flattened elements; originally Modified graphs never enter this clearing path.
-                // ReSharper disable once ForCanBeConvertedToForeach
-                // ReSharper disable once LoopCanBeConvertedToQuery
-                for (var index = 0; index < values.Count; index++)
-                {
-                    if (values[index] is not null)
-                    {
-                        var element = collection[index];
-                        // WHY: EF's ComplexElementEntry.ComplexProperties also enumerates collections.
-                        // Filter metadata before constructing reference entries, since wrapping a collection throws.
-                        ClearUnmodifiedComplexCollections(
-                            element
-                                .Metadata
-                                .ComplexType
-                                .GetComplexProperties()
-                                .Where(property => !property.IsCollection)
-                                .Select(element.ComplexProperty),
-                            element.ComplexCollections);
-                    }
-                }
-            }
-
-            if (collection.IsModified)
-            {
-                collection.IsModified = false;
-            }
-        }
-    }
-
     /// <summary>Shares one retained storage location between the scalar leaves of a complex struct.</summary>
     private sealed class ComplexClrLocation
     {
-        private readonly object _root;
-        private readonly int[] _ordinals;
-        private readonly bool _hasCurrentPath;
         private readonly object? _container;
+        private readonly bool _hasCurrentPath;
+        private readonly int[] _ordinals;
         private readonly IComplexProperty _property;
+        private readonly object _root;
 
         /// <summary>Retains mapped current or original-only storage without creating an alternate CLR graph.</summary>
         internal ComplexClrLocation(
@@ -655,6 +697,11 @@ internal sealed class NestedSetTrackerSnapshot
 
         /// <summary>Gets the boxed preimage used while independently comparer-snapshotting scalar leaves.</summary>
         internal object Captured { get; }
+
+        /// <summary>Whether this struct or a containing struct is mapped as a nullable value type.</summary>
+        internal bool HasNullableContainer =>
+            Nullable.GetUnderlyingType(_property.ClrType) is not null
+            || _container is ComplexClrLocation { HasNullableContainer: true };
 
         /// <summary>Reads actual restored storage rather than the stale box retained at capture time.</summary>
         internal object? Read(
@@ -691,56 +738,29 @@ internal sealed class NestedSetTrackerSnapshot
             CopyBack(instance);
         }
 
-        /// <summary>Whether this struct or a containing struct is mapped as a nullable value type.</summary>
-        internal bool HasNullableContainer =>
-            Nullable.GetUnderlyingType(_property.ClrType) is not null
-            || (_container is ComplexClrLocation { HasNullableContainer: true });
-
         /// <summary>Reads the struct reference through its retained containing mapped member.</summary>
         private object ReadContainer() => _property
             .GetGetter()
-            .GetClrValue(_container is ComplexClrLocation parent ? parent.ReadContainer() : _container!)!;
+            .GetClrValue(
+                _container is ComplexClrLocation parent
+                    ? parent.ReadContainer()
+                    : _container!)!;
 
         /// <summary>Copies a changed original-only box through each containing value-type boundary.</summary>
         private void CopyBack(
             object value
         )
         {
-            var container = _container is ComplexClrLocation parent ? parent.ReadContainer() : _container!;
+            var container = _container is ComplexClrLocation parent
+                ? parent.ReadContainer()
+                : _container!;
+
             SetMappedClrValue(container, _property, value);
 
             if (_container is ComplexClrLocation location)
             {
                 location.CopyBack(container);
             }
-        }
-    }
-
-    /// <summary>Writes a mapped CLR field, property or indexer without changing tracker state or flags.</summary>
-    internal static void SetMappedClrValue(
-        object instance,
-        IPropertyBase metadata,
-        object? value
-    )
-    {
-        var member = metadata.GetMemberInfo(forMaterialization: false, forSet: true);
-
-        switch (member)
-        {
-            case FieldInfo field:
-                field.SetValue(instance, value);
-
-                break;
-            case PropertyInfo property when metadata.IsIndexerProperty():
-                property.SetValue(instance, value, [metadata.Name]);
-
-                break;
-            case PropertyInfo property:
-                property.SetValue(instance, value);
-
-                break;
-            default:
-                throw new InvalidOperationException("The mapped CLR member cannot be restored after rollback.");
         }
     }
 
@@ -788,7 +808,8 @@ internal sealed class NestedSetTrackerSnapshot
             var current = entry is not null
                 ? entry.CurrentValue
                 : _isConceptualNull
-                    ? owner!.Property(metadata.Name).CurrentValue
+                    ? owner!.Property(metadata.Name)
+                        .CurrentValue
                     : updateEntry!.GetCurrentValue(metadata);
 
             _currentValue = _comparer.Snapshot(current);
@@ -796,7 +817,9 @@ internal sealed class NestedSetTrackerSnapshot
             _isTemporary = entry?.IsTemporary ?? updateEntry!.HasTemporaryValue(metadata);
             _hasOriginalValue = NestedSetTrackedProperty.HasOriginalValue(metadata);
             var original = _hasOriginalValue
-                ? entry is null ? updateEntry!.GetOriginalValue(metadata) : entry.OriginalValue
+                ? entry is null
+                    ? updateEntry!.GetOriginalValue(metadata)
+                    : entry.OriginalValue
                 : null;
 
             // WHY: Identical input references can share an owned comparer snapshot. Comparer equality alone
@@ -807,7 +830,10 @@ internal sealed class NestedSetTrackerSnapshot
                     ? _currentValue
                     : _comparer.Snapshot(original);
 
-            _instance = metadata.IsShadowProperty() ? null : instance;
+            _instance = metadata.IsShadowProperty()
+                ? null
+                : instance;
+
             _clrValue = null;
             _isIndexerAbsent = metadata.IsIndexerProperty()
                 && instance is IDictionary<string, object?> dictionary
@@ -823,7 +849,9 @@ internal sealed class NestedSetTrackerSnapshot
                         .GetClrValue(location.Captured)
                     : ReadClrValue();
 
-                _clrValue = ReferenceEquals(clr, current) ? _currentValue : _comparer.Snapshot(clr);
+                _clrValue = ReferenceEquals(clr, current)
+                    ? _currentValue
+                    : _comparer.Snapshot(clr);
             }
         }
 

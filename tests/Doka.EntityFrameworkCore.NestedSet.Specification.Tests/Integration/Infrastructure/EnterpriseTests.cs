@@ -53,7 +53,9 @@ public abstract partial class EnterpriseTests : ProviderTest
         TreeContext context,
         CancellationToken cancellationToken
     ) => context.Database.BeginTransactionAsync(
-        context.Database.IsSqlite() ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+        context.Database.IsSqlite()
+            ? IsolationLevel.Serializable
+            : IsolationLevel.ReadCommitted,
         cancellationToken);
 
     /// <summary>Stores structure by value so rollback assertions compare every persisted coordinate and link.</summary>

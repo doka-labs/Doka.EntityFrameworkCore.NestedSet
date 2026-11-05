@@ -18,7 +18,8 @@ internal static class ProviderFixtureContract
         var assembly = new XunitTestAssembly(
             suite.Assembly,
             configFilePath: null,
-            assemblyName: suite.Assembly.GetName().FullName);
+            assemblyName: suite.Assembly.GetName()
+                .FullName);
 
         try
         {
@@ -89,8 +90,8 @@ internal static class ProviderFixtureContract
         }
 
         foreach (var parameter in constructors
-                     .Single()
-                     .GetParameters())
+            .Single()
+            .GetParameters())
         {
             var parameterType = parameter.ParameterType;
 
@@ -121,11 +122,11 @@ internal static class ProviderFixtureContract
     private sealed class FixtureScope
     {
         private readonly string _category;
-        private readonly HashSet<Type> _registrations;
-        private readonly IReadOnlyList<Type> _initializedRegistrations;
-        private readonly HashSet<Type> _validated = [];
-        private readonly FixtureScope? _parent;
         private readonly List<string> _errors;
+        private readonly IReadOnlyList<Type> _initializedRegistrations;
+        private readonly FixtureScope? _parent;
+        private readonly HashSet<Type> _registrations;
+        private readonly HashSet<Type> _validated = [];
 
         /// <summary>Captures registration metadata without acquiring any fixture instances.</summary>
         internal FixtureScope(
@@ -211,7 +212,7 @@ internal static class ProviderFixtureContract
             }
 
             foreach (var parameter in constructors[0]
-                         .GetParameters())
+                .GetParameters())
             {
                 var parameterType = parameter.ParameterType;
 

@@ -39,15 +39,27 @@ public abstract partial class HierarchyCompositionTests
             probe,
             planProbe: planProbe,
             chainNodes: nodes,
-            ownerMode: ownerMode, cancellationToken: TestContext.Current.CancellationToken);
-
-        await QueryPlanTestSupport.RefreshStatisticsAsync<CompositionNode>(context, Engine,
+            ownerMode: ownerMode,
             cancellationToken: TestContext.Current.CancellationToken);
+
+        await QueryPlanTestSupport.RefreshStatisticsAsync<CompositionNode>(
+            context,
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var setupElapsed = Stopwatch.GetElapsedTime(setupStarted);
         probe.Reset();
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
-        var parents = Enumerable.Range(1, nodes)
-            .ToDictionary(key => key, key => key == 1 ? null : (int?)(key - 1));
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
+        var parents = Enumerable
+            .Range(1, nodes)
+            .ToDictionary(
+                key => key,
+                key => key == 1
+                    ? null
+                    : (int?)(key - 1));
 
         var expectedDistance = DistanceFromParents(parents, nodes, 1);
         var commandIndex = planProbe.Commands.Count;
@@ -55,13 +67,15 @@ public abstract partial class HierarchyCompositionTests
 
         if (shape != "Path")
         {
-            var source = context.Set<CompositionNode>()
+            var source = context
+                .Set<CompositionNode>()
                 .Where(node => node.Scope == scope && node.Id == nodes)
                 .Select(node => new { Node = node });
 
             // WHY: Separate dense acceptance from rejection: a selective failing value must not hide expensive
             // repeated selection when every owner passes. A root-only candidate also exercises a full selected path.
-            query = hierarchy.WhereNearestAncestorOrSelf(
+            query = hierarchy
+                .WhereNearestAncestorOrSelf(
                     source,
                     row => row.Node,
                     (row, owner) => owner.Candidate,
@@ -70,12 +84,19 @@ public abstract partial class HierarchyCompositionTests
         }
         else
         {
-            var pairs = hierarchy.SelectSubtrees(
+            var pairs = hierarchy
+                .SelectSubtrees(
                     anchor => anchor.Id == 1,
-                    (anchor, node, distance) => new { Anchor = anchor, Node = node, Distance = distance })
+                    (anchor, node, distance) => new
+                    {
+                        Anchor = anchor,
+                        Node = node,
+                        Distance = distance,
+                    })
                 .Where(row => row.Node.Id == nodes);
 
-            query = hierarchy.WherePathEdges(
+            query = hierarchy
+                .WherePathEdges(
                     pairs,
                     row => row.Anchor,
                     row => row.Node,
@@ -98,7 +119,13 @@ public abstract partial class HierarchyCompositionTests
             // WHY: A timeout before successful replay must still retain its exact SQL and estimated plan.
             // WHY: Diagnostic retention must finish independently of the failed or canceled measured query.
             await CompositionCapacityProfiles.RetainFailureAsync(
-                context, Engine, $"deep-{shape}-{nodes}", planProbe, error, CancellationToken.None, commandIndex);
+                context,
+                Engine,
+                $"deep-{shape}-{nodes}",
+                planProbe,
+                error,
+                CancellationToken.None,
+                commandIndex);
 
             throw;
         }
@@ -106,7 +133,11 @@ public abstract partial class HierarchyCompositionTests
         var elapsed = Stopwatch.GetElapsedTime(started);
         var queryCommands = probe.CommandCount;
         var materializedNodes = probe.MaterializedNodes;
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, commandIndex, Engine,
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            planProbe,
+            commandIndex,
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await QueryPlanTestSupport.WriteEvidenceAsync(
@@ -118,7 +149,8 @@ public abstract partial class HierarchyCompositionTests
                 $"rows={actual.Length}; materialized={materializedNodes}",
                 planProbe.Commands[commandIndex],
                 plan,
-            ], cancellationToken: TestContext.Current.CancellationToken);
+            ],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(0, commandsBeforeExecution);

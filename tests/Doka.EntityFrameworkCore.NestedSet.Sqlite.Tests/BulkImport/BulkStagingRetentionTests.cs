@@ -20,7 +20,8 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
     public async Task ShadowAssignmentFailureReleasesTheUntrackedRoot()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var source = database.CreateContext();
@@ -41,7 +42,8 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
         Interlocked.Exchange(ref s_rejectShadowComparison, 1);
 
         // Act
-        var result = await ImportShadowWithoutRetainingInputAsync(context,
+        var result = await ImportShadowWithoutRetainingInputAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -52,8 +54,17 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
         GC.Collect();
         Assert.False(result.Input.TryGetTarget(out _));
         Assert.Equal(0, trackingEvents);
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
-        Assert.Equal(0, await context.Set<StagingNode>().CountAsync(CancellationToken.None));
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
+        Assert.Equal(
+            0,
+            await context
+                .Set<StagingNode>()
+                .CountAsync(CancellationToken.None));
+
         GC.KeepAlive(context);
     }
 
@@ -67,7 +78,8 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var source = database.CreateContext();
@@ -85,7 +97,9 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
         context.Attach(marker);
 
         // Act
-        var result = await ImportWithoutRetainingInputAsync(context, getter,
+        var result = await ImportWithoutRetainingInputAsync(
+            context,
+            getter,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -95,9 +109,22 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
         GC.WaitForPendingFinalizers();
         GC.Collect();
         Assert.False(result.Input.TryGetTarget(out _));
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
-        Assert.Equal(EntityState.Unchanged, context.Entry(marker).State);
-        Assert.Equal(0, await context.Set<StagingNode>().CountAsync(CancellationToken.None));
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(marker)
+                .State);
+
+        Assert.Equal(
+            0,
+            await context
+                .Set<StagingNode>()
+                .CountAsync(CancellationToken.None));
+
         GC.KeepAlive(context);
     }
 
@@ -111,7 +138,8 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var source = database.CreateContext();
@@ -141,7 +169,9 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
         context.Attach(marker);
 
         // Act
-        var result = await ConflictingImportWithoutRetainingInputAsync(context, alternate,
+        var result = await ConflictingImportWithoutRetainingInputAsync(
+            context,
+            alternate,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -151,12 +181,31 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
         GC.WaitForPendingFinalizers();
         GC.Collect();
         Assert.False(result.Input.TryGetTarget(out _));
-        Assert.Equal(2, context.ChangeTracker.Entries().Count());
-        Assert.Equal(EntityState.Unchanged, context.Entry(marker).State);
-        Assert.Equal(EntityState.Unchanged, context.Entry(existing).State);
+        Assert.Equal(
+            2,
+            context
+                .ChangeTracker
+                .Entries()
+                .Count());
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(marker)
+                .State);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(existing)
+                .State);
+
         Assert.Same(existing, await context.FindAsync<StagingNode>([1], CancellationToken.None));
         Assert.Null(await context.FindAsync<StagingNode>([2], CancellationToken.None));
-        Assert.Equal(1, await context.Set<StagingNode>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            1,
+            await context
+                .Set<StagingNode>()
+                .CountAsync(CancellationToken.None));
+
         GC.KeepAlive(context);
     }
 }

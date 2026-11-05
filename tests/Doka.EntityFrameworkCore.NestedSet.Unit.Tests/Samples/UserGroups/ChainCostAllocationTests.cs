@@ -42,7 +42,8 @@ public sealed class ChainCostAllocationTests(
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var iteration = 0; iteration < 4; iteration++)
         {
-            _ = SupervisorQueries.AdvanceBranch(resolution,
+            _ = SupervisorQueries.AdvanceBranch(
+                resolution,
                 null,
                 42,
                 42,
@@ -66,7 +67,8 @@ public sealed class ChainCostAllocationTests(
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < paths; index++)
         {
-            admitted &= SupervisorQueries.AdvanceBranch(resolution,
+            admitted &= SupervisorQueries.AdvanceBranch(
+                resolution,
                 null,
                 42,
                 42,
@@ -86,6 +88,7 @@ public sealed class ChainCostAllocationTests(
         Assert.Equal(paths, next.Count);
         Assert.Empty(completed);
         Assert.All(next, path => Assert.Same(candidate, path.Hop.Evidence));
+
         // WHY: 128 bytes per state admit the actual hop and prefix node with layout headroom. Adding a
         // separate one-element occurrence array for every state exceeds that linear retained-object budget.
         Assert.InRange(allocated, 0, paths * 128L + 4_096);

@@ -24,7 +24,8 @@ public sealed partial class AncestorIndexLifecycleTests
             cancellationToken: TestContext.Current.CancellationToken,
             options => options.AddInterceptors(probe));
 
-        await using var context = await CreatePendingParentMoveAsync(database,
+        await using var context = await CreatePendingParentMoveAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
         probe.Armed = true;
@@ -32,7 +33,8 @@ public sealed partial class AncestorIndexLifecycleTests
         // Act
         await context.SaveChangesAsync(CancellationToken.None);
         probe.Armed = false;
-        var persisted = await ReadLifecycleStatesAsync(context,
+        var persisted = await ReadLifecycleStatesAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tracked = ReadTrackedLifecycleStates(context);
@@ -44,7 +46,8 @@ public sealed partial class AncestorIndexLifecycleTests
         Assert.Equal(persisted, tracked);
         Assert.Equal(persisted, original);
         Assert.All(persisted, row => Assert.Equal(row.Right > row.Left + 1, row.Flag));
-        Assert.All(context.ChangeTracker.Entries<MigrationNode>(),
+        Assert.All(
+            context.ChangeTracker.Entries<MigrationNode>(),
             entry => Assert.Equal(EntityState.Unchanged, entry.State));
     }
 
@@ -68,10 +71,12 @@ public sealed partial class AncestorIndexLifecycleTests
             cancellationToken: TestContext.Current.CancellationToken,
             options => options.AddInterceptors(probe));
 
-        await using var context = await CreatePendingParentMoveAsync(database,
+        await using var context = await CreatePendingParentMoveAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var persistedBefore = await ReadLifecycleStatesAsync(context,
+        var persistedBefore = await ReadLifecycleStatesAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var pendingBefore = ReadTrackedLifecycleStates(context);
@@ -81,7 +86,8 @@ public sealed partial class AncestorIndexLifecycleTests
         // Act
         var exception = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
         probe.Armed = false;
-        var persisted = await ReadLifecycleStatesAsync(context,
+        var persisted = await ReadLifecycleStatesAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tracked = ReadTrackedLifecycleStates(context);
@@ -96,7 +102,11 @@ public sealed partial class AncestorIndexLifecycleTests
         Assert.Equal(originalBefore, original);
         Assert.Equal(
             EntityState.Modified,
-            context.ChangeTracker.Entries<MigrationNode>().Single(entry => entry.Entity.NodeId == 2).State);
+            context
+                .ChangeTracker
+                .Entries<MigrationNode>()
+                .Single(entry => entry.Entity.NodeId == 2)
+                .State);
     }
 
     /// <summary>Persists a restored pending edit after an arranged structural failure.</summary>
@@ -119,10 +129,12 @@ public sealed partial class AncestorIndexLifecycleTests
             cancellationToken: TestContext.Current.CancellationToken,
             options => options.AddInterceptors(probe));
 
-        await using var context = await CreatePendingParentMoveAsync(database,
+        await using var context = await CreatePendingParentMoveAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var persistedBefore = await ReadLifecycleStatesAsync(context,
+        var persistedBefore = await ReadLifecycleStatesAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var pendingBefore = ReadTrackedLifecycleStates(context);
@@ -130,7 +142,8 @@ public sealed partial class AncestorIndexLifecycleTests
         probe.Armed = true;
         var priorFailure = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
         probe.Armed = false;
-        var restoredDatabase = await ReadLifecycleStatesAsync(context,
+        var restoredDatabase = await ReadLifecycleStatesAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var restoredTracked = ReadTrackedLifecycleStates(context);
@@ -138,7 +151,8 @@ public sealed partial class AncestorIndexLifecycleTests
 
         // Act
         await context.SaveChangesAsync(CancellationToken.None);
-        var persisted = await ReadLifecycleStatesAsync(context,
+        var persisted = await ReadLifecycleStatesAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tracked = ReadTrackedLifecycleStates(context);
@@ -155,7 +169,8 @@ public sealed partial class AncestorIndexLifecycleTests
         Assert.Equal(persisted, tracked);
         Assert.Equal(persisted, original);
         Assert.All(persisted, row => Assert.Equal(row.Right > row.Left + 1, row.Flag));
-        Assert.All(context.ChangeTracker.Entries<MigrationNode>(),
+        Assert.All(
+            context.ChangeTracker.Entries<MigrationNode>(),
             entry => Assert.Equal(EntityState.Unchanged, entry.State));
     }
 
@@ -204,9 +219,22 @@ public sealed partial class AncestorIndexLifecycleTests
     {
         Assert.True(probe.StructuralWriteObserved);
         Assert.True(probe.GeneratedRefreshObserved);
-        Assert.Equal([2, 4], probe.DuringMove.Where(row => row.Flag).Select(row => row.Id));
-        Assert.Equal(4, Assert.Single(probe.DuringMove, row => row.Id == 2).Parent);
-        Assert.Equal(12, Assert.Single(probe.DuringMove, row => row.Id == 2).Tree);
+        Assert.Equal(
+            [2, 4],
+            probe
+                .DuringMove
+                .Where(row => row.Flag)
+                .Select(row => row.Id));
+
+        Assert.Equal(
+            4,
+            Assert.Single(probe.DuringMove, row => row.Id == 2)
+                .Parent);
+
+        Assert.Equal(
+            12,
+            Assert.Single(probe.DuringMove, row => row.Id == 2)
+                .Tree);
     }
 
     /// <summary>Reads the complete structural and generated state without tracker identity resolution.</summary>
@@ -247,7 +275,8 @@ public sealed partial class AncestorIndexLifecycleTests
             x.Entity.Right,
             x.Entity.Depth,
             x.Entity.Position,
-            x.Property<bool>(AncestorIndexContext.FlagProperty).CurrentValue))
+            x.Property<bool>(AncestorIndexContext.FlagProperty)
+                .CurrentValue))
         .ToArray();
 
     /// <summary>Captures original structure and generated sidecars independently of pending CLR edits.</summary>
@@ -258,15 +287,24 @@ public sealed partial class AncestorIndexLifecycleTests
         .Entries<MigrationNode>()
         .OrderBy(x => x.Entity.NodeId)
         .Select(x => new LifecycleState(
-            x.Property(row => row.NodeId).OriginalValue,
-            x.Property(row => row.Scope).OriginalValue,
-            x.Property(row => row.TreeId).OriginalValue,
-            x.Property(row => row.ParentId).OriginalValue,
-            x.Property(row => row.Left).OriginalValue,
-            x.Property(row => row.Right).OriginalValue,
-            x.Property(row => row.Depth).OriginalValue,
-            x.Property(row => row.Position).OriginalValue,
-            x.Property<bool>(AncestorIndexContext.FlagProperty).OriginalValue))
+            x.Property(row => row.NodeId)
+                .OriginalValue,
+            x.Property(row => row.Scope)
+                .OriginalValue,
+            x.Property(row => row.TreeId)
+                .OriginalValue,
+            x.Property(row => row.ParentId)
+                .OriginalValue,
+            x.Property(row => row.Left)
+                .OriginalValue,
+            x.Property(row => row.Right)
+                .OriginalValue,
+            x.Property(row => row.Depth)
+                .OriginalValue,
+            x.Property(row => row.Position)
+                .OriginalValue,
+            x.Property<bool>(AncestorIndexContext.FlagProperty)
+                .OriginalValue))
         .ToArray();
 
     /// <summary>A comparable snapshot of one complete structural row and its derived shadow marker.</summary>
@@ -382,7 +420,9 @@ public sealed partial class AncestorIndexLifecycleTests
                         reader.GetInt32(0),
                         reader.GetInt32(1),
                         reader.GetInt32(2),
-                        parentIsNull ? null : reader.GetInt32(3),
+                        parentIsNull
+                            ? null
+                            : reader.GetInt32(3),
                         reader.GetInt64(4),
                         reader.GetInt64(5),
                         reader.GetInt32(6),

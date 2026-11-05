@@ -20,9 +20,9 @@ internal static class HierarchyFixtureSaveExtensions
         var sql = context.GetService<ISqlGenerationHelper>();
 
         foreach (var registry in context
-                     .Model
-                     .GetEntityTypes()
-                     .Where(entity => entity.ClrType == typeof(NestedSetTreeRegistry)))
+            .Model
+            .GetEntityTypes()
+            .Where(entity => entity.ClrType == typeof(NestedSetTreeRegistry)))
         {
             // WHY: An isolated full fixture reset must clear both active reservations and tombstones from that
             // context's physical model. Ordinary tree deletion retains tombstones and never uses this helper.
@@ -68,7 +68,9 @@ internal static class HierarchyFixtureSaveExtensions
                         .AsNoTracking()
                         .AnyAsync(RegistryIdentity(identity), token);
 
-                    var mode = exists ? NestedSetTreeLockMode.Existing : NestedSetTreeLockMode.New;
+                    var mode = exists
+                        ? NestedSetTreeLockMode.Existing
+                        : NestedSetTreeLockMode.New;
 
                     var request = RequestFactory(identity.Mapping.Hierarchy)
                         .WithMode(identity, mode);
@@ -157,6 +159,7 @@ internal static class HierarchyFixtureSaveExtensions
     private static FixtureRequestFactory RequestFactory(
             IEntityType entityType
         )
+
         // WHY: A fixture may seed different mapped role types, including named shared entities. Close the
         // factory once for model metadata; never repeat generic reflection for each payload row or context.
         => s_requestFactories.GetValue(
@@ -214,11 +217,13 @@ internal static class HierarchyFixtureSaveExtensions
                 .Descriptor(entry.Metadata);
 
             var scope = descriptor.Scope is { } scopeProperty
-                ? (TScope)(entry.Property(scopeProperty.Name).CurrentValue
+                ? (TScope)(entry.Property(scopeProperty.Name)
+                        .CurrentValue
                     ?? throw new InvalidOperationException("A fixture hierarchy Scope cannot be null."))
                 : default!;
 
-            var treeId = (TTreeId)(entry.Property(descriptor.TreeId.Name).CurrentValue
+            var treeId = (TTreeId)(entry.Property(descriptor.TreeId.Name)
+                    .CurrentValue
                 ?? throw new InvalidOperationException("A fixture hierarchy TreeId cannot be null."));
 
             // WHY: EntityEntry exposes erased metadata values. Cast exactly here and keep both roles typed

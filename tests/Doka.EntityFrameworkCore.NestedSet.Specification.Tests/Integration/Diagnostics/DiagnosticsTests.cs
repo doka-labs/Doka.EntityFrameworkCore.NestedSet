@@ -51,14 +51,24 @@ public abstract class DiagnosticsTests : ProviderTest
         Assert.Equal(ProviderFamily(Engine), operation.GetTagItem("nestedset.provider"));
         Assert.Equal(
             1,
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.count").Value);
+            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.count")
+                .Value);
+
         Assert.True(
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.duration").Value > 0);
+            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.duration")
+                .Value
+            > 0);
+
         Assert.True(
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.lock.wait.duration").Value > 0);
+            Assert.Single(capture.Measurements, item => item.Name == "nestedset.lock.wait.duration")
+                .Value
+            > 0);
+
         Assert.Equal(
             1,
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.rows.affected").Value);
+            Assert.Single(capture.Measurements, item => item.Name == "nestedset.rows.affected")
+                .Value);
+
         Assert.DoesNotContain(capture.Measurements, item => item.Name == "nestedset.operation.failures");
         AssertPrivate(capture, "insert_root", "lock", "success");
     }
@@ -92,13 +102,19 @@ public abstract class DiagnosticsTests : ProviderTest
         // Assert
         Assert.Equal(
             2,
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.rebuild.node.count").Value);
+            Assert.Single(capture.Measurements, item => item.Name == "nestedset.rebuild.node.count")
+                .Value);
+
         Assert.Equal(
             1,
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.batch.count").Value);
+            Assert.Single(capture.Measurements, item => item.Name == "nestedset.batch.count")
+                .Value);
+
         Assert.Equal(
             1,
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.rows.affected").Value);
+            Assert.Single(capture.Measurements, item => item.Name == "nestedset.rows.affected")
+                .Value);
+
         AssertPrivate(capture, "rebuild", "lock", "success");
     }
 
@@ -127,7 +143,9 @@ public abstract class DiagnosticsTests : ProviderTest
         Assert.Equal("node_not_found", operation.GetTagItem("error.type"));
         Assert.Equal(
             1,
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.failures").Value);
+            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.failures")
+                .Value);
+
         AssertPrivate(capture, "delete", "lock", "success", "failure", "node_not_found");
     }
 
@@ -157,9 +175,12 @@ public abstract class DiagnosticsTests : ProviderTest
             Assert
                 .Single(capture.Activities)
                 .GetTagItem("nestedset.outcome"));
+
         Assert.Equal(
             1,
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.count").Value);
+            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.count")
+                .Value);
+
         Assert.DoesNotContain(capture.Measurements, item => item.Name == "nestedset.operation.failures");
         Assert.DoesNotContain(capture.Measurements, item => item.Name == "nestedset.lock.wait.duration");
         AssertPrivate(capture, "insert_root", "canceled");
@@ -201,6 +222,7 @@ public abstract class DiagnosticsTests : ProviderTest
                 .InTree(Guid.Empty)
                 .Nodes
                 .ToArrayAsync(CancellationToken.None));
+
         AssertPrivate(capture, "insert_root", "lock", "canceled");
     }
 
@@ -209,7 +231,8 @@ public abstract class DiagnosticsTests : ProviderTest
     public async Task CoordinatedSaveIsObservedOnce()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var service = context
@@ -243,7 +266,9 @@ public abstract class DiagnosticsTests : ProviderTest
         Assert.Equal(ActivityStatusCode.Ok, operation.Status);
         Assert.Equal(
             1,
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.count").Value);
+            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.count")
+                .Value);
+
         Assert.Single(capture.Measurements, item => item.Name == "nestedset.lock.wait.duration");
         AssertPrivate(capture, "save_changes", "lock", "success");
     }
@@ -253,7 +278,8 @@ public abstract class DiagnosticsTests : ProviderTest
     public async Task ParentSaveDoesNotCountItsInternalMove()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context
@@ -303,9 +329,13 @@ public abstract class DiagnosticsTests : ProviderTest
         Assert.DoesNotContain(capture.Activities, activity => activity.OperationName == "nestedset.move_to");
         Assert.Equal(
             1,
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.count").Value);
+            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.count")
+                .Value);
+
         Assert.True(
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.rows.affected").Value > 0);
+            Assert.Single(capture.Measurements, item => item.Name == "nestedset.rows.affected")
+                .Value
+            > 0);
     }
 
     /// <summary>An unrelated native EF save does not claim a hierarchy operation occurred.</summary>
@@ -313,7 +343,8 @@ public abstract class DiagnosticsTests : ProviderTest
     public async Task UnrelatedNativeSaveDoesNotEmitHierarchyMetrics()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         context.Add(new OrderingMarker { Id = 1 });
@@ -355,10 +386,14 @@ public abstract class DiagnosticsTests : ProviderTest
         Assert.Equal("lock_acquisition_failed", operation.GetTagItem("error.type"));
         Assert.Equal(
             1,
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.count").Value);
+            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.count")
+                .Value);
+
         Assert.Equal(
             1,
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.failures").Value);
+            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.failures")
+                .Value);
+
         Assert.Single(capture.Measurements, item => item.Name == "nestedset.lock.wait.duration");
         AssertPrivate(capture, "insert_root", "lock", "success", "failure", "lock_acquisition_failed");
     }
@@ -392,10 +427,14 @@ public abstract class DiagnosticsTests : ProviderTest
         Assert.Equal("database", operation.GetTagItem("error.type"));
         Assert.Equal(
             1,
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.count").Value);
+            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.count")
+                .Value);
+
         Assert.Equal(
             1,
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.failures").Value);
+            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.failures")
+                .Value);
+
         Assert.Single(capture.Measurements, item => item.Name == "nestedset.lock.wait.duration");
         AssertPrivate(capture, "insert_root", "lock", "success", "failure", "database");
     }
@@ -585,7 +624,11 @@ public abstract class DiagnosticsTests : ProviderTest
                 Assert.Contains(tag.Key, allowedKeys);
                 var value = Assert.IsType<string>(tag.Value);
 
-                Assert.Contains(value, tag.Key == "nestedset.provider" ? providerFamilies : allowedValues);
+                Assert.Contains(
+                    value,
+                    tag.Key == "nestedset.provider"
+                        ? providerFamilies
+                        : allowedValues);
             }
         }
 
@@ -596,7 +639,11 @@ public abstract class DiagnosticsTests : ProviderTest
                 Assert.Contains(tag.Key, allowedKeys);
                 var value = Assert.IsType<string>(tag.Value);
 
-                Assert.Contains(value, tag.Key == "nestedset.provider" ? providerFamilies : allowedValues);
+                Assert.Contains(
+                    value,
+                    tag.Key == "nestedset.provider"
+                        ? providerFamilies
+                        : allowedValues);
             }
         }
     }

@@ -5,12 +5,15 @@ internal sealed partial class NestedSetQuery<TEntity>
     private static readonly MethodInfo s_selectManyDefinition = typeof(Queryable)
         .GetMethods(BindingFlags.Public | BindingFlags.Static)
         .Single(method => method.Name == nameof(Queryable.SelectMany)
-            && method.GetParameters().Length == 3
+            && method.GetParameters()
+                .Length
+            == 3
             && method
                 .GetParameters()[1]
                 .ParameterType
                 .GenericTypeArguments[0].GenericTypeArguments
-                .Length == 2);
+                .Length
+            == 2);
 
     private static readonly ConditionalWeakTable<Type, MethodInfo> s_selectManyMethods = new();
 
@@ -20,10 +23,8 @@ internal sealed partial class NestedSetQuery<TEntity>
         (Expression<Func<IQueryable<TEntity>, IQueryable<TEntity>>>)(nodes => nodes.Where(node => true)));
 
     private static readonly MethodInfo s_union = MethodOf(
-        (Expression<Func<IQueryable<TEntity>, IQueryable<TEntity>, IQueryable<TEntity>>>)((
-            first,
-            second
-        ) => first.Union(second)));
+        (Expression<Func<IQueryable<TEntity>, IQueryable<TEntity>, IQueryable<TEntity>>>)((first,
+            second) => first.Union(second)));
 
     private static readonly MethodInfo s_orderByDepth = MethodOf(
         (Expression<Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>>)(nodes =>
@@ -141,18 +142,23 @@ internal sealed partial class NestedSetQuery<TEntity>
 
         // WHY: Upward pairs must remain available for pivot decorrelation in a later downward leg.
         // Materializing their selected-key boundary made mixed queries rescan a large ancestor range.
-        var selectedNodes = ancestors ? SelectedSources(selected) : SelectedAnchors(selected);
+        var selectedNodes = ancestors
+            ? SelectedSources(selected)
+            : SelectedAnchors(selected);
 
         return SelectRangePairs(selectedNodes, projection, ancestors, includeSelf);
     }
 
     /// <summary>Adds the adapter's composition tag to one public composition result.</summary>
     private IQueryable<TResult> Composed<TResult>(
-        IQueryable<TResult> query
-    )
+            IQueryable<TResult> query
+        )
+
         // WHY: Endpoint provenance already treats EF tags as row-preserving, and EF collects tags from
         // nested sources. Adapters without a command policy keep their generated SQL unchanged.
-        => _capabilities.TagsCompositionQueries ? query.TagWith(NestedSetCompositionTag.Text) : query;
+        => _capabilities.TagsCompositionQueries
+            ? query.TagWith(NestedSetCompositionTag.Text)
+            : query;
 
     /// <summary>Reads an exact standard LINQ method from a typed template without compiling it.</summary>
     private static MethodInfo MethodOf(

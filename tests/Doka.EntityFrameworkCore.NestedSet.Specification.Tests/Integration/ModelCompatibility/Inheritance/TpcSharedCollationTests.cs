@@ -29,7 +29,11 @@ public abstract class TpcSharedCollationTests : ProviderTest
             parentKey.Properties.Select(property => property.Name));
 
         Assert.Same(root, parentKey.DeclaringEntityType);
-        Assert.Equal(nameof(CollatedTpcNode.Id), Assert.Single(root.FindPrimaryKey()!.Properties).Name);
+        Assert.Equal(
+            nameof(CollatedTpcNode.Id),
+            Assert.Single(root.FindPrimaryKey()!.Properties)
+                .Name);
+
         foreach (var concrete in new[] { typeof(BinaryTpcNode), typeof(CaseInsensitiveTpcNode) })
         {
             var entity = model.FindEntityType(concrete)!;

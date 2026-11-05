@@ -68,14 +68,14 @@ internal static partial class UserGroupChainReference
         foreach (var origin in first.Origins)
         {
             if (!Append(
-                    origin,
-                    null,
-                    1,
-                    request,
-                    request.Steps[0].Selection,
-                    budget,
-                    active,
-                    completed))
+                origin,
+                null,
+                1,
+                request,
+                request.Steps[0].Selection,
+                budget,
+                active,
+                completed))
             {
                 return Limited(completed, null);
             }
@@ -118,14 +118,14 @@ internal static partial class UserGroupChainReference
                 foreach (var origin in batch.Origins)
                 {
                     if (!Append(
-                            origin,
-                            path,
-                            index + 1,
-                            request,
-                            step.Selection,
-                            budget,
-                            next,
-                            completed))
+                        origin,
+                        path,
+                        index + 1,
+                        request,
+                        step.Selection,
+                        budget,
+                        next,
+                        completed))
                     {
                         return Limited(completed, path);
                     }
@@ -144,7 +144,7 @@ internal static partial class UserGroupChainReference
             }
         }
 
-        return new(SupervisorBatchStatus.Completed, completed, true);
+        return new SupervisorChainResult(SupervisorBatchStatus.Completed, completed, true);
     }
 
     /// <summary>Binds current identity, continuation cursor, and explicitly retained initial routing owners.</summary>
@@ -247,7 +247,7 @@ internal static partial class UserGroupChainReference
             var hops = new SupervisorHop[number];
             previous?.Hops.CopyTo(hops, 0);
             var tree = previous?.InitialTree ?? evidence.StartTreeId;
-            hops[number - 1] = new(number, request.SourceUserId, initialGroup, tree, evidence);
+            hops[number - 1] = new SupervisorHop(number, request.SourceUserId, initialGroup, tree, evidence);
             next.Add(new ReferencePath(initialGroup, tree, hops));
         }
 
@@ -297,8 +297,8 @@ internal static partial class UserGroupChainReference
     private sealed class ReferenceBudget(SupervisorChainRequest request)
     {
         private int _reads;
-        private int _visits;
         private int _results;
+        private int _visits;
 
         /// <summary>Admits a physical row before the reference buffers it.</summary>
         internal bool Read() => _reads < request.MaxResultRows && ++_reads > 0;

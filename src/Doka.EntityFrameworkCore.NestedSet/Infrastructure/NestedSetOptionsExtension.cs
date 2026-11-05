@@ -5,9 +5,6 @@ namespace Doka.EntityFrameworkCore.NestedSet;
 /// <summary>Registers nested-set services in Entity Framework Core's internal service provider.</summary>
 internal sealed class NestedSetOptionsExtension : IDbContextOptionsExtension
 {
-    /// <summary>Gets the immutable adapter selected by the native provider callback.</summary>
-    internal NestedSetProviderCapabilities Provider { get; }
-
     /// <summary>Provides the service-provider identity for this stateless extension.</summary>
     private readonly DbContextOptionsExtensionInfo _info;
 
@@ -20,6 +17,9 @@ internal sealed class NestedSetOptionsExtension : IDbContextOptionsExtension
         Provider = provider;
         _info = new ExtensionInfo(this);
     }
+
+    /// <summary>Gets the immutable adapter selected by the native provider callback.</summary>
+    internal NestedSetProviderCapabilities Provider { get; }
 
     /// <inheritdoc />
     public DbContextOptionsExtensionInfo Info => _info;

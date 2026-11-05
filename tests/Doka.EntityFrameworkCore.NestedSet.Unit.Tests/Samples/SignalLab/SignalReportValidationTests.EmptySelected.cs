@@ -28,9 +28,16 @@ public sealed partial class SignalReportValidationTests
             ? []
             :
             [
-                Total(foreign == "anchor" ? SignalReportDataset.Id(99) : snapshot.AnchorIds[0],
-                    foreign == "signal" ? SignalReportDataset.Id(199) : snapshot.ChannelIds[0],
-                    foreign == "source" ? CapturePort.Sweep : snapshot.Sources[0],
+                Total(
+                    foreign == "anchor"
+                        ? SignalReportDataset.Id(99)
+                        : snapshot.AnchorIds[0],
+                    foreign == "signal"
+                        ? SignalReportDataset.Id(199)
+                        : snapshot.ChannelIds[0],
+                    foreign == "source"
+                        ? CapturePort.Sweep
+                        : snapshot.Sources[0],
                     13),
             ];
 
@@ -44,7 +51,8 @@ public sealed partial class SignalReportValidationTests
 
         // Act
         var synchronous = SignalReportValidation.CreateGrid(snapshot, totals);
-        var asynchronous = await SignalReportValidation.CreateGridAsync(snapshot,
+        var asynchronous = await SignalReportValidation.CreateGridAsync(
+            snapshot,
             ReadRows(totals, probe, CancellationToken.None),
             CancellationToken.None);
 
@@ -78,8 +86,12 @@ public sealed partial class SignalReportValidationTests
         var failure = new InvalidOperationException("foreign-only completion failure");
         var probe = new ReaderProbe
         {
-            ReadFailure = disposal ? null : failure,
-            DisposeFailure = disposal ? failure : null,
+            ReadFailure = disposal
+                ? null
+                : failure,
+            DisposeFailure = disposal
+                ? failure
+                : null,
         };
 
         SignalReportCell[]? cells = null;

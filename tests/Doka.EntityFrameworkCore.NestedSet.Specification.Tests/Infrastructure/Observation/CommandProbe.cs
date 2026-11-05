@@ -3,8 +3,8 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Observes commands and injects faults at precise points in a structural mutation.</summary>
 public sealed class CommandProbe : DbCommandInterceptor
 {
-    private bool _failAfterDepthUpdate;
     private bool _failAfterBoundsUpdate;
+    private bool _failAfterDepthUpdate;
 
     /// <summary>Gets the number of UPDATE commands observed since the last reset.</summary>
     public int UpdateCount { get; private set; }

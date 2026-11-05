@@ -39,7 +39,9 @@ internal sealed class NestedSetNormalizedQueryClosure : ExpressionVisitor
         var value = field.GetValue(target);
 
         if (value is IQueryable query
-            && value.GetType().Assembly == typeof(DbContext).Assembly)
+            && value.GetType()
+                .Assembly
+            == typeof(DbContext).Assembly)
         {
             // WHY: The exact runtime implementation is EF-owned, so this immutable expression getter
             // cannot dispatch to an application's IQueryable subclass. Its roots are already normalized.

@@ -30,7 +30,12 @@ public abstract class MalformedSubtreeTestBase : ProviderTest
             probe);
 
         var bounds = MalformedIntervalTestSupport.Bounds();
-        var nodes = await MalformedIntervalTestSupport.SeedAsync(context, first, tree, foreignTree, bounds,
+        var nodes = await MalformedIntervalTestSupport.SeedAsync(
+            context,
+            first,
+            tree,
+            foreignTree,
+            bounds,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var query = context

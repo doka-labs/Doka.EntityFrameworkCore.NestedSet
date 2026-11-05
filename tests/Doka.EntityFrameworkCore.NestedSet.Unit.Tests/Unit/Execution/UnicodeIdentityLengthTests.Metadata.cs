@@ -28,12 +28,18 @@ public sealed partial class UnicodeIdentityLengthTests
         var mapping = NestedSetTreeRegistryMapping.For(entity);
 
         // Assert
-        Assert.Equal(expected,
-            Assert.IsType<bool>(entity.FindAnnotation(
-                NestedSetAnnotationNames.ScopeUnicodeScalarLength)!.Value));
-        Assert.Equal(expected,
-            Assert.IsType<bool>(entity.FindAnnotation(
-                NestedSetAnnotationNames.TreeIdUnicodeScalarLength)!.Value));
+        Assert.Equal(
+            expected,
+            Assert.IsType<bool>(
+                entity.FindAnnotation(
+                    NestedSetAnnotationNames.ScopeUnicodeScalarLength)!.Value));
+
+        Assert.Equal(
+            expected,
+            Assert.IsType<bool>(
+                entity.FindAnnotation(
+                    NestedSetAnnotationNames.TreeIdUnicodeScalarLength)!.Value));
+
         Assert.Equal(expected, mapping.ScopeUsesUnicodeScalarLength);
         Assert.Equal(expected, mapping.TreeIdUsesUnicodeScalarLength);
         AssertNoDatabaseAccess(context);
@@ -126,12 +132,14 @@ public sealed partial class UnicodeIdentityLengthTests
         var original = context.Model.FindEntityType(UnicodeContext.Raw)!.FindProperty("TreeId")!
             .GetRelationalTypeMapping();
 
-        var foreign = CreateNamedCharacterMapping(original
+        var foreign = CreateNamedCharacterMapping(
+            original
                 .GetType()
                 .Assembly
                 .GetName()
                 .Name!,
-            original.GetType().FullName!);
+            original.GetType()
+                .FullName!);
 
         // Act
         var authorized = NestedSetProviderCapabilities
@@ -140,9 +148,14 @@ public sealed partial class UnicodeIdentityLengthTests
 
         // Assert
         Assert.False(authorized);
-        Assert.Equal(original.GetType().FullName,
-            foreign.GetType().FullName);
-        Assert.Equal(original
+        Assert.Equal(
+            original.GetType()
+                .FullName,
+            foreign.GetType()
+                .FullName);
+
+        Assert.Equal(
+            original
                 .GetType()
                 .Assembly
                 .GetName()
@@ -152,8 +165,13 @@ public sealed partial class UnicodeIdentityLengthTests
                 .Assembly
                 .GetName()
                 .Name);
-        Assert.NotSame(original.GetType().Assembly,
-            foreign.GetType().Assembly);
+
+        Assert.NotSame(
+            original.GetType()
+                .Assembly,
+            foreign.GetType()
+                .Assembly);
+
         AssertNoDatabaseAccess(context);
     }
 
@@ -166,12 +184,14 @@ public sealed partial class UnicodeIdentityLengthTests
         var original = context.Model.FindEntityType(UnicodeContext.Raw)!.FindProperty("TreeId")!
             .GetRelationalTypeMapping();
 
-        var assembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("NestedSet.DerivedUnicodeProbe"),
+        var assembly = AssemblyBuilder.DefineDynamicAssembly(
+            new AssemblyName("NestedSet.DerivedUnicodeProbe"),
             AssemblyBuilderAccess.RunAndCollect);
 
         var type = assembly
             .DefineDynamicModule("MappingProbe")
-            .DefineType("DerivedNativeCharacterMapping",
+            .DefineType(
+                "DerivedNativeCharacterMapping",
                 TypeAttributes.Public | TypeAttributes.Sealed,
                 original.GetType());
 
@@ -182,10 +202,12 @@ public sealed partial class UnicodeIdentityLengthTests
         generator.Emit(OpCodes.Ldarg_0);
         generator.Emit(OpCodes.Ldstr, "varchar(8)");
         generator.Emit(OpCodes.Ldc_I4, (int)NpgsqlDbType.Varchar);
-        generator.Emit(OpCodes.Call,
+        generator.Emit(
+            OpCodes.Call,
             original
                 .GetType()
                 .GetConstructor([typeof(string), typeof(NpgsqlDbType)])!);
+
         generator.Emit(OpCodes.Ret);
         var mapping = (RelationalTypeMapping)Activator.CreateInstance(type.CreateType()!)!;
 
@@ -196,8 +218,11 @@ public sealed partial class UnicodeIdentityLengthTests
 
         // Assert
         Assert.False(authorized);
-        Assert.Equal(original.GetType(),
-            mapping.GetType().BaseType);
+        Assert.Equal(
+            original.GetType(),
+            mapping.GetType()
+                .BaseType);
+
         AssertNoDatabaseAccess(context);
     }
 
@@ -225,9 +250,11 @@ public sealed partial class UnicodeIdentityLengthTests
         generator.Emit(OpCodes.Ldc_I4_1);
         generator.Emit(OpCodes.Ldc_I4_8);
         generator.Emit(OpCodes.Newobj, typeof(int?).GetConstructor([typeof(int)])!);
-        generator.Emit(OpCodes.Call,
+        generator.Emit(
+            OpCodes.Call,
             typeof(StringTypeMapping).GetConstructor(
                 [typeof(string), typeof(DbType?), typeof(bool), typeof(int?)])!);
+
         generator.Emit(OpCodes.Ret);
 
         return (RelationalTypeMapping)Activator.CreateInstance(type.CreateType()!)!;

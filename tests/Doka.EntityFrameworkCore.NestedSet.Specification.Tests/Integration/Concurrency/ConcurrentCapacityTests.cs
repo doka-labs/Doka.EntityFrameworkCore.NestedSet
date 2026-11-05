@@ -76,9 +76,11 @@ public abstract class ConcurrentCapacityTests : ProviderTest
             Assert.Equal(
                 (1L, 4L, 0, 0L, (int?)null),
                 (root.Left, root.Right, root.Depth, root.Position, root.ParentId));
+
             Assert.Equal(
                 (2L, 3L, 1, 0L, (int?)root.Id),
                 (child.Left, child.Right, child.Depth, child.Position, child.ParentId));
+
             Assert.Empty(
                 (await verification
                     .NestedSet<ConcurrentNode>()
@@ -110,18 +112,21 @@ public abstract class ConcurrentCapacityTests : ProviderTest
                 new UnrelatedRow
                 {
                     Id = 1,
-                    Value = "Initial owner value"
+                    Value = "Initial owner value",
                 },
                 new UnrelatedRow
                 {
                     Id = 2,
-                    Value = "Initial contender value"
+                    Value = "Initial contender value",
                 });
+
             await setup.SaveChangesAsync(deadline.Token);
         }
 
         await using var owner = database.CreateContext();
-        var isolation = NestedSetProviderCapabilities.Resolve(owner).RequiredIsolation;
+        var isolation = NestedSetProviderCapabilities.Resolve(owner)
+            .RequiredIsolation;
+
         await using var ownerTransaction = await owner.Database.BeginTransactionAsync(isolation, deadline.Token);
         var hierarchy = owner.Model.FindEntityType(typeof(ConcurrentNode))!;
 
@@ -187,8 +192,16 @@ public abstract class ConcurrentCapacityTests : ProviderTest
         Assert.Equal(0, probe.AcquiredLocks);
         Assert.Equal(0, probe.StructuralWrites);
         Assert.False(contender.ChangeTracker.HasChanges());
-        Assert.Equal(EntityState.Unchanged, contender.Entry(contenderRow).State);
-        Assert.Equal(EntityState.Detached, contender.Entry(canceledChild).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            contender.Entry(contenderRow)
+                .State);
+
+        Assert.Equal(
+            EntityState.Detached,
+            contender.Entry(canceledChild)
+                .State);
+
         Assert.Equal(
             (0L, 0L, 0, 0L, (int?)null),
             (canceledChild.Left, canceledChild.Right, canceledChild.Depth, canceledChild.Position,
@@ -238,5 +251,4 @@ public abstract class ConcurrentCapacityTests : ProviderTest
 
         return probe.AcquiredLocks;
     }
-
 }

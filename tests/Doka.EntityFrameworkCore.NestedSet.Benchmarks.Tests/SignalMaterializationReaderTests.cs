@@ -18,7 +18,10 @@ public sealed class SignalMaterializationReaderTests
     {
         // Arrange
         using var cancellation = new CancellationTokenSource();
-        var token = cancellable ? cancellation.Token : CancellationToken.None;
+        var token = cancellable
+            ? cancellation.Token
+            : CancellationToken.None;
+
         var rows = new SignalMaterializationRows<int>([1, 2], suspend);
         var values = new List<int>();
 
@@ -52,6 +55,7 @@ public sealed class SignalMaterializationReaderTests
         {
             await reader.MoveNextAsync();
         });
+
         await reader.DisposeAsync();
 
         // Assert

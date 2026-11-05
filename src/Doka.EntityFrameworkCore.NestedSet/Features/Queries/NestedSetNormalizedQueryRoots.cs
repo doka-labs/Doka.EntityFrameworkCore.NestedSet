@@ -77,8 +77,11 @@ internal sealed class NestedSetNormalizedQueryRoots
                 // WHY: Compare concrete Type implementations to exclude application-defined metadata wrappers.
                 // ReSharper disable PossibleMistakenCallToGetType
                 Allowed = root.QueryProvider is null
-                    && root.EntityType.GetType().Assembly == typeof(IEntityType).Assembly
+                    && root.EntityType.GetType()
+                        .Assembly
+                    == typeof(IEntityType).Assembly
                     && root.Type.GetType() == typeof(object).GetType();
+
                 // ReSharper restore PossibleMistakenCallToGetType
 
                 return node;
@@ -89,6 +92,7 @@ internal sealed class NestedSetNormalizedQueryRoots
                 // WHY: Compare concrete Type implementations to exclude application-defined metadata wrappers.
                 // ReSharper disable PossibleMistakenCallToGetType
                 Allowed = node.Type.GetType() == typeof(object).GetType();
+
                 // ReSharper restore PossibleMistakenCallToGetType
 
                 return node;
@@ -103,9 +107,13 @@ internal sealed class NestedSetNormalizedQueryRoots
                     or MemberExpression
                     or ConstantExpression)
                 || (node is BinaryExpression { Method: { } binary }
-                    && binary.GetType().Assembly != typeof(MethodInfo).Assembly)
+                    && binary.GetType()
+                        .Assembly
+                    != typeof(MethodInfo).Assembly)
                 || (node is UnaryExpression { Method: { } unary }
-                    && unary.GetType().Assembly != typeof(MethodInfo).Assembly))
+                    && unary.GetType()
+                        .Assembly
+                    != typeof(MethodInfo).Assembly))
             {
                 Allowed = false;
 

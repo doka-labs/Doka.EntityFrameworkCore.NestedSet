@@ -11,8 +11,8 @@ internal sealed class NestedSetDelete<TEntity, TKey, TTreeId, TScope>
     where TTreeId : notnull
     where TScope : notnull
 {
-    private readonly NestedSetStore<TEntity, TKey, TTreeId, TScope> _store;
     private readonly NestedSetMutationExecutor<TEntity, TKey, TTreeId, TScope> _executor;
+    private readonly NestedSetStore<TEntity, TKey, TTreeId, TScope> _store;
 
     /// <summary>Connects the algorithm to its exact-tree store and execution boundary.</summary>
     /// <param name="store">The shared tree-bound queries and structural writes.</param>

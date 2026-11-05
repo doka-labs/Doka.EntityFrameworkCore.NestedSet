@@ -22,29 +22,50 @@ public abstract partial class HierarchyCompositionModelTests
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
         var materialized = 0;
-        await using var context = await _fixture.CreateContextAsync<CompositionConvertedContext>(Engine,
+        await using var context = await _fixture.CreateContextAsync<CompositionConvertedContext>(
+            Engine,
             static options => new CompositionConvertedContext(options),
             cancellationToken: TestContext.Current.CancellationToken,
-            probe, TestMaterializationObserver.Instance);
+            probe,
+            TestMaterializationObserver.Instance);
 
         TestMaterializationObserver.Instance.Register(context, _ => materialized++);
-        await context.AddRangeAsync(Enumerable.Range(0, 6).Select(depth => new CompositionConvertedNode
-        {
-            Scope = scope, TreeId = tree, Id = new CompositionNodeKey(depth),
-            ParentId = depth == 0 || (missingParent && depth == 3) ? null : new CompositionNodeKey(depth - 1),
-            Left = depth + 1, Right = 12 - depth, Depth = depth,
-        }), CancellationToken.None);
+        await context.AddRangeAsync(
+            Enumerable
+                .Range(0, 6)
+                .Select(depth => new CompositionConvertedNode
+                {
+                    Scope = scope,
+                    TreeId = tree,
+                    Id = new CompositionNodeKey(depth),
+                    ParentId = depth == 0 || (missingParent && depth == 3)
+                        ? null
+                        : new CompositionNodeKey(depth - 1),
+                    Left = depth + 1,
+                    Right = 12 - depth,
+                    Depth = depth,
+                }),
+            CancellationToken.None);
 
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         probe.Reset();
         materialized = 0;
-        var hierarchy = context.NestedSet<CompositionConvertedNode>().ForScope(scope).InTree(tree);
-        int[] expected = missingParent ? [] : filter == "correlated" ? [1] : [0, 1];
+        var hierarchy = context
+            .NestedSet<CompositionConvertedNode>()
+            .ForScope(scope)
+            .InTree(tree);
+
+        int[] expected = missingParent
+            ? []
+            : filter == "correlated"
+                ? [1]
+                : [0, 1];
 
         // Act
         var actual = await QueryLongDepths(hierarchy, filter)
-            .OrderBy(depth => depth).ToArrayAsync(CancellationToken.None);
+            .OrderBy(depth => depth)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -75,29 +96,49 @@ public abstract partial class HierarchyCompositionModelTests
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
         var materialized = 0;
-        await using var context = await _fixture.CreateContextAsync<EntitySplitContext>(Engine,
+        await using var context = await _fixture.CreateContextAsync<EntitySplitContext>(
+            Engine,
             static options => new EntitySplitContext(options),
             cancellationToken: TestContext.Current.CancellationToken,
-            probe, TestMaterializationObserver.Instance);
+            probe,
+            TestMaterializationObserver.Instance);
 
         TestMaterializationObserver.Instance.Register(context, _ => materialized++);
-        await context.AddRangeAsync(Enumerable.Range(0, 6).Select(depth => new EntitySplitNode
-        {
-            Id = first + depth, TreeId = tree, Name = $"Long fragment {depth}",
-            ParentId = depth == 0 || (missingParent && depth == 3) ? null : first + depth - 1,
-            Left = depth + 1, Right = 12 - depth, Depth = depth,
-        }), CancellationToken.None);
+        await context.AddRangeAsync(
+            Enumerable
+                .Range(0, 6)
+                .Select(depth => new EntitySplitNode
+                {
+                    Id = first + depth,
+                    TreeId = tree,
+                    Name = $"Long fragment {depth}",
+                    ParentId = depth == 0 || (missingParent && depth == 3)
+                        ? null
+                        : first + depth - 1,
+                    Left = depth + 1,
+                    Right = 12 - depth,
+                    Depth = depth,
+                }),
+            CancellationToken.None);
 
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         probe.Reset();
         materialized = 0;
-        var hierarchy = context.NestedSet<EntitySplitNode>().InTree(tree);
-        int[] expected = missingParent ? [] : filter == "correlated" ? [1] : [0, 1];
+        var hierarchy = context
+            .NestedSet<EntitySplitNode>()
+            .InTree(tree);
+
+        int[] expected = missingParent
+            ? []
+            : filter == "correlated"
+                ? [1]
+                : [0, 1];
 
         // Act
         var actual = await QueryLongDepths(hierarchy, filter)
-            .OrderBy(depth => depth).ToArrayAsync(CancellationToken.None);
+            .OrderBy(depth => depth)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -118,21 +159,36 @@ public abstract partial class HierarchyCompositionModelTests
     )
         where TEntity : class
     {
-        var rows = hierarchy.SelectSubtrees(node => EF.Property<int>(node, depthProperty) <= 1,
-                (upper, node, distance) => new { Upper = upper, Node = node })
+        var rows = hierarchy
+            .SelectSubtrees(
+                node => EF.Property<int>(node, depthProperty) <= 1,
+                (upper, node, distance) => new
+                {
+                    Upper = upper,
+                    Node = node,
+                })
             .Where(row => EF.Property<int>(row.Node, depthProperty) == 5);
 
         // WHY: Different upper endpoints provide distinct row-dependent limits without introducing CLR
         // operators on the converted key. Neither path proof may assume its parent key is non-nullable.
         var query = filter switch
         {
-            "independent" => hierarchy.WherePathEdges(rows, row => row.Upper, row => row.Node,
+            "independent" => hierarchy.WherePathEdges(
+                rows,
+                row => row.Upper,
+                row => row.Node,
                 (row, parent, child) => true),
-            "correlated" => hierarchy.WherePathEdges(rows, row => row.Upper, row => row.Node,
+            "correlated" => hierarchy.WherePathEdges(
+                rows,
+                row => row.Upper,
+                row => row.Node,
                 (row, parent, child) => EF.Property<int>(child, depthProperty)
                     <= EF.Property<int>(row.Upper, depthProperty) + 4),
-            "nearest" => hierarchy.WhereNearestAncestorOrSelf(rows, row => row.Node,
-                (row, owner) => EF.Property<int>(owner, depthProperty) == 0, (row, owner) => true),
+            "nearest" => hierarchy.WhereNearestAncestorOrSelf(
+                rows,
+                row => row.Node,
+                (row, owner) => EF.Property<int>(owner, depthProperty) == 0,
+                (row, owner) => true),
             _ => throw new ArgumentOutOfRangeException(nameof(filter)),
         };
 

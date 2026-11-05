@@ -93,8 +93,12 @@ public sealed partial class BulkStagingRetentionTests
     {
         var input = new StagingNode
         {
-            Id = alternate ? 2 : 1,
-            Alias = alternate ? "existing" : "input",
+            Id = alternate
+                ? 2
+                : 1,
+            Alias = alternate
+                ? "existing"
+                : "input",
             Scope = 9,
             ParentId = 999,
             Left = 17,
@@ -111,7 +115,10 @@ public sealed partial class BulkStagingRetentionTests
                 [new NestedSetTreeImport<StagingNode, Guid>(Guid.Empty, new NestedSetBranch<StagingNode>(input))],
                 cancellationToken));
 
-        var restored = input.Id == (alternate ? 2 : 1)
+        var restored = input.Id
+            == (alternate
+                ? 2
+                : 1)
             && input is { Scope: 9, ParentId: 999, Left: 17, Right: 18, Depth: 9, Position: 11, Version: 91 };
 
         return (new WeakReference<StagingNode>(input), error, restored);
@@ -145,7 +152,9 @@ public sealed partial class BulkStagingRetentionTests
             Version = 91,
             FailGetter = getter,
             FailSetter = !getter && !tracking,
-            Payload = payload ? new StagingPayload { Label = "original" } : null,
+            Payload = payload
+                ? new StagingPayload { Label = "original" }
+                : null,
         };
 
         var error = await Record.ExceptionAsync(() => context
@@ -158,6 +167,8 @@ public sealed partial class BulkStagingRetentionTests
         var restored = input is { Scope: 9, ParentId: 999, Left: 17, Right: 18, Depth: 9, Position: 11, Version: 91 };
 
         return (new WeakReference<StagingNode>(input),
-            input.Payload is { } detail ? new WeakReference<StagingPayload>(detail) : null, error, restored);
+            input.Payload is { } detail
+                ? new WeakReference<StagingPayload>(detail)
+                : null, error, restored);
     }
 }

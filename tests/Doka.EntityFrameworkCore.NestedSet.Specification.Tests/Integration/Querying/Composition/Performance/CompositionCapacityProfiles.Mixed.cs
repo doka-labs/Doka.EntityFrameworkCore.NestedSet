@@ -33,7 +33,12 @@ internal static partial class CompositionCapacityProfiles
             catch (Exception error)
             {
                 // WHY: Failure evidence completes independently of the canceled workload and preserves its error.
-                await RetainFailureAsync(context, engine, profile, planProbe, error,
+                await RetainFailureAsync(
+                    context,
+                    engine,
+                    profile,
+                    planProbe,
+                    error,
                     cancellationToken: CancellationToken.None);
 
                 throw;
@@ -42,31 +47,54 @@ internal static partial class CompositionCapacityProfiles
             var elapsed = Stopwatch.GetElapsedTime(started);
             var commands = commandProbe.CommandCount;
             var materialized = planProbe.MaterializedNodes;
-            var tracked = context.ChangeTracker.Entries().Count();
+            var tracked = context
+                .ChangeTracker
+                .Entries()
+                .Count();
+
             string plan;
 
             try
             {
-                plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, 0, engine,
+                plan = await QueryPlanTestSupport.ExplainAsync(
+                    context,
+                    planProbe,
+                    0,
+                    engine,
                     cancellationToken: cancellationToken);
             }
             catch (Exception error)
             {
                 // WHY: Failure evidence completes independently of the canceled workload and preserves its error.
-                await RetainFailureAsync(context, engine, profile, planProbe, error,
+                await RetainFailureAsync(
+                    context,
+                    engine,
+                    profile,
+                    planProbe,
+                    error,
                     cancellationToken: CancellationToken.None);
 
                 throw;
             }
 
-            var expected = Enumerable.Range(firstOrigin, origins)
+            var expected = Enumerable
+                .Range(firstOrigin, origins)
                 .Where(origin => !balanced || SameBranch(origin, nodes))
                 .Select(origin => new CompositionCapacityTotal(origin, 1, nodes))
                 .ToArray();
 
-            var observation = new CompositionCapacityObservation(profile, rows, expected, commands,
+            var observation = new CompositionCapacityObservation(
+                profile,
+                rows,
+                expected,
+                commands,
                 planProbe.ParameterBindings[0].Length,
-                constructionCommands, materialized, tracked, buildBytes, elapsed, plan);
+                constructionCommands,
+                materialized,
+                tracked,
+                buildBytes,
+                elapsed,
+                plan);
 
             observations.Add(observation);
             await WriteAsync(engine, observation, planProbe.Commands[0], cancellationToken: cancellationToken);
@@ -77,10 +105,13 @@ internal static partial class CompositionCapacityProfiles
                 // downward edges for a balanced branch origin. One population pass is allowed;
                 // reading the entire owner population again for every origin is not requested work.
                 var requiredEdges = expected.Sum(row => balanced && (row.Anchor - 2) % BalancedBranchSize == 0
-                    ? 3L : 2L);
+                    ? 3L
+                    : 2L);
 
-                CompositionSqlServerPlanWork.AssertWithinBudget(plan,
-                    CompositionPlanWorkBudget.ForPaths(nodes, origins, requiredEdges), profile);
+                CompositionSqlServerPlanWork.AssertWithinBudget(
+                    plan,
+                    CompositionPlanWorkBudget.ForPaths(nodes, origins, requiredEdges),
+                    profile);
             }
         }
 
@@ -94,28 +125,63 @@ internal static partial class CompositionCapacityProfiles
         int target
     )
     {
-        var hierarchy = context.NestedSet<TreeNode>().ForScope(1).InTree(Guid.Empty);
-        var up = hierarchy.SelectAncestors(source => source.NodeId >= firstOrigin,
-                (source, pivot, distance) => new { Source = source, Pivot = pivot, UpDistance = distance })
+        var hierarchy = context
+            .NestedSet<TreeNode>()
+            .ForScope(1)
+            .InTree(Guid.Empty);
+
+        var up = hierarchy
+            .SelectAncestors(
+                source => source.NodeId >= firstOrigin,
+                (source, pivot, distance) => new
+                {
+                    Source = source,
+                    Pivot = pivot,
+                    UpDistance = distance,
+                })
             .Where(row => row.UpDistance == 1);
 
-        var down = hierarchy.SelectSubtrees(pivot => up.Any(row => row.Pivot == pivot),
-                (pivot, node, distance) => new { Pivot = pivot, Target = node, DownDistance = distance })
+        var down = hierarchy
+            .SelectSubtrees(
+                pivot => up.Any(row => row.Pivot == pivot),
+                (pivot, node, distance) => new
+                {
+                    Pivot = pivot,
+                    Target = node,
+                    DownDistance = distance,
+                })
             .Where(row => row.Target.NodeId == target);
 
-        var mixed = up.Join(down, row => row.Pivot, row => row.Pivot,
-            (first, second) => new { first.Source, first.Pivot, second.Target });
+        var mixed = up.Join(
+            down,
+            row => row.Pivot,
+            row => row.Pivot,
+            (first, second) => new
+            {
+                first.Source,
+                first.Pivot,
+                second.Target,
+            });
 
-        var allowedUp = hierarchy.WherePathEdges(mixed,
-            row => row.Pivot, row => row.Source, (_, parent, child) => child.Payload != "blocked");
+        var allowedUp = hierarchy.WherePathEdges(
+            mixed,
+            row => row.Pivot,
+            row => row.Source,
+            (_, parent, child) => child.Payload != "blocked");
 
-        var allowedBoth = hierarchy.WherePathEdges(allowedUp,
-            row => row.Pivot, row => row.Target, (_, parent, child) => child.Payload != "blocked");
+        var allowedBoth = hierarchy.WherePathEdges(
+            allowedUp,
+            row => row.Pivot,
+            row => row.Target,
+            (_, parent, child) => child.Payload != "blocked");
 
-        return allowedBoth.GroupBy(row => row.Source.NodeId)
+        return allowedBoth
+            .GroupBy(row => row.Source.NodeId)
             .OrderBy(group => group.Key)
             .Select(group => new CompositionCapacityTotal(
-                group.Key, group.LongCount(), group.Sum(row => (long)row.Target.NodeId)));
+                group.Key,
+                group.LongCount(),
+                group.Sum(row => (long)row.Target.NodeId)));
     }
 
     /// <summary>Uses independent adjacency to find a source whose direct parent contains the target.</summary>

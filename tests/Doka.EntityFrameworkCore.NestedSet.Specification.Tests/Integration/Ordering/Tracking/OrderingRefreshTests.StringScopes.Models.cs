@@ -2,6 +2,62 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class OrderingRefreshTests
 {
+    /// <summary>Declares native case-insensitive scope and key equality on every supported database engine.</summary>
+    private static void ConfigureRefreshModel(
+        ModelBuilder modelBuilder,
+        DbContext context
+    )
+    {
+        var postgresCollation = context is ScopeComparerContext
+            ? "comparer_scope_case_insensitive"
+            : "refresh_scope_case_insensitive";
+
+        if (context.Database.IsNpgsql())
+        {
+            modelBuilder.HasCollation(
+                postgresCollation,
+                locale: "und-u-ks-level1",
+                provider: "icu",
+                deterministic: false);
+        }
+
+        var collation = context.Database.IsSqlite()
+            ? "NOCASE"
+            : context.Database.IsNpgsql()
+                ? postgresCollation
+                : context.Database.IsSqlServer()
+                    ? "Latin1_General_100_CI_AI"
+                    : "utf8mb4_general_ci";
+
+        var entity = modelBuilder.Entity<RefreshScopeNode>();
+        entity.ToTable("RefreshScopeNodes");
+        entity
+            .Property(node => node.Id)
+            .HasMaxLength(80)
+            .UseCollation(collation)
+            .ValueGeneratedNever();
+
+        entity
+            .Property(node => node.Scope)
+            .HasMaxLength(80)
+            .UseCollation(collation);
+
+        entity
+            .Property(node => node.ParentId)
+            .HasMaxLength(80)
+            .UseCollation(collation);
+
+        entity
+            .Property(node => node.Name)
+            .HasMaxLength(80);
+
+        entity.HasNestedSet(builder => builder
+            .HasTreeId(node => node.TreeId)
+            .HasScope(node => node.Scope)
+            .HasParent(node => node.ParentId)
+            .OrderBy(node => node.Name));
+    }
+
     /// <summary>Exercises string key and scope aliases independently of the normal integer-key fixture.</summary>
     private sealed class RefreshScopeContext : NestedSetDbContext
     {
@@ -49,10 +105,8 @@ public abstract partial class OrderingRefreshTests
 
             scope.Metadata.SetValueComparer(
                 new ValueComparer<string>(
-                    (
-                        left,
-                        right
-                    ) => string.Equals(left, right, StringComparison.OrdinalIgnoreCase),
+                    (left,
+                        right) => string.Equals(left, right, StringComparison.OrdinalIgnoreCase),
                     value => StringComparer.OrdinalIgnoreCase.GetHashCode(value),
                     value => value));
         }
@@ -72,70 +126,9 @@ public abstract partial class OrderingRefreshTests
         ) => ConfigureRefreshModel(modelBuilder, this);
     }
 
-    /// <summary>Declares native case-insensitive scope and key equality on every supported database engine.</summary>
-    private static void ConfigureRefreshModel(
-        ModelBuilder modelBuilder,
-        DbContext context
-    )
-    {
-        var postgresCollation = context is ScopeComparerContext
-            ? "comparer_scope_case_insensitive"
-            : "refresh_scope_case_insensitive";
-
-        if (context.Database.IsNpgsql())
-        {
-            modelBuilder.HasCollation(
-                postgresCollation,
-                locale: "und-u-ks-level1",
-                provider: "icu",
-                deterministic: false);
-        }
-
-        var collation = context.Database.IsSqlite()
-            ? "NOCASE"
-            : context.Database.IsNpgsql()
-                ? postgresCollation
-                : context.Database.IsSqlServer()
-                    ? "Latin1_General_100_CI_AI"
-                    : "utf8mb4_general_ci";
-
-        var entity = modelBuilder.Entity<RefreshScopeNode>();
-        entity.ToTable("RefreshScopeNodes");
-        entity
-            .Property(node => node.Id)
-            .HasMaxLength(80)
-            .UseCollation(collation)
-            .ValueGeneratedNever();
-        entity
-            .Property(node => node.Scope)
-            .HasMaxLength(80)
-            .UseCollation(collation);
-        entity
-            .Property(node => node.ParentId)
-            .HasMaxLength(80)
-            .UseCollation(collation);
-        entity
-            .Property(node => node.Name)
-            .HasMaxLength(80);
-        entity.HasNestedSet(builder => builder
-            .HasTreeId(node => node.TreeId)
-            .HasScope(node => node.Scope)
-            .HasParent(node => node.ParentId)
-            .OrderBy(node => node.Name));
-    }
-
     /// <summary>Contains payload excluded from structural refresh plus database-collated string identities.</summary>
     private sealed class RefreshScopeNode : IScopedNestedSetNode<string, Guid, string>
     {
-        /// <summary>Gets or sets the stable tree identity.</summary>
-        public Guid TreeId { get; set; }
-
-        /// <inheritdoc />
-        public string Id { get; set; } = "";
-
-        /// <summary>Gets or sets the native-collated forest identity.</summary>
-        public string Scope { get; set; } = "";
-
         /// <summary>Gets or sets the optional parent identity.</summary>
         public string? ParentId { get; set; }
 
@@ -144,6 +137,15 @@ public abstract partial class OrderingRefreshTests
 
         /// <summary>Gets or sets unrelated application payload that refresh must neither select nor accept.</summary>
         public string Payload { get; set; } = "original payload";
+
+        /// <summary>Gets or sets the stable tree identity.</summary>
+        public Guid TreeId { get; set; }
+
+        /// <inheritdoc />
+        public string Id { get; set; } = "";
+
+        /// <summary>Gets or sets the native-collated forest identity.</summary>
+        public string Scope { get; set; } = "";
 
         /// <inheritdoc />
         public long Left { get; set; }

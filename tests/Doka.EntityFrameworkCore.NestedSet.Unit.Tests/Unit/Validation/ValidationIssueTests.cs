@@ -32,8 +32,11 @@ public sealed class ValidationIssueTests
             NestedSetValidationCode.InvalidPosition => nodes[2] with { Position = 10 },
             NestedSetValidationCode.NegativePosition => nodes[2] with { Position = -1 },
             NestedSetValidationCode.DuplicatePosition => nodes[2] with { Position = 0 },
-            NestedSetValidationCode.MissingParent => nodes[2] with { Parent = new(true, 99) },
-            NestedSetValidationCode.CycleOrUnreachableNode => nodes[2] with { Parent = new(true, 2) },
+            NestedSetValidationCode.MissingParent => nodes[2] with { Parent = new NestedSetParent<int>(true, 99) },
+            NestedSetValidationCode.CycleOrUnreachableNode => nodes[2] with
+            {
+                Parent = new NestedSetParent<int>(true, 2),
+            },
             _ => throw new ArgumentOutOfRangeException(nameof(code)),
         };
 

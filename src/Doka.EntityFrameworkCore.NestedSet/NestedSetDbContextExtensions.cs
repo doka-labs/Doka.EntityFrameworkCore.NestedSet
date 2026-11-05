@@ -12,7 +12,7 @@ public static class NestedSetDbContextExtensions
     /// <param name="cancellationToken">The token used for locking, persistence, and structural updates.</param>
     /// <returns>The saved-entry count reported by Entity Framework Core, excluding structural set updates.</returns>
     /// <remarks>
-    ///     Preserves <see cref="ChangeTracker.AutoDetectChangesEnabled"/> for payload and coordinated hierarchy saves.
+    ///     Preserves <see cref="ChangeTracker.AutoDetectChangesEnabled" /> for payload and coordinated hierarchy saves.
     ///     With automatic detection disabled, explicitly record Parent and configured-order changes through EF entry
     ///     APIs, notifications, or an application detection pass. Unrecorded hierarchy changes are rejected by
     ///     read-only guards; unrelated unmarked snapshot-tracked payload is not discovered by this method.

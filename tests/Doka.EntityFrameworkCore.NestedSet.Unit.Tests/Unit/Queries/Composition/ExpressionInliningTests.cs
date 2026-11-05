@@ -36,7 +36,7 @@ public sealed partial class ExpressionInliningTests(
 
         // Assert
         var lambda = Assert.IsAssignableFrom<Expression<Func<int, int>>>(actual);
-        Assert.Equal(10 + ((arity * (arity + 1)) / 2), value);
+        Assert.Equal(10 + arity * (arity + 1) / 2, value);
         Assert.Same(nested, lambda.Parameters[0]);
     }
 
@@ -85,8 +85,8 @@ public sealed partial class ExpressionInliningTests(
     {
         // Arrange
         var (projection, selector) = initializer
-            ? Projectors((int value) => new ProjectionRow { Value = value }, row => row.Value)
-            : Projectors((int value) => new { Value = value }, row => row.Value);
+            ? Projectors(value => new ProjectionRow { Value = value }, row => row.Value)
+            : Projectors(value => new { Value = value }, row => row.Value);
 
         var parameters = Enumerable
             .Range(0, arity)
@@ -101,7 +101,8 @@ public sealed partial class ExpressionInliningTests(
                 Expression.Constant(value)))
             .ToArray();
 
-        var member = Assert.IsAssignableFrom<MemberExpression>(selector.Body).Member;
+        var member = Assert.IsAssignableFrom<MemberExpression>(selector.Body)
+            .Member;
 
         var expression = Expression.Lambda(Expression.MakeMemberAccess(parameters[^1], member), parameters);
 
@@ -109,8 +110,10 @@ public sealed partial class ExpressionInliningTests(
         var actual = Inline(expression, arguments);
 
         // Assert
-        Assert.Equal(arity,
-            Assert.IsType<ConstantExpression>(actual).Value);
+        Assert.Equal(
+            arity,
+            Assert.IsType<ConstantExpression>(actual)
+                .Value);
     }
 
     /// <summary>Captured application members remain unevaluated expression nodes.</summary>

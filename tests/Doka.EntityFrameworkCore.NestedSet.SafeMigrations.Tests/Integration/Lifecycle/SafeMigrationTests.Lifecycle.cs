@@ -21,7 +21,9 @@ public sealed partial class SafeMigrationTests
     )
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync(engine, qualifySchema,
+        await using var database = await CreateDatabaseAsync(
+            engine,
+            qualifySchema,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var chain = database.Scaffold(MigrationStage.Current, "SafeInitial");
@@ -72,7 +74,8 @@ public sealed partial class SafeMigrationTests
                 Right = beyondInt32 + 1,
                 Position = beyondInt32,
                 Payload = "large coordinates",
-            }, cancellationToken: TestContext.Current.CancellationToken);
+            },
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var largeNode = (await database.ReadNodesAsync(
             cancellationToken: TestContext.Current.CancellationToken)).Single(node => node.NodeId == 43);
@@ -97,18 +100,22 @@ public sealed partial class SafeMigrationTests
         Assert.Equal(
             (beyondInt32, beyondInt32 + 1, beyondInt32),
             (largeNode.Left, largeNode.Right, largeNode.Position));
+
         AssertFreshIndexOperations(engine, operations);
         Assert.All(
             operations,
             operation => Assert.Equal(database.Schema, ((EnsureIndexIntent)operation.Intent).Definition.Schema));
+
         Assert.Contains(
             "CreateCompositeIndexIfNotExistsFromModel",
             chain.LatestMigrationCode,
             StringComparison.Ordinal);
+
         Assert.DoesNotContain(
             chain.GetMigration(context, 0)
                 .UpOperations,
             operation => operation is CreateIndexOperation);
+
         Assert.Equal(SafeMigrationReportStatus.Ready, report.Status);
         Assert.Equal(operations.Length, report.Assessments.Count);
         Assert.All(
@@ -118,6 +125,7 @@ public sealed partial class SafeMigrationTests
                 Assert.Equal(SafeMigrationObservedState.Matching, assessment.ObservedState);
                 Assert.Equal(SafeMigrationAction.NoOp, assessment.Action);
             });
+
         AssertCurrentPhysicalContract(engine, indexes, checks, foreignKeys, columnTypes);
     }
 
@@ -127,7 +135,9 @@ public sealed partial class SafeMigrationTests
     public async Task SqliteUpgradePreservesPopulatedHierarchy()
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync("Sqlite", false,
+        await using var database = await CreateDatabaseAsync(
+            "Sqlite",
+            false,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var baseline = database.Scaffold(MigrationStage.Baseline, "SafeBaseline");
@@ -151,6 +161,7 @@ public sealed partial class SafeMigrationTests
         Assert.All(
             operations,
             operation => Assert.Equal(database.Schema, ((EnsureIndexIntent)operation.Intent).Definition.Schema));
+
         Assert.Equal(before, after);
         AssertCurrentIndexes("Sqlite", indexes);
     }
@@ -171,7 +182,9 @@ public sealed partial class SafeMigrationTests
     )
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync(engine, qualifySchema,
+        await using var database = await CreateDatabaseAsync(
+            engine,
+            qualifySchema,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var baseline = database.Scaffold(MigrationStage.Baseline, "SafeBaseline");
@@ -181,15 +194,17 @@ public sealed partial class SafeMigrationTests
         await using var context = database.CreateContext(MigrationStage.Current, upgrade.Assembly);
         var operations = GetUpOperations(upgrade, context, 1);
         var indexOperations = GetIndexOperations(upgrade, context, 1);
-        var indexesBefore = IndexSignatures(await database.ReadIndexesAsync(
-            cancellationToken: TestContext.Current.CancellationToken));
+        var indexesBefore = IndexSignatures(
+            await database.ReadIndexesAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
 
         var checksBefore = await database.ReadChecksAsync(cancellationToken: TestContext.Current.CancellationToken);
         var columnsBefore = await database.ReadColumnTypesAsync(
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var foreignKeysBefore = ForeignKeySignatures(await database.ReadForeignKeysAsync(
-            cancellationToken: TestContext.Current.CancellationToken));
+        var foreignKeysBefore = ForeignKeySignatures(
+            await database.ReadForeignKeysAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
 
         var nodesBefore = await database.ReadNodesAsync(
             cancellationToken: TestContext.Current.CancellationToken,
@@ -205,15 +220,17 @@ public sealed partial class SafeMigrationTests
                 new SafeMigrationRunOptions("nested-set-server-upgrade"),
                 CancellationToken.None);
 
-        var indexesAfter = IndexSignatures(await database.ReadIndexesAsync(
-            cancellationToken: TestContext.Current.CancellationToken));
+        var indexesAfter = IndexSignatures(
+            await database.ReadIndexesAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
 
         var checksAfter = await database.ReadChecksAsync(cancellationToken: TestContext.Current.CancellationToken);
         var columnsAfter = await database.ReadColumnTypesAsync(
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var foreignKeysAfter = ForeignKeySignatures(await database.ReadForeignKeysAsync(
-            cancellationToken: TestContext.Current.CancellationToken));
+        var foreignKeysAfter = ForeignKeySignatures(
+            await database.ReadForeignKeysAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
 
         var nodesAfter = await database.ReadNodesAsync(
             cancellationToken: TestContext.Current.CancellationToken,
@@ -226,26 +243,32 @@ public sealed partial class SafeMigrationTests
         Assert.All(
             indexOperations,
             operation => Assert.Equal(database.Schema, ((EnsureIndexIntent)operation.Intent).Definition.Schema));
+
         Assert.Equal(operations.Length, report.Assessments.Count);
-        Assert.True(report.Status == SafeMigrationReportStatus.Ready, string.Join(
-            Environment.NewLine,
-            report.Assessments.Select(assessment =>
-                $"{assessment.OperationKind}: {assessment.Action}, {assessment.AnalysisCode}")));
+        Assert.True(
+            report.Status == SafeMigrationReportStatus.Ready,
+            string.Join(
+                Environment.NewLine,
+                report.Assessments.Select(assessment =>
+                    $"{assessment.OperationKind}: {assessment.Action}, {assessment.AnalysisCode}")));
 
         AssertApplicableIntegerChecks(report);
-        var alterations = report.Assessments
+        var alterations = report
+            .Assessments
             .Where(assessment => assessment.OperationKind == SafeMigrationOperationKind.AlterColumn)
             .ToArray();
 
         Assert.Equal(3, alterations.Length);
-        Assert.All(alterations, assessment =>
-        {
-            // WHY: Widening repairs an existing, different column; Apply denotes creation of a missing object.
-            Assert.Equal(SafeMigrationObservedState.Different, assessment.ObservedState);
-            Assert.Equal(SafeMigrationAction.Repair, assessment.Action);
-            Assert.Equal("classified_different", assessment.AnalysisCode);
-            Assert.Equal("different_repair", assessment.DecisionCode);
-        });
+        Assert.All(
+            alterations,
+            assessment =>
+            {
+                // WHY: Widening repairs an existing, different column; Apply denotes creation of a missing object.
+                Assert.Equal(SafeMigrationObservedState.Different, assessment.ObservedState);
+                Assert.Equal(SafeMigrationAction.Repair, assessment.Action);
+                Assert.Equal("classified_different", assessment.AnalysisCode);
+                Assert.Equal("different_repair", assessment.DecisionCode);
+            });
 
         Assert.Equal(indexesBefore, indexesAfter);
         Assert.Equal(checksBefore, checksAfter);
@@ -262,13 +285,16 @@ public sealed partial class SafeMigrationTests
     public async Task SqliteDowngradePreservesEarlierIndexesAndData()
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync("Sqlite", false,
+        await using var database = await CreateDatabaseAsync(
+            "Sqlite",
+            false,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var baseline = database.Scaffold(MigrationStage.Baseline, "SafeBaseline");
         await database.MigrateAsync(baseline, cancellationToken: TestContext.Current.CancellationToken);
-        var originalIndexes = IndexSignatures(await database.ReadIndexesAsync(
-            cancellationToken: TestContext.Current.CancellationToken));
+        var originalIndexes = IndexSignatures(
+            await database.ReadIndexesAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
 
         var upgrade = database.Scaffold(MigrationStage.Current, "SafeScopeKey", baseline);
         await database.MigrateAsync(upgrade, cancellationToken: TestContext.Current.CancellationToken);
@@ -276,9 +302,11 @@ public sealed partial class SafeMigrationTests
         var before = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        await database.MigrateAsync(upgrade,
+        await database.MigrateAsync(
+            upgrade,
             cancellationToken: TestContext.Current.CancellationToken,
             baseline.MigrationIds[0]);
+
         var indexes = await database.ReadIndexesAsync(cancellationToken: TestContext.Current.CancellationToken);
         var after = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
 
@@ -294,16 +322,20 @@ public sealed partial class SafeMigrationTests
     public async Task SqliteReapplyRestoresIndexAndPreservesData()
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync("Sqlite", false,
+        await using var database = await CreateDatabaseAsync(
+            "Sqlite",
+            false,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var baseline = database.Scaffold(MigrationStage.Baseline, "SafeBaseline");
         var upgrade = database.Scaffold(MigrationStage.Current, "SafeScopeKey", baseline);
         await database.MigrateAsync(upgrade, cancellationToken: TestContext.Current.CancellationToken);
         await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
-        await database.MigrateAsync(upgrade,
+        await database.MigrateAsync(
+            upgrade,
             cancellationToken: TestContext.Current.CancellationToken,
             baseline.MigrationIds[0]);
+
         var before = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // Act

@@ -1,7 +1,6 @@
 using System.Linq.Expressions;
 using Doka.EntityFrameworkCore.NestedSet.Samples.SignalLab;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Logging;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples.SignalLab;
 
@@ -23,9 +22,10 @@ public sealed partial class SignalReportConstructionTests
         var boundary = new CompositionIoBoundary();
         var options = ContextOptions(engine, boundary);
         await using var provider = CreateServiceProvider(options.Options);
-        await using var context = new SignalLabContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new SignalLabContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var firstRequest = Request(false);
         var secondRequest = Request(true);
@@ -62,12 +62,13 @@ public sealed partial class SignalReportConstructionTests
         var compilations = new List<string>();
         var boundary = new CompositionIoBoundary();
         var options = ContextOptions(engine, boundary)
-            .LogTo(compilations.Add, [CoreEventId.QueryCompilationStarting], LogLevel.Debug);
+            .LogTo(compilations.Add, [CoreEventId.QueryCompilationStarting]);
 
         await using var provider = CreateServiceProvider(options.Options);
-        await using var context = new SignalLabContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new SignalLabContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var (first, second) = ParameterRequests(false);
 
@@ -76,6 +77,7 @@ public sealed partial class SignalReportConstructionTests
         _ = SignalReportBuilder
             .Catalog(context, first)
             .ToQueryString();
+
         compilations.Clear();
 
         // Act
@@ -102,12 +104,16 @@ public sealed partial class SignalReportConstructionTests
         bool nearest
     )
     {
-        var mode = nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any;
+        var mode = nearest
+            ? TagOwnerMode.Nearest
+            : TagOwnerMode.Any;
+
         var first = Request(nearest) with
         {
             Groups =
             [
-                new TagGroup(SignalReportDataset.SensorKind,
+                new TagGroup(
+                    SignalReportDataset.SensorKind,
                     mode,
                     [
                         new TagCriterion(SignalReportDataset.SensorKind, "Cooling", "Shared", mode),
@@ -124,8 +130,12 @@ public sealed partial class SignalReportConstructionTests
                 {
                     Criteria =
                     [
-                        first.Groups[0].Criteria[0],
-                        first.Groups[0].Criteria[1] with
+                        first
+                            .Groups[0]
+                            .Criteria[0],
+                        first
+                                .Groups[0]
+                                .Criteria[1] with
                             {
                                 Value = "Distinct",
                             },

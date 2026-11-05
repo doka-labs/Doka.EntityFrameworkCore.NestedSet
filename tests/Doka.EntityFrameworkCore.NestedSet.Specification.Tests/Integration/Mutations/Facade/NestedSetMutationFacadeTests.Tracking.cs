@@ -28,8 +28,16 @@ public abstract partial class NestedSetMutationFacadeTests
         // Assert
         var rejection = Assert.IsType<NestedSetException>(error);
         Assert.Equal(NestedSetErrorCode.InvalidContext, rejection.Code);
-        Assert.Equal(EntityState.Unchanged, context.Entry(tracked).State);
-        Assert.Equal(2, await context.Set<TreeNode>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(tracked)
+                .State);
+
+        Assert.Equal(
+            2,
+            await context
+                .Set<TreeNode>()
+                .CountAsync(CancellationToken.None));
     }
 
     /// <summary>Explicit mutations allow unchanged tracked entities belonging only to an unaffected tree.</summary>
@@ -60,7 +68,11 @@ public abstract partial class NestedSetMutationFacadeTests
 
         // Assert
         Assert.Equal((s_secondTree, 1L, 2L), (tracked.TreeId, tracked.Start, tracked.End));
-        Assert.Equal(EntityState.Unchanged, context.Entry(tracked).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(tracked)
+                .State);
+
         Assert.Equal([1, 2, 3], firstTree);
     }
 
@@ -95,7 +107,11 @@ public abstract partial class NestedSetMutationFacadeTests
             .ToArrayAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(EntityState.Unchanged, context.Entry(tracked).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(tracked)
+                .State);
+
         Assert.Equal([1, 2], ids);
     }
 
@@ -122,7 +138,11 @@ public abstract partial class NestedSetMutationFacadeTests
             .RebuildAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(EntityState.Unchanged, context.Entry(tracked).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(tracked)
+                .State);
+
         Assert.Equal((1L, 2L), (tracked.Start, tracked.End));
     }
 
@@ -149,8 +169,16 @@ public abstract partial class NestedSetMutationFacadeTests
             CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
-        Assert.Equal(1, await context.Set<TreeNode>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
+        Assert.Equal(
+            1,
+            await context
+                .Set<TreeNode>()
+                .CountAsync(CancellationToken.None));
     }
 
     /// <summary>Rebuild still rejects tracking in the tree it will repair.</summary>
@@ -175,7 +203,10 @@ public abstract partial class NestedSetMutationFacadeTests
             .RebuildAsync(CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
     }
 
     /// <summary>A cross-tree mutation rejects tracked entities from either affected tree.</summary>
@@ -213,7 +244,11 @@ public abstract partial class NestedSetMutationFacadeTests
         // Assert
         var rejection = Assert.IsType<NestedSetException>(error);
         Assert.Equal(NestedSetErrorCode.InvalidContext, rejection.Code);
-        Assert.Equal(EntityState.Unchanged, context.Entry(tracked).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(tracked)
+                .State);
+
         Assert.Equal([1, 2], firstTree);
         Assert.Equal([10], secondTree);
     }

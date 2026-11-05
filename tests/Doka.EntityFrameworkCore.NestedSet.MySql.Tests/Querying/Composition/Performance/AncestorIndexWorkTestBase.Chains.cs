@@ -25,8 +25,14 @@ public abstract partial class AncestorIndexWorkTestBase
             commands,
             capture);
 
-        await SeedAsync(context, scope, tree, forest: false, branching: true,
+        await SeedAsync(
+            context,
+            scope,
+            tree,
+            forest: false,
+            branching: true,
             cancellationToken: TestContext.Current.CancellationToken);
+
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         var selected = Enumerable
             .Range(0, sources)
@@ -43,12 +49,12 @@ public abstract partial class AncestorIndexWorkTestBase
                 var chain = new List<int>();
 
                 for (int? owner = key;
-                     owner is not null;
-                     owner = owner == 1
-                         ? null
-                         : (owner.Value - 2) % 1_000 == 0
-                             ? 1
-                             : owner - 1)
+                    owner is not null;
+                    owner = owner == 1
+                        ? null
+                        : (owner.Value - 2) % 1_000 == 0
+                            ? 1
+                            : owner - 1)
                 {
                     chain.Add(owner.Value);
                 }
@@ -75,10 +81,13 @@ public abstract partial class AncestorIndexWorkTestBase
                 node => Enumerable.Contains(selected, node.Id),
                 (node, owner, distance) => new Pair(node.Id, owner.Id, distance));
 
-        var traversalsBefore = await NativeTraversalCounterAsync(context,
+        var traversalsBefore = await NativeTraversalCounterAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var indexAttemptsBefore = await MariaSessionCounterAsync(context, "Handler_icp_attempts",
+        var indexAttemptsBefore = await MariaSessionCounterAsync(
+            context,
+            "Handler_icp_attempts",
             cancellationToken: TestContext.Current.CancellationToken);
 
         commands.Reset();
@@ -90,8 +99,8 @@ public abstract partial class AncestorIndexWorkTestBase
 
         // Act
         await foreach (var pair in query
-                           .AsAsyncEnumerable()
-                           .WithCancellation(CancellationToken.None))
+            .AsAsyncEnumerable()
+            .WithCancellation(CancellationToken.None))
         {
             if (!sourceIndices.TryGetValue(pair.Source, out var source)
                 || pair.Distance < 0
@@ -109,11 +118,16 @@ public abstract partial class AncestorIndexWorkTestBase
 
         var commandCount = commands.CommandCount;
         var sql = capture.Commands.Single();
-        var indexAttempts = await MariaSessionCounterAsync(context, "Handler_icp_attempts",
-            cancellationToken: TestContext.Current.CancellationToken) - indexAttemptsBefore;
+        var indexAttempts = await MariaSessionCounterAsync(
+                context,
+                "Handler_icp_attempts",
+                cancellationToken: TestContext.Current.CancellationToken)
+            - indexAttemptsBefore;
 
-        var traversals = await NativeTraversalCounterAsync(context,
-            cancellationToken: TestContext.Current.CancellationToken) - traversalsBefore;
+        var traversals = await NativeTraversalCounterAsync(
+                context,
+                cancellationToken: TestContext.Current.CancellationToken)
+            - traversalsBefore;
 
         var completedRead = $"CompletedRows={count}; expectedRows={expected}; commands={commandCount}; "
             + $"sourceBinding={hasBinding}; orderedJoin={hasOrderedJoin}; optimized={hasOptimizedPath}; "
@@ -124,13 +138,18 @@ public abstract partial class AncestorIndexWorkTestBase
         _output.WriteLine(completedRead);
         await QueryPlanTestSupport.WriteEvidenceAsync(
             Engine + "-ancestor-index-multi-branch-inclusive-completed-read",
-            [completedRead, sql], cancellationToken: TestContext.Current.CancellationToken);
+            [completedRead, sql],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         string plan;
 
         try
         {
-            plan = await Specifications.QueryPlanTestSupport.ExplainAsync(context, capture, 0, Engine,
+            plan = await QueryPlanTestSupport.ExplainAsync(
+                context,
+                capture,
+                0,
+                Engine,
                 cancellationToken: TestContext.Current.CancellationToken);
         }
         catch (Exception exception)
@@ -139,16 +158,22 @@ public abstract partial class AncestorIndexWorkTestBase
                 Engine + "-ancestor-index-multi-branch-inclusive-plan-failure",
                 [
                     completedRead,
-                    exception.GetType().FullName
-                    ?? exception.GetType().Name,
+                    exception.GetType()
+                        .FullName
+                    ?? exception.GetType()
+                        .Name,
                     sql,
-                    await FailurePlanAsync(context, capture, cancellationToken: TestContext.Current.CancellationToken)
-                ], cancellationToken: TestContext.Current.CancellationToken);
+                    await FailurePlanAsync(context, capture, cancellationToken: TestContext.Current.CancellationToken),
+                ],
+                cancellationToken: TestContext.Current.CancellationToken);
 
             throw;
         }
 
-        var work = Engine == "MySql" ? DensePathNativeWork.MySql(plan) : DensePathNativeWork.MariaDb(plan);
+        var work = Engine == "MySql"
+            ? DensePathNativeWork.MySql(plan)
+            : DensePathNativeWork.MariaDb(plan);
+
         var baseTable = AncestorIndexBaseTableWork.Read(sql, plan, Engine);
         var nativeWork = Math.Max(work.OperatorTuples, Math.Max(indexAttempts, traversals));
         var budget = 64L * (sources + expected + 1);
@@ -168,13 +193,16 @@ public abstract partial class AncestorIndexWorkTestBase
                 + $"materializedOutput={work.MaterializedOutput}; unknownMaterializedOutputs={work.UnknownMaterializedOutputs}",
                 sql,
                 plan,
-            ], cancellationToken: TestContext.Current.CancellationToken);
+            ],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        _output.WriteLine($"Rows={count}; binding={hasBinding}; orderedJoin={hasOrderedJoin}; "
+        _output.WriteLine(
+            $"Rows={count}; binding={hasBinding}; orderedJoin={hasOrderedJoin}; "
             + $"optimized={hasOptimizedPath}; nativeWork={nativeWork}; "
             + $"traversals={traversals}; baseTableTuples={baseTable.ObservedTuples}; "
             + $"unexposedPreIndexAccesses={baseTable.UnexposedPreIndexAccesses}; budget={budget}; operatorBudget={operatorBudget}.");
+
         Assert.True(hasOptimizedPath);
         Assert.Equal(expected, owners.Sum(chain => (long)chain.Length));
         Assert.Equal(expected, count);
@@ -185,7 +213,12 @@ public abstract partial class AncestorIndexWorkTestBase
         {
             // WHY: A favorable optimizer estimate can conceal the repeated owner scan. Assert the
             // required mapped-owner edge in emitted SQL as well as the unchanged executed-work budget.
-            Assert.Equal(2, sql.Split("STRAIGHT_JOIN", StringSplitOptions.None).Length - 1);
+            Assert.Equal(
+                2,
+                sql.Split("STRAIGHT_JOIN")
+                    .Length
+                - 1);
+
             var joins = AncestorIndexHydrationJoins.Read(sql, "AncestorIndexQueryNodes");
             Assert.Equal("INNER JOIN", joins.Source);
             Assert.Equal("STRAIGHT_JOIN", joins.Owner);
@@ -196,7 +229,7 @@ public abstract partial class AncestorIndexWorkTestBase
 
         if (Engine == "MySql")
         {
-            Assert.Equal((double?)count, work.RootRows);
+            Assert.Equal(count, work.RootRows);
         }
 
         Assert.InRange(baseTable.ObservedTuples, 0, budget);
@@ -206,7 +239,7 @@ public abstract partial class AncestorIndexWorkTestBase
         {
             // WHY: One row per owner plus the two source lanes fits this exact fixture; spooling
             // all 501,005 result pairs would exceed that relation bound even when reads are fast.
-            Assert.InRange(materialized, 0, 100_001L + (2L * sources));
+            Assert.InRange(materialized, 0, 100_001L + 2L * sources);
         }
     }
 }

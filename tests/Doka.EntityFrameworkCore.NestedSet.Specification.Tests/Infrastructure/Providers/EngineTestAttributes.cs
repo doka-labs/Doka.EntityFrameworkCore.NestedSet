@@ -40,7 +40,7 @@ public sealed class EngineInlineDataAttribute : DataAttribute
 }
 
 /// <summary>Preserves provider-independent member data and explicitly excluded engine variants.</summary>
-[AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
 public sealed class EngineMemberDataAttribute : MemberDataAttributeBase
 {
     /// <summary>Uses xUnit's normal public static member resolution.</summary>
@@ -65,8 +65,11 @@ public sealed class EngineMemberDataAttribute : MemberDataAttributeBase
     {
         var engine = EngineTestSelection.ResolveEngine(testMethod.ReflectedType!);
         var includeMember = EngineTestSelection.AppliesToEngine(engine, ExcludedEngines, Reason);
-        var rows = await GetSourceData(testMethod, disposalTracker,
-            cancellationToken: TestContext.Current.CancellationToken).ConfigureAwait(false);
+        var rows = await GetSourceData(
+                testMethod,
+                disposalTracker,
+                cancellationToken: TestContext.Current.CancellationToken)
+            .ConfigureAwait(false);
 
         var included = new List<ITheoryDataRow>(rows.Count);
 

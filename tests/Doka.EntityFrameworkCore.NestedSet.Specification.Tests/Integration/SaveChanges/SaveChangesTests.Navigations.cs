@@ -33,15 +33,24 @@ public abstract partial class SaveChangesTests
         await using var database = await CreateNavigationDatabaseAsync(
             cancellationToken: TestContext.Current.CancellationToken);
 
-        await using var context = await CreateNavigationContextAsync(database, wrapped,
+        await using var context = await CreateNavigationContextAsync(
+            database,
+            wrapped,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var root = await context.Set<NavigationNode>().Include(node => node.Children)
+        var root = await context
+            .Set<NavigationNode>()
+            .Include(node => node.Children)
             .SingleAsync(node => node.Id == 1, CancellationToken.None);
 
-        var note = await context.Set<NavigationNote>().SingleAsync(CancellationToken.None);
+        var note = await context
+            .Set<NavigationNote>()
+            .SingleAsync(CancellationToken.None);
+
         var child = Assert.Single(root.Children, node => node.Id == 2);
-        context.Entry(child).State = EntityState.Detached;
+        context.Entry(child)
+            .State = EntityState.Detached;
+
         context.ChangeTracker.AutoDetectChangesEnabled = automaticDetection;
         root.Children.Remove(child);
         note.Value = "ordinary change";
@@ -57,23 +66,51 @@ public abstract partial class SaveChangesTests
         // Act
         // WHY: The synchronous variants exercise the explicitly synchronous application save boundary.
         // ReSharper disable once MethodHasAsyncOverload
-        var saved = synchronous ? context.SaveChanges() : await context.SaveChangesAsync(CancellationToken.None);
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+        var saved = synchronous
+            ? context.SaveChanges()
+            : await context.SaveChangesAsync(CancellationToken.None);
+
+        await using var verification = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var storedNotes = await verification.Set<NavigationNote>().OrderBy(value => value.Id)
-            .Select(value => value.Value).ToArrayAsync(CancellationToken.None);
+        var storedNotes = await verification
+            .Set<NavigationNote>()
+            .OrderBy(value => value.Id)
+            .Select(value => value.Value)
+            .ToArrayAsync(CancellationToken.None);
 
-        var storedParent = await verification.Set<NavigationNode>().Where(node => node.Id == 2)
-            .Select(node => node.ParentId).SingleAsync(CancellationToken.None);
+        var storedParent = await verification
+            .Set<NavigationNode>()
+            .Where(node => node.Id == 2)
+            .Select(node => node.ParentId)
+            .SingleAsync(CancellationToken.None);
 
         // Assert
         var detectsPayload = automaticDetection || explicitDetection;
-        Assert.Equal(detectsPayload ? 2 : 1, saved);
-        Assert.Equal([detectsPayload ? "ordinary change" : "original", "original"], storedNotes);
+        Assert.Equal(
+            detectsPayload
+                ? 2
+                : 1,
+            saved);
+
+        Assert.Equal(
+            [
+                detectsPayload
+                    ? "ordinary change"
+                    : "original",
+                "original",
+            ],
+            storedNotes);
+
         Assert.Equal(1, storedParent);
         Assert.DoesNotContain(child, root.Children);
-        Assert.Equal(EntityState.Detached, context.Entry(child).State);
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(child)
+                .State);
+
         Assert.Equal(automaticDetection, context.ChangeTracker.AutoDetectChangesEnabled);
     }
 
@@ -107,28 +144,52 @@ public abstract partial class SaveChangesTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped,
+        await using var context = await CreateNavigationContextAsync(
+            database,
+            wrapped,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
-        var node = await context.Set<NavigationNode>().SingleAsync(value => value.Id == 2, CancellationToken.None);
-        var note = await context.Set<NavigationNote>().SingleAsync(CancellationToken.None);
-        var otherScope = await context.Set<NavigationScopeOwner>().Where(value => value.Id != node.Scope)
-            .Select(value => value.Id).SingleAsync(CancellationToken.None);
+        var node = await context
+            .Set<NavigationNode>()
+            .SingleAsync(value => value.Id == 2, CancellationToken.None);
+
+        var note = await context
+            .Set<NavigationNote>()
+            .SingleAsync(CancellationToken.None);
+
+        var otherScope = await context
+            .Set<NavigationScopeOwner>()
+            .Where(value => value.Id != node.Scope)
+            .Select(value => value.Id)
+            .SingleAsync(CancellationToken.None);
 
         var before = (node.Scope, node.ParentId, node.TreeId, node.Left, node.Right, node.Depth, node.Position);
         context.ChangeTracker.AutoDetectChangesEnabled = automaticDetection;
-        node.ScopeOwner = new NavigationScopeOwner { Id = sameKey ? node.Scope : otherScope, Value = "owner" };
+        node.ScopeOwner = new NavigationScopeOwner
+        {
+            Id = sameKey
+                ? node.Scope
+                : otherScope,
+            Value = "owner",
+        };
+
         note.Value = "ordinary change";
 
         // Act
-        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(context, synchronous,
+        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(
+            context,
+            synchronous,
             cancellationToken: TestContext.Current.CancellationToken));
 
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+        await using var verification = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var after = await verification.Set<NavigationNode>().Where(value => value.Id == 2)
+        var after = await verification
+            .Set<NavigationNode>()
+            .Where(value => value.Id == 2)
             .Select(value => new
             {
                 value.Scope,
@@ -138,13 +199,19 @@ public abstract partial class SaveChangesTests
                 value.Right,
                 value.Depth,
                 value.Position,
-            }).SingleAsync(CancellationToken.None);
-
-        var storedNote = await verification.Set<NavigationNote>().Select(value => value.Value)
+            })
             .SingleAsync(CancellationToken.None);
 
-        var storedOtherOwner = await verification.Set<NavigationScopeOwner>().Where(value => value.Id == otherScope)
-            .Select(value => value.Value).SingleAsync(CancellationToken.None);
+        var storedNote = await verification
+            .Set<NavigationNote>()
+            .Select(value => value.Value)
+            .SingleAsync(CancellationToken.None);
+
+        var storedOtherOwner = await verification
+            .Set<NavigationScopeOwner>()
+            .Where(value => value.Id == otherScope)
+            .Select(value => value.Value)
+            .SingleAsync(CancellationToken.None);
 
         // Assert
         if (sameKey)
@@ -157,10 +224,17 @@ public abstract partial class SaveChangesTests
             Assert.Equal(0, probe.Writes);
         }
 
-        Assert.Equal(before, (after.Scope, after.ParentId, after.TreeId, after.Left, after.Right,
-            after.Depth, after.Position));
+        Assert.Equal(
+            before,
+            (after.Scope, after.ParentId, after.TreeId, after.Left, after.Right,
+                after.Depth, after.Position));
 
-        Assert.Equal(sameKey && automaticDetection ? "ordinary change" : "original", storedNote);
+        Assert.Equal(
+            sameKey && automaticDetection
+                ? "ordinary change"
+                : "original",
+            storedNote);
+
         Assert.Equal("other owner", storedOtherOwner);
         Assert.Equal(automaticDetection, context.ChangeTracker.AutoDetectChangesEnabled);
     }
@@ -188,57 +262,86 @@ public abstract partial class SaveChangesTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped,
+        await using var context = await CreateNavigationContextAsync(
+            database,
+            wrapped,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
-        var owner = await context.Set<NavigationScopeOwner>().Include(value => value.Nodes)
+        var owner = await context
+            .Set<NavigationScopeOwner>()
+            .Include(value => value.Nodes)
             .SingleAsync(value => value.Value == "owner", CancellationToken.None);
 
-        var before = owner.Nodes.OrderBy(node => node.Id).Select(node => new
-        {
-            node.Id,
-            node.Scope,
-            node.ParentId,
-            node.TreeId,
-            node.Left,
-            node.Right,
-            node.Depth,
-            node.Position,
-        }).ToArray();
+        var before = owner
+            .Nodes
+            .OrderBy(node => node.Id)
+            .Select(node => new
+            {
+                node.Id,
+                node.Scope,
+                node.ParentId,
+                node.TreeId,
+                node.Left,
+                node.Right,
+                node.Depth,
+                node.Position,
+            })
+            .ToArray();
 
         context.ChangeTracker.AutoDetectChangesEnabled = automaticDetection;
         context.ChangeTracker.CascadeDeleteTiming = CascadeTiming.OnSaveChanges;
         context.Remove(owner);
-        var statesBeforeSave = context.GetService<IUpdateAdapterFactory>().Create().Entries
+        var statesBeforeSave = context
+            .GetService<IUpdateAdapterFactory>()
+            .Create()
+            .Entries
             .Where(entry => entry.EntityType.ClrType == typeof(NavigationNode))
-            .Select(entry => entry.EntityState).ToArray();
+            .Select(entry => entry.EntityState)
+            .ToArray();
 
         // Act
-        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(context, synchronous,
+        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(
+            context,
+            synchronous,
             cancellationToken: TestContext.Current.CancellationToken));
 
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+        await using var verification = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var after = await verification.Set<NavigationNode>().OrderBy(node => node.Id).Select(node => new
-        {
-            node.Id,
-            node.Scope,
-            node.ParentId,
-            node.TreeId,
-            node.Left,
-            node.Right,
-            node.Depth,
-            node.Position,
-        }).ToArrayAsync(CancellationToken.None);
+        var after = await verification
+            .Set<NavigationNode>()
+            .OrderBy(node => node.Id)
+            .Select(node => new
+            {
+                node.Id,
+                node.Scope,
+                node.ParentId,
+                node.TreeId,
+                node.Left,
+                node.Right,
+                node.Depth,
+                node.Position,
+            })
+            .ToArrayAsync(CancellationToken.None);
 
-        var owners = await verification.Set<NavigationScopeOwner>().CountAsync(CancellationToken.None);
-        var storedNote = await verification.Set<NavigationNote>().Select(value => value.Value)
+        var owners = await verification
+            .Set<NavigationScopeOwner>()
+            .CountAsync(CancellationToken.None);
+
+        var storedNote = await verification
+            .Set<NavigationNote>()
+            .Select(value => value.Value)
             .SingleAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Equal(0, probe.Writes);
         Assert.Equal(3, statesBeforeSave.Length);
         Assert.All(statesBeforeSave, state => Assert.Equal(EntityState.Unchanged, state));
@@ -252,17 +355,26 @@ public abstract partial class SaveChangesTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ManualHierarchyWorkPreservesUnmarkedPayload(bool facade)
+    public async Task ManualHierarchyWorkPreservesUnmarkedPayload(
+        bool facade
+    )
     {
         // Arrange
         await using var database = await CreateNavigationDatabaseAsync(
             cancellationToken: TestContext.Current.CancellationToken);
 
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+        await using var context = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var note = await context.Set<NavigationNote>().SingleAsync(CancellationToken.None);
-        var nodeQuery = context.Set<NavigationNode>().AsQueryable();
+        var note = await context
+            .Set<NavigationNote>()
+            .SingleAsync(CancellationToken.None);
+
+        var nodeQuery = context
+            .Set<NavigationNode>()
+            .AsQueryable();
 
         if (facade)
         {
@@ -277,35 +389,66 @@ public abstract partial class SaveChangesTests
         if (!facade)
         {
             node.ParentId = 3;
-            context.Entry(node).Property(value => value.ParentId).IsModified = true;
+            context
+                .Entry(node)
+                .Property(value => value.ParentId)
+                .IsModified = true;
         }
 
         // Act
         if (facade)
         {
-            await context.NestedSet<NavigationNode>().ForScope(node.Scope)
-                .InsertChildAsync(new NavigationNode { Id = 4, Name = "Delta" }, 1, CancellationToken.None);
+            await context
+                .NestedSet<NavigationNode>()
+                .ForScope(node.Scope)
+                .InsertChildAsync(
+                    new NavigationNode
+                    {
+                        Id = 4,
+                        Name = "Delta",
+                    },
+                    1,
+                    CancellationToken.None);
         }
         else
         {
             await context.SaveChangesAsync(CancellationToken.None);
         }
 
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+        await using var verification = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var storedNote = await verification.Set<NavigationNote>().Select(value => value.Value)
+        var storedNote = await verification
+            .Set<NavigationNote>()
+            .Select(value => value.Value)
             .SingleAsync(CancellationToken.None);
 
-        var storedParent = await verification.Set<NavigationNode>().Where(value => value.Id == 2)
-            .Select(value => value.ParentId).SingleAsync(CancellationToken.None);
+        var storedParent = await verification
+            .Set<NavigationNode>()
+            .Where(value => value.Id == 2)
+            .Select(value => value.ParentId)
+            .SingleAsync(CancellationToken.None);
 
-        var nodes = await verification.Set<NavigationNode>().CountAsync(CancellationToken.None);
+        var nodes = await verification
+            .Set<NavigationNode>()
+            .CountAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal("original", storedNote);
-        Assert.Equal(facade ? 1 : 3, storedParent);
-        Assert.Equal(facade ? 4 : 3, nodes);
+        Assert.Equal(
+            facade
+                ? 1
+                : 3,
+            storedParent);
+
+        Assert.Equal(
+            facade
+                ? 4
+                : 3,
+            nodes);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
     }
 }

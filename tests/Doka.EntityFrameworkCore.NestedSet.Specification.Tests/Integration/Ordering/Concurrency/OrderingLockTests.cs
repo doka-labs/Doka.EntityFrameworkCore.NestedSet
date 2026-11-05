@@ -28,16 +28,24 @@ public abstract class OrderingLockTests : ProviderTest
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var probe = new OrderingLockProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
-        var firstScope = reverseScopes ? 1 : 2;
-        var secondScope = reverseScopes ? 2 : 1;
+        var firstScope = reverseScopes
+            ? 1
+            : 2;
+
+        var secondScope = reverseScopes
+            ? 2
+            : 1;
+
         var first = OrderingLockTestSupport.Request<int, FirstLockHierarchy>(
             context,
             firstScope,
@@ -45,7 +53,8 @@ public abstract class OrderingLockTests : ProviderTest
 
         var second = OrderingLockTestSupport.Request<int, SecondLockHierarchy>(context, secondScope, s_secondTreeId);
         INestedSetTreeLockRequest[] requests = [first, second, second, first];
-        await using var transaction = await OrderingLockTestSupport.BeginAsync(context,
+        await using var transaction = await OrderingLockTestSupport.BeginAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
@@ -57,8 +66,20 @@ public abstract class OrderingLockTests : ProviderTest
             .ToArray();
 
         Assert.Equal(2, canonical.Length);
-        Assert.All(canonical, command => Assert.Equal(Engine == "SqlServer" ? 1 : 4, command.Parameters.Length));
-        Assert.Equal(2, OrderingLockTestSupport.RegistryLifecycleLocks(probe).Count());
+        Assert.All(
+            canonical,
+            command => Assert.Equal(
+                Engine == "SqlServer"
+                    ? 1
+                    : 4,
+                command.Parameters.Length));
+
+        Assert.Equal(
+            2,
+            OrderingLockTestSupport
+                .RegistryLifecycleLocks(probe)
+                .Count());
+
         Assert.Empty(probe.PayloadUpdates);
     }
 
@@ -67,21 +88,37 @@ public abstract class OrderingLockTests : ProviderTest
     public async Task ConcurrentSavesLockTreesWithoutInvertingDatabaseOrder()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        await SeedPairAsync<int, FirstLockHierarchy>(setup, 1, OrderingLockTestSupport.FirstTreeId, 10,
+        await SeedPairAsync<int, FirstLockHierarchy>(
+            setup,
+            1,
+            OrderingLockTestSupport.FirstTreeId,
+            10,
             cancellationToken: TestContext.Current.CancellationToken);
-        await SeedPairAsync<int, FirstLockHierarchy>(setup, 2, s_secondTreeId, 20,
+
+        await SeedPairAsync<int, FirstLockHierarchy>(
+            setup,
+            2,
+            s_secondTreeId,
+            20,
             cancellationToken: TestContext.Current.CancellationToken);
-        var barrier = Engine == "Sqlite" ? null : new OrderingLockBarrier();
+
+        var barrier = Engine == "Sqlite"
+            ? null
+            : new OrderingLockBarrier();
+
         var firstProbe = new OrderingLockProbe { FirstAnchorBarrier = barrier };
         var secondProbe = new OrderingLockProbe { FirstAnchorBarrier = barrier };
-        await using var first = await _fixture.CreateContextAsync(Engine,
+        await using var first = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             firstProbe);
 
-        await using var second = await _fixture.CreateContextAsync(Engine,
+        await using var second = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             secondProbe);
 
@@ -112,17 +149,32 @@ public abstract class OrderingLockTests : ProviderTest
 
         // Assert
         Assert.Equal([2, 2], saved);
-        Assert.Equal(Engine == "Sqlite" ? 0 : 2, barrier?.Arrivals ?? 0);
+        Assert.Equal(
+            Engine == "Sqlite"
+                ? 0
+                : 2,
+            barrier?.Arrivals ?? 0);
+
         Assert.Equal(s_integerScopes, IntegerRegistryScopes(firstProbe));
         Assert.Equal(s_integerScopes, IntegerRegistryScopes(secondProbe));
         Assert.Single(OrderingLockTestSupport.CanonicalQueries(firstProbe));
         Assert.Single(OrderingLockTestSupport.CanonicalQueries(secondProbe));
-        await using var verification = await _fixture.CreateContextAsync(Engine,
+        await using var verification = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        await AssertPairAsync<int, FirstLockHierarchy>(verification, 1, OrderingLockTestSupport.FirstTreeId, 10,
+        await AssertPairAsync<int, FirstLockHierarchy>(
+            verification,
+            1,
+            OrderingLockTestSupport.FirstTreeId,
+            10,
             cancellationToken: TestContext.Current.CancellationToken);
-        await AssertPairAsync<int, FirstLockHierarchy>(verification, 2, s_secondTreeId, 20,
+
+        await AssertPairAsync<int, FirstLockHierarchy>(
+            verification,
+            2,
+            s_secondTreeId,
+            20,
             cancellationToken: TestContext.Current.CancellationToken);
     }
 
@@ -131,15 +183,26 @@ public abstract class OrderingLockTests : ProviderTest
     public async Task MissingTreeRegistryRejectsSaveBeforePayloadUpdate()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        await SeedPairAsync<int, FirstLockHierarchy>(setup, 1, OrderingLockTestSupport.FirstTreeId, 10,
+        await SeedPairAsync<int, FirstLockHierarchy>(
+            setup,
+            1,
+            OrderingLockTestSupport.FirstTreeId,
+            10,
             cancellationToken: TestContext.Current.CancellationToken);
-        await DeleteRegistryAsync(setup, 1, OrderingLockTestSupport.FirstTreeId,
+
+        await DeleteRegistryAsync(
+            setup,
+            1,
+            OrderingLockTestSupport.FirstTreeId,
             cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new OrderingLockProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -158,8 +221,13 @@ public abstract class OrderingLockTests : ProviderTest
         Assert.Equal(NestedSetErrorCode.TreeNotFound, error.Code);
         Assert.Equal("The selected tree has no active registry row.", error.Message);
         Assert.Empty(probe.PayloadUpdates);
-        Assert.Equal(EntityState.Modified, context.Entry(child).State);
-        await using var verification = await _fixture.CreateContextAsync(Engine,
+        Assert.Equal(
+            EntityState.Modified,
+            context.Entry(child)
+                .State);
+
+        await using var verification = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(
@@ -176,11 +244,13 @@ public abstract class OrderingLockTests : ProviderTest
     public async Task BinaryScopeRequestsUseContentEqualityAndTypedTransport()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var probe = new OrderingLockProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -204,7 +274,8 @@ public abstract class OrderingLockTests : ProviderTest
                 OrderingLockTestSupport.FirstTreeId),
         ];
 
-        await using var transaction = await OrderingLockTestSupport.BeginAsync(context,
+        await using var transaction = await OrderingLockTestSupport.BeginAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
@@ -213,7 +284,12 @@ public abstract class OrderingLockTests : ProviderTest
         // Assert
         Assert.NotSame(requests[0].Scope, requests[2].Scope);
         var canonical = Assert.Single(OrderingLockTestSupport.CanonicalQueries(probe));
-        Assert.Equal(Engine == "SqlServer" ? 1 : 8, canonical.Parameters.Length);
+        Assert.Equal(
+            Engine == "SqlServer"
+                ? 1
+                : 8,
+            canonical.Parameters.Length);
+
         Assert.Equal(
             s_binaryScopes,
             OrderingLockTestSupport
@@ -230,11 +306,13 @@ public abstract class OrderingLockTests : ProviderTest
         // Arrange
         var caseInsensitive = Engine != "PostgreSql";
 
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var probe = new OrderingLockProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -250,15 +328,20 @@ public abstract class OrderingLockTests : ProviderTest
                 OrderingLockTestSupport.FirstTreeId),
             OrderingLockTestSupport.Request<string, FirstLockHierarchy>(
                 context,
-                caseInsensitive ? "A" : "a",
+                caseInsensitive
+                    ? "A"
+                    : "a",
                 OrderingLockTestSupport.FirstTreeId),
             OrderingLockTestSupport.Request<string, FirstLockHierarchy>(
                 context,
-                caseInsensitive ? "B" : "b",
+                caseInsensitive
+                    ? "B"
+                    : "b",
                 OrderingLockTestSupport.FirstTreeId),
         ];
 
-        await using var transaction = await OrderingLockTestSupport.BeginAsync(context,
+        await using var transaction = await OrderingLockTestSupport.BeginAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
@@ -267,7 +350,12 @@ public abstract class OrderingLockTests : ProviderTest
         // Assert
         var canonical = Assert.Single(OrderingLockTestSupport.CanonicalQueries(probe));
         Assert.Contains("COLLATE", canonical.Sql, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(Engine == "SqlServer" ? 1 : 8, canonical.Parameters.Length);
+        Assert.Equal(
+            Engine == "SqlServer"
+                ? 1
+                : 8,
+            canonical.Parameters.Length);
+
         Assert.Equal(
             s_stringScopes,
             OrderingLockTestSupport
@@ -282,11 +370,13 @@ public abstract class OrderingLockTests : ProviderTest
     public async Task CanceledAcquisitionDoesNotIssueAnyDatabaseCommand()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var probe = new OrderingLockProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -295,7 +385,8 @@ public abstract class OrderingLockTests : ProviderTest
             1,
             OrderingLockTestSupport.FirstTreeId);
 
-        await using var transaction = await OrderingLockTestSupport.BeginAsync(context,
+        await using var transaction = await OrderingLockTestSupport.BeginAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         using var cancellation = new CancellationTokenSource();
@@ -338,7 +429,7 @@ public abstract class OrderingLockTests : ProviderTest
             {
                 Id = start + 2,
                 Scope = scope,
-                Name = "Alpha"
+                Name = "Alpha",
             },
             start + 1,
             cancellationToken);
@@ -354,7 +445,9 @@ public abstract class OrderingLockTests : ProviderTest
     {
         var entityType = context.Model.FindEntityType(typeof(OrderingLockNode<int, FirstLockHierarchy>))!;
         var mapping = NestedSetMapping<OrderingLockNode<int, FirstLockHierarchy>, int, int>.For(context, entityType);
-        var registry = NestedSetTreeRegistryMapping.For(mapping.EntityType).Registry;
+        var registry = NestedSetTreeRegistryMapping.For(mapping.EntityType)
+            .Registry;
+
         var deleted = await context
             .Set<NestedSetTreeRegistry>(registry.Name)
             .Where(row => EF.Property<int>(row, "Scope") == scope && EF.Property<Guid>(row, "TreeId") == treeId)

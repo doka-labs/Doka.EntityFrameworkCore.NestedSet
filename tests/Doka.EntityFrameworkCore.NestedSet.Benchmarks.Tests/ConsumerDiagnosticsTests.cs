@@ -35,7 +35,10 @@ public sealed class ConsumerDiagnosticsTests
 
             options.ApplyEnvironment();
             await using var environment = await BenchmarkEnvironment.CreateAsync(options, CancellationToken.None);
-            var type = groups ? typeof(UserGroupSelectionBenchmarks) : typeof(SignalReportingBenchmarks);
+            var type = groups
+                ? typeof(UserGroupSelectionBenchmarks)
+                : typeof(SignalReportingBenchmarks);
+
             var configuration = BenchmarkConfiguration.Create(options);
             using var native = BenchmarkConverter.TypeToBenchmarks(type, configuration);
             var selected = native.BenchmarksCases.First(item => item.Descriptor.WorkloadMethod.Name == "Api");
@@ -54,11 +57,37 @@ public sealed class ConsumerDiagnosticsTests
                     Path.Combine(directory, "command-diagnostics.json"),
                     CancellationToken.None));
 
-            var result = Assert.Single(report.RootElement.GetProperty("Results").EnumerateArray());
-            Assert.Equal(groups ? 1 : 2, result.GetProperty("Commands").GetInt32());
-            Assert.Equal(0, result.GetProperty("HierarchyUpdates").GetInt32());
-            Assert.Equal(40, result.GetProperty("Nodes").GetInt32());
-            Assert.EndsWith(type.Name + ".Api", result.GetProperty("Benchmark").GetString());
+            var result = Assert.Single(
+                report
+                    .RootElement
+                    .GetProperty("Results")
+                    .EnumerateArray());
+
+            Assert.Equal(
+                groups
+                    ? 1
+                    : 2,
+                result
+                    .GetProperty("Commands")
+                    .GetInt32());
+
+            Assert.Equal(
+                0,
+                result
+                    .GetProperty("HierarchyUpdates")
+                    .GetInt32());
+
+            Assert.Equal(
+                40,
+                result
+                    .GetProperty("Nodes")
+                    .GetInt32());
+
+            Assert.EndsWith(
+                type.Name + ".Api",
+                result
+                    .GetProperty("Benchmark")
+                    .GetString());
         }
         finally
         {

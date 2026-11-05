@@ -32,7 +32,8 @@ internal static class ProviderTestContract
         // IDE metadata discovery would still expose its unsupported methods before xUnit filters them.
         return DeclaredMethods(suite)
             .Where(IsTestMethod)
-            .Any(method => !MethodExclusions(method).Contains(engine, StringComparer.Ordinal));
+            .Any(method => !MethodExclusions(method)
+                .Contains(engine, StringComparer.Ordinal));
     }
 
     /// <summary>Includes local abstract-base declarations as seen by each concrete fixture-owned leaf.</summary>
@@ -66,12 +67,12 @@ internal static class ProviderTestContract
         }
 
         foreach (var inline in method.CustomAttributes.Where(attribute =>
-                     attribute.AttributeType == typeof(InlineDataAttribute)
-                     || attribute.AttributeType == typeof(EngineInlineDataAttribute)))
+            attribute.AttributeType == typeof(InlineDataAttribute)
+            || attribute.AttributeType == typeof(EngineInlineDataAttribute)))
         {
             foreach (var error in CoverageErrors(
-                         methodExclusions.Concat(AttributeExclusions(inline)),
-                         $"{Identity(method)}: inline row"))
+                methodExclusions.Concat(AttributeExclusions(inline)),
+                $"{Identity(method)}: inline row"))
             {
                 yield return error;
             }
@@ -320,7 +321,9 @@ internal static class ProviderTestContract
 
         return member switch
         {
-            EngineMemberDataAttribute conditional => conditional.GetSourceData(method, tracker,
+            EngineMemberDataAttribute conditional => conditional.GetSourceData(
+                method,
+                tracker,
                 cancellationToken: cancellationToken),
             _ => member.GetData(method, tracker),
         };
@@ -367,12 +370,16 @@ internal static class ProviderTestContract
     /// <summary>Gets member exclusions which apply before any row-specific conditions.</summary>
     private static string[] MemberExclusions(
         MemberDataAttributeBase member
-    ) => member is EngineMemberDataAttribute engine ? engine.ExcludedEngines : [];
+    ) => member is EngineMemberDataAttribute engine
+        ? engine.ExcludedEngines
+        : [];
 
     /// <summary>Gets the additional conditions carried by one normalized source variant.</summary>
     private static string[] RowExclusions(
         ITheoryDataRow row
-    ) => row is EngineTheoryDataRow engine ? engine.ExcludedEngines : [];
+    ) => row is EngineTheoryDataRow engine
+        ? engine.ExcludedEngines
+        : [];
 
     /// <summary>Requires every effective shared variant to span at least two executable owners.</summary>
     private static IEnumerable<string> CoverageErrors(
@@ -391,7 +398,8 @@ internal static class ProviderTestContract
         // WHY: Two engines in the MySql executable are still one owner; provider-specific bodies belong there.
         if (projects.Length == 1)
         {
-            var projectName = projects[0].Split('.')[^2];
+            var projectName = projects[0]
+                .Split('.')[^2];
 
             yield return $"{identity}: effective coverage is confined to one provider executable '{projectName}'; "
                 + "declare this behavior in that provider project.";

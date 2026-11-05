@@ -8,6 +8,15 @@ public sealed class SaveSemanticsFixture : IAsyncLifetime
     /// <inheritdoc />
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var database in _databases.Values)
+        {
+            await database.DisposeAsync();
+        }
+    }
+
     /// <summary>
     ///     Creates tables on first use and then resets the caller's scenario before each serialized test.
     /// </summary>
@@ -74,7 +83,9 @@ public sealed class SaveSemanticsFixture : IAsyncLifetime
         cancellationToken.ThrowIfCancellationRequested();
 
         await using var source = database.CreateContext();
-        var extensions = source.GetService<IDbContextOptions>().Extensions
+        var extensions = source
+            .GetService<IDbContextOptions>()
+            .Extensions
             .ToDictionary(extension => extension.GetType());
 
         var options = new DbContextOptionsBuilder(new DbContextOptions<DbContext>(extensions))
@@ -102,15 +113,7 @@ public sealed class SaveSemanticsFixture : IAsyncLifetime
                 throw new InvalidOperationException("The save semantics fixture requires a supported provider.");
         }
 
-        return options.AddInterceptors(interceptors).Options;
-    }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        foreach (var database in _databases.Values)
-        {
-            await database.DisposeAsync();
-        }
+        return options.AddInterceptors(interceptors)
+            .Options;
     }
 }

@@ -14,6 +14,7 @@ public abstract partial class AutomaticMoveBudgetTests
         var tree = context
             .NestedSet<OrderingNode>()
             .ForScope(1);
+
         // WHY: A surviving root keeps both tested destinations in one TreeId while exposing two sibling depths.
         await tree.InsertRootAsync(
             new OrderingNode
@@ -163,12 +164,17 @@ public abstract partial class AutomaticMoveBudgetTests
             .ForScope(1);
 
         var siblings = await tree
-            .ChildrenOf(upperGroup ? 0 : 2)
+            .ChildrenOf(
+                upperGroup
+                    ? 0
+                    : 2)
             .Select(node => node.Id)
             .ToArrayAsync(cancellationToken);
 
         int[] expected = upperGroup
-            ? automatic ? [1, 3, 2] : [1, 2, 3]
+            ? automatic
+                ? [1, 3, 2]
+                : [1, 2, 3]
             : automatic
                 ? [5, 3, 6]
                 : [5, 6, 3];
@@ -179,11 +185,31 @@ public abstract partial class AutomaticMoveBudgetTests
             .ToArrayAsync(cancellationToken);
 
         Assert.Equal([3, 4], subtree.Select(node => node.Id));
-        Assert.Equal(upperGroup ? 0 : 2, subtree[0].ParentId);
+        Assert.Equal(
+            upperGroup
+                ? 0
+                : 2,
+            subtree[0].ParentId);
+
         Assert.Equal(3, subtree[1].ParentId);
-        Assert.Equal(upperGroup ? 1 : 2, subtree[0].Depth);
-        Assert.Equal(upperGroup ? 2 : 3, subtree[1].Depth);
-        Assert.Equal(automatic ? 1 : 2, subtree[0].Position);
+        Assert.Equal(
+            upperGroup
+                ? 1
+                : 2,
+            subtree[0].Depth);
+
+        Assert.Equal(
+            upperGroup
+                ? 2
+                : 3,
+            subtree[1].Depth);
+
+        Assert.Equal(
+            automatic
+                ? 1
+                : 2,
+            subtree[0].Position);
+
         Assert.Equal(0, subtree[1].Position);
         Assert.True(
             (await tree

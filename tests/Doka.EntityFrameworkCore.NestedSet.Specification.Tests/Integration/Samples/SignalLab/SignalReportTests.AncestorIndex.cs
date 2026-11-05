@@ -23,18 +23,38 @@ public abstract partial class SignalReportTests
         // WHY: Indexed and default reports intentionally use the same physical sample table names.
         // Own this model's database instead of changing the real sample mapping or shared fixture schema.
         await using var database = new ModelCompatibilityDatabase();
-        await using var context = await CreateContextAsync<IndexedSignalLabContext>(database,
-            static options => new IndexedSignalLabContext(options), probe,
+        await using var context = await CreateContextAsync<IndexedSignalLabContext>(
+            database,
+            static options => new IndexedSignalLabContext(options),
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, scenario, false, CancellationToken.None, Guid.NewGuid());
-        var request = data.Request(nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any);
-        var expected = SignalReportOracle.Calculate(request).ToDictionary(cell => (cell.AnchorId, cell.ChannelId, cell.Source));
-        var indexed = Engine is "MySql" or "MariaDb"
-            && NestedSetProviderCapabilities.Resolve(context).CompletedSourceMethod is not null
-            && NestedSetProviderCapabilities.Resolve(context).OrderedJoinMethod is not null;
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            scenario,
+            false,
+            CancellationToken.None,
+            Guid.NewGuid());
 
-        var sql = SignalReportBuilder.Build(context, SignalReportValidation.Snapshot(request)).ToQueryString();
+        var request = data.Request(
+            nearest
+                ? TagOwnerMode.Nearest
+                : TagOwnerMode.Any);
+
+        var expected = SignalReportOracle
+            .Calculate(request)
+            .ToDictionary(cell => (cell.AnchorId, cell.ChannelId, cell.Source));
+
+        var indexed = Engine is "MySql" or "MariaDb"
+            && NestedSetProviderCapabilities.Resolve(context)
+                .CompletedSourceMethod is not null
+            && NestedSetProviderCapabilities.Resolve(context)
+                .OrderedJoinMethod is not null;
+
+        var sql = SignalReportBuilder
+            .Build(context, SignalReportValidation.Snapshot(request))
+            .ToQueryString();
+
         probe.Reset();
 
         // Act
@@ -55,15 +75,19 @@ public abstract partial class SignalReportTests
         // Arrange
         var probe = new SignalReportProbe();
         await using var database = new ModelCompatibilityDatabase();
-        await using var context = await CreateContextAsync<IndexedSignalLabContext>(database,
-            static options => new IndexedSignalLabContext(options), probe,
+        await using var context = await CreateContextAsync<IndexedSignalLabContext>(
+            database,
+            static options => new IndexedSignalLabContext(options),
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
         probe.Reset();
 
         // Act
-        var node = await context.Nodes.AsNoTracking()
+        var node = await context
+            .Nodes
+            .AsNoTracking()
             .FirstAsync(node => node.TenantId == data.TenantId, CancellationToken.None);
 
         // Assert
@@ -74,13 +98,18 @@ public abstract partial class SignalReportTests
     }
 
     /// <summary>Opts the real sample model into the index without changing its default schema.</summary>
-    private sealed class IndexedSignalLabContext(DbContextOptions<IndexedSignalLabContext> options) : SignalLabContext(options)
+    private sealed class IndexedSignalLabContext(DbContextOptions<IndexedSignalLabContext> options)
+        : SignalLabContext(options)
     {
         /// <inheritdoc />
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        protected override void OnModelCreating(
+            ModelBuilder modelBuilder
+        )
         {
             base.OnModelCreating(modelBuilder);
-            modelBuilder.Entity<SignalNode>().HasNestedSet(mapping => mapping.HasAncestorIndex());
+            modelBuilder
+                .Entity<SignalNode>()
+                .HasNestedSet(mapping => mapping.HasAncestorIndex());
         }
     }
 }

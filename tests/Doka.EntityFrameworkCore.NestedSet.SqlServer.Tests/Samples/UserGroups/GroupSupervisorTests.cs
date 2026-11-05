@@ -5,7 +5,7 @@ public sealed class GroupSupervisorTests : Specifications.GroupSupervisorTests
 {
     /// <summary>Uses the provider's collection-owned model database.</summary>
     /// <param name="fixture">The provider fixture.</param>
-    public GroupSupervisorTests(ProviderFixture<ModelCompatibilityDatabase, SqlServerEngine> fixture) : base(fixture)
-    {
-    }
+    public GroupSupervisorTests(
+        ProviderFixture<ModelCompatibilityDatabase, SqlServerEngine> fixture
+    ) : base(fixture) { }
 }

@@ -54,8 +54,11 @@ public abstract partial class OrderingTests
         var failure = await Record.ExceptionAsync(() => fixture.PrepareAsync(Engine, prepare, cancellation.Token));
         var database = await fixture.PrepareAsync(Engine, prepare, CancellationToken.None);
         await using var context = database.CreateContext();
+
         // WHY: EF composes the scalar query over a case-sensitive Value column on PostgreSQL.
-        var available = await context.Database.SqlQueryRaw<int>("SELECT 1 AS \"Value\"")
+        var available = await context
+            .Database
+            .SqlQueryRaw<int>("SELECT 1 AS \"Value\"")
             .SingleAsync(TestContext.Current.CancellationToken);
 
         // Assert

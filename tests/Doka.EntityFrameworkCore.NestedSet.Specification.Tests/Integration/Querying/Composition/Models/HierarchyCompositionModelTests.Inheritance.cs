@@ -35,23 +35,36 @@ public abstract partial class HierarchyCompositionModelTests
         var probe = new CompositionCommandProbe();
         var materialized = 0;
         await using DbContext context = tpt
-            ? await _fixture.CreateContextAsync<TptContext>(Engine, static options => new TptContext(options),
+            ? await _fixture.CreateContextAsync<TptContext>(
+                Engine,
+                static options => new TptContext(options),
                 cancellationToken: TestContext.Current.CancellationToken,
-                probe, TestMaterializationObserver.Instance)
-            : await _fixture.CreateContextAsync<TphContext>(Engine, static options => new TphContext(options),
+                probe,
+                TestMaterializationObserver.Instance)
+            : await _fixture.CreateContextAsync<TphContext>(
+                Engine,
+                static options => new TphContext(options),
                 cancellationToken: TestContext.Current.CancellationToken,
-                probe, TestMaterializationObserver.Instance);
+                probe,
+                TestMaterializationObserver.Instance);
 
         TestMaterializationObserver.Instance.Register(context, _ => materialized++);
 
         for (var depth = 0; depth < 3; depth++)
         {
             InheritanceNode node = tpt
-                ? depth == 1 ? new TptMetricNode() : new TptFolderNode()
-                : depth == 1 ? new TphMetricNode() : new TphFolderNode();
+                ? depth == 1
+                    ? new TptMetricNode()
+                    : new TptFolderNode()
+                : depth == 1
+                    ? new TphMetricNode()
+                    : new TphFolderNode();
 
             node.Id = first + depth;
-            node.ParentId = depth == 0 ? null : first + depth - 1;
+            node.ParentId = depth == 0
+                ? null
+                : first + depth - 1;
+
             node.TreeId = treeId;
             node.Left = depth + 1;
             node.Right = 6 - depth;
@@ -63,7 +76,9 @@ public abstract partial class HierarchyCompositionModelTests
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         probe.Reset();
-        var hierarchy = context.NestedSet<InheritanceNode>().InTree(treeId);
+        var hierarchy = context
+            .NestedSet<InheritanceNode>()
+            .InTree(treeId);
 
         // Act
         var actual = await QueryDepths(hierarchy, operation)
@@ -105,21 +120,29 @@ public abstract partial class HierarchyCompositionModelTests
             TestMaterializationObserver.Instance);
 
         TestMaterializationObserver.Instance.Register(context, _ => materialized++);
-        await context.AddRangeAsync(Enumerable.Range(0, 3).Select(depth => new TpcFolderNode
-        {
-            Id = first + depth,
-            ParentId = depth == 0 ? null : first + depth - 1,
-            TreeId = treeId,
-            Left = depth + 1,
-            Right = 6 - depth,
-            Depth = depth,
-            Name = $"Node {depth}",
-        }), CancellationToken.None);
+        await context.AddRangeAsync(
+            Enumerable
+                .Range(0, 3)
+                .Select(depth => new TpcFolderNode
+                {
+                    Id = first + depth,
+                    ParentId = depth == 0
+                        ? null
+                        : first + depth - 1,
+                    TreeId = treeId,
+                    Left = depth + 1,
+                    Right = 6 - depth,
+                    Depth = depth,
+                    Name = $"Node {depth}",
+                }),
+            CancellationToken.None);
 
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         probe.Reset();
-        var hierarchy = context.NestedSet<TpcFolderNode>().InTree(treeId);
+        var hierarchy = context
+            .NestedSet<TpcFolderNode>()
+            .InTree(treeId);
 
         // Act
         var actual = await QueryDepths(hierarchy, operation)

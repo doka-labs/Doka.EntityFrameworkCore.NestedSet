@@ -130,6 +130,7 @@ public sealed partial class IndexConventionTests
                 .Metadata
                 .GetIndexes()
                 .Count());
+
         Assert.Equal(annotations, customized.Metadata.GetAnnotations());
         Assert.Equal(unique, customized.Metadata.IsUnique);
         Assert.Equal(descending, customized.Metadata.IsDescending);
@@ -237,18 +238,23 @@ public sealed partial class IndexConventionTests
 
         // Assert
         Assert.Equal(
-            engine == "PostgreSql" ? 5 : 4,
+            engine == "PostgreSql"
+                ? 5
+                : 4,
             entity
                 .GetIndexes()
                 .Count());
+
         Assert.All(
             entity
                 .GetIndexes()
                 .Where(index => index.Properties.Count > 2
-                    && index.GetFilter()
+                    && index
+                        .GetFilter()
                         ?.EndsWith(" IS NULL", StringComparison.Ordinal)
                     != true),
             index => Assert.Contains(index.Properties, property => property.Name == nameof(IndexNode.TreeId)));
+
         Assert.All(entity.GetIndexes(), index => Assert.False(index.IsUnique));
     }
 
@@ -386,6 +392,7 @@ public sealed partial class IndexConventionTests
             entity
                 .GetIndexes()
                 .Count());
+
         var original = Assert.Single(indexes, index => index.Name is null);
         var ordinary = Assert.Single(indexes, index => index.Name is not null);
         Assert.False(ordinary.IsUnique);
@@ -422,9 +429,11 @@ public sealed partial class IndexConventionTests
                 entity
                     .Property(node => node.Scope)
                     .HasColumnName("TenantScopeWithALongDatabaseColumnName");
+
                 entity
                     .Property(node => node.Key)
                     .HasColumnName("NodePrimaryKeyWithALongDatabaseColumnName");
+
                 Configure(entity);
             });
 
@@ -436,7 +445,9 @@ public sealed partial class IndexConventionTests
 
         // Assert
         Assert.Equal(
-            engine == "PostgreSql" ? 5 : 4,
+            engine == "PostgreSql"
+                ? 5
+                : 4,
             entity
                 .GetIndexes()
                 .Count());
@@ -448,7 +459,9 @@ public sealed partial class IndexConventionTests
 
         Assert.All(names, name => Assert.InRange(name.Length, 1, limit));
         Assert.Equal(
-            engine == "PostgreSql" ? 5 : 4,
+            engine == "PostgreSql"
+                ? 5
+                : 4,
             names
                 .Distinct(StringComparer.Ordinal)
                 .Count());

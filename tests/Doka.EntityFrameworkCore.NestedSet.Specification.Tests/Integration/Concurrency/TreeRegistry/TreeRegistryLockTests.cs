@@ -64,7 +64,10 @@ public abstract class TreeRegistryLockTests : ProviderTest
         }
 
         await using var context = database.CreateContext();
-        var revisionBefore = await TreeRegistryLockTestSupport.ReadRevisionAsync(context, 7, treeId,
+        var revisionBefore = await TreeRegistryLockTestSupport.ReadRevisionAsync(
+            context,
+            7,
+            treeId,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
@@ -77,8 +80,13 @@ public abstract class TreeRegistryLockTests : ProviderTest
 
         // Assert
         await using var verification = database.CreateContext();
-        Assert.Equal(revisionBefore, await TreeRegistryLockTestSupport.ReadRevisionAsync(verification, 7, treeId,
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            revisionBefore,
+            await TreeRegistryLockTestSupport.ReadRevisionAsync(
+                verification,
+                7,
+                treeId,
+                cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Explicitly reserving a new tree creates its registry without a structural revision.</summary>
@@ -100,8 +108,13 @@ public abstract class TreeRegistryLockTests : ProviderTest
 
         // Assert
         await using var verification = database.CreateContext();
-        Assert.Equal(0, await TreeRegistryLockTestSupport.ReadRevisionAsync(verification, 7, treeId,
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            0,
+            await TreeRegistryLockTestSupport.ReadRevisionAsync(
+                verification,
+                7,
+                treeId,
+                cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>A tombstone rejects operations that require an existing active tree.</summary>
@@ -134,7 +147,10 @@ public abstract class TreeRegistryLockTests : ProviderTest
             CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.TreeIdUnavailable, Assert.IsType<NestedSetException>(existing).Code);
+        Assert.Equal(
+            NestedSetErrorCode.TreeIdUnavailable,
+            Assert.IsType<NestedSetException>(existing)
+                .Code);
     }
 
     /// <summary>A tombstone rejects attempts to reserve its TreeId as a new tree.</summary>
@@ -167,7 +183,10 @@ public abstract class TreeRegistryLockTests : ProviderTest
             CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.TreeIdUnavailable, Assert.IsType<NestedSetException>(created).Code);
+        Assert.Equal(
+            NestedSetErrorCode.TreeIdUnavailable,
+            Assert.IsType<NestedSetException>(created)
+                .Code);
     }
 
     /// <summary>Fixture seeding rejects a deleted tree identity without persisting precomputed rows.</summary>
@@ -190,7 +209,10 @@ public abstract class TreeRegistryLockTests : ProviderTest
         }
 
         await using var context = database.CreateContext();
-        var revisionBefore = await TreeRegistryLockTestSupport.ReadRevisionAsync(context, 7, treeId,
+        var revisionBefore = await TreeRegistryLockTestSupport.ReadRevisionAsync(
+            context,
+            7,
+            treeId,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await context.AddAsync(
@@ -208,11 +230,24 @@ public abstract class TreeRegistryLockTests : ProviderTest
         var failure = await Record.ExceptionAsync(() => context.SavePrecomputedHierarchyAsync(CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.TreeIdUnavailable, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.TreeIdUnavailable,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         await using var verification = database.CreateContext();
-        Assert.Equal(revisionBefore, await TreeRegistryLockTestSupport.ReadRevisionAsync(verification, 7, treeId,
-            cancellationToken: TestContext.Current.CancellationToken));
-        Assert.Empty(await verification.Set<TreeNode>().ToArrayAsync(CancellationToken.None));
+        Assert.Equal(
+            revisionBefore,
+            await TreeRegistryLockTestSupport.ReadRevisionAsync(
+                verification,
+                7,
+                treeId,
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Empty(
+            await verification
+                .Set<TreeNode>()
+                .ToArrayAsync(CancellationToken.None));
     }
 
     /// <summary>Different TreeIds in the same Scope make progress while another tree lock is retained.</summary>
@@ -239,7 +274,9 @@ public abstract class TreeRegistryLockTests : ProviderTest
 
         await using var first = database.CreateContext();
         await using var second = database.CreateContext();
-        var isolation = NestedSetProviderCapabilities.Resolve(first).RequiredIsolation;
+        var isolation = NestedSetProviderCapabilities.Resolve(first)
+            .RequiredIsolation;
+
         await using var transaction = await first.Database.BeginTransactionAsync(isolation, CancellationToken.None);
         await NestedSetTreeLocks.AcquireAsync(
             first,
@@ -255,6 +292,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
             secondTree,
             NestedSetTreeLockMode.Existing,
             timeout.Token);
+
         var firstStillOwnsTransaction = ReferenceEquals(transaction, first.Database.CurrentTransaction);
         await transaction.RollbackAsync(CancellationToken.None);
 
@@ -429,7 +467,8 @@ public abstract class TreeRegistryLockTests : ProviderTest
     )
     {
         var hierarchy = context.Model.FindEntityType(typeof(TreeNode))!;
-        var registry = NestedSetTreeRegistryMapping.For(hierarchy).Registry;
+        var registry = NestedSetTreeRegistryMapping.For(hierarchy)
+            .Registry;
 
         await context
             .Set<NestedSetTreeRegistry>(registry.Name)

@@ -17,7 +17,8 @@ public sealed partial class DokaQueryFeaturesTests
         // Arrange
         var boundary = new CompositionIoBoundary();
         var options = new DbContextOptionsBuilder<CompositionGuardContext>(
-                ModelCompatibilityDatabase.Options<CompositionGuardContext>(engine,
+                ModelCompatibilityDatabase.Options<CompositionGuardContext>(
+                    engine,
                     "Server=127.0.0.1;Database=feature_contract;User ID=unused;Pooling=false"))
             .AddInterceptors(boundary, boundary.Commands)
             .Options;

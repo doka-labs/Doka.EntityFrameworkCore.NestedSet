@@ -18,15 +18,15 @@ public sealed partial class ComplexRecoveryCompositionTests(
         foreach (var shape in new[] { "nullable", "uneven" })
         {
             foreach (var change in new[]
-                     {
-                         "removeFirstTwice",
-                         "nestedAddReverse",
-                         "nestedAddInsertFirst",
-                         "nestedNullThenNew",
-                         "outerNullThenNew",
-                         "replaceThenRemove",
-                         "nestedAddThenOuterNull",
-                     })
+                {
+                    "removeFirstTwice",
+                    "nestedAddReverse",
+                    "nestedAddInsertFirst",
+                    "nestedNullThenNew",
+                    "outerNullThenNew",
+                    "replaceThenRemove",
+                    "nestedAddThenOuterNull",
+                })
             {
                 foreach (var boundary in new[] { "raw", "detected", "accepted" })
                 {
@@ -40,14 +40,14 @@ public sealed partial class ComplexRecoveryCompositionTests(
     public static IEnumerable<object[]> PendingCases()
     {
         foreach (var change in new[]
-                 {
-                     "outerEmptyThenNestedAdd",
-                     "outerNestedThenNestedClear",
-                     "outerNestedThenClear",
-                     "insertNestedThenReplace",
-                     "nestedAddThenClear",
-                     "nestedAddThenNullReverse",
-                 })
+            {
+                "outerEmptyThenNestedAdd",
+                "outerNestedThenNestedClear",
+                "outerNestedThenClear",
+                "insertNestedThenReplace",
+                "nestedAddThenClear",
+                "nestedAddThenNullReverse",
+            })
         {
             foreach (var detectPending in new[] { false, true })
             {
@@ -76,6 +76,7 @@ public sealed partial class ComplexRecoveryCompositionTests(
         var entry = Track(context, shape);
         var before = Observe(entry);
         var snapshot = NestedSetTrackerSnapshot.Capture(context, [Write(context, entry.Entity)]);
+
         // WHY: EF public element reads can initialize lazy null slots without detecting pending CLR additions.
         // Compare semantic state across capture separately; exact lane recovery starts before the callback.
         var captured = Observe(entry);
@@ -91,8 +92,10 @@ public sealed partial class ComplexRecoveryCompositionTests(
         AssertCaptureState(before, captured);
         AssertPreimage(entry, before with { Native = captured.Native });
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Preserves pending Added native elements with uninitialized or uneven nested lanes.</summary>
@@ -119,9 +122,11 @@ public sealed partial class ComplexRecoveryCompositionTests(
 
         var before = Observe(entry);
         var snapshot = NestedSetTrackerSnapshot.Capture(context, [Write(context, entry.Entity)]);
+
         // WHY: Public capture reads can expand lazy null slots; subsequent callback growth must be fully undone.
         var captured = Observe(entry);
         MutatePending(entry.Entity, change);
+
         // WHY: EF acceptance itself throws for this composed ordinal shape. Recovery must also handle that
         // callback failure; requiring the known exception below keeps unrelated setup failures visible.
         var callbackFailure = Record.Exception(() => FinishCallback(context, boundary));
@@ -146,8 +151,10 @@ public sealed partial class ComplexRecoveryCompositionTests(
         AssertCaptureState(before, captured);
         AssertPreimage(entry, before with { Native = captured.Native });
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Retains explicit reduced traces from the independent review's failing deterministic seeds.</summary>
@@ -175,14 +182,17 @@ public sealed partial class ComplexRecoveryCompositionTests(
 
         var before = Observe(entry);
         var snapshot = NestedSetTrackerSnapshot.Capture(context, [Write(context, entry.Entity)]);
+
         // WHY: Retain the exact initialized native preimage before any review-trace callback mutation.
         var captured = Observe(entry);
 
         switch (seed)
         {
             case 199:
-                entry.Entity.Rows!.Single(item => item.Text == "Pending review item").Leaves!
+                entry.Entity.Rows!.Single(item => item.Text == "Pending review item")
+                    .Leaves!
                     .Add(new TopologyLeaf { Text = "Callback nested addition" });
+
                 context.ChangeTracker.DetectChanges();
                 break;
             case 766:
@@ -198,12 +208,18 @@ public sealed partial class ComplexRecoveryCompositionTests(
             case 1821:
                 entry.Entity.Rows = entry.Entity.Rows!.ToList();
                 entry.Entity.Rows![0].Leaves = entry.Entity.Rows![0].Leaves!.ToList();
-                entry.ComplexCollection(nameof(TopologyPayload.Rows))[0]
-                    .Property(nameof(TopologyItem.Text)).IsModified = true;
+                entry
+                    .ComplexCollection(nameof(TopologyPayload.Rows))[0]
+                    .Property(nameof(TopologyItem.Text))
+                    .IsModified = true;
+
                 break;
             case 1855:
-                entry.ComplexCollection(nameof(TopologyPayload.Rows))[0]
-                    .Property(nameof(TopologyItem.Text)).IsModified = true;
+                entry
+                    .ComplexCollection(nameof(TopologyPayload.Rows))[0]
+                    .Property(nameof(TopologyItem.Text))
+                    .IsModified = true;
+
                 context.ChangeTracker.DetectChanges();
                 context.ChangeTracker.AcceptAllChanges();
                 break;
@@ -227,8 +243,10 @@ public sealed partial class ComplexRecoveryCompositionTests(
         // Assert
         AssertCaptureState(before, captured);
         AssertPreimage(entry, before with { Native = captured.Native });
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Installs originals before pending CLR values and one explicitly marked scalar.</summary>
@@ -252,7 +270,8 @@ public sealed partial class ComplexRecoveryCompositionTests(
         payload.Rows![0].Text = "Pending first text";
         payload.Rows![0].Details!.Code = "Pending first code";
         payload.Rows![0].Leaves![0].Text = "Pending first leaf";
-        entry.Property(value => value.Marker).IsModified = true;
+        entry.Property(value => value.Marker)
+            .IsModified = true;
 
         return entry;
     }
@@ -269,7 +288,9 @@ public sealed partial class ComplexRecoveryCompositionTests(
         for (var index = 0; index < rows.Count; index++)
         {
             var element = collection[index];
-            _ = element.Property(nameof(TopologyItem.Text)).OriginalValue;
+            _ = element.Property(nameof(TopologyItem.Text))
+                .OriginalValue;
+
             var leaves = rows[index].Leaves;
 
             if (leaves is null)
@@ -284,7 +305,9 @@ public sealed partial class ComplexRecoveryCompositionTests(
             // ReSharper disable once LoopCanBeConvertedToQuery
             for (var leafIndex = 0; leafIndex < leaves.Count; leafIndex++)
             {
-                _ = nested[leafIndex].Property(nameof(TopologyLeaf.Text)).OriginalValue;
+                _ = nested[leafIndex]
+                    .Property(nameof(TopologyLeaf.Text))
+                    .OriginalValue;
             }
         }
     }
@@ -387,12 +410,16 @@ public sealed partial class ComplexRecoveryCompositionTests(
         switch (change)
         {
             case "outerEmptyThenNestedAdd":
-                payload.Rows!.Single(item => item.Text == "Pending item").Leaves!
+                payload.Rows!.Single(item => item.Text == "Pending item")
+                    .Leaves!
                     .Add(new TopologyLeaf { Text = "Callback nested leaf" });
+
                 payload.Rows!.Reverse();
                 break;
             case "outerNestedThenNestedClear":
-                payload.Rows!.Single(item => item.Text == "Pending item").Leaves!.Clear();
+                payload.Rows!.Single(item => item.Text == "Pending item")
+                    .Leaves!.Clear();
+
                 payload.Rows!.RemoveAt(0);
                 break;
             case "outerNestedThenClear":
@@ -439,6 +466,8 @@ public sealed partial class ComplexRecoveryCompositionTests(
             .GetService<IUpdateAdapterFactory>()
             .Create()
             .Entries
-            .Single(entry => ReferenceEquals(entry.ToEntityEntry().Entity,
+            .Single(entry => ReferenceEquals(
+                entry.ToEntityEntry()
+                    .Entity,
                 entity));
 }

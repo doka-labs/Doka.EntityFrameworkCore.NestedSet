@@ -16,10 +16,16 @@ public abstract partial class HierarchyCompositionTests
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
         var planProbe = new EnterpriseProbe(captureParameterBindings: true);
-        await using var context = await CreateContextAsync(scope, probe, planProbe: planProbe,
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            planProbe: planProbe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
         var commandIndex = planProbe.Commands.Count;
         IQueryable<int> query;
 
@@ -27,9 +33,14 @@ public abstract partial class HierarchyCompositionTests
         {
             var pairs = hierarchy.SelectSubtrees(
                 anchor => anchor.Id == 1,
-                (anchor, node, distance) => new { Anchor = anchor, Node = node });
+                (anchor, node, distance) => new
+                {
+                    Anchor = anchor,
+                    Node = node,
+                });
 
-            query = hierarchy.WherePathEdges(
+            query = hierarchy
+                .WherePathEdges(
                     pairs,
                     row => row.Anchor,
                     row => row.Node,
@@ -38,11 +49,13 @@ public abstract partial class HierarchyCompositionTests
         }
         else if (shape == "Nearest")
         {
-            var source = context.Set<CompositionNode>()
+            var source = context
+                .Set<CompositionNode>()
                 .Where(node => node.Scope == scope && node.Id == 3)
                 .Select(node => new { Node = node });
 
-            query = hierarchy.WhereNearestAncestorOrSelf(
+            query = hierarchy
+                .WhereNearestAncestorOrSelf(
                     source,
                     row => row.Node,
                     (row, owner) => owner.Candidate,
@@ -53,11 +66,19 @@ public abstract partial class HierarchyCompositionTests
         {
             var up = hierarchy.SelectAncestors(
                 source => source.Id == 3,
-                (source, pivot, distance) => new { Source = source, Pivot = pivot });
+                (source, pivot, distance) => new
+                {
+                    Source = source,
+                    Pivot = pivot,
+                });
 
             var down = hierarchy.SelectSubtrees(
                 pivot => up.Any(row => row.Pivot == pivot),
-                (pivot, target, distance) => new { Pivot = pivot, Target = target });
+                (pivot, target, distance) => new
+                {
+                    Pivot = pivot,
+                    Target = target,
+                });
 
             query = up.Join(
                 down,
@@ -69,12 +90,17 @@ public abstract partial class HierarchyCompositionTests
         // Act
         var rows = await query.ToArrayAsync(CancellationToken.None);
         var queryCommands = probe.CommandCount;
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, commandIndex, Engine,
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            planProbe,
+            commandIndex,
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await QueryPlanTestSupport.WriteEvidenceAsync(
             Engine + "-composition-" + shape,
-            [planProbe.Commands[commandIndex], plan], cancellationToken: TestContext.Current.CancellationToken);
+            [planProbe.Commands[commandIndex], plan],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEmpty(rows);

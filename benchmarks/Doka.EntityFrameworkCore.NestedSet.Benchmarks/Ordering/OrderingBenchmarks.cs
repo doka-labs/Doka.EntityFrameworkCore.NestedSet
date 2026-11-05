@@ -3,8 +3,8 @@ namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks;
 /// <summary>Measures configured sibling insertion with no hierarchy entries preloaded into the tracker.</summary>
 public class OrderingBenchmarks : DatabaseBenchmark
 {
-    private int _key;
     private int _expected;
+    private int _key;
 
     /// <inheritdoc />
     protected override bool Ordered => true;
@@ -26,14 +26,18 @@ public class OrderingBenchmarks : DatabaseBenchmark
     }
 
     /// <inheritdoc />
-    public override async Task PrepareAsync(CancellationToken cancellationToken)
+    public override async Task PrepareAsync(
+        CancellationToken cancellationToken
+    )
     {
         _key = 0;
         await base.PrepareAsync(cancellationToken);
     }
 
     /// <inheritdoc />
-    public override async Task VerifyAsync(CancellationToken cancellationToken)
+    public override async Task VerifyAsync(
+        CancellationToken cancellationToken
+    )
     {
         var node = await Fixture
             .Context

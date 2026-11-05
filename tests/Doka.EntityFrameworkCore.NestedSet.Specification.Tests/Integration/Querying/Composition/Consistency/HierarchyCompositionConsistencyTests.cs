@@ -22,7 +22,11 @@ public abstract partial class HierarchyCompositionConsistencyTests : ProviderTes
         CancellationToken cancellationToken
     )
     {
-        var context = await CompositionTestData.CreateContextAsync(_fixture, Engine, scope, probe,
+        var context = await CompositionTestData.CreateContextAsync(
+            _fixture,
+            Engine,
+            scope,
+            probe,
             cancellationToken: cancellationToken);
 
         try
@@ -97,7 +101,8 @@ public abstract partial class HierarchyCompositionConsistencyTests : ProviderTes
             pairs,
             row => row.Anchor,
             row => row.Node,
-            (row, parent, child) => child.EdgeOpen && child.FromDate <= asOf && (child.ToDate == null || child.ToDate >= asOf));
+            (row, parent, child) =>
+                child.EdgeOpen && child.FromDate <= asOf && (child.ToDate == null || child.ToDate >= asOf));
 
         var any = hierarchy.WhereAnyAncestorOrSelf(
             open,

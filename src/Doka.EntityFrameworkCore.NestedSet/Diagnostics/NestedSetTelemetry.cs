@@ -112,7 +112,9 @@ internal static class NestedSetTelemetry
 
         // WHY: The command already owns cancellation. Finalization must observe its terminal state before
         // transaction cleanup; a second cancelable wait could abandon a command that is still writing.
-        return state is null ? operation : TrackRowsAsync(operation, state);
+        return state is null
+            ? operation
+            : TrackRowsAsync(operation, state);
     }
 
     /// <summary>Adds a known hierarchy row count to the active operation.</summary>
@@ -195,7 +197,8 @@ internal static class NestedSetTelemetry
 
         try
         {
-            await action(cancellationToken).ConfigureAwait(false);
+            await action(cancellationToken)
+                .ConfigureAwait(false);
         }
         catch (Exception error)
         {
@@ -233,7 +236,8 @@ internal static class NestedSetTelemetry
 
         try
         {
-            return await action(cancellationToken).ConfigureAwait(false);
+            return await action(cancellationToken)
+                .ConfigureAwait(false);
         }
         catch (Exception error)
         {
@@ -263,7 +267,8 @@ internal static class NestedSetTelemetry
 
         try
         {
-            await acquire(cancellationToken).ConfigureAwait(false);
+            await acquire(cancellationToken)
+                .ConfigureAwait(false);
         }
         catch (Exception error)
         {
@@ -275,7 +280,10 @@ internal static class NestedSetTelemetry
         {
             var tags = CreateTags("lock", failure, s_current.Value?.Provider ?? "unknown");
             CompleteActivity(activity, tags, failure);
-            s_lockWait.Record(Stopwatch.GetElapsedTime(started).TotalSeconds, tags);
+            s_lockWait.Record(
+                Stopwatch.GetElapsedTime(started)
+                    .TotalSeconds,
+                tags);
         }
     }
 
@@ -295,7 +303,8 @@ internal static class NestedSetTelemetry
 
         try
         {
-            return await acquire(cancellationToken).ConfigureAwait(false);
+            return await acquire(cancellationToken)
+                .ConfigureAwait(false);
         }
         catch (Exception error)
         {
@@ -307,7 +316,10 @@ internal static class NestedSetTelemetry
         {
             var tags = CreateTags("lock", failure, s_current.Value?.Provider ?? "unknown");
             CompleteActivity(activity, tags, failure);
-            s_lockWait.Record(Stopwatch.GetElapsedTime(started).TotalSeconds, tags);
+            s_lockWait.Record(
+                Stopwatch.GetElapsedTime(started)
+                    .TotalSeconds,
+                tags);
         }
     }
 
@@ -327,7 +339,11 @@ internal static class NestedSetTelemetry
     {
         var tags = CreateTags(operation, failure, state.Provider);
         CompleteActivity(activity, tags, failure);
-        s_duration.Record(Stopwatch.GetElapsedTime(started).TotalSeconds, tags);
+        s_duration.Record(
+            Stopwatch.GetElapsedTime(started)
+                .TotalSeconds,
+            tags);
+
         s_operations.Add(1, tags);
 
         if (state.HasRows)
@@ -388,7 +404,8 @@ internal static class NestedSetTelemetry
     /// <summary>Maps one verified provider to a bounded, non-identifying diagnostic family.</summary>
     private static string ProviderName(
         DbContext context
-    ) => NestedSetProviderCapabilities.Resolve(context).TelemetryName;
+    ) => NestedSetProviderCapabilities.Resolve(context)
+        .TelemetryName;
 
     /// <summary>Records one completed database task against the state captured before its await.</summary>
     private static async Task<int> TrackRowsAsync(
@@ -452,15 +469,18 @@ internal static class NestedSetTelemetry
             activity.SetTag(tag.Key, tag.Value);
         }
 
-        activity.SetStatus(failure is null ? ActivityStatusCode.Ok : ActivityStatusCode.Error);
+        activity.SetStatus(
+            failure is null
+                ? ActivityStatusCode.Ok
+                : ActivityStatusCode.Error);
     }
 
     /// <summary>Retains low-cardinality measurements for exactly one observed public operation.</summary>
     private sealed class OperationState
     {
-        private long _rowsAffected;
         private long _batchCount;
         private long _rebuildNodeCount = -1;
+        private long _rowsAffected;
 
         /// <summary>Creates counters for one bounded provider family.</summary>
         internal OperationState(
@@ -489,7 +509,9 @@ internal static class NestedSetTelemetry
             {
                 var value = Interlocked.Read(ref _rebuildNodeCount);
 
-                return value < 0 ? null : value;
+                return value < 0
+                    ? null
+                    : value;
             }
         }
 

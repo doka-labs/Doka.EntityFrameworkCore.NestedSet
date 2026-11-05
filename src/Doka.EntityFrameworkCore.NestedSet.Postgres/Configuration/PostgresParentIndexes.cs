@@ -53,8 +53,14 @@ internal sealed class PostgresParentIndexes : IModelFinalizingConvention
     {
         var parent = mapping.Parent.Resolve(entity);
         var key = mapping.NodeKey.Resolve(entity);
-        var dependent = mapping.Scope is null ? new[] { parent } : [mapping.Scope.Value.Resolve(entity), parent];
-        var principal = mapping.Scope is null ? new[] { key } : [mapping.Scope.Value.Resolve(entity), key];
+        var dependent = mapping.Scope is null
+            ? new[] { parent }
+            : [mapping.Scope.Value.Resolve(entity), parent];
+
+        var principal = mapping.Scope is null
+            ? new[] { key }
+            : [mapping.Scope.Value.Resolve(entity), key];
+
         var index = entity.FindIndex(dependent);
 
         if (!parent.IsNullable
@@ -98,6 +104,7 @@ internal sealed class PostgresParentIndexes : IModelFinalizingConvention
     }
 
     /// <summary>Protects every application-adopted facet and specialized provider annotation.</summary>
+
     // WHY: This path adopts EF's anonymous self-FK index, not a NestedSet-owned structural index. Even existing
     // convention-level directions can belong to another convention; the stricter ownership test preserves them.
     private static bool IsUnmodified(
@@ -133,11 +140,11 @@ internal sealed class PostgresParentIndexes : IModelFinalizingConvention
         var suffix = 0;
 
         while (entity.FindIndex(name) is not null
-               || entity
-                   .Model
-                   .GetEntityTypes()
-                   .SelectMany(type => type.GetDeclaredIndexes())
-                   .Any(index => index.GetDatabaseName() == name))
+            || entity
+                .Model
+                .GetEntityTypes()
+                .SelectMany(type => type.GetDeclaredIndexes())
+                .Any(index => index.GetDatabaseName() == name))
         {
             suffix++;
             name = stem + "_" + suffix.ToString(CultureInfo.InvariantCulture);

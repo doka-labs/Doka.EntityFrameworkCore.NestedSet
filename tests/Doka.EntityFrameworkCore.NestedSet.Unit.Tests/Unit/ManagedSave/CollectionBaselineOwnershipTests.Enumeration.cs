@@ -30,8 +30,10 @@ public sealed partial class CollectionBaselineOwnershipTests
         Assert.Same(wave.ExistingMember, Assert.Single(wave.ExistingOwner.Dependents));
         Assert.All(wave.Identities, identity => Assert.Equal(EntityState.Detached, identity.UpdateEntry.EntityState));
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Preserves external-owner rollback for array, list, value-view and lazy caller shapes.</summary>
@@ -74,8 +76,10 @@ public sealed partial class CollectionBaselineOwnershipTests
         Assert.Equal(EntityState.Unchanged, externalEntry.State);
         Assert.All(wave.Identities, identity => Assert.Equal(EntityState.Detached, identity.UpdateEntry.EntityState));
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Completes no-op navigation receipts before the no-relationship return releases a saved wave.</summary>
@@ -106,11 +110,16 @@ public sealed partial class CollectionBaselineOwnershipTests
         Assert.Same(original, wave.InputOwner.Dependents);
         Assert.Same(laterMember, Assert.Single(original));
         Assert.Empty(RetainedOwnerEntries(wave.Writes));
-        Assert.Equal(EntityState.Detached,
-            context.Entry(laterMember).State);
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(laterMember)
+                .State);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Never treats a principal from this same wave as an external rollback owner.</summary>
@@ -168,8 +177,10 @@ public sealed partial class CollectionBaselineOwnershipTests
         Assert.Equal(EntityState.Detached, ownerEntry.State);
         Assert.Equal(EntityState.Detached, dependentEntry.State);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Prepares a completed wave with a no-FK input principal and an optional external dependent.</summary>
@@ -217,7 +228,8 @@ public sealed partial class CollectionBaselineOwnershipTests
             .ToHashSet<IUpdateEntry>(ReferenceEqualityComparer.Instance);
 
         var entities = captured
-            .Select(identity => identity.UpdateEntry.ToEntityEntry().Entity)
+            .Select(identity => identity.UpdateEntry.ToEntityEntry()
+                .Entity)
             .ToHashSet(ReferenceEqualityComparer.Instance);
 
         context.ChangeTracker.AcceptAllChanges();
@@ -266,7 +278,8 @@ public sealed partial class CollectionBaselineOwnershipTests
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = identities.Length - 1; index >= 0; index--)
         {
-            identities[index].Detach();
+            identities[index]
+                .Detach();
         }
     }
 

@@ -37,7 +37,10 @@ public abstract partial class OrderingKeyTests
             CollectionStringKey,
             cancellationToken: TestContext.Current.CancellationToken,
             static value => value.ToUpperInvariant()),
-        "Binary" => RefreshCollectionModeBulkAsync<byte[], byte[]?>(Engine, mode, BinaryKey,
+        "Binary" => RefreshCollectionModeBulkAsync<byte[], byte[]?>(
+            Engine,
+            mode,
+            BinaryKey,
             cancellationToken: TestContext.Current.CancellationToken),
         _ => throw new ArgumentOutOfRangeException(nameof(key)),
     };
@@ -65,7 +68,8 @@ public abstract partial class OrderingKeyTests
             Engine,
             mode,
             BinaryKey,
-            static node => node.Id[1] = 0xFE, cancellationToken: TestContext.Current.CancellationToken),
+            static node => node.Id[1] = 0xFE,
+            cancellationToken: TestContext.Current.CancellationToken),
         _ => throw new ArgumentOutOfRangeException(nameof(key)),
     };
 
@@ -89,11 +93,14 @@ public abstract partial class OrderingKeyTests
         where TKey : notnull
     {
         // Arrange
-        await using var arranged = await CreateScenarioAsync<TKey, TParent>(engine, key,
+        await using var arranged = await CreateScenarioAsync<TKey, TParent>(
+            engine,
+            key,
             cancellationToken: cancellationToken,
             alias);
 
-        var otherRootBefore = await SnapshotAsync(arranged.Tree.TreeContaining(arranged.Reference(9)),
+        var otherRootBefore = await SnapshotAsync(
+            arranged.Tree.TreeContaining(arranged.Reference(9)),
             cancellationToken: cancellationToken);
 
         var probe = new EnterpriseProbe();
@@ -102,7 +109,8 @@ public abstract partial class OrderingKeyTests
             arranged.Context.Database.GetConnectionString()!,
             mode);
 
-        var options = new DbContextOptionsBuilder<OrderingKeyContext>(providerOptions).AddInterceptors(probe).Options;
+        var options = new DbContextOptionsBuilder<OrderingKeyContext>(providerOptions).AddInterceptors(probe)
+            .Options;
 
         await using var scenario = new KeyScenario<TKey, TParent>(new OrderingKeyContext(options), key, alias)
         {
@@ -128,9 +136,14 @@ public abstract partial class OrderingKeyTests
         await AssertChildrenAsync(scenario, 1, [2, 3, 4, 6], cancellationToken: cancellationToken);
         await AssertChildrenAsync(scenario, 6, [20, 21], cancellationToken: cancellationToken);
         await AssertIntegrityAsync(scenario, cancellationToken: cancellationToken);
-        Assert.Equal(otherRootBefore, await SnapshotAsync(scenario.Tree.TreeContaining(scenario.Reference(9)),
-            cancellationToken: cancellationToken));
-        var persisted = await SnapshotAsync(scenario.Tree.TreeContaining(scenario.Reference(1)),
+        Assert.Equal(
+            otherRootBefore,
+            await SnapshotAsync(
+                scenario.Tree.TreeContaining(scenario.Reference(9)),
+                cancellationToken: cancellationToken));
+
+        var persisted = await SnapshotAsync(
+            scenario.Tree.TreeContaining(scenario.Reference(1)),
             cancellationToken: cancellationToken);
 
         Assert.All(
@@ -141,17 +154,21 @@ public abstract partial class OrderingKeyTests
                 Assert.Equal(
                     (actual.Scope, actual.TreeId, actual.Parent, actual.Left, actual.Right, actual.Depth,
                         actual.Position),
-                    (node.Scope, node.TreeId, node.ParentId is { } parent ? Identity(parent) : null, node.Left,
+                    (node.Scope, node.TreeId, node.ParentId is { } parent
+                            ? Identity(parent)
+                            : null, node.Left,
                         node.Right, node.Depth, node.Position));
-                Assert.Equal(EntityState.Detached, scenario.Context.Entry(node).State);
+
+                Assert.Equal(
+                    EntityState.Detached,
+                    scenario.Context.Entry(node)
+                        .State);
             });
 
         var refreshIndexes = probe
             .Commands
-            .Select((
-                command,
-                index
-            ) => (command, index))
+            .Select((command,
+                index) => (command, index))
             .Where(item => item.command.Contains(NestedSetDiagnostics.BulkRefreshTag, StringComparison.Ordinal))
             .Select(item => item.index)
             .ToArray();
@@ -190,7 +207,9 @@ public abstract partial class OrderingKeyTests
         where TKey : notnull
     {
         // Arrange
-        await using var arranged = await CreateScenarioAsync<TKey, TParent>(engine, key,
+        await using var arranged = await CreateScenarioAsync<TKey, TParent>(
+            engine,
+            key,
             cancellationToken: cancellationToken,
             alias);
 
@@ -202,7 +221,8 @@ public abstract partial class OrderingKeyTests
             arranged.Context.Database.GetConnectionString()!,
             mode);
 
-        var options = new DbContextOptionsBuilder<OrderingKeyContext>(providerOptions).AddInterceptors(probe).Options;
+        var options = new DbContextOptionsBuilder<OrderingKeyContext>(providerOptions).AddInterceptors(probe)
+            .Options;
 
         await using var scenario = new KeyScenario<TKey, TParent>(new OrderingKeyContext(options), key, alias)
         {
@@ -221,7 +241,9 @@ public abstract partial class OrderingKeyTests
                 ExactCollectionIdentity(node.Id),
                 node.Scope,
                 node.TreeId,
-                node.ParentId is { } parent ? ExactCollectionIdentity(parent) : null,
+                node.ParentId is { } parent
+                    ? ExactCollectionIdentity(parent)
+                    : null,
                 node.Name,
                 node.Left,
                 node.Right,
@@ -266,7 +288,9 @@ public abstract partial class OrderingKeyTests
                 ExactCollectionIdentity(node.Id),
                 node.Scope,
                 node.TreeId,
-                node.ParentId is { } parent ? ExactCollectionIdentity(parent) : null,
+                node.ParentId is { } parent
+                    ? ExactCollectionIdentity(parent)
+                    : null,
                 node.Name,
                 node.Left,
                 node.Right,
@@ -282,7 +306,9 @@ public abstract partial class OrderingKeyTests
     /// <returns>The exact string value or binary bytes.</returns>
     private static string ExactCollectionIdentity(
         object value
-    ) => value is byte[] bytes ? Convert.ToHexString(bytes) : (string)value;
+    ) => value is byte[] bytes
+        ? Convert.ToHexString(bytes)
+        : (string)value;
 
     /// <summary>Extends the arranged string key set with two distinct imported child identities.</summary>
     /// <param name="index">The arranged or imported node number.</param>

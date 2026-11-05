@@ -30,7 +30,7 @@ public abstract class BulkKeyTests : ProviderTest
 
         // Act
         await tree.InsertForestAsync(
-            [new NestedSetTreeImport<GuidNode, Guid>(Guid.Empty, branch),],
+            [new NestedSetTreeImport<GuidNode, Guid>(Guid.Empty, branch)],
             CancellationToken.None);
 
         // Assert
@@ -41,6 +41,7 @@ public abstract class BulkKeyTests : ProviderTest
                 .TreeContaining(child.Id)
                 .Select(node => node.Id)
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Empty(
             (await tree
                 .InTree(Guid.Empty)
@@ -64,7 +65,7 @@ public abstract class BulkKeyTests : ProviderTest
 
         // Act
         await tree.InsertForestAsync(
-            [new NestedSetTreeImport<TextNode, Guid>(Guid.Empty, branch),],
+            [new NestedSetTreeImport<TextNode, Guid>(Guid.Empty, branch)],
             CancellationToken.None);
 
         // Assert
@@ -93,7 +94,7 @@ public abstract class BulkKeyTests : ProviderTest
 
         // Act
         await tree.InsertForestAsync(
-            [new NestedSetTreeImport<BinaryNode, Guid>(Guid.Empty, branch),],
+            [new NestedSetTreeImport<BinaryNode, Guid>(Guid.Empty, branch)],
             CancellationToken.None);
 
         // Assert

@@ -50,9 +50,10 @@ public sealed class SignalReadBenchmarkTests
             await benchmark.SetupAsync();
             var observation = ((IDatabaseBenchmark)benchmark).Observation;
             var preparationCommands = observation.Commands;
-        var writesBefore = await ReadConnectionWritesAsync(
-            benchmark.Context,
-            TestContext.Current.CancellationToken);
+            var writesBefore = await ReadConnectionWritesAsync(
+                benchmark.Context,
+                TestContext.Current.CancellationToken);
+
             var reports = new SignalReportCell[3][];
 
             // Act
@@ -72,20 +73,31 @@ public sealed class SignalReadBenchmarkTests
 
             // Assert
             Assert.Equal(0, preparationCommands);
-            Assert.Equal(diagnostics ? 6 : 0, observation.Commands);
+            Assert.Equal(
+                diagnostics
+                    ? 6
+                    : 0,
+                observation.Commands);
+
             Assert.Equal(0, observation.Updates);
-        Assert.Equal(
-            writesBefore,
-            await ReadConnectionWritesAsync(benchmark.Context, TestContext.Current.CancellationToken));
+            Assert.Equal(
+                writesBefore,
+                await ReadConnectionWritesAsync(benchmark.Context, TestContext.Current.CancellationToken));
+
             Assert.Empty(benchmark.Context.ChangeTracker.Entries());
-            Assert.All(reports, report =>
-            {
-                Assert.Equal(24, report.Length);
-                Assert.Equal(reports[0], report);
-                Assert.Contains(report, cell => cell.AnchorId == SignalReportDataset.Id(1)
-                    && cell.ChannelId == SignalReportDataset.PulseChannel && cell.Source == CapturePort.Pulse
-                    && cell is { HasData: true, Value: 70 + 40 - SignalReportDataset.SeedNodeCount });
-            });
+            Assert.All(
+                reports,
+                report =>
+                {
+                    Assert.Equal(24, report.Length);
+                    Assert.Equal(reports[0], report);
+                    Assert.Contains(
+                        report,
+                        cell => cell.AnchorId == SignalReportDataset.Id(1)
+                            && cell.ChannelId == SignalReportDataset.PulseChannel
+                            && cell.Source == CapturePort.Pulse
+                            && cell is { HasData: true, Value: 70 + 40 - SignalReportDataset.SeedNodeCount });
+                });
         }
         finally
         {
@@ -106,16 +118,23 @@ public sealed class SignalReadBenchmarkTests
 
         // Assert
         Assert.NotEmpty(cases);
-        Assert.All(cases, benchmark =>
-        {
-            Assert.Null(benchmark.Descriptor.IterationSetupMethod);
-            Assert.Null(benchmark.Descriptor.IterationCleanupMethod);
-            Assert.Equal(nameof(SignalReportingBenchmarks.SetupAsync), benchmark.Descriptor.GlobalSetupMethod?.Name);
-            Assert.Equal(nameof(SignalReportingBenchmarks.VerifyAndCleanupAsync),
-                benchmark.Descriptor.GlobalCleanupMethod?.Name);
-            Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.InvocationCountCharacteristic));
-            Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.UnrollFactorCharacteristic));
-        });
+        Assert.All(
+            cases,
+            benchmark =>
+            {
+                Assert.Null(benchmark.Descriptor.IterationSetupMethod);
+                Assert.Null(benchmark.Descriptor.IterationCleanupMethod);
+                Assert.Equal(
+                    nameof(SignalReportingBenchmarks.SetupAsync),
+                    benchmark.Descriptor.GlobalSetupMethod?.Name);
+
+                Assert.Equal(
+                    nameof(SignalReportingBenchmarks.VerifyAndCleanupAsync),
+                    benchmark.Descriptor.GlobalCleanupMethod?.Name);
+
+                Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.InvocationCountCharacteristic));
+                Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.UnrollFactorCharacteristic));
+            });
     }
 
     /// <summary>Explicit multi-invocation read jobs do not inherit mutation-only validation failures.</summary>

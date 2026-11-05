@@ -29,7 +29,10 @@ internal sealed class CompositionBagContext : DbContext
         {
             var node = modelBuilder.SharedTypeEntity<Dictionary<string, object?>>(name);
             node.ToTable(table);
-            node.IndexerProperty<int>(NestedSetPropertyRoles.NodeKey).ValueGeneratedNever();
+            node
+                .IndexerProperty<int>(NestedSetPropertyRoles.NodeKey)
+                .ValueGeneratedNever();
+
             node.IndexerProperty<Guid>(NestedSetPropertyRoles.TreeId);
             node.IndexerProperty<int?>(NestedSetPropertyRoles.Parent);
             node.IndexerProperty<long>(NestedSetPropertyRoles.Left);

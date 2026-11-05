@@ -24,16 +24,18 @@ internal static class EnterpriseForestTestSupport
                     ? 1
                     : index * 2,
             End = deep
-                ? (count * 2) - index
+                ? count * 2 - index
                 : index == 0
                     ? count * 2
-                    : (index * 2) + 1,
+                    : index * 2 + 1,
             Depth = deep
                 ? index
                 : index == 0
                     ? 0
                     : 1,
-            Position = deep || index == 0 ? 0 : index - 1,
+            Position = deep || index == 0
+                ? 0
+                : index - 1,
             Payload = new string('x', 4096),
         })
         .ToArray();

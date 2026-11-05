@@ -145,7 +145,9 @@ internal static partial class NestedSetDeferredQuery
         /// <inheritdoc />
         public override Expression? Visit(
             Expression? node
-        ) => Found || node is null || !NestedSetQuerySyntax.CanInspect(node) ? node : base.Visit(node);
+        ) => Found || node is null || !NestedSetQuerySyntax.CanInspect(node)
+            ? node
+            : base.Visit(node);
 
         /// <inheritdoc />
         protected override Expression VisitMethodCall(

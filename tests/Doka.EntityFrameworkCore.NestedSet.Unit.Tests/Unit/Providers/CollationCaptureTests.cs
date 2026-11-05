@@ -20,6 +20,7 @@ public sealed class CollationCaptureTests
         Assert.Equal(
             string.Empty,
             hierarchy.FindAnnotation(NestedSetAnnotationNames.Collation + ":" + property.Name)!.Value);
+
         Assert.Equal(true, context.Model.FindAnnotation(NestedSetAnnotationNames.CollationsCaptured)!.Value);
     }
 
@@ -42,6 +43,7 @@ public sealed class CollationCaptureTests
                 .Entity<TextNode>()
                 .Property(row => row.Id)
                 .ValueGeneratedNever();
+
             modelBuilder
                 .Entity<TextNode>()
                 .HasNestedSet(builder => builder

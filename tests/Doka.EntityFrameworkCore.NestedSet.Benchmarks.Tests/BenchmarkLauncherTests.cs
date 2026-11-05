@@ -49,6 +49,7 @@ public sealed class BenchmarkLauncherTests
             "Benchmark measurements require dotnet run -c Release.",
             process.Error,
             StringComparison.Ordinal);
+
         Assert.DoesNotContain("Benchmark execution failed.", process.Error, StringComparison.Ordinal);
     }
 
@@ -96,6 +97,7 @@ public sealed class BenchmarkLauncherTests
                     response,
                     $"--filter\n*InsertBenchmarks.Root\n-a\n{nativeArtifacts}\n",
                     CancellationToken.None);
+
                 arguments.Add("@" + response);
                 break;
             default:
@@ -124,14 +126,41 @@ public sealed class BenchmarkLauncherTests
                 .GetProperty("Results")
                 .EnumerateArray());
 
-        Assert.EndsWith(".InsertBenchmarks.Root", result.GetProperty("Benchmark").GetString());
-        Assert.Equal(20, result.GetProperty("Nodes").GetInt32());
-        Assert.True(result.GetProperty("Commands").GetInt32() > 0);
+        Assert.EndsWith(
+            ".InsertBenchmarks.Root",
+            result
+                .GetProperty("Benchmark")
+                .GetString());
+
+        Assert.Equal(
+            20,
+            result
+                .GetProperty("Nodes")
+                .GetInt32());
+
+        Assert.True(
+            result
+                .GetProperty("Commands")
+                .GetInt32()
+            > 0);
+
         Assert.False(result.TryGetProperty("Milliseconds", out _));
 
         using var provenance = JsonDocument.Parse(await File.ReadAllTextAsync(provenancePath, CancellationToken.None));
-        Assert.Equal("completed", provenance.RootElement.GetProperty("outcome").GetString());
-        Assert.Equal("diagnostics", provenance.RootElement.GetProperty("mode").GetString());
+        Assert.Equal(
+            "completed",
+            provenance
+                .RootElement
+                .GetProperty("outcome")
+                .GetString());
+
+        Assert.Equal(
+            "diagnostics",
+            provenance
+                .RootElement
+                .GetProperty("mode")
+                .GetString());
+
         Assert.Equal(
             nativeArtifacts,
             provenance
@@ -281,10 +310,29 @@ public sealed class BenchmarkLauncherTests
                 .GetProperty("Results")
                 .EnumerateArray());
 
-        Assert.EndsWith(".InsertBenchmarks.Root", result.GetProperty("Benchmark").GetString());
-        Assert.Equal(40, result.GetProperty("Nodes").GetInt32());
-        Assert.Equal((int)BenchmarkShape.Deep, result.GetProperty("Shape").GetInt32());
-        Assert.Equal(4, result.GetProperty("Trees").GetInt32());
+        Assert.EndsWith(
+            ".InsertBenchmarks.Root",
+            result
+                .GetProperty("Benchmark")
+                .GetString());
+
+        Assert.Equal(
+            40,
+            result
+                .GetProperty("Nodes")
+                .GetInt32());
+
+        Assert.Equal(
+            (int)BenchmarkShape.Deep,
+            result
+                .GetProperty("Shape")
+                .GetInt32());
+
+        Assert.Equal(
+            4,
+            result
+                .GetProperty("Trees")
+                .GetInt32());
     }
 
     /// <summary>The smallest valid transfer input executes with the native implicit second tree.</summary>
@@ -320,10 +368,29 @@ public sealed class BenchmarkLauncherTests
                 .GetProperty("Results")
                 .EnumerateArray());
 
-        Assert.EndsWith(".CrossTreeMoveBenchmarks.RootUnderOtherTree", result.GetProperty("Benchmark").GetString());
-        Assert.Equal(20, result.GetProperty("Nodes").GetInt32());
-        Assert.Equal(2, result.GetProperty("Trees").GetInt32());
-        Assert.True(result.GetProperty("Commands").GetInt32() > 0);
+        Assert.EndsWith(
+            ".CrossTreeMoveBenchmarks.RootUnderOtherTree",
+            result
+                .GetProperty("Benchmark")
+                .GetString());
+
+        Assert.Equal(
+            20,
+            result
+                .GetProperty("Nodes")
+                .GetInt32());
+
+        Assert.Equal(
+            2,
+            result
+                .GetProperty("Trees")
+                .GetInt32());
+
+        Assert.True(
+            result
+                .GetProperty("Commands")
+                .GetInt32()
+            > 0);
     }
 
     /// <summary>A native full-case filter selects the requested dataset from a larger parameter matrix.</summary>
@@ -382,11 +449,35 @@ public sealed class BenchmarkLauncherTests
                 .GetProperty("Results")
                 .EnumerateArray());
 
-        Assert.EndsWith(".InsertBenchmarks.Root", result.GetProperty("Benchmark").GetString());
-        Assert.Equal(40, result.GetProperty("Nodes").GetInt32());
-        Assert.Equal((int)BenchmarkShape.Deep, result.GetProperty("Shape").GetInt32());
-        Assert.Equal(2, result.GetProperty("Trees").GetInt32());
-        Assert.Equal(3, result.GetProperty("Tracked").GetInt32());
+        Assert.EndsWith(
+            ".InsertBenchmarks.Root",
+            result
+                .GetProperty("Benchmark")
+                .GetString());
+
+        Assert.Equal(
+            40,
+            result
+                .GetProperty("Nodes")
+                .GetInt32());
+
+        Assert.Equal(
+            (int)BenchmarkShape.Deep,
+            result
+                .GetProperty("Shape")
+                .GetInt32());
+
+        Assert.Equal(
+            2,
+            result
+                .GetProperty("Trees")
+                .GetInt32());
+
+        Assert.Equal(
+            3,
+            result
+                .GetProperty("Tracked")
+                .GetInt32());
     }
 
     /// <summary>Distinct framework jobs share one untimed diagnostic per operation and dataset.</summary>
@@ -442,9 +533,23 @@ public sealed class BenchmarkLauncherTests
                 .GetProperty("Results")
                 .EnumerateArray());
 
-        Assert.EndsWith(".InsertBenchmarks.Root", result.GetProperty("Benchmark").GetString());
-        Assert.Equal(20, result.GetProperty("Nodes").GetInt32());
-        Assert.True(result.GetProperty("Commands").GetInt32() > 0);
+        Assert.EndsWith(
+            ".InsertBenchmarks.Root",
+            result
+                .GetProperty("Benchmark")
+                .GetString());
+
+        Assert.Equal(
+            20,
+            result
+                .GetProperty("Nodes")
+                .GetInt32());
+
+        Assert.True(
+            result
+                .GetProperty("Commands")
+                .GetInt32()
+            > 0);
     }
 
     /// <summary>
@@ -468,7 +573,7 @@ public sealed class BenchmarkLauncherTests
         {
             "--engine=MySql",
             "--artifacts",
-            artifacts
+            artifacts,
         };
 
         if (responseFile)
@@ -610,14 +715,14 @@ public sealed class BenchmarkLauncherTests
     private sealed class LauncherProcessState : IDisposable
     {
         private const string OptionsVariable = "NESTEDSET_BENCHMARK_OPTIONS";
-        private readonly TextWriter _output = Console.Out;
-        private readonly TextWriter _error = Console.Error;
-        private readonly StringWriter _capturedOutput = new(CultureInfo.InvariantCulture);
         private readonly StringWriter _capturedError = new(CultureInfo.InvariantCulture);
-        private readonly string? _options = Environment.GetEnvironmentVariable(OptionsVariable);
+        private readonly StringWriter _capturedOutput = new(CultureInfo.InvariantCulture);
         private readonly string? _connection = Environment.GetEnvironmentVariable(ConnectionVariable);
-        private readonly string? _docker = Environment.GetEnvironmentVariable("DOCKER_HOST");
         private readonly CultureInfo _culture = CultureInfo.CurrentCulture;
+        private readonly string? _docker = Environment.GetEnvironmentVariable("DOCKER_HOST");
+        private readonly TextWriter _error = Console.Error;
+        private readonly string? _options = Environment.GetEnvironmentVariable(OptionsVariable);
+        private readonly TextWriter _output = Console.Out;
 
         private readonly CultureInfo _uiCulture = CultureInfo.CurrentUICulture;
 
@@ -625,7 +730,11 @@ public sealed class BenchmarkLauncherTests
         {
             Directory = Path.Combine(
                 Path.GetTempPath(),
-                "nestedset-launcher-tests-" + Guid.NewGuid().ToString("N"));
+                "nestedset-launcher-tests-"
+                + Guid
+                    .NewGuid()
+                    .ToString("N"));
+
             FileDirectory.CreateDirectory(Directory);
             Console.SetOut(_capturedOutput);
             Console.SetError(_capturedError);

@@ -15,13 +15,23 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe,
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
-        var pairs = hierarchy.SelectAncestors(
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
+        var pairs = hierarchy
+            .SelectAncestors(
                 node => node.Id == 3 || node.Id == 4,
-                (source, ancestor, distance) => new { Source = source.Id, Ancestor = ancestor })
+                (source, ancestor, distance) => new
+                {
+                    Source = source.Id,
+                    Ancestor = ancestor,
+                })
             .Where(row => row.Ancestor.Id == 1)
             .OrderBy(row => row.Source);
 
@@ -37,12 +47,25 @@ public abstract partial class HierarchyCompositionSemanticTests
 
         // Assert
         Assert.Equal([3, 4], actual.Select(row => row.Source));
-        Assert.Equal(policy != CompositionTrackingPolicy.NoTracking,
+        Assert.Equal(
+            policy != CompositionTrackingPolicy.NoTracking,
             ReferenceEquals(actual[0].Ancestor, actual[1].Ancestor));
-        Assert.Equal(policy == CompositionTrackingPolicy.Tracking ? 1 : 0,
-            context.ChangeTracker.Entries<CompositionNode>().Count());
 
-        Assert.Equal(policy == CompositionTrackingPolicy.NoTracking ? 2 : 1, probe.MaterializedNodes);
+        Assert.Equal(
+            policy == CompositionTrackingPolicy.Tracking
+                ? 1
+                : 0,
+            context
+                .ChangeTracker
+                .Entries<CompositionNode>()
+                .Count());
+
+        Assert.Equal(
+            policy == CompositionTrackingPolicy.NoTracking
+                ? 2
+                : 1,
+            probe.MaterializedNodes);
+
         Assert.Equal(1, probe.CommandCount);
     }
 
@@ -53,18 +76,24 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe,
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var tracked = await context.Set<CompositionNode>()
+        var tracked = await context
+            .Set<CompositionNode>()
             .SingleAsync(node => node.Scope == scope && node.Id == 1, CancellationToken.None);
 
         tracked.Matches = false;
         probe.Reset();
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
 
         // Act
-        var actual = await hierarchy.SelectAncestors(
+        var actual = await hierarchy
+            .SelectAncestors(
                 node => node.Id == 3,
                 (source, ancestor, distance) => new
                 {
@@ -79,7 +108,13 @@ public abstract partial class HierarchyCompositionSemanticTests
         Assert.Same(tracked, actual.Ancestor);
         Assert.False(actual.Ancestor.Matches);
         Assert.True(actual.DatabaseMatches);
-        Assert.Equal(1, context.ChangeTracker.Entries<CompositionNode>().Count());
+        Assert.Equal(
+            1,
+            context
+                .ChangeTracker
+                .Entries<CompositionNode>()
+                .Count());
+
         Assert.Equal(0, probe.MaterializedNodes);
         Assert.Equal(1, probe.CommandCount);
     }
@@ -91,21 +126,32 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe,
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
 
         // Act
-        var actual = await hierarchy.SelectSubtrees(
+        var actual = await hierarchy
+            .SelectSubtrees(
                 node => node.Id == 2,
-                (anchor, node, distance) => new { Anchor = anchor.Id, Node = node.Id, Distance = distance })
+                (anchor, node, distance) => new
+                {
+                    Anchor = anchor.Id,
+                    Node = node.Id,
+                    Distance = distance,
+                })
             .AsTracking()
             .OrderBy(row => row.Node)
             .ToArrayAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal([(2, 2, 0), (2, 3, 1), (2, 4, 1)],
+        Assert.Equal(
+            [(2, 2, 0), (2, 3, 1), (2, 4, 1)],
             actual.Select(row => (row.Anchor, row.Node, row.Distance)));
 
         Assert.Equal(0, probe.MaterializedNodes);

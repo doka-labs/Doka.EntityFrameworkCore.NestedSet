@@ -101,12 +101,16 @@ internal sealed class SqlServerCompositionPlanInterceptor : DbCommandInterceptor
 
         // WHY: EF emits one query, ExecuteUpdate or ExecuteDelete statement per tagged command.
         // OPTION must close that statement, so an optional terminator stays after the hint.
-        var statement = text.AsSpan().TrimEnd();
+        var statement = text
+            .AsSpan()
+            .TrimEnd();
+
         var terminated = statement.EndsWith(";", StringComparison.Ordinal);
 
         if (terminated)
         {
-            statement = statement[..^1].TrimEnd();
+            statement = statement[..^1]
+                .TrimEnd();
         }
 
         if (statement.EndsWith(Hint, StringComparison.Ordinal))
@@ -114,6 +118,12 @@ internal sealed class SqlServerCompositionPlanInterceptor : DbCommandInterceptor
             return;
         }
 
-        command.CommandText = string.Concat(statement, Environment.NewLine, Hint, terminated ? ";" : "");
+        command.CommandText = string.Concat(
+            statement,
+            Environment.NewLine,
+            Hint,
+            terminated
+                ? ";"
+                : "");
     }
 }

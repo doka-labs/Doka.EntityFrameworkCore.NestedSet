@@ -15,8 +15,8 @@ internal static partial class SupervisorQueries
         var rows = ResolutionRows(context, tenantId, request, selection);
         var read = new List<SupervisorReadRow>();
         await foreach (var row in rows
-                           .AsAsyncEnumerable()
-                           .WithCancellation(cancellationToken))
+            .AsAsyncEnumerable()
+            .WithCancellation(cancellationToken))
         {
             read.Add(row);
         }
@@ -34,7 +34,7 @@ internal static partial class SupervisorQueries
         var source = rows.FirstOrDefault(row => row.Kind == 0);
         if (source is null)
         {
-            return new(SupervisorBatchStatus.SourceNotFound, []);
+            return new SupervisorResolutionBatch(SupervisorBatchStatus.SourceNotFound, []);
         }
 
         if (!source.CatalogValid)
@@ -46,14 +46,15 @@ internal static partial class SupervisorQueries
         var origins = new List<SupervisorResolution>();
 
         foreach (var origin in rows
-                     .Where(row => row.Kind == 1)
-                     .GroupBy(row => row.StartGroupId))
+            .Where(row => row.Kind == 1)
+            .GroupBy(row => row.StartGroupId))
         {
             var summary = origin.First();
             if (selection.Kind != SupervisorSelectionKind.All
                 && summary.Count > 1)
             {
-                origins.Add(new SupervisorResolution(SupervisorResolutionStatus.Ambiguous, summary.StartGroupId, [], null));
+                origins.Add(
+                    new SupervisorResolution(SupervisorResolutionStatus.Ambiguous, summary.StartGroupId, [], null));
 
                 continue;
             }
@@ -85,7 +86,9 @@ internal static partial class SupervisorQueries
         }
 
         return new SupervisorResolutionBatch(
-            origins.Count == 0 ? SupervisorBatchStatus.NoVisibleMemberships : SupervisorBatchStatus.Completed,
+            origins.Count == 0
+                ? SupervisorBatchStatus.NoVisibleMemberships
+                : SupervisorBatchStatus.Completed,
             origins);
     }
 }

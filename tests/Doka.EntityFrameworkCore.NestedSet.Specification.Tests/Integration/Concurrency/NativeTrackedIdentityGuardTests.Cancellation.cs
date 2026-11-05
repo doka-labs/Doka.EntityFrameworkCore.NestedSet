@@ -9,7 +9,8 @@ public abstract partial class NativeTrackedIdentityGuardTests
     {
         // Arrange
         var probe = new NativeGuardProbe();
-        await using var context = await CreateAliasContextAsync(Engine,
+        await using var context = await CreateAliasContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -42,13 +43,26 @@ public abstract partial class NativeTrackedIdentityGuardTests
             .DeleteTreeAsync(new BroadTreeId(affectedTree), stop.Token));
 
         // Assert
-        Assert.Equal(stop.Token, Assert.IsAssignableFrom<OperationCanceledException>(failure).CancellationToken);
+        Assert.Equal(
+            stop.Token,
+            Assert.IsAssignableFrom<OperationCanceledException>(failure)
+                .CancellationToken);
+
         Assert.Equal(1, probe.NativeReads);
         Assert.Same(transaction, context.Database.CurrentTransaction);
         Assert.False(context.ChangeTracker.HasChanges());
-        Assert.Equal(EntityState.Unchanged, context.Entry(payload).State);
-        Assert.Equal("Caller application write", (await ReadNodeAsync(context, root + 10,
-            cancellationToken: TestContext.Current.CancellationToken)).Name);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(payload)
+                .State);
+
+        Assert.Equal(
+            "Caller application write",
+            (await ReadNodeAsync(
+                context,
+                root + 10,
+                cancellationToken: TestContext.Current.CancellationToken)).Name);
+
         Assert.Equal(
             2,
             await context
@@ -64,7 +78,8 @@ public abstract partial class NativeTrackedIdentityGuardTests
     {
         // Arrange
         var probe = new NativeGuardProbe();
-        await using var context = await CreateAliasContextAsync(Engine,
+        await using var context = await CreateAliasContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -74,7 +89,8 @@ public abstract partial class NativeTrackedIdentityGuardTests
         await SeedTreeAsync(context, affectedTree, root, 1, cancellationToken: TestContext.Current.CancellationToken);
         await SeedTreeAsync(context, otherTree, root + 10, 1, cancellationToken: TestContext.Current.CancellationToken);
         await using var transaction = await context.Database.BeginTransactionAsync(
-            NestedSetProviderCapabilities.Resolve(context).RequiredIsolation,
+            NestedSetProviderCapabilities.Resolve(context)
+                .RequiredIsolation,
             CancellationToken.None);
 
         var payload = await context
@@ -99,14 +115,27 @@ public abstract partial class NativeTrackedIdentityGuardTests
             .DeleteTreeAsync(new BroadTreeId(affectedTree), CancellationToken.None));
 
         // Assert
-        Assert.Equal(stop.Token, Assert.IsAssignableFrom<OperationCanceledException>(canceled).CancellationToken);
+        Assert.Equal(
+            stop.Token,
+            Assert.IsAssignableFrom<OperationCanceledException>(canceled)
+                .CancellationToken);
+
         Assert.Null(failure);
         Assert.Equal(2, probe.NativeReads);
         Assert.Same(transaction, context.Database.CurrentTransaction);
         Assert.False(context.ChangeTracker.HasChanges());
-        Assert.Equal(EntityState.Unchanged, context.Entry(payload).State);
-        Assert.Equal("Caller application write", (await ReadNodeAsync(context, root + 10,
-            cancellationToken: TestContext.Current.CancellationToken)).Name);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(payload)
+                .State);
+
+        Assert.Equal(
+            "Caller application write",
+            (await ReadNodeAsync(
+                context,
+                root + 10,
+                cancellationToken: TestContext.Current.CancellationToken)).Name);
+
         Assert.Equal(
             0,
             await context

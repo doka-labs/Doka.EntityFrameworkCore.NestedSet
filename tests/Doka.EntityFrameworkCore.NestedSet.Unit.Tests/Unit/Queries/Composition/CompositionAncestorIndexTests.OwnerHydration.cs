@@ -18,7 +18,8 @@ public sealed partial class CompositionAncestorIndexTests
     )
     {
         // Arrange
-        var options = ModelCompatibilityDatabase.Options<OwnerHydrationContext>(engine,
+        var options = ModelCompatibilityDatabase.Options<OwnerHydrationContext>(
+            engine,
             "Server=127.0.0.1;Database=owner_hydration;User ID=unused;Pooling=false");
 
         await using var provider = SelectionServices(options);
@@ -27,7 +28,10 @@ public sealed partial class CompositionAncestorIndexTests
                 .UseInternalServiceProvider(provider)
                 .Options);
 
-        var mapping = scoped ? OwnerHydrationContext.Scoped : OwnerHydrationContext.Unscoped;
+        var mapping = scoped
+            ? OwnerHydrationContext.Scoped
+            : OwnerHydrationContext.Unscoped;
+
         var hierarchy = scoped
             ? context
                 .NestedSet<CompositionNode>(mapping)
@@ -37,7 +41,8 @@ public sealed partial class CompositionAncestorIndexTests
                 .NestedSet<CompositionNode>(mapping)
                 .InTree(Guid.Empty);
 
-        var query = hierarchy.SelectAncestorsOrSelf(node => node.Id == 3,
+        var query = hierarchy.SelectAncestorsOrSelf(
+            node => node.Id == 3,
             (source, owner, distance) => new
             {
                 Source = source.Id,
@@ -51,9 +56,14 @@ public sealed partial class CompositionAncestorIndexTests
         var sql = query.ToQueryString();
 
         // Assert
-        Assert.Equal(enabled ? 2 : 0,
-            sql.Split("STRAIGHT_JOIN", StringSplitOptions.None).Length
+        Assert.Equal(
+            enabled
+                ? 2
+                : 0,
+            sql.Split("STRAIGHT_JOIN")
+                .Length
             - 1);
+
         Assert.DoesNotContain("SELECT STRAIGHT_JOIN", sql, StringComparison.OrdinalIgnoreCase);
 
         if (enabled)
@@ -117,6 +127,7 @@ public sealed partial class CompositionAncestorIndexTests
             node
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             node.Property(value => value.Visible);
             node.HasQueryFilter(value => value.Visible);
             node.HasNestedSet(hierarchy =>

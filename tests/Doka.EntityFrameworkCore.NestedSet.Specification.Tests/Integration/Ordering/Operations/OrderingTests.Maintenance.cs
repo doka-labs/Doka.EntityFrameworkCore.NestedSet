@@ -9,7 +9,8 @@ public abstract partial class OrderingTests
     public async Task StrictRebuildDerivesSiblingOrderFromDomainValues()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = Tree(context);
@@ -25,9 +26,15 @@ public abstract partial class OrderingTests
 
         // Assert
         await AssertIdsAsync(tree.ChildrenOf(1), cancellationToken: TestContext.Current.CancellationToken, 3, 4, 2);
-        await AssertIdsAsync(tree.TreeContaining(5),
+        await AssertIdsAsync(
+            tree.TreeContaining(5),
             cancellationToken: TestContext.Current.CancellationToken,
-            1, 3, 5, 4, 2);
+            1,
+            3,
+            5,
+            4,
+            2);
+
         await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken);
     }
 
@@ -36,7 +43,8 @@ public abstract partial class OrderingTests
     public async Task FlexibleRebuildPreservesStoredSiblingOrder()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             "Flexible");
 
@@ -57,9 +65,15 @@ public abstract partial class OrderingTests
 
         // Assert
         await AssertIdsAsync(tree.ChildrenOf(1), cancellationToken: TestContext.Current.CancellationToken, 4, 2, 3);
-        await AssertIdsAsync(tree.TreeContaining(5),
+        await AssertIdsAsync(
+            tree.TreeContaining(5),
             cancellationToken: TestContext.Current.CancellationToken,
-            1, 4, 2, 3, 5);
+            1,
+            4,
+            2,
+            3,
+            5);
+
         await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken);
     }
 
@@ -70,7 +84,8 @@ public abstract partial class OrderingTests
     public async Task StrictValidationReportsDomainOrderDrift()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = Tree(context);
@@ -97,7 +112,8 @@ public abstract partial class OrderingTests
     public async Task StrictDeletionSortsPromotedSubtreesAmongExistingSiblings()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = Tree(context);
@@ -129,6 +145,7 @@ public abstract partial class OrderingTests
                 .Where(node => node.Id == 6)
                 .Select(node => node.Depth)
                 .SingleAsync(CancellationToken.None));
+
         await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken);
     }
 
@@ -139,7 +156,8 @@ public abstract partial class OrderingTests
     public async Task StrictIntermediateDeletionSortsPromotedChildren()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = Tree(context);
@@ -162,7 +180,8 @@ public abstract partial class OrderingTests
     public async Task LargePromotionPreservesOverlappingIntervalsAcrossBatches()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = Tree(setup);
@@ -205,23 +224,34 @@ public abstract partial class OrderingTests
             .ToDictionaryAsync(node => node.Id, node => node.Right - node.Left + 1, CancellationToken.None);
 
         var probe = new OrderingSaveProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict", probe);
+            "Strict",
+            probe);
 
         // Act
-        await Tree(context).DeleteAsync(2, CancellationToken.None);
+        await Tree(context)
+            .DeleteAsync(2, CancellationToken.None);
+
         var structuralCommands = probe.StructuralUpdates;
 
         // Assert
         Assert.InRange(structuralCommands, 1, 29);
         Assert.Equal(
             expectedTree,
-            await IdsAsync(Tree(context).TreeContaining(1000),
+            await IdsAsync(
+                Tree(context)
+                    .TreeContaining(1000),
                 cancellationToken: TestContext.Current.CancellationToken));
-        await AssertIdsAsync(Tree(context).TreeContaining(5),
+
+        await AssertIdsAsync(
+            Tree(context)
+                .TreeContaining(5),
             cancellationToken: TestContext.Current.CancellationToken,
-            4, 5);
+            4,
+            5);
+
         AssertSnapshot(
             otherBefore,
             await Nodes(context, 2)
@@ -252,7 +282,8 @@ public abstract partial class OrderingTests
     )
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var treeId = await SeedAsync(Tree(context), cancellationToken: TestContext.Current.CancellationToken);
@@ -267,7 +298,8 @@ public abstract partial class OrderingTests
         name.CurrentValue = "Zulu";
         name.IsModified = true;
         var originalGeometry = (renamed.TreeId, renamed.Left, renamed.Right, renamed.Depth, renamed.Position);
-        await using var transaction = await BeginAsync(context,
+        await using var transaction = await BeginAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = Tree(context)
@@ -289,7 +321,11 @@ public abstract partial class OrderingTests
         // Assert
         Assert.Null(failure);
         Assert.Same(transaction, context.Database.CurrentTransaction);
-        Assert.Equal(EntityState.Modified, context.Entry(renamed).State);
+        Assert.Equal(
+            EntityState.Modified,
+            context.Entry(renamed)
+                .State);
+
         Assert.Equal("Alpha", name.OriginalValue);
         Assert.Equal("Zulu", name.CurrentValue);
         Assert.True(name.IsModified);
@@ -301,6 +337,7 @@ public abstract partial class OrderingTests
                 .Where(node => node.Id == 2)
                 .Select(node => node.Name)
                 .SingleAsync(CancellationToken.None));
+
         await transaction.RollbackAsync(CancellationToken.None);
     }
 }

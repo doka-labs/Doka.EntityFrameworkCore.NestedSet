@@ -16,7 +16,10 @@ public sealed partial class InputNavigationRollbackTests
     {
         // Arrange
         await using var context = new RollbackContext();
-        var original = initiallyNull ? null : new List<RollbackNode>();
+        var original = initiallyNull
+            ? null
+            : new List<RollbackNode>();
+
         var input = new RollbackNode
         {
             Id = 1,
@@ -36,6 +39,7 @@ public sealed partial class InputNavigationRollbackTests
         writes.CaptureRelationships(entry);
         entry.State = EntityState.Added;
         var identity = NestedSetInsertionTracking.Capture(entry);
+
         // WHY: AcceptAllChanges performs the same public EF state transition as a successful native save;
         // this unit isolates the completed-wave journal without introducing unrelated database work.
         context.ChangeTracker.AcceptAllChanges();
@@ -59,13 +63,17 @@ public sealed partial class InputNavigationRollbackTests
 
         Assert.Empty(replacement);
         Assert.Equal(EntityState.Detached, entry.State);
-        Assert.Empty(context
-            .GetService<IUpdateAdapterFactory>()
-            .Create()
-            .Entries);
+        Assert.Empty(
+            context
+                .GetService<IUpdateAdapterFactory>()
+                .Create()
+                .Entries);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Only fully validated owned graphs may have their initially empty ordinary links reset.</summary>
@@ -81,7 +89,10 @@ public sealed partial class InputNavigationRollbackTests
         await using var context = new RollbackContext();
         var existingOwner = new RollbackOwner { Id = 7 };
         context.Attach(existingOwner);
-        var originalForeignOwner = populatedForeignReference ? new RollbackOwner { Id = 9 } : null;
+        var originalForeignOwner = populatedForeignReference
+            ? new RollbackOwner { Id = 9 }
+            : null;
+
         var payload = new RollbackPayload
         {
             OwnerId = originalForeignOwner?.Id ?? existingOwner.Id,
@@ -123,8 +134,11 @@ public sealed partial class InputNavigationRollbackTests
         // Assert
         if (populatedForeignReference)
         {
-            Assert.Equal(NestedSetErrorCode.InvalidImport,
-                Assert.IsType<NestedSetException>(error).Code);
+            Assert.Equal(
+                NestedSetErrorCode.InvalidImport,
+                Assert.IsType<NestedSetException>(error)
+                    .Code);
+
             Assert.Same(originalForeignOwner, ownerAfterStage);
         }
         else
@@ -138,21 +152,33 @@ public sealed partial class InputNavigationRollbackTests
         Assert.Same(originalForeignOwner, payload.Owner);
         Assert.Equal(originalOwnerId, payload.OwnerId);
         Assert.Equal("Caller payload", payload.Value);
-        Assert.Equal(EntityState.Detached,
-            context.Entry(input).State);
-        Assert.Equal(EntityState.Detached,
-            context.Entry(payload).State);
-        Assert.Equal(EntityState.Unchanged,
-            context.Entry(existingOwner).State);
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(input)
+                .State);
+
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(payload)
+                .State);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(existingOwner)
+                .State);
 
         if (originalForeignOwner is not null)
         {
-            Assert.Equal(EntityState.Detached,
-                context.Entry(originalForeignOwner).State);
+            Assert.Equal(
+                EntityState.Detached,
+                context.Entry(originalForeignOwner)
+                    .State);
         }
 
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 }

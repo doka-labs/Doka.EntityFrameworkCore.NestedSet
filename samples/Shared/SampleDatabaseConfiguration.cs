@@ -52,7 +52,9 @@ internal sealed class SampleDatabaseConfiguration
             "filesystem" => "nestedset_sample_filesystem",
             "signal-lab" => "nestedset_sample_signal_lab",
             "usergroups" => "nestedset_sample_usergroups",
-            _ => throw new ArgumentException("Sample must be filesystem, signal-lab or usergroups.", nameof(sampleName)),
+            _ => throw new ArgumentException(
+                "Sample must be filesystem, signal-lab or usergroups.",
+                nameof(sampleName)),
         };
 
         if (provider == SampleProvider.Sqlite)
@@ -139,7 +141,6 @@ internal sealed class SampleDatabaseConfiguration
             // WHY: Explicit versions avoid a database connection during help, configuration and design-time discovery.
             options.UseMySql(_connectionString, version, provider => provider.UseNestedSets());
         }
-
 
         return options.Options;
     }

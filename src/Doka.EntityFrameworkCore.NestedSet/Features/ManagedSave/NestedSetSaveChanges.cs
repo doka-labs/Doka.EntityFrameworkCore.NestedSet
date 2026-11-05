@@ -11,7 +11,7 @@ internal static partial class NestedSetSaveChanges
     /// <returns>The unchanged EF Core saved-entry count.</returns>
     /// <remarks>
     ///     Use this only from an explicitly synchronous override. Ordered hierarchy changes require
-    ///     <see cref="ExecuteAsync"/>. Read-only hierarchy guards run before persistence without enabling detection.
+    /// <see cref="ExecuteAsync" />. Read-only hierarchy guards run before persistence without enabling detection.
     ///     Callbacks must not detach hierarchy entries, accept changes, or recursively save. Models without
     ///     hierarchy work retain the caller's native detection setting.
     /// </remarks>
@@ -37,7 +37,7 @@ internal static partial class NestedSetSaveChanges
         }
 
         if (!NestedSetModelMapping.For(context.Model)
-                .HasHierarchies)
+            .HasHierarchies)
         {
             // WHY: Without hierarchy entities, no callback can introduce a structural write.
             return saveChanges();
@@ -115,7 +115,8 @@ internal static partial class NestedSetSaveChanges
 
         if (state.ManagedDepth > 0)
         {
-            var managedCount = await saveChanges(cancellationToken).ConfigureAwait(false);
+            var managedCount = await saveChanges(cancellationToken)
+                .ConfigureAwait(false);
 
             // WHY: This integration saves without acceptance so rollback can restore application writes.
             // SavedChanges callbacks therefore still see generated sidecars; validate before acceptance can
@@ -138,10 +139,11 @@ internal static partial class NestedSetSaveChanges
         }
 
         if (!NestedSetModelMapping.For(context.Model)
-                .HasHierarchies)
+            .HasHierarchies)
         {
             // WHY: Models without hierarchies retain EF's own detection setting and avoid all hierarchy scans.
-            var count = await saveChanges(cancellationToken).ConfigureAwait(false);
+            var count = await saveChanges(cancellationToken)
+                .ConfigureAwait(false);
 
             if (acceptAllChangesOnSuccess)
             {

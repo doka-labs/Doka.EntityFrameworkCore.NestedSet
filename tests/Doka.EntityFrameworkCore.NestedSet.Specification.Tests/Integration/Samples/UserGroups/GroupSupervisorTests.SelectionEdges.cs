@@ -27,10 +27,13 @@ public abstract partial class GroupSupervisorTests
         var probe = new SupervisorCommandProbe();
         await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await context.UserGroupMemberships
+        await context
+            .UserGroupMemberships
             .Where(member => member.TenantId == data.TenantId && member.UserId == data.Users[2])
             .ExecuteUpdateAsync(
-                setters => setters.SetProperty(member => member.LeadershipPriority, 10), CancellationToken.None);
+                setters => setters.SetProperty(member => member.LeadershipPriority, 10),
+                CancellationToken.None);
+
         var request = data.Request(group: data.Groups[5]) with { Groups = new App.AllEligibleGroups() };
         var selection = mode == "priority"
             ? App.SupervisorSelection.HighestBusinessPriority
@@ -40,16 +43,29 @@ public abstract partial class GroupSupervisorTests
 
         // Act
         var result = await App.SupervisorQueries.ResolveAsync(
-            context, data.TenantId, request, selection, CancellationToken.None);
+            context,
+            data.TenantId,
+            request,
+            selection,
+            CancellationToken.None);
 
         // Assert
         var origin = Assert.Single(result.Origins);
         Assert.Equal(
-            expected < 0 ? App.SupervisorResolutionStatus.Ambiguous : App.SupervisorResolutionStatus.Found,
+            expected < 0
+                ? App.SupervisorResolutionStatus.Ambiguous
+                : App.SupervisorResolutionStatus.Found,
             origin.Status);
+
         Assert.Equal(
-            expected < 0 ? [] : new[] { data.Users[expected] },
-            origin.Evidence.Select(row => row.CandidateUserId).ToArray());
+            expected < 0
+                ? []
+                : new[] { data.Users[expected] },
+            origin
+                .Evidence
+                .Select(row => row.CandidateUserId)
+                .ToArray());
+
         Assert.Single(probe.Commands);
     }
 
@@ -61,20 +77,33 @@ public abstract partial class GroupSupervisorTests
         var probe = new SupervisorCommandProbe();
         await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await context.Groups.Where(group => group.TenantId == data.TenantId && group.Id == data.Groups[2])
+        await context
+            .Groups
+            .Where(group => group.TenantId == data.TenantId && group.Id == data.Groups[2])
             .ExecuteUpdateAsync(setters => setters.SetProperty(group => group.TypeId, 3), CancellationToken.None);
-        await context.MembershipMetadatas
+
+        await context
+            .MembershipMetadatas
             .Where(value => value.TenantId == data.TenantId && value.UserGroupId == data.Groups[2])
             .ExecuteUpdateAsync(setters => setters.SetProperty(value => value.GroupTypeId, 3), CancellationToken.None);
+
         var request = data.Request(group: data.Groups[5]) with { Groups = new App.NthTypeGroupThenValidate(3, 1) };
         probe.Enabled = true;
 
         // Act
-        var result = await App.SupervisorQueries.ResolveAsync(context, data.TenantId, request,
-            App.SupervisorSelection.RequireUnique, CancellationToken.None);
+        var result = await App.SupervisorQueries.ResolveAsync(
+            context,
+            data.TenantId,
+            request,
+            App.SupervisorSelection.RequireUnique,
+            CancellationToken.None);
 
         // Assert
-        Assert.Equal(App.SupervisorResolutionStatus.Ambiguous, Assert.Single(result.Origins).Status);
+        Assert.Equal(
+            App.SupervisorResolutionStatus.Ambiguous,
+            Assert.Single(result.Origins)
+                .Status);
+
         Assert.Empty(result.Origins[0].Evidence);
         Assert.Single(probe.Commands);
     }
@@ -99,35 +128,71 @@ public abstract partial class GroupSupervisorTests
         var probe = new SupervisorCommandProbe();
         await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await context.UserGroupMemberships.AddAsync(new App.UserGroupMembership
-        {
-            TenantId = data.TenantId,
-            UserId = data.Users[1],
-            UserGroupId = data.Groups[2],
-            LeadershipPriority = 1,
-        }, CancellationToken.None);
-        await context.MembershipRoles.AddAsync(new App.MembershipRole
-        {
-            TenantId = data.TenantId,
-            UserId = data.Users[1],
-            UserGroupId = data.Groups[2],
-            RoleId = data.ManagerRoleId,
-        }, CancellationToken.None);
-        await context.MembershipMetadatas.AddAsync(new App.MembershipMetadata
-        {
-            TenantId = data.TenantId,
-            UserId = data.Users[1],
-            UserGroupId = data.Groups[2],
-            GroupTypeId = 1,
-            FieldCode = "Route",
-            Value = "lane-blue",
-        }, CancellationToken.None);
-        await AddMetadataAsync(context, data, 0, data.Users[0], data.Groups[5], 4, "ChannelClass", "only-Anna",
+        await context.UserGroupMemberships.AddAsync(
+            new App.UserGroupMembership
+            {
+                TenantId = data.TenantId,
+                UserId = data.Users[1],
+                UserGroupId = data.Groups[2],
+                LeadershipPriority = 1,
+            },
+            CancellationToken.None);
+
+        await context.MembershipRoles.AddAsync(
+            new App.MembershipRole
+            {
+                TenantId = data.TenantId,
+                UserId = data.Users[1],
+                UserGroupId = data.Groups[2],
+                RoleId = data.ManagerRoleId,
+            },
+            CancellationToken.None);
+
+        await context.MembershipMetadatas.AddAsync(
+            new App.MembershipMetadata
+            {
+                TenantId = data.TenantId,
+                UserId = data.Users[1],
+                UserGroupId = data.Groups[2],
+                GroupTypeId = 1,
+                FieldCode = "Route",
+                Value = "lane-blue",
+            },
+            CancellationToken.None);
+
+        await AddMetadataAsync(
+            context,
+            data,
+            0,
+            data.Users[0],
+            data.Groups[5],
+            4,
+            "ChannelClass",
+            "only-Anna",
             cancellationToken: TestContext.Current.CancellationToken);
-        await AddMetadataAsync(context, data, 4, data.Users[1], data.Groups[4], 3, "ChannelClass", "only-Anna",
+
+        await AddMetadataAsync(
+            context,
+            data,
+            4,
+            data.Users[1],
+            data.Groups[4],
+            3,
+            "ChannelClass",
+            "only-Anna",
             cancellationToken: TestContext.Current.CancellationToken);
-        await AddMetadataAsync(context, data, 4, data.Users[1], data.Groups[2], 1, "ChannelClass", "only-Anna",
+
+        await AddMetadataAsync(
+            context,
+            data,
+            4,
+            data.Users[1],
+            data.Groups[2],
+            1,
+            "ChannelClass",
+            "only-Anna",
             cancellationToken: TestContext.Current.CancellationToken);
+
         await context.SaveChangesAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
@@ -143,12 +208,25 @@ public abstract partial class GroupSupervisorTests
         {
             Steps =
             [
-                new(App.SearchStart.ParentsOnly, standard.Roles, new App.AllEligibleGroups(),
-                    [new(
-                        App.MetadataOwner.SourceUser, "ChannelClass",
-                        App.MetadataOwner.CandidateMembership, "ChannelClass")],
-                    null, selection),
-                new(App.SearchStart.ParentsOnly, standard.Roles, standard.Groups, standard.Matches, null,
+                new App.SupervisorStep(
+                    App.SearchStart.ParentsOnly,
+                    standard.Roles,
+                    new App.AllEligibleGroups(),
+                    [
+                        new App.MetadataMatch(
+                            App.MetadataOwner.SourceUser,
+                            "ChannelClass",
+                            App.MetadataOwner.CandidateMembership,
+                            "ChannelClass"),
+                    ],
+                    null,
+                    selection),
+                new App.SupervisorStep(
+                    App.SearchStart.ParentsOnly,
+                    standard.Roles,
+                    standard.Groups,
+                    standard.Matches,
+                    null,
                     App.SupervisorSelection.RequireUnique),
             ],
         };
@@ -157,7 +235,10 @@ public abstract partial class GroupSupervisorTests
 
         // Act
         var result = await App.SupervisorQueries.FollowOriginalPathAsync(
-            context, data.TenantId, request, CancellationToken.None);
+            context,
+            data.TenantId,
+            request,
+            CancellationToken.None);
 
         // Assert
         var branch = Assert.Single(result.Branches);

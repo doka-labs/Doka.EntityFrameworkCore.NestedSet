@@ -26,14 +26,17 @@ public sealed class FieldContext : DbContext
             .Property(x => x.Left)
             .HasField("_left")
             .UsePropertyAccessMode(PropertyAccessMode.Field);
+
         entity
             .Property(x => x.Right)
             .HasField("_right")
             .UsePropertyAccessMode(PropertyAccessMode.Field);
+
         entity
             .Property(x => x.Depth)
             .HasField("_depth")
             .UsePropertyAccessMode(PropertyAccessMode.Field);
+
         entity.HasNestedSet(x => x
             .HasTreeId(n => n.TreeId)
             .HasScope(n => n.Tree)

@@ -5,6 +5,7 @@ internal static class NestedSetExpressions
 {
     private static readonly MethodInfo s_property = typeof(EF)
         .GetMethod(nameof(EF.Property), [typeof(object), typeof(string)])!;
+
     private static readonly ConditionalWeakTable<Type, MethodInfo> s_propertyMethods = new();
 
     /// <summary>Creates an EF property access with the model's exact nullable or non-nullable CLR type.</summary>
@@ -56,7 +57,8 @@ internal static class NestedSetExpressions
     {
         var member = (MemberInfo?)property.PropertyInfo ?? property.FieldInfo;
 
-        if (member?.DeclaringType is { } declaringType && declaringType.IsAssignableFrom(entity.Type)
+        if (member?.DeclaringType is { } declaringType
+            && declaringType.IsAssignableFrom(entity.Type)
             && property.DeclaringType.FindProperty(member.Name) == property
             && !property.IsIndexerProperty())
         {

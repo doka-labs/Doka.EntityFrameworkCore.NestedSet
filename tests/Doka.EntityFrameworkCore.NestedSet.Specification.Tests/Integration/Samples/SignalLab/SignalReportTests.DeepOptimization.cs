@@ -9,24 +9,34 @@ public abstract partial class SignalReportTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task InterleavedReportBuildsKeepSelectionsAndMetadataIsolated(bool nearest)
+    public async Task InterleavedReportBuildsKeepSelectionsAndMetadataIsolated(
+        bool nearest
+    )
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe,
+        await using var context = await CreateContextAsync(
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var first = await SignalReportDataset.CreateAsync(context, 7, false, CancellationToken.None, Guid.NewGuid());
         var second = await SignalReportDataset.CreateAsync(context, 7, false, CancellationToken.None, Guid.NewGuid());
-        await context.SweepRecords.Where(value => value.TenantId == second.TenantId)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(value => value.IntegratedTicks, value => value.IntegratedTicks * 10),
+        await context
+            .SweepRecords
+            .Where(value => value.TenantId == second.TenantId)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(value => value.IntegratedTicks, value => value.IntegratedTicks * 10),
                 CancellationToken.None);
 
-        var mode = nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any;
+        var mode = nearest
+            ? TagOwnerMode.Nearest
+            : TagOwnerMode.Any;
+
         var firstRequest = SingleAnchor(first) with
         {
             UntilExclusive = SignalReportDataset.FirstDay.AddDays(1),
-            Criteria = first.Request(mode).Criteria,
+            Criteria = first.Request(mode)
+                .Criteria,
         };
 
         var secondRequest = SingleAnchor(second) with
@@ -34,7 +44,8 @@ public abstract partial class SignalReportTests
             ChannelIds = [SignalReportDataset.SweepChannel],
             Sources = [CapturePort.Sweep],
             FromInclusive = SignalReportDataset.FirstDay.AddDays(1),
-            Criteria = second.Request(mode).Criteria,
+            Criteria = second.Request(mode)
+                .Criteria,
         };
 
         var rejectedRequest = firstRequest with
@@ -51,6 +62,7 @@ public abstract partial class SignalReportTests
         var firstQuery = SignalReportBuilder.Build(context, firstSnapshot);
         var secondQuery = SignalReportBuilder.Build(context, secondSnapshot);
         var rejectedQuery = SignalReportBuilder.Build(context, rejectedSnapshot);
+
         // WHY: Reverse execution exposes shared templates that accidentally retain the latest request's bindings.
         var rejectedTotals = await rejectedQuery.ToArrayAsync(CancellationToken.None);
         var secondTotals = await secondQuery.ToArrayAsync(CancellationToken.None);
@@ -78,24 +90,45 @@ public abstract partial class SignalReportTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SignalDeepOptimizationPreservesIndependentFactBagsAtSharedDays(bool nearest)
+    public async Task SignalDeepOptimizationPreservesIndependentFactBagsAtSharedDays(
+        bool nearest
+    )
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe,
+        await using var context = await CreateContextAsync(
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
-        await context.PulseRecords.Where(value => value.TenantId == data.TenantId)
+        await context
+            .PulseRecords
+            .Where(value => value.TenantId == data.TenantId)
             .ExecuteUpdateAsync(setters => setters.SetProperty(value => value.PulseCount, 7), CancellationToken.None);
-        await context.SweepRecords.Where(value => value.TenantId == data.TenantId)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(value => value.IntegratedTicks, 7), CancellationToken.None);
-        await context.BurstRecords.Where(value => value.TenantId == data.TenantId)
+
+        await context
+            .SweepRecords
+            .Where(value => value.TenantId == data.TenantId)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(value => value.IntegratedTicks, 7),
+                CancellationToken.None);
+
+        await context
+            .BurstRecords
+            .Where(value => value.TenantId == data.TenantId)
             .ExecuteUpdateAsync(setters => setters.SetProperty(value => value.Magnitude, 7), CancellationToken.None);
-        var request = data.Request(nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any) with
-        {
-            AnchorIds = [SignalReportDataset.Id(1), SignalReportDataset.Id(3), SignalReportDataset.Id(4), SignalReportDataset.Id(5)],
-        };
+
+        var request = data.Request(
+                nearest
+                    ? TagOwnerMode.Nearest
+                    : TagOwnerMode.Any) with
+            {
+                AnchorIds =
+                [
+                    SignalReportDataset.Id(1), SignalReportDataset.Id(3), SignalReportDataset.Id(4),
+                    SignalReportDataset.Id(5),
+                ],
+            };
 
         probe.Reset();
 
@@ -104,12 +137,18 @@ public abstract partial class SignalReportTests
 
         // Assert
         Assert.Equal(24, cells.Length);
-        Assert.All(cells, cell =>
-        {
-            var expected = cell.AnchorId == SignalReportDataset.Id(1) || cell.AnchorId == SignalReportDataset.Id(3) ? 21 : 14;
-            Assert.True(cell.HasData);
-            Assert.Equal(expected, cell.Value);
-        });
+        Assert.All(
+            cells,
+            cell =>
+            {
+                var expected = cell.AnchorId == SignalReportDataset.Id(1) || cell.AnchorId == SignalReportDataset.Id(3)
+                    ? 21
+                    : 14;
+
+                Assert.True(cell.HasData);
+                Assert.Equal(expected, cell.Value);
+            });
+
         AssertReportBoundary(context, probe);
     }
 
@@ -120,40 +159,67 @@ public abstract partial class SignalReportTests
     [InlineData("skip-parent")]
     [InlineData("depth")]
     [InlineData("expired")]
-    public async Task SignalDeepOptimizationRejectsBrokenSharedPathsAndPreservesLowerAnchors(string failure)
+    public async Task SignalDeepOptimizationRejectsBrokenSharedPathsAndPreservesLowerAnchors(
+        string failure
+    )
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe,
+        await using var context = await CreateContextAsync(
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var data = await SignalReportDataset.CreateAsync(context, 6, false, CancellationToken.None, Guid.NewGuid());
-        await context.Nodes.Where(node => node.TenantId == data.TenantId && node.Id == SignalReportDataset.Id(5))
+        await context
+            .Nodes
+            .Where(node => node.TenantId == data.TenantId && node.Id == SignalReportDataset.Id(5))
             .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.IsVisible, false), CancellationToken.None);
 
         switch (failure)
         {
             case "hidden":
-                await context.Nodes.Where(node => node.TenantId == data.TenantId && node.Id == SignalReportDataset.Id(3))
-                    .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.IsVisible, false),
+                await context
+                    .Nodes
+                    .Where(node => node.TenantId == data.TenantId && node.Id == SignalReportDataset.Id(3))
+                    .ExecuteUpdateAsync(
+                        setters => setters.SetProperty(node => node.IsVisible, false),
                         CancellationToken.None);
+
                 break;
             case "skip-parent":
-                await context.Nodes.Where(node => node.TenantId == data.TenantId && node.Id == SignalReportDataset.Id(4))
-                    .ExecuteUpdateAsync(setters => setters.SetProperty(
-                        node => EF.Property<Guid?>(node, SignalStorage.ParentId), SignalReportDataset.Id(1)),
+                await context
+                    .Nodes
+                    .Where(node => node.TenantId == data.TenantId && node.Id == SignalReportDataset.Id(4))
+                    .ExecuteUpdateAsync(
+                        setters => setters.SetProperty(
+                            node => EF.Property<Guid?>(node, SignalStorage.ParentId),
+                            SignalReportDataset.Id(1)),
                         CancellationToken.None);
+
                 break;
             case "depth":
-                await context.Nodes.Where(node => node.TenantId == data.TenantId && node.Id == SignalReportDataset.Id(3))
-                    .ExecuteUpdateAsync(setters => setters.SetProperty(
-                        node => EF.Property<int>(node, SignalStorage.Depth), 100), CancellationToken.None);
+                await context
+                    .Nodes
+                    .Where(node => node.TenantId == data.TenantId && node.Id == SignalReportDataset.Id(3))
+                    .ExecuteUpdateAsync(
+                        setters => setters.SetProperty(
+                            node => EF.Property<int>(node, SignalStorage.Depth),
+                            100),
+                        CancellationToken.None);
+
                 break;
             default:
-                await context.LinkAvailability.Where(period => period.TenantId == data.TenantId
-                        && period.ParentId == SignalReportDataset.Id(2) && period.ChildId == SignalReportDataset.Id(3))
-                    .ExecuteUpdateAsync(setters => setters.SetProperty(period => period.ToDate,
-                        SignalReportDataset.FirstDay.AddDays(-1)), CancellationToken.None);
+                await context
+                    .LinkAvailability
+                    .Where(period => period.TenantId == data.TenantId
+                        && period.ParentId == SignalReportDataset.Id(2)
+                        && period.ChildId == SignalReportDataset.Id(3))
+                    .ExecuteUpdateAsync(
+                        setters => setters.SetProperty(
+                            period => period.ToDate,
+                            SignalReportDataset.FirstDay.AddDays(-1)),
+                        CancellationToken.None);
+
                 break;
         }
 
@@ -170,13 +236,23 @@ public abstract partial class SignalReportTests
 
         // Assert
         Assert.Equal(12, cells.Length);
-        Assert.All(cells, cell =>
-        {
-            var retained = cell.AnchorId == SignalReportDataset.Id(4);
-            var metric = cell.ChannelId == SignalReportDataset.PulseChannel ? 1 : 2;
-            Assert.Equal(retained, cell.HasData);
-            Assert.Equal(retained ? 30 * metric * ((int)cell.Source + 1) : 0, cell.Value);
-        });
+        Assert.All(
+            cells,
+            cell =>
+            {
+                var retained = cell.AnchorId == SignalReportDataset.Id(4);
+                var metric = cell.ChannelId == SignalReportDataset.PulseChannel
+                    ? 1
+                    : 2;
+
+                Assert.Equal(retained, cell.HasData);
+                Assert.Equal(
+                    retained
+                        ? 30 * metric * ((int)cell.Source + 1)
+                        : 0,
+                    cell.Value);
+            });
+
         AssertReportBoundary(context, probe);
     }
 
@@ -185,16 +261,22 @@ public abstract partial class SignalReportTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SignalDeepOptimizationRetainsNearestRejectionForEveryFact(bool nearest)
+    public async Task SignalDeepOptimizationRetainsNearestRejectionForEveryFact(
+        bool nearest
+    )
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe,
+        await using var context = await CreateContextAsync(
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var data = await SignalReportDataset.CreateAsync(context, 8, true, CancellationToken.None, Guid.NewGuid());
-        var request = data.Request(nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any,
-            "Receiver", includeSensor: false);
+        var request = data.Request(
+            nearest
+                ? TagOwnerMode.Nearest
+                : TagOwnerMode.Any,
+            includeSensor: false);
 
         probe.Reset();
 
@@ -203,12 +285,22 @@ public abstract partial class SignalReportTests
 
         // Assert
         Assert.Equal(12, cells.Length);
-        Assert.All(cells, cell =>
-        {
-            var metric = cell.ChannelId == SignalReportDataset.PulseChannel ? 1 : 2;
-            Assert.Equal(!nearest, cell.HasData);
-            Assert.Equal(nearest ? 0 : 10 * metric * ((int)cell.Source + 1), cell.Value);
-        });
+        Assert.All(
+            cells,
+            cell =>
+            {
+                var metric = cell.ChannelId == SignalReportDataset.PulseChannel
+                    ? 1
+                    : 2;
+
+                Assert.Equal(!nearest, cell.HasData);
+                Assert.Equal(
+                    nearest
+                        ? 0
+                        : 10 * metric * ((int)cell.Source + 1),
+                    cell.Value);
+            });
+
         AssertReportBoundary(context, probe);
     }
 
@@ -218,18 +310,30 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe,
+        await using var context = await CreateContextAsync(
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var data = await SignalReportDataset.CreateAsync(context, 7, false, CancellationToken.None, Guid.NewGuid());
-        await context.SignalChannels.Where(signal => signal.TenantId == data.TenantId
+        await context
+            .SignalChannels
+            .Where(signal => signal.TenantId == data.TenantId
                 && signal.Id == SignalReportDataset.SweepChannel)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(signal => signal.MeasurementTypeId,
-                SignalReportDataset.ModuleKind), CancellationToken.None);
-        await context.PulseRecords.Where(value => value.TenantId == data.TenantId
-                && value.NodeId == SignalReportDataset.Id(4) && value.ChannelId == SignalReportDataset.SweepChannel
-                && value.Day == SignalReportDataset.FirstDay && value.Granularity == MeasurementGranularity.Daily)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(
+                    signal => signal.MeasurementTypeId,
+                    SignalReportDataset.ModuleKind),
+                CancellationToken.None);
+
+        await context
+            .PulseRecords
+            .Where(value => value.TenantId == data.TenantId
+                && value.NodeId == SignalReportDataset.Id(4)
+                && value.ChannelId == SignalReportDataset.SweepChannel
+                && value.Day == SignalReportDataset.FirstDay
+                && value.Granularity == MeasurementGranularity.Daily)
             .ExecuteUpdateAsync(setters => setters.SetProperty(value => value.PulseCount, 10), CancellationToken.None);
+
         var request = data.Request() with
         {
             AnchorIds = [SignalReportDataset.Id(4)],

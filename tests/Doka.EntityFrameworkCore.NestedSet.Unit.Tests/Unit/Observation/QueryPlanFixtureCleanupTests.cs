@@ -43,7 +43,9 @@ public sealed class QueryPlanFixtureCleanupTests
         // Arrange
         var expected = new InvalidOperationException("Evidence failure.");
         var cleaned = false;
-        Func<Task> write = synchronous ? () => throw expected : () => Task.FromException(expected);
+        Func<Task> write = synchronous
+            ? () => throw expected
+            : () => Task.FromException(expected);
 
         // Act
         var actual = await Record.ExceptionAsync(async () => await QueryPlanTestSupport.CompleteFixtureAsync(
@@ -72,7 +74,9 @@ public sealed class QueryPlanFixtureCleanupTests
         // Arrange
         var expected = new InvalidOperationException("Cleanup failure.");
         var written = false;
-        Func<Task> cleanup = synchronous ? () => throw expected : () => Task.FromException(expected);
+        Func<Task> cleanup = synchronous
+            ? () => throw expected
+            : () => Task.FromException(expected);
 
         // Act
         var actual = await Record.ExceptionAsync(async () => await QueryPlanTestSupport.CompleteFixtureAsync(
@@ -104,7 +108,8 @@ public sealed class QueryPlanFixtureCleanupTests
 
         // Assert
         var aggregate = Assert.IsType<AggregateException>(actual);
-        Assert.Collection(aggregate.InnerExceptions,
+        Assert.Collection(
+            aggregate.InnerExceptions,
             error => Assert.Same(writerFailure, error),
             error => Assert.Same(cleanupFailure, error));
     }
@@ -127,12 +132,19 @@ public sealed class QueryPlanFixtureCleanupTests
 
         // Act
         var actual = await Record.ExceptionAsync(async () => await QueryPlanTestSupport.CompleteFixtureAsync(
-            () => writerFails ? Task.FromException(writerFailure) : Task.CompletedTask,
+            () => writerFails
+                ? Task.FromException(writerFailure)
+                : Task.CompletedTask,
             () => Task.WhenAll(Task.FromException(firstCleanupFailure), Task.FromException(secondCleanupFailure))));
 
         // Assert
         var aggregate = Assert.IsType<AggregateException>(actual);
-        Assert.Equal(writerFails ? 3 : 2, aggregate.InnerExceptions.Count);
+        Assert.Equal(
+            writerFails
+                ? 3
+                : 2,
+            aggregate.InnerExceptions.Count);
+
         Assert.Same(firstCleanupFailure, aggregate.InnerExceptions[^2]);
         Assert.Same(secondCleanupFailure, aggregate.InnerExceptions[^1]);
 
@@ -178,8 +190,11 @@ public sealed class QueryPlanFixtureCleanupTests
             }));
 
         // Assert
-        Assert.Equal(canceled.Token,
-            Assert.IsAssignableFrom<OperationCanceledException>(actual).CancellationToken);
+        Assert.Equal(
+            canceled.Token,
+            Assert.IsAssignableFrom<OperationCanceledException>(actual)
+                .CancellationToken);
+
         Assert.True(cleaned);
     }
 }

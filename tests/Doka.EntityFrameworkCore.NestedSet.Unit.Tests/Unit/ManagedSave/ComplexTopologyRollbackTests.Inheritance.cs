@@ -40,7 +40,10 @@ public sealed partial class ComplexTopologyRollbackTests
         payload.Extra = "Pending derived scalar";
         document.Title = "Pending inherited document";
         children[0].Text = "Pending inherited child";
-        collection[0].Property(nameof(OptionalChild.Text)).IsModified = true;
+        collection[0]
+            .Property(nameof(OptionalChild.Text))
+            .IsModified = true;
+
         var marker = ObserveScalar(entry.Property(value => value.Marker));
         var extra = ObserveScalar(entry.Property(value => value.Extra));
         var title = ObserveScalar(reference.Property(nameof(OptionalDocument.Title)));
@@ -50,9 +53,12 @@ public sealed partial class ComplexTopologyRollbackTests
         var collectionModified = collection.IsModified;
         var beforeState = entry.State;
         var current = children
-            .Select((child, index) => new DocumentChildObservation(child,
+            .Select((child, index) => new DocumentChildObservation(
+                child,
                 collection[index].State,
-                ObserveScalar(collection[index].Property(nameof(OptionalChild.Text)))))
+                ObserveScalar(
+                    collection[index]
+                        .Property(nameof(OptionalChild.Text)))))
             .ToArray();
 
         var originals = Enumerable
@@ -115,17 +121,25 @@ public sealed partial class ComplexTopologyRollbackTests
             AssertOriginal(collection.GetOriginalEntry(index), originals[index]);
         }
 
-        Assert.False(entry.Property(value => value.Id).IsModified);
+        Assert.False(
+            entry.Property(value => value.Id)
+                .IsModified);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Maps real TPH inheritance with a base-declared optional JSON document and nested collection.</summary>
     private sealed class InheritedDocumentContext : DbContext
     {
         /// <summary>Keeps pending raw inherited and derived values independent of native modification flags.</summary>
-        internal InheritedDocumentContext() => ChangeTracker.AutoDetectChangesEnabled = false;
+        internal InheritedDocumentContext()
+        {
+            ChangeTracker.AutoDetectChangesEnabled = false;
+        }
 
         /// <inheritdoc />
         protected override void OnConfiguring(
@@ -144,7 +158,9 @@ public sealed partial class ComplexTopologyRollbackTests
             root
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
-            root.ComplexProperty(value => value.Document,
+
+            root.ComplexProperty(
+                value => value.Document,
                 document =>
                 {
                     document.IsRequired(false);

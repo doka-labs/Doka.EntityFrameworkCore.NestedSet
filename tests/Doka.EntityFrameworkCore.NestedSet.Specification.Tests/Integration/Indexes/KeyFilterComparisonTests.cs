@@ -47,7 +47,11 @@ public abstract partial class KeyFilterComparisonTests : ProviderTest
     ) => representation switch
     {
         "Int32" =>
-            CompareSeededAsync<TreeNode, int>(representation, nameof(TreeNode.NodeId), count, static value => value,
+            CompareSeededAsync<TreeNode, int>(
+                representation,
+                nameof(TreeNode.NodeId),
+                count,
+                static value => value,
                 cancellationToken: TestContext.Current.CancellationToken),
         "Guid" => CompareSeededAsync<GuidNode, Guid>(
             representation,
@@ -64,12 +68,14 @@ public abstract partial class KeyFilterComparisonTests : ProviderTest
                 0,
                 0,
                 0,
-                0), cancellationToken: TestContext.Current.CancellationToken),
+                0),
+            cancellationToken: TestContext.Current.CancellationToken),
         "Binary" => CompareSeededAsync<BinaryNode, byte[]>(
             representation,
             nameof(BinaryNode.Id),
             count,
-            BitConverter.GetBytes, cancellationToken: TestContext.Current.CancellationToken),
+            BitConverter.GetBytes,
+            cancellationToken: TestContext.Current.CancellationToken),
         "String" => CompareSeededAsync<TextNode, string>(
             representation,
             nameof(TextNode.Id),
@@ -94,13 +100,15 @@ public abstract partial class KeyFilterComparisonTests : ProviderTest
         var database = await _fixture.ComparisonAsync(Engine, cancellationToken: cancellationToken);
         var keys = Enumerable
             .Range(0, count)
-            .Select(index => createKey((index * 4) + 1))
+            .Select(index => createKey(index * 4 + 1))
             .ToArray();
 
         var probe = new EnterpriseProbe(captureParameterBindings: true);
         await using var context = database.CreateContext(probe);
         var evidence = new List<string>();
-        var expected = representation == "String" && Engine == "PostgreSql" ? 0 : count;
+        var expected = representation == "String" && Engine == "PostgreSql"
+            ? 0
+            : count;
 
         // Act
         var (equality, contains, production) = await CompareAsync<TEntity, TKey>(
@@ -109,7 +117,8 @@ public abstract partial class KeyFilterComparisonTests : ProviderTest
             Engine,
             property,
             keys,
-            evidence, cancellationToken: cancellationToken);
+            evidence,
+            cancellationToken: cancellationToken);
 
         _fixture.RecordEvidence(representation, count, evidence);
 
@@ -165,12 +174,19 @@ public abstract partial class KeyFilterComparisonTests : ProviderTest
 
             var elapsed = Stopwatch.GetElapsedTime(start)
                 .TotalMilliseconds;
+
             results[index] = rows
-                .Select(value => value is byte[] bytes ? Convert.ToHexString(bytes) : value!.ToString()!)
+                .Select(value => value is byte[] bytes
+                    ? Convert.ToHexString(bytes)
+                    : value!.ToString()!)
                 .Order(StringComparer.Ordinal)
                 .ToArray();
 
-            var plan = await QueryPlanTestSupport.ExplainAsync(context, probe, commandIndex, engine,
+            var plan = await QueryPlanTestSupport.ExplainAsync(
+                context,
+                probe,
+                commandIndex,
+                engine,
                 cancellationToken: cancellationToken);
 
             var shape = index == 0

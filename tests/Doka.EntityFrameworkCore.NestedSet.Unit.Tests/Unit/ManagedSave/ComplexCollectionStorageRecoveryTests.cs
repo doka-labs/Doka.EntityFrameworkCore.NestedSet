@@ -62,14 +62,22 @@ public sealed partial class ComplexCollectionStorageRecoveryTests
         _ = context.Model.GetRelationalModel();
         var collection = entry.ComplexCollection(nameof(CollectionPayload.Rows));
         payload.Marker = "Pending marker";
-        entry.Property(value => value.Marker).IsModified = true;
+        entry.Property(value => value.Marker)
+            .IsModified = true;
+
         first.Text = "Pending first";
-        collection[0].Property(nameof(StorageItem.Text)).IsModified = true;
+        collection[0]
+            .Property(nameof(StorageItem.Text))
+            .IsModified = true;
 
         var marker = Observe(entry.Property(value => value.Marker));
-        var firstText = Observe(collection[0].Property(nameof(StorageItem.Text)));
+        var firstText = Observe(
+            collection[0]
+                .Property(nameof(StorageItem.Text)));
 
-        var lastText = Observe(collection[1].Property(nameof(StorageItem.Text)));
+        var lastText = Observe(
+            collection[1]
+                .Property(nameof(StorageItem.Text)));
 
         var state = entry.State;
         var modified = collection.IsModified;
@@ -103,15 +111,23 @@ public sealed partial class ComplexCollectionStorageRecoveryTests
         Assert.Equal(state, entry.State);
         Assert.Equal(modified, collection.IsModified);
         AssertScalar(entry.Property(value => value.Marker), marker);
-        AssertScalar(collection[0].Property(nameof(StorageItem.Text)),
+        AssertScalar(
+            collection[0]
+                .Property(nameof(StorageItem.Text)),
             firstText);
-        AssertScalar(collection[1].Property(nameof(StorageItem.Text)),
+
+        AssertScalar(
+            collection[1]
+                .Property(nameof(StorageItem.Text)),
             lastText);
+
         Assert.Equal("Pending first", rows[0].Text);
         Assert.Equal("Stored last", rows[1].Text);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Preserves copying-setter storage without invoking an unnecessary setter.</summary>
@@ -144,11 +160,17 @@ public sealed partial class ComplexCollectionStorageRecoveryTests
         var rows = payload.Rows;
         var collection = entry.ComplexCollection(nameof(CopyingPayload.Rows));
         first.Text = "Pending first";
-        collection[0].Property(nameof(StorageItem.Text)).IsModified = true;
+        collection[0]
+            .Property(nameof(StorageItem.Text))
+            .IsModified = true;
 
-        var firstText = Observe(collection[0].Property(nameof(StorageItem.Text)));
+        var firstText = Observe(
+            collection[0]
+                .Property(nameof(StorageItem.Text)));
 
-        var lastText = Observe(collection[1].Property(nameof(StorageItem.Text)));
+        var lastText = Observe(
+            collection[1]
+                .Property(nameof(StorageItem.Text)));
 
         var setterCalls = payload.SetterCalls;
         var snapshot = NestedSetTrackerSnapshot.Capture(context);
@@ -177,13 +199,21 @@ public sealed partial class ComplexCollectionStorageRecoveryTests
         Assert.Equal(2, rows.Count);
         Assert.Same(first, rows[0]);
         Assert.Same(last, rows[1]);
-        AssertScalar(collection[0].Property(nameof(StorageItem.Text)),
+        AssertScalar(
+            collection[0]
+                .Property(nameof(StorageItem.Text)),
             firstText);
-        AssertScalar(collection[1].Property(nameof(StorageItem.Text)),
+
+        AssertScalar(
+            collection[1]
+                .Property(nameof(StorageItem.Text)),
             lastText);
+
         Assert.Equal("Pending first", rows[0].Text);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 }

@@ -17,7 +17,8 @@ public sealed partial class SqlServerCompositionStrategyTests
         var query = context
             .NestedSet<CoordinateBoundsNode>()
             .ForScope(7)
-            .SelectAncestors(node => node.Depth >= 1,
+            .SelectAncestors(
+                node => node.Depth >= 1,
                 (source, owner, distance) => owner.Id);
 
         // Act
@@ -54,7 +55,9 @@ public sealed partial class SqlServerCompositionStrategyTests
 
     /// <summary>Translates the exact selected SQL Server strategy using native reference-valued keys.</summary>
     /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
-    private static async Task<string> NativeOwnerKeySqlAsync<TKey>(CancellationToken cancellationToken)
+    private static async Task<string> NativeOwnerKeySqlAsync<TKey>(
+        CancellationToken cancellationToken
+    )
         where TKey : class
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -69,7 +72,8 @@ public sealed partial class SqlServerCompositionStrategyTests
         return context
             .NestedSet<NativeOwnerKeyNode<TKey>>()
             .ForScope(7)
-            .SelectAncestors(node => node.Depth >= 1,
+            .SelectAncestors(
+                node => node.Depth >= 1,
                 (source, owner, distance) => owner.Id)
             .ToQueryString();
     }
@@ -92,10 +96,12 @@ public sealed partial class SqlServerCompositionStrategyTests
                 entity.Scope,
                 entity.Id,
             });
+
             node
                 .Property(entity => entity.Id)
                 .ValueGeneratedNever()
                 .HasMaxLength(40);
+
             node
                 .Property(entity => entity.ParentId)
                 .HasMaxLength(40);
@@ -105,6 +111,7 @@ public sealed partial class SqlServerCompositionStrategyTests
                 node
                     .Property(entity => entity.Id)
                     .UseCollation("Latin1_General_100_BIN2");
+
                 node
                     .Property(entity => entity.ParentId)
                     .UseCollation("Latin1_General_100_BIN2");

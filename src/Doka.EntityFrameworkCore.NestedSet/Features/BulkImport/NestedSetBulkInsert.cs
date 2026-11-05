@@ -11,9 +11,9 @@ internal sealed class NestedSetBulkInsert<TEntity, TKey, TTreeId, TScope>
     where TTreeId : notnull
     where TScope : notnull
 {
-    private readonly NestedSetStore<TEntity, TKey, TTreeId, TScope> _store;
     private readonly NestedSetMutationExecutor<TEntity, TKey, TTreeId, TScope> _executor;
     private readonly NestedSetPlacementResolver<TEntity, TKey, TTreeId, TScope> _placement;
+    private readonly NestedSetStore<TEntity, TKey, TTreeId, TScope> _store;
 
     /// <summary>Shares the exact-tree mutation lock, transaction contract and destination resolver.</summary>
     /// <param name="store">The typed tree binding and structural persistence operations.</param>
@@ -195,10 +195,10 @@ internal sealed class NestedSetBulkInsert<TEntity, TKey, TTreeId, TScope>
                 IReadOnlySet<object> introducedEntities;
 
                 using (var managedSave = NestedSetSaveChanges.EnterManagedSave(
-                           _store.Context,
-                           plan.ManagedEntities,
-                           plan.RequireSavedStage,
-                           plan.RefreshInsertionIdentities))
+                    _store.Context,
+                    plan.ManagedEntities,
+                    plan.RequireSavedStage,
+                    plan.RefreshInsertionIdentities))
                 {
                     try
                     {
@@ -379,7 +379,10 @@ internal sealed class NestedSetBulkInsert<TEntity, TKey, TTreeId, TScope>
             {
                 // WHY: Native predecessor placement matches flexible single insertion. Existing sibling nodes
                 // stay linked in their current relative order even when that order deliberately overrides the rule.
-                predecessor = predecessor is null ? physical.AddFirst(node) : physical.AddAfter(predecessor, node);
+                predecessor = predecessor is null
+                    ? physical.AddFirst(node)
+                    : physical.AddAfter(predecessor, node);
+
                 links.Add(node.Key, predecessor);
             }
             else

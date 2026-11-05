@@ -8,6 +8,13 @@ public sealed class BenchmarkEnvironment : IAsyncDisposable
 {
     private const string ConnectionVariable = "NESTEDSET_BENCHMARK_CONNECTION_STRING";
     private const string DatabaseName = "nestedset_benchmarks";
+
+    /// <summary>Gets the database container's configured CPU limit.</summary>
+    public const int CpuLimit = 2;
+
+    /// <summary>Gets the database container's configured memory limit in bytes.</summary>
+    public const long MemoryLimitBytes = 2L * 1024 * 1024 * 1024;
+
     private readonly string? _previousConnectionString = Environment.GetEnvironmentVariable(ConnectionVariable);
     private IContainer? _container;
     private string? _databaseFile;
@@ -31,12 +38,6 @@ public sealed class BenchmarkEnvironment : IAsyncDisposable
     /// <summary>Gets the version returned by the running database engine.</summary>
     public string ServerVersion { get; private set; } = string.Empty;
 
-    /// <summary>Gets the database container's configured CPU limit.</summary>
-    public const int CpuLimit = 2;
-
-    /// <summary>Gets the database container's configured memory limit in bytes.</summary>
-    public const long MemoryLimitBytes = 2L * 1024 * 1024 * 1024;
-
     /// <summary>Gets the resource owner's creation time for provenance.</summary>
     public DateTimeOffset CreatedAtUtc { get; } = DateTimeOffset.UtcNow;
 
@@ -46,6 +47,37 @@ public sealed class BenchmarkEnvironment : IAsyncDisposable
         ?? (BenchmarkRunOptions.Current.Engine == BenchmarkEngine.SqliteMemory
             ? "Data Source=:memory:;Pooling=False"
             : throw new InvalidOperationException("The launcher has not provisioned the benchmark database."));
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+
+        try
+        {
+            if (_container is not null)
+            {
+                await _container.DisposeAsync();
+            }
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(ConnectionVariable, _previousConnectionString);
+
+            if (_databaseFile is not null)
+            {
+                File.Delete(_databaseFile);
+                File.Delete(_databaseFile + "-wal");
+                File.Delete(_databaseFile + "-shm");
+                File.Delete(_databaseFile + "-journal");
+            }
+        }
+    }
 
     /// <summary>Starts an owned database and publishes its connection after successful version checks.</summary>
     /// <param name="options">Validated provider and run-directory settings.</param>
@@ -70,7 +102,8 @@ public sealed class BenchmarkEnvironment : IAsyncDisposable
                 var connection = await environment.StartAsync(options.ArtifactsPath, token);
                 environment.ServerVersion = await ReadServerVersionAsync(options.Engine, connection, token);
                 Environment.SetEnvironmentVariable(ConnectionVariable, connection);
-            }, cancellationToken: cancellationToken);
+            },
+            cancellationToken: cancellationToken);
 
         return environment;
     }
@@ -111,37 +144,6 @@ public sealed class BenchmarkEnvironment : IAsyncDisposable
         }
     }
 
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        if (_disposed)
-        {
-            return;
-        }
-
-        _disposed = true;
-
-        try
-        {
-            if (_container is not null)
-            {
-                await _container.DisposeAsync();
-            }
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable(ConnectionVariable, _previousConnectionString);
-
-            if (_databaseFile is not null)
-            {
-                File.Delete(_databaseFile);
-                File.Delete(_databaseFile + "-wal");
-                File.Delete(_databaseFile + "-shm");
-                File.Delete(_databaseFile + "-journal");
-            }
-        }
-    }
-
     /// <summary>Starts the selected owned server or SQLite file with fixed resources and disabled pooling.</summary>
     /// <param name="artifactsPath">The absolute run directory that owns any SQLite file.</param>
     /// <param name="cancellationToken">Cancellation for server startup.</param>
@@ -162,6 +164,7 @@ public sealed class BenchmarkEnvironment : IAsyncDisposable
                     .WithUsername("benchmark")
                     .WithPassword(password)
                     .WithLogger(EfNullLogger.Instance)
+
                     // WHY: Testcontainers exposes Docker CPU and memory limits through this vendor seam.
                     .WithCreateParameterModifier(parameters =>
                     {
@@ -189,6 +192,7 @@ public sealed class BenchmarkEnvironment : IAsyncDisposable
                     .WithEnvironment("MARIADB_DATABASE", DatabaseName)
                     .WithPortBinding(3306, true)
                     .WithLogger(EfNullLogger.Instance)
+
                     // WHY: This MariaDB image ships native client names, while MySqlBuilder waits for mysql.
                     .WithWaitStrategy(
                         Wait

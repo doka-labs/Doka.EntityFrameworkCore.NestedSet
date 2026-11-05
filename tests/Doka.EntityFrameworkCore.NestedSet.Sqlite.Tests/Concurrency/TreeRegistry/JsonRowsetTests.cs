@@ -1,3 +1,5 @@
+using Doka.EntityFrameworkCore.NestedSet.Execution;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Sqlite;
 
 /// <summary>Verifies SQLite JSON transport for wide tree-registry lock requests.</summary>
@@ -19,11 +21,13 @@ public sealed class JsonRowsetTests : ProviderTest, IClassFixture<ProviderFixtur
     public async Task ResolvesMoreThanFiveHundredTreesInOneJsonRowset()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var probe = new OrderingLockProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -36,11 +40,12 @@ public sealed class JsonRowsetTests : ProviderTest, IClassFixture<ProviderFixtur
                 OrderingLockTestSupport.FirstTreeId))
             .ToArray();
 
-        await using var transaction = await OrderingLockTestSupport.BeginAsync(context,
+        await using var transaction = await OrderingLockTestSupport.BeginAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        await Execution.NestedSetTreeLocks.AcquireAsync(context, requests, CancellationToken.None);
+        await NestedSetTreeLocks.AcquireAsync(context, requests, CancellationToken.None);
 
         // Assert
         var canonical = Assert.Single(OrderingLockTestSupport.CanonicalQueries(probe));
@@ -50,11 +55,13 @@ public sealed class JsonRowsetTests : ProviderTest, IClassFixture<ProviderFixtur
         Assert.DoesNotContain(
             probe.Commands,
             command => command.Sql.Contains("CREATE TABLE", StringComparison.OrdinalIgnoreCase));
+
         Assert.Equal(
             601,
             OrderingLockTestSupport
                 .RegistryLifecycleLocks(probe)
                 .Count());
+
         Assert.Empty(probe.PayloadUpdates);
     }
 }

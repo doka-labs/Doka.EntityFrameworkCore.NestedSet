@@ -73,6 +73,7 @@ public sealed partial class AncestorIndexSafeMigrationTests
         };
 
         Assert.Equal(storeType, schema.StoreType, ignoreCase: true);
+
         // WHY: MariaDB cannot declare generated NOT NULL, and SQL Server reports inferred computed
         // nullability. Their adapters prove the required result from the exact expression and operands.
         Assert.Equal(engine is "MariaDb" or "SqlServer", schema.IsNullable);
@@ -214,10 +215,10 @@ public sealed partial class AncestorIndexSafeMigrationTests
         if (engine != "Sqlite")
         {
             var schema = context.Schema
-                ?? (engine switch
+                ?? engine switch
                 {
                     "PostgreSql" => "public", "SqlServer" => "dbo", _ => command.Connection!.Database,
-                });
+                };
 
             AddParameter(command, "@schema", schema);
         }

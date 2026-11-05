@@ -54,15 +54,19 @@ internal sealed class CollatedTpcContext(DbContextOptions<CollatedTpcContext> op
             .Property(node => node.Id)
             .HasMaxLength(64)
             .ValueGeneratedNever();
+
         root
             .Property(node => node.Scope)
             .HasMaxLength(64);
+
         root
             .Property(node => node.ParentId)
             .HasMaxLength(64);
+
         root
             .Property(node => node.Name)
             .HasMaxLength(128);
+
         Configure(modelBuilder.Entity<BinaryTpcNode>(), "BinaryTpcScopes", "utf8mb4_bin");
         Configure(modelBuilder.Entity<CaseInsensitiveTpcNode>(), "CaseInsensitiveTpcScopes", "utf8mb4_unicode_ci");
     }
@@ -79,6 +83,7 @@ internal sealed class CollatedTpcContext(DbContextOptions<CollatedTpcContext> op
         node
             .Property(value => value.Id)
             .ValueGeneratedNever();
+
         node.HasAnnotation(RelationalAnnotationNames.Collation, collation);
         node.HasNestedSet(nestedSet => nestedSet
             .HasNodeKey(value => value.Id)

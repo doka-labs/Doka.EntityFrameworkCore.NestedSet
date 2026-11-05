@@ -148,7 +148,7 @@ internal static partial class SignalReportBuilder
         // Each catalog query still binds its own context, authorization and request scalars outside these templates.
 
         /// <summary>Projects an authorized anchor identity and its hierarchy classification.</summary>
-        internal static readonly Expression<Func<SignalNode, SignalCatalogRow>> Anchor = node => new()
+        internal static readonly Expression<Func<SignalNode, SignalCatalogRow>> Anchor = node => new SignalCatalogRow
         {
             Kind = 0,
             Id = node.Id,
@@ -159,29 +159,31 @@ internal static partial class SignalReportBuilder
         };
 
         /// <summary>Projects an authorized channel identity, measurement classification and unit.</summary>
-        internal static readonly Expression<Func<SignalChannel, SignalCatalogRow>> Channel = channel => new()
-        {
-            Kind = 1,
-            Id = channel.Id,
-            TypeId = channel.MeasurementTypeId,
-            FieldCode = "",
-            Value = "",
-            UnitCode = channel.UnitCode,
-        };
+        internal static readonly Expression<Func<SignalChannel, SignalCatalogRow>> Channel = channel =>
+            new SignalCatalogRow
+            {
+                Kind = 1,
+                Id = channel.Id,
+                TypeId = channel.MeasurementTypeId,
+                FieldCode = "",
+                Value = "",
+                UnitCode = channel.UnitCode,
+            };
 
         /// <summary>Projects one requested metadata field definition.</summary>
-        internal static readonly Expression<Func<TagDefinition, SignalCatalogRow>> Definition = field => new()
-        {
-            Kind = 2,
-            Id = Guid.Empty,
-            TypeId = field.TypeId,
-            FieldCode = field.FieldCode,
-            Value = "",
-            UnitCode = "",
-        };
+        internal static readonly Expression<Func<TagDefinition, SignalCatalogRow>> Definition = field =>
+            new SignalCatalogRow
+            {
+                Kind = 2,
+                Id = Guid.Empty,
+                TypeId = field.TypeId,
+                FieldCode = field.FieldCode,
+                Value = "",
+                UnitCode = "",
+            };
 
         /// <summary>Projects one requested exact field and permitted scalar choice.</summary>
-        internal static readonly Expression<Func<TagChoice, SignalCatalogRow>> Choice = choice => new()
+        internal static readonly Expression<Func<TagChoice, SignalCatalogRow>> Choice = choice => new SignalCatalogRow
         {
             Kind = 3,
             Id = Guid.Empty,

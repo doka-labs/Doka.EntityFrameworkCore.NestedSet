@@ -50,7 +50,9 @@ public abstract partial class KeyFilterComparisonTests
                 Right = 2,
             },
             cancellationToken: TestContext.Current.CancellationToken,
-            Engine == "PostgreSql" ? null : static value => value.ToLowerInvariant()),
+            Engine == "PostgreSql"
+                ? null
+                : static value => value.ToLowerInvariant()),
         "Binary" => CompareCollectionModeAsync<BinaryNode, byte[]>(
             Engine,
             mode,
@@ -63,7 +65,8 @@ public abstract partial class KeyFilterComparisonTests
                 TreeId = Guid.NewGuid(),
                 Left = 1,
                 Right = 2,
-            }, cancellationToken: TestContext.Current.CancellationToken),
+            },
+            cancellationToken: TestContext.Current.CancellationToken),
         _ => throw new ArgumentOutOfRangeException(nameof(key)),
     };
 
@@ -111,7 +114,14 @@ public abstract partial class KeyFilterComparisonTests
             .Options;
 
         await using var context = new TreeContext(options);
-        TKey[] requested = [createKey(includeExisting ? 1 : 4), createKey(5)];
+        TKey[] requested =
+        [
+            createKey(
+                includeExisting
+                    ? 1
+                    : 4),
+            createKey(5),
+        ];
 
         if (alias is not null)
         {
@@ -132,7 +142,11 @@ public abstract partial class KeyFilterComparisonTests
             .ToArrayAsync(cancellationToken);
 
         // Assert
-        Assert.Equal(includeExisting ? 1 : 0, found.Length);
+        Assert.Equal(
+            includeExisting
+                ? 1
+                : 0,
+            found.Length);
 
         if (includeExisting)
         {
@@ -156,5 +170,7 @@ public abstract partial class KeyFilterComparisonTests
     /// <returns>The exact textual or binary contents.</returns>
     private static string CollectionIdentity(
         object value
-    ) => value is byte[] bytes ? Convert.ToHexString(bytes) : (string)value;
+    ) => value is byte[] bytes
+        ? Convert.ToHexString(bytes)
+        : (string)value;
 }

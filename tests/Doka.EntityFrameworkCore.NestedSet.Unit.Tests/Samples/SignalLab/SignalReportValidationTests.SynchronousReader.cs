@@ -28,11 +28,11 @@ public sealed partial class SignalReportValidationTests
         SignalReportTotal total
     ) : IReadOnlyCollection<SignalReportTotal>
     {
-        /// <summary>Gets the advertised row count, including a row that fails during enumeration.</summary>
-        public int Count => 3;
-
         /// <summary>Gets whether the reader advanced beyond the duplicate pair.</summary>
         internal bool LateFailureReached { get; private set; }
+
+        /// <summary>Gets the advertised row count, including a row that fails during enumeration.</summary>
+        public int Count => 3;
 
         /// <summary>Supplies the duplicate before a separate late enumeration failure.</summary>
         public IEnumerator<SignalReportTotal> GetEnumerator()

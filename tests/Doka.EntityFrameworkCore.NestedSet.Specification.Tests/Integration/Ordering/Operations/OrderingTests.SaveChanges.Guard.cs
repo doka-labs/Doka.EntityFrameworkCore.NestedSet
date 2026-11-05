@@ -7,13 +7,15 @@ public abstract partial class OrderingTests
     public async Task OptionsGuardRejectsUncoordinatedSortChange()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedAsync(Tree(setup), cancellationToken: TestContext.Current.CancellationToken);
         var options = (DbContextOptions)setup.GetService<IDbContextOptions>();
         await using var context = new MissingIntegrationOrderingContext(options);
-        var node = await context.Set<OrderingNode>()
+        var node = await context
+            .Set<OrderingNode>()
             .SingleAsync(value => value.Id == 2, CancellationToken.None);
 
         node.Name = "Zulu";
@@ -24,10 +26,13 @@ public abstract partial class OrderingTests
         // Assert
         var rejection = Assert.IsType<NestedSetException>(failure);
         Assert.Equal(NestedSetErrorCode.InvalidContext, rejection.Code);
-        Assert.Equal("Alpha", await setup.Set<OrderingNode>()
-            .Where(value => value.Id == 2)
-            .Select(value => value.Name)
-            .SingleAsync(CancellationToken.None));
+        Assert.Equal(
+            "Alpha",
+            await setup
+                .Set<OrderingNode>()
+                .Where(value => value.Id == 2)
+                .Select(value => value.Name)
+                .SingleAsync(CancellationToken.None));
     }
 
     /// <summary>Allows an ordinary context to persist payload when no hierarchy coordination is required.</summary>
@@ -35,13 +40,15 @@ public abstract partial class OrderingTests
     public async Task OptionsGuardAllowsPayloadOnlySave()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedAsync(Tree(setup), cancellationToken: TestContext.Current.CancellationToken);
         var options = (DbContextOptions)setup.GetService<IDbContextOptions>();
         await using var context = new MissingIntegrationOrderingContext(options);
-        var node = await context.Set<OrderingNode>()
+        var node = await context
+            .Set<OrderingNode>()
             .SingleAsync(value => value.Id == 2, CancellationToken.None);
 
         node.Payload = "ordinary payload";
@@ -51,10 +58,13 @@ public abstract partial class OrderingTests
 
         // Assert
         Assert.Equal(1, saved);
-        Assert.Equal("ordinary payload", await setup.Set<OrderingNode>()
-            .Where(value => value.Id == 2)
-            .Select(value => value.Payload)
-            .SingleAsync(CancellationToken.None));
+        Assert.Equal(
+            "ordinary payload",
+            await setup
+                .Set<OrderingNode>()
+                .Where(value => value.Id == 2)
+                .Select(value => value.Payload)
+                .SingleAsync(CancellationToken.None));
     }
 
     /// <summary>Rejects direct insertion through DbSet before Entity Framework Core sends the row.</summary>
@@ -62,7 +72,8 @@ public abstract partial class OrderingTests
     public async Task OptionsGuardRejectsDirectAdd()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var options = (DbContextOptions)setup.GetService<IDbContextOptions>();
@@ -75,7 +86,10 @@ public abstract partial class OrderingTests
         // Assert
         var rejection = Assert.IsType<NestedSetException>(failure);
         Assert.Equal(NestedSetErrorCode.InvalidContext, rejection.Code);
-        Assert.Empty(await setup.Set<OrderingNode>().ToArrayAsync(CancellationToken.None));
+        Assert.Empty(
+            await setup
+                .Set<OrderingNode>()
+                .ToArrayAsync(CancellationToken.None));
     }
 
     /// <summary>Rejects direct deletion through DbSet before Entity Framework Core sends the command.</summary>
@@ -83,13 +97,17 @@ public abstract partial class OrderingTests
     public async Task OptionsGuardRejectsDirectDelete()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        await Tree(setup).InsertRootAsync(Node(1, "Root"), Guid.NewGuid(), CancellationToken.None);
+        await Tree(setup)
+            .InsertRootAsync(Node(1, "Root"), Guid.NewGuid(), CancellationToken.None);
+
         var options = (DbContextOptions)setup.GetService<IDbContextOptions>();
         await using var context = new MissingIntegrationOrderingContext(options);
-        var node = await context.Set<OrderingNode>()
+        var node = await context
+            .Set<OrderingNode>()
             .SingleAsync(value => value.Id == 1, CancellationToken.None);
 
         context.Remove(node);
@@ -100,7 +118,11 @@ public abstract partial class OrderingTests
         // Assert
         var rejection = Assert.IsType<NestedSetException>(failure);
         Assert.Equal(NestedSetErrorCode.InvalidContext, rejection.Code);
-        Assert.Equal(1, await setup.Set<OrderingNode>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            1,
+            await setup
+                .Set<OrderingNode>()
+                .CountAsync(CancellationToken.None));
     }
 
     /// <summary>Rejects direct writes to hierarchy-owned coordinates before persistence.</summary>
@@ -108,13 +130,17 @@ public abstract partial class OrderingTests
     public async Task OptionsGuardRejectsDirectCoordinateChange()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        await Tree(setup).InsertRootAsync(Node(1, "Root"), Guid.NewGuid(), CancellationToken.None);
+        await Tree(setup)
+            .InsertRootAsync(Node(1, "Root"), Guid.NewGuid(), CancellationToken.None);
+
         var options = (DbContextOptions)setup.GetService<IDbContextOptions>();
         await using var context = new MissingIntegrationOrderingContext(options);
-        var node = await context.Set<OrderingNode>()
+        var node = await context
+            .Set<OrderingNode>()
             .SingleAsync(value => value.Id == 1, CancellationToken.None);
 
         node.Left = 2;
@@ -125,9 +151,12 @@ public abstract partial class OrderingTests
         // Assert
         var rejection = Assert.IsType<NestedSetException>(failure);
         Assert.Equal(NestedSetErrorCode.InvalidContext, rejection.Code);
-        Assert.Equal(1, await setup.Set<OrderingNode>()
-            .Where(value => value.Id == 1)
-            .Select(value => value.Left)
-            .SingleAsync(CancellationToken.None));
+        Assert.Equal(
+            1,
+            await setup
+                .Set<OrderingNode>()
+                .Where(value => value.Id == 1)
+                .Select(value => value.Left)
+                .SingleAsync(CancellationToken.None));
     }
 }

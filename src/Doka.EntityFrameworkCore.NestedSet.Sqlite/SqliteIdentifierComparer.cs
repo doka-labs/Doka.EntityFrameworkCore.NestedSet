@@ -84,5 +84,7 @@ internal sealed class SqliteIdentifierComparer : StringComparer
     /// <summary>Lowers an ASCII capital and leaves every other character unchanged.</summary>
     private static char Fold(
         char character
-    ) => character is >= 'A' and <= 'Z' ? (char)(character + ('a' - 'A')) : character;
+    ) => character is >= 'A' and <= 'Z'
+        ? (char)(character + ('a' - 'A'))
+        : character;
 }

@@ -11,7 +11,8 @@ public sealed partial class AncestorIndexTests
     public void NamedSharedShadowHierarchyKeepsExactFlagOwner()
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite",
+        using var context = new AncestorContext(
+            "Sqlite",
             model =>
             {
                 ConfigureBag(model)
@@ -27,14 +28,17 @@ public sealed partial class AncestorIndexTests
         var flag = entity.FindProperty("Branch")!;
 
         // Assert
-        Assert.Equal("\"R\" > CASE WHEN \"L\" = 9223372036854775807 THEN \"L\" ELSE \"L\" + 1 END",
+        Assert.Equal(
+            "\"R\" > CASE WHEN \"L\" = 9223372036854775807 THEN \"L\" ELSE \"L\" + 1 END",
             flag.GetComputedColumnSql());
+
         Assert.Equal("NamedHierarchy", flag.DeclaringType.Name);
         Assert.Equal(typeof(bool), flag.ClrType);
         Assert.False(flag.IsNullable);
         Assert.True(flag.IsIndexerProperty());
         var index = Assert.Single(entity.GetIndexes(), index => index.Properties.Contains(flag));
-        Assert.Equal(["Branch", "TreeIdentity", "R", "L", "NodeId"],
+        Assert.Equal(
+            ["Branch", "TreeIdentity", "R", "L", "NodeId"],
             index.Properties.Select(property => property.Name));
     }
 
@@ -45,7 +49,8 @@ public sealed partial class AncestorIndexTests
     public void RuntimeDescriptorRefreshesGeneratedFlagWithoutWritableStructure()
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite",
+        using var context = new AncestorContext(
+            "Sqlite",
             model =>
                 Configure(model)
                     .HasNestedSet(builder => builder.HasAncestorIndex("Branch")));
@@ -64,8 +69,10 @@ public sealed partial class AncestorIndexTests
         Assert.Contains(refreshed, property => property.Name == "Branch");
         Assert.DoesNotContain(mapping.StructuralProperties(entity), property => property.Name == "Branch");
         Assert.DoesNotContain(refreshed, property => property.Name == nameof(AncestorNode.NonLeaf));
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>
@@ -75,7 +82,8 @@ public sealed partial class AncestorIndexTests
     public void LateRoleRemappingRebuildsOwnedExpressionAndIndex()
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite",
+        using var context = new AncestorContext(
+            "Sqlite",
             model =>
             {
                 var entity = Configure(model);
@@ -83,9 +91,11 @@ public sealed partial class AncestorIndexTests
                 entity
                     .Property<long>("OuterLeft")
                     .HasColumnName("outer l");
+
                 entity
                     .Property<long>("OuterRight")
                     .HasColumnName("outer r");
+
                 entity
                     .HasIndex(node => new
                     {
@@ -94,6 +104,7 @@ public sealed partial class AncestorIndexTests
                         node.Left,
                     })
                     .HasDatabaseName("ApplicationLeft");
+
                 entity.HasNestedSet(builder => builder.HasBounds("OuterLeft", "OuterRight"));
             });
 
@@ -106,12 +117,15 @@ public sealed partial class AncestorIndexTests
         var flag = entity.FindProperty("NestedSetIsNonLeaf")!;
 
         // Assert
-        Assert.Equal("\"outer r\" > CASE WHEN \"outer l\" = 9223372036854775807 THEN \"outer l\""
+        Assert.Equal(
+            "\"outer r\" > CASE WHEN \"outer l\" = 9223372036854775807 THEN \"outer l\""
             + " ELSE \"outer l\" + 1 END",
             flag.GetComputedColumnSql());
+
         Assert.Contains(entity.GetIndexes(), index => index.GetDatabaseName() == "ApplicationLeft");
         var index = Assert.Single(entity.GetIndexes(), index => index.Properties.Contains(flag));
-        Assert.Equal(["Scope", "NestedSetIsNonLeaf", "TreeId", "OuterRight", "OuterLeft", "Id"],
+        Assert.Equal(
+            ["Scope", "NestedSetIsNonLeaf", "TreeId", "OuterRight", "OuterLeft", "Id"],
             index.Properties.Select(property => property.Name));
     }
 
@@ -120,7 +134,8 @@ public sealed partial class AncestorIndexTests
     public void EntitySplitFlagFollowsLateStructureFragment()
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite",
+        using var context = new AncestorContext(
+            "Sqlite",
             model =>
             {
                 var entity = Configure(model);
@@ -128,8 +143,10 @@ public sealed partial class AncestorIndexTests
                 entity
                     .Property<bool>("NestedSetIsNonLeaf")
                     .HasColumnName("branch flag");
+
                 entity.ToTable("Payload");
-                entity.SplitToTable("Structure",
+                entity.SplitToTable(
+                    "Structure",
                     split =>
                     {
                         split.Property(node => node.Scope);
@@ -148,13 +165,15 @@ public sealed partial class AncestorIndexTests
             .Model
             .FindEntityType(typeof(AncestorNode))!;
 
-        var store = StoreObjectIdentifier.Table("Structure", null);
+        var store = StoreObjectIdentifier.Table("Structure");
         var flag = entity.FindProperty("NestedSetIsNonLeaf")!;
 
         // Assert
         Assert.Equal("branch flag", flag.GetColumnName(store));
-        Assert.Equal("\"Right\" > CASE WHEN \"Left\" = 9223372036854775807 THEN \"Left\" ELSE \"Left\" + 1 END",
+        Assert.Equal(
+            "\"Right\" > CASE WHEN \"Left\" = 9223372036854775807 THEN \"Left\" ELSE \"Left\" + 1 END",
             flag.GetComputedColumnSql(store));
+
         var index = Assert.Single(entity.GetIndexes(), index => index.Properties.Contains(flag));
         Assert.All(index.Properties, property => Assert.NotNull(property.GetColumnName(store)));
         var table = entity
@@ -172,13 +191,15 @@ public sealed partial class AncestorIndexTests
     public void AdoptedFlagOnDifferentFragmentIsRejected()
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite",
+        using var context = new AncestorContext(
+            "Sqlite",
             model =>
             {
                 var entity = Configure(model);
                 entity.HasNestedSet(builder => builder.HasAncestorIndex(nameof(AncestorNode.NonLeaf)));
                 entity.ToTable("Payload", table => table.Property(node => node.NonLeaf));
-                entity.SplitToTable("Structure",
+                entity.SplitToTable(
+                    "Structure",
                     split =>
                     {
                         split.Property(node => node.Scope);
@@ -206,7 +227,8 @@ public sealed partial class AncestorIndexTests
     public void MatchingApplicationComputedFlagAndIndexAreReused()
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite",
+        using var context = new AncestorContext(
+            "Sqlite",
             model =>
             {
                 var entity = Configure(model);
@@ -215,6 +237,7 @@ public sealed partial class AncestorIndexTests
                     .HasComputedColumnSql(
                         "\"Right\" > CASE WHEN \"Left\" = 9223372036854775807 THEN \"Left\" ELSE \"Left\" + 1 END",
                         false);
+
                 entity.HasIndex(["Scope", "Branch", "TreeId", "Right", "Left", "Id"], "ApplicationAncestors");
                 entity.HasNestedSet(builder => builder.HasAncestorIndex("Branch"));
             });
@@ -230,8 +253,10 @@ public sealed partial class AncestorIndexTests
         // Assert
         var index = Assert.Single(entity.GetIndexes(), index => index.Properties.Contains(flag));
         Assert.Equal("ApplicationAncestors", index.Name);
-        Assert.Equal("\"Right\" > CASE WHEN \"Left\" = 9223372036854775807 THEN \"Left\" ELSE \"Left\" + 1 END",
+        Assert.Equal(
+            "\"Right\" > CASE WHEN \"Left\" = 9223372036854775807 THEN \"Left\" ELSE \"Left\" + 1 END",
             flag.GetComputedColumnSql());
+
         Assert.False(flag.GetIsStored());
     }
 
@@ -245,7 +270,8 @@ public sealed partial class AncestorIndexTests
     )
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite",
+        using var context = new AncestorContext(
+            "Sqlite",
             model =>
             {
                 var entity = Configure(model);
@@ -278,11 +304,12 @@ public sealed partial class AncestorIndexTests
         var baseEntity = context.Model.FindEntityType(typeof(AncestorNode))!;
         var derivedEntity = context.Model.FindEntityType(typeof(DerivedAncestorNode))!;
         var mapping = NestedSetModelMapping.For(context.Model);
-        var flag = mapping.Descriptor(derivedEntity).AncestorIndexProperty!.Value.Resolve(derivedEntity);
+        var flag = mapping.Descriptor(derivedEntity)
+            .AncestorIndexProperty!.Value.Resolve(derivedEntity);
 
         // Assert
         Assert.Same(baseEntity, mapping.Owner(derivedEntity));
-        Assert.Equal("NestedSetIsNonLeaf", flag.GetColumnName(StoreObjectIdentifier.Table("BaseNodes", null)));
+        Assert.Equal("NestedSetIsNonLeaf", flag.GetColumnName(StoreObjectIdentifier.Table("BaseNodes")));
         Assert.Same(baseEntity, flag.DeclaringType);
     }
 
@@ -291,7 +318,8 @@ public sealed partial class AncestorIndexTests
     public void UnindexedInheritedOwnerRetainsValidTptRelationship()
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite",
+        using var context = new AncestorContext(
+            "Sqlite",
             model =>
             {
                 var entity = Configure(model);
@@ -337,7 +365,8 @@ public sealed partial class AncestorIndexTests
     )
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite",
+        using var context = new AncestorContext(
+            "Sqlite",
             model =>
             {
                 model.Ignore<AncestorNode>();
@@ -351,13 +380,16 @@ public sealed partial class AncestorIndexTests
                 model
                     .Entity<TpcAncestorNode>()
                     .HasKey(node => node.Id);
+
                 model
                     .Entity<TpcAncestorNode>()
                     .Property(node => node.Id)
                     .ValueGeneratedNever();
+
                 model
                     .Entity<OtherTpcAncestorNode>()
                     .ToTable("UnconfiguredSibling");
+
                 var entity = model
                     .Entity<ConcreteTpcAncestorNode>()
                     .ToTable("ConcreteHierarchy");
@@ -386,12 +418,14 @@ public sealed partial class AncestorIndexTests
             .FindEntityType(typeof(ConcreteTpcAncestorNode))!;
 
         var flag = entity.FindProperty("NestedSetIsNonLeaf")!;
-        var store = StoreObjectIdentifier.Table("ConcreteHierarchy", null);
+        var store = StoreObjectIdentifier.Table("ConcreteHierarchy");
 
         // Assert
         Assert.Equal("NestedSetIsNonLeaf", flag.GetColumnName(store));
-        Assert.Equal("\"Right\" > CASE WHEN \"Left\" = 9223372036854775807 THEN \"Left\" ELSE \"Left\" + 1 END",
+        Assert.Equal(
+            "\"Right\" > CASE WHEN \"Left\" = 9223372036854775807 THEN \"Left\" ELSE \"Left\" + 1 END",
             flag.GetComputedColumnSql(store));
+
         Assert.Null(entity.Model.FindEntityType(typeof(OtherTpcAncestorNode))!.FindProperty("NestedSetIsNonLeaf"));
         var index = Assert.Single(entity.GetIndexes(), index => index.Properties.Contains(flag));
         Assert.All(index.Properties, property => Assert.NotNull(property.GetColumnName(store)));
@@ -404,7 +438,8 @@ public sealed partial class AncestorIndexTests
     public void TableSplitHierarchyKeepsGeneratedFlagOnSharedTable()
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite",
+        using var context = new AncestorContext(
+            "Sqlite",
             model =>
             {
                 var entity = Configure(model);
@@ -413,6 +448,7 @@ public sealed partial class AncestorIndexTests
                 model
                     .Entity<AncestorPayload>()
                     .ToTable("SharedNodes");
+
                 entity
                     .HasOne<AncestorPayload>()
                     .WithOne()
@@ -420,16 +456,18 @@ public sealed partial class AncestorIndexTests
             });
 
         // Act
-        var model = context.GetService<IDesignTimeModel>().Model;
+        var model = context.GetService<IDesignTimeModel>()
+            .Model;
 
         var entity = model.FindEntityType(typeof(AncestorNode))!;
         var payload = model.FindEntityType(typeof(AncestorPayload))!;
         var flag = entity.FindProperty("NestedSetIsNonLeaf")!;
 
         // Assert
-        Assert.Equal("NestedSetIsNonLeaf", flag.GetColumnName(StoreObjectIdentifier.Table("SharedNodes", null)));
+        Assert.Equal("NestedSetIsNonLeaf", flag.GetColumnName(StoreObjectIdentifier.Table("SharedNodes")));
         Assert.Null(payload.FindProperty("NestedSetIsNonLeaf"));
-        Assert.Single(model
+        Assert.Single(
+            model
                 .GetRelationalModel()
                 .FindTable("SharedNodes", null)!.Columns,
             column => column.Name == "NestedSetIsNonLeaf");
@@ -447,7 +485,8 @@ public sealed partial class AncestorIndexTests
     )
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite",
+        using var context = new AncestorContext(
+            "Sqlite",
             model =>
             {
                 var entity = Configure(model);
@@ -456,13 +495,15 @@ public sealed partial class AncestorIndexTests
                 entity.ToTable("Payload");
                 if (!separateFlagFragment)
                 {
-                    entity.ToTable("Payload",
+                    entity.ToTable(
+                        "Payload",
                         table => table
                             .Property("Branch")
                             .HasColumnName("ApplicationBranch"));
                 }
 
-                entity.SplitToTable("Structure",
+                entity.SplitToTable(
+                    "Structure",
                     split =>
                     {
                         split.Property(node => node.Scope);
@@ -500,15 +541,18 @@ public sealed partial class AncestorIndexTests
     )
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite",
+        using var context = new AncestorContext(
+            "Sqlite",
             model =>
             {
                 model
                     .Entity<AncestorNode>()
                     .HasKey(node => node.Id);
+
                 model
                     .Entity<AncestorNode>()
                     .ToTable("InheritedStructure");
+
                 var entity = model.Entity<DerivedAncestorNode>();
                 if (!lateTable)
                 {
@@ -536,13 +580,16 @@ public sealed partial class AncestorIndexTests
             .FindEntityType(typeof(DerivedAncestorNode))!;
 
         var flag = entity.FindProperty("NestedSetIsNonLeaf")!;
-        var store = StoreObjectIdentifier.Table("InheritedStructure", null);
+        var store = StoreObjectIdentifier.Table("InheritedStructure");
 
         // Assert
         Assert.Equal("NestedSetIsNonLeaf", flag.GetColumnName(store));
-        Assert.Equal("\"Right\" > CASE WHEN \"Left\" = 9223372036854775807 THEN \"Left\" ELSE \"Left\" + 1 END",
+        Assert.Equal(
+            "\"Right\" > CASE WHEN \"Left\" = 9223372036854775807 THEN \"Left\" ELSE \"Left\" + 1 END",
             flag.GetComputedColumnSql(store));
-        Assert.Contains(entity
+
+        Assert.Contains(
+            entity
                 .Model
                 .GetRelationalModel()
                 .FindTable("InheritedStructure", null)!.Columns,

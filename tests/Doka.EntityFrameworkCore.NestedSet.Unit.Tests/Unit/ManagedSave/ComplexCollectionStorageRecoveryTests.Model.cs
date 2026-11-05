@@ -2,6 +2,22 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public sealed partial class ComplexCollectionStorageRecoveryTests
 {
+    /// <summary>Reads immutable scalar observations without detecting changes.</summary>
+    private static ScalarObservation Observe(
+        PropertyEntry property
+    ) => new(property.CurrentValue, property.OriginalValue, property.IsModified);
+
+    /// <summary>Checks public EF current/original values and modification state independently.</summary>
+    private static void AssertScalar(
+        PropertyEntry property,
+        ScalarObservation expected
+    )
+    {
+        Assert.Equal(expected.Current, property.CurrentValue);
+        Assert.Equal(expected.Original, property.OriginalValue);
+        Assert.Equal(expected.Modified, property.IsModified);
+    }
+
     /// <summary>Uses actual EF mappings without implicitly detecting pending callback changes.</summary>
     private sealed class StorageContext : DbContext
     {
@@ -103,6 +119,7 @@ public sealed partial class ComplexCollectionStorageRecoveryTests
         public string Marker { get; set; } = "Stored marker";
 
         /// <summary>Gets or sets caller-owned complex collection storage.</summary>
+
         // WHY: IList lets EF build a mutable original snapshot even when the runtime value cannot be changed.
         public IList<StorageItem> Rows { get; set; } = [];
     }
@@ -200,20 +217,4 @@ public sealed partial class ComplexCollectionStorageRecoveryTests
         object? Original,
         bool Modified
     );
-
-    /// <summary>Reads immutable scalar observations without detecting changes.</summary>
-    private static ScalarObservation Observe(
-        PropertyEntry property
-    ) => new(property.CurrentValue, property.OriginalValue, property.IsModified);
-
-    /// <summary>Checks public EF current/original values and modification state independently.</summary>
-    private static void AssertScalar(
-        PropertyEntry property,
-        ScalarObservation expected
-    )
-    {
-        Assert.Equal(expected.Current, property.CurrentValue);
-        Assert.Equal(expected.Original, property.OriginalValue);
-        Assert.Equal(expected.Modified, property.IsModified);
-    }
 }

@@ -1,3 +1,5 @@
+using Doka.EntityFrameworkCore.NestedSet.Features.Facade;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Verifies typed mutation entries reject mismatched arguments before database work.</summary>
@@ -64,7 +66,7 @@ public abstract class MutationDispatchContractTests : ProviderTest
 
         // WHY: InTree rejects a wrong TreeId before maintenance dispatch. Probe the three binding methods
         // directly so each route proves its own generic guard before reaching the cached invoker or SQL.
-        var binding = new Features.Facade.NestedSetMutationBinding<TreeNode>(
+        var binding = new NestedSetMutationBinding<TreeNode>(
             context,
             context.Model.FindEntityType(typeof(TreeNode))!).ForScope(7);
 
@@ -96,30 +98,49 @@ public abstract class MutationDispatchContractTests : ProviderTest
         probe.Reset();
 
         // Act
-        var error = await Record.ExceptionAsync(() => DispatchAsync(hierarchy, binding, input, route,
+        var error = await Record.ExceptionAsync(() => DispatchAsync(
+            hierarchy,
+            binding,
+            input,
+            route,
             cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         Assert.IsType<ArgumentException>(error);
         Assert.Equal(0, probe.CommandCount);
         Assert.Equal(inputBefore, Snapshot(input));
-        Assert.Equal(EntityState.Detached, context.Entry(input).State);
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(input)
+                .State);
+
         Assert.Equal(EntityState.Unchanged, tracked.State);
         Assert.Equal("unchanged application row", application.Value);
-        Assert.Same(application, Assert.Single(context.ChangeTracker.Entries()).Entity);
+        Assert.Same(
+            application,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
         Assert.Null(context.Database.CurrentTransaction);
         await using var verification = database.CreateContext();
-        Assert.Equal(rowsBefore, await RowsAsync(verification,
-            cancellationToken: TestContext.Current.CancellationToken));
-        Assert.Equal(registryBefore, await RegistryAsync(verification,
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            rowsBefore,
+            await RowsAsync(
+                verification,
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal(
+            registryBefore,
+            await RegistryAsync(
+                verification,
+                cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Calls public mutations and direct maintenance bindings with mismatched key or tree arguments.</summary>
     /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static Task DispatchAsync(
         ScopedNestedSet<TreeNode, int> hierarchy,
-        Features.Facade.NestedSetMutationBinding<TreeNode> binding,
+        NestedSetMutationBinding<TreeNode> binding,
         TreeNode input,
         string route,
         CancellationToken cancellationToken
@@ -185,7 +206,8 @@ public abstract class MutationDispatchContractTests : ProviderTest
         CancellationToken cancellationToken
     )
     {
-        var registry = NestedSetTreeRegistryMapping.For(context.Model.FindEntityType(typeof(TreeNode))!).Registry;
+        var registry = NestedSetTreeRegistryMapping.For(context.Model.FindEntityType(typeof(TreeNode))!)
+            .Registry;
 
         return context
             .Set<NestedSetTreeRegistry>(registry.Name)

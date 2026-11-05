@@ -91,8 +91,13 @@ public abstract partial class RelationalTests
             .ForScope(1);
 
         await SeedRebuildTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
-        await CorruptAdjacencyAsync(context, 1, Engine, corruption,
+        await CorruptAdjacencyAsync(
+            context,
+            1,
+            Engine,
+            corruption,
             cancellationToken: TestContext.Current.CancellationToken);
+
         var before = await SnapshotAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act

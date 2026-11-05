@@ -3,9 +3,6 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Exposes decorated structural getters to reveal incorrect reflection-based reads.</summary>
 public sealed class FieldNode : IScopedNestedSetNode<int, Guid, int>
 {
-    /// <summary>Gets or sets the stable tree identity.</summary>
-    public Guid TreeId { get; set; }
-
     private int _depth;
     private long _left;
     private long _right;
@@ -13,10 +10,13 @@ public sealed class FieldNode : IScopedNestedSetNode<int, Guid, int>
     /// <summary>Gets or sets the isolated hierarchy scope.</summary>
     public int Tree { get; set; }
 
-    int IScopedNestedSetNode<int, Guid, int>.Scope => Tree;
-
     /// <summary>Gets or sets the parent key, or null for a root.</summary>
     public int? ParentId { get; set; }
+
+    /// <summary>Gets or sets the stable tree identity.</summary>
+    public Guid TreeId { get; set; }
+
+    int IScopedNestedSetNode<int, Guid, int>.Scope => Tree;
 
     /// <inheritdoc />
     public int Id { get; set; }

@@ -22,7 +22,8 @@ public abstract class AutomaticMoveKeyTests : ProviderTest
     public async Task AutomaticDestinationUsesTheCanonicalParentKey()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = context

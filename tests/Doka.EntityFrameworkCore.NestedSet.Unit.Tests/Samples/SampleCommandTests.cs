@@ -3,6 +3,33 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples;
 /// <summary>Rejects ambiguous console invocations before samples construct a database configuration.</summary>
 public sealed class SampleCommandTests
 {
+    /// <summary>Supplies separate parser failures without combining several Arrange/Act cycles in one test.</summary>
+    public static TheoryData<string[], string> InvalidInvocations =>
+        new()
+        {
+            { ["--unknown"], "Unknown option" },
+            { ["move"], "Unknown option" },
+            { ["--provider"], "require a value" },
+            { ["--provider", ""], "require a value" },
+            { ["--provider", " "], "require a value" },
+            { ["--provider", "--reset"], "require a value" },
+            { ["--scenario"], "require a value" },
+            { ["--scenario", "--inspect"], "require a value" },
+            { ["--provider", "postgresql"], "Provider must be" },
+            { ["--scenario", "missing"], "Unknown scenario" },
+            { ["--scenario", "Move"], "Unknown scenario" },
+            { ["--reset", "--reset"], "more than once" },
+            { ["--inspect", "--inspect"], "more than once" },
+            { ["--details", "--details"], "more than once" },
+            { ["--help", "--help"], "more than once" },
+            { ["--provider", "mysql", "--provider", "sqlite"], "more than once" },
+            { ["--scenario", "create", "--scenario", "move"], "more than once" },
+            { ["--inspect", "--reset"], "cannot be combined" },
+            { ["--reset", "--inspect"], "cannot be combined" },
+            { ["--inspect", "--scenario", "create"], "cannot be combined" },
+            { ["--scenario", "all", "--inspect"], "cannot be combined" },
+        };
+
     /// <summary>The default invocation selects Doka with MariaDB and every documented scenario.</summary>
     [Fact]
     public void DefaultInvocationSelectsMariaDbAndAllScenarios()
@@ -128,31 +155,4 @@ public sealed class SampleCommandTests
         Assert.IsType<ArgumentException>(error);
         Assert.Contains(message, error.Message, StringComparison.Ordinal);
     }
-
-    /// <summary>Supplies separate parser failures without combining several Arrange/Act cycles in one test.</summary>
-    public static TheoryData<string[], string> InvalidInvocations =>
-        new()
-        {
-            { ["--unknown"], "Unknown option" },
-            { ["move"], "Unknown option" },
-            { ["--provider"], "require a value" },
-            { ["--provider", ""], "require a value" },
-            { ["--provider", " "], "require a value" },
-            { ["--provider", "--reset"], "require a value" },
-            { ["--scenario"], "require a value" },
-            { ["--scenario", "--inspect"], "require a value" },
-            { ["--provider", "postgresql"], "Provider must be" },
-            { ["--scenario", "missing"], "Unknown scenario" },
-            { ["--scenario", "Move"], "Unknown scenario" },
-            { ["--reset", "--reset"], "more than once" },
-            { ["--inspect", "--inspect"], "more than once" },
-            { ["--details", "--details"], "more than once" },
-            { ["--help", "--help"], "more than once" },
-            { ["--provider", "mysql", "--provider", "sqlite"], "more than once" },
-            { ["--scenario", "create", "--scenario", "move"], "more than once" },
-            { ["--inspect", "--reset"], "cannot be combined" },
-            { ["--reset", "--inspect"], "cannot be combined" },
-            { ["--inspect", "--scenario", "create"], "cannot be combined" },
-            { ["--scenario", "all", "--inspect"], "cannot be combined" },
-        };
 }

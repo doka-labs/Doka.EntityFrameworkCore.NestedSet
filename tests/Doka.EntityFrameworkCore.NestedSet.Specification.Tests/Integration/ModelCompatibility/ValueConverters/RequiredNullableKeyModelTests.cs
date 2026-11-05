@@ -21,7 +21,8 @@ public abstract class RequiredNullableKeyModelTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<NullableKeyContext>(
             Engine,
-            options => new NullableKeyContext(options), cancellationToken: TestContext.Current.CancellationToken);
+            options => new NullableKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<NullableKeyNode>();
         var treeId = Guid.NewGuid();
@@ -51,7 +52,8 @@ public abstract class RequiredNullableKeyModelTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<NullableKeyContext>(
             Engine,
-            options => new NullableKeyContext(options), cancellationToken: TestContext.Current.CancellationToken);
+            options => new NullableKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<NullableKeyNode>();
         var treeId = Guid.NewGuid();
@@ -126,11 +128,13 @@ public abstract class RequiredNullableKeyModelTests : ProviderTest
                 .Property(value => value.Id)
                 .IsRequired()
                 .ValueGeneratedNever();
+
             node
                 .HasOne<NullableKeyNode>()
                 .WithMany()
                 .HasForeignKey(value => value.ParentId)
                 .OnDelete(DeleteBehavior.Restrict);
+
             node.HasNestedSet(value => value
                 .HasNodeKey(entity => entity.Id)
                 .HasTreeId(entity => entity.TreeId)

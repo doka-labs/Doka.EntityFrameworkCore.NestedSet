@@ -21,7 +21,9 @@ public class RebuildBenchmarks : DatabaseBenchmark
     }
 
     /// <inheritdoc />
-    public override async Task PrepareAsync(CancellationToken cancellationToken)
+    public override async Task PrepareAsync(
+        CancellationToken cancellationToken
+    )
     {
         _rebuilt = false;
         await base.PrepareAsync(cancellationToken);
@@ -29,8 +31,8 @@ public class RebuildBenchmarks : DatabaseBenchmark
         // WHY: Preserve adjacency and local CHECK invariants while forcing real bounds, depth and position repair.
         await Fixture.Context.Nodes.ExecuteUpdateAsync(
             setters => setters
-                .SetProperty(node => node.Left, node => node.Left + (Nodes * 2L))
-                .SetProperty(node => node.Right, node => node.Right + (Nodes * 2L))
+                .SetProperty(node => node.Left, node => node.Left + Nodes * 2L)
+                .SetProperty(node => node.Right, node => node.Right + Nodes * 2L)
                 .SetProperty(node => node.Depth, node => node.Depth + 1)
                 .SetProperty(node => node.Position, node => node.Position + 2),
             cancellationToken);
@@ -39,7 +41,9 @@ public class RebuildBenchmarks : DatabaseBenchmark
     }
 
     /// <inheritdoc />
-    public override async Task VerifyAsync(CancellationToken cancellationToken)
+    public override async Task VerifyAsync(
+        CancellationToken cancellationToken
+    )
     {
         var roots = await Fixture
             .Context

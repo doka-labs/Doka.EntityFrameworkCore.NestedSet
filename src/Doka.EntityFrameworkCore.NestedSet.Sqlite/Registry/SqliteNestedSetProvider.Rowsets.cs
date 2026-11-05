@@ -34,6 +34,7 @@ internal sealed partial class SqliteNestedSetProvider
         AppendJsonValue(rows, mapping.TreeId, "t")
             .Append(" AS ")
             .Append(aliases.TreeId);
+
         rows
             .Append(", CAST(json_extract(j.value, '$.o') AS INTEGER) AS ")
             .Append(aliases.Ordinal)

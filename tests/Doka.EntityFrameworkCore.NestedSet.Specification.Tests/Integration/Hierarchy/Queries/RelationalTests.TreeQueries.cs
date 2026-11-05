@@ -38,7 +38,17 @@ public abstract partial class RelationalTests
     /// <param name="expected">The exact subtree keys in preorder.</param>
     /// <returns>A task that completes after comparing the selected inclusive subtree.</returns>
     [Theory]
-    [InlineData(10, new[] { 10, 70, 90, 20, 30, 40 })]
+    [InlineData(
+        10,
+        new[]
+        {
+            10,
+            70,
+            90,
+            20,
+            30,
+            40,
+        })]
     [InlineData(70, new[] { 70, 90, 20 })]
     [InlineData(90, new[] { 90 })]
     public async Task SubtreeOfReturnsInclusiveBranch(
@@ -88,7 +98,9 @@ public abstract partial class RelationalTests
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        var query = wholeTree ? tree.TreeContaining(key) : tree.SubtreeOf(key);
+        var query = wholeTree
+            ? tree.TreeContaining(key)
+            : tree.SubtreeOf(key);
 
         // Act
         var actual = await query.ToArrayAsync(CancellationToken.None);
@@ -119,7 +131,10 @@ public abstract partial class RelationalTests
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        var query = wholeTree ? tree.TreeContaining(70) : tree.SubtreeOf(70);
+        var query = wholeTree
+            ? tree.TreeContaining(70)
+            : tree.SubtreeOf(70);
+
         var expected = wholeTree
             ? new[] { 90, 20, 30, 40 }
             : new[] { 90, 20 };
@@ -157,7 +172,10 @@ public abstract partial class RelationalTests
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        var query = wholeTree ? tree.TreeContaining(70) : tree.SubtreeOf(70);
+        var query = wholeTree
+            ? tree.TreeContaining(70)
+            : tree.SubtreeOf(70);
+
         var expected = wholeTree
             ? new[] { (Id: 70, Depth: 1), (Id: 90, Depth: 2) }
             : new[] { (Id: 90, Depth: 2), (Id: 20, Depth: 2) };
@@ -202,7 +220,10 @@ public abstract partial class RelationalTests
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        var query = wholeTree ? tree.TreeContaining(70) : tree.SubtreeOf(70);
+        var query = wholeTree
+            ? tree.TreeContaining(70)
+            : tree.SubtreeOf(70);
+
         var commandsAfterConstruction = probe.Commands.Count;
         var materializationsAfterConstruction = probe.MaterializedNodes;
         await using var writer = database.CreateContext();
@@ -213,7 +234,14 @@ public abstract partial class RelationalTests
         // WHY: Moving through an independent context changes the persisted root and bounds before query execution.
         await editor.MoveToAsync(70, 200, CancellationToken.None);
         var expected = wholeTree
-            ? new[] { 200, 210, 70, 90, 20 }
+            ? new[]
+            {
+                200,
+                210,
+                70,
+                90,
+                20,
+            }
             : new[] { 70, 90, 20 };
 
         // Act
@@ -251,7 +279,10 @@ public abstract partial class RelationalTests
 
         // WHY: This key has the stored bytes but cannot share an object reference with any seeded entity.
         var key = new byte[] { 3, 4 };
-        var query = wholeTree ? tree.TreeContaining(key) : tree.SubtreeOf(key);
+        var query = wholeTree
+            ? tree.TreeContaining(key)
+            : tree.SubtreeOf(key);
+
         var expected = wholeTree
             ? new[] { "0102", "0304", "0506", "0708" }
             : new[] { "0304", "0506" };
@@ -456,6 +487,7 @@ public abstract partial class RelationalTests
                 },
             ],
             cancellationToken);
+
         await context.SavePrecomputedHierarchyAsync(cancellationToken);
     }
 }

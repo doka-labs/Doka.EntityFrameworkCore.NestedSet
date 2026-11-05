@@ -52,7 +52,9 @@ internal static class Program
                 await SampleDatabase.PrepareAsync(context, configuration, command.Reset, cancellationToken);
             }
 
-            var selected = command.Scenario == "all" ? ScenarioNames : new[] { command.Scenario };
+            var selected = command.Scenario == "all"
+                ? ScenarioNames
+                : new[] { command.Scenario };
 
             foreach (var scenario in selected)
             {
@@ -97,9 +99,9 @@ internal static class Program
             return 130;
         }
         catch (Exception exception) when (exception is ArgumentException
-                                              or InvalidOperationException
-                                              or DbException
-                                              or IOException)
+            or InvalidOperationException
+            or DbException
+            or IOException)
         {
             await SampleConsole.WriteLineAsync($"SignalLab sample failed: {exception.Message}", CancellationToken.None);
 

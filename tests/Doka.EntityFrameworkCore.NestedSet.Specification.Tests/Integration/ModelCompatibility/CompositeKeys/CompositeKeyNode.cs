@@ -53,20 +53,25 @@ internal sealed class CompositeKeyContext : DbContext
             entity.TenantId,
             entity.RowId,
         });
+
         node.HasAlternateKey(entity => new
         {
             entity.TenantId,
             entity.NodeKey,
         });
+
         node
             .Property(entity => entity.RowId)
             .ValueGeneratedNever();
+
         node
             .Property(entity => entity.NodeKey)
             .ValueGeneratedNever();
+
         node
             .Property(entity => entity.Name)
             .HasMaxLength(100);
+
         node
             .HasOne<CompositeKeyNode>()
             .WithMany()
@@ -81,6 +86,7 @@ internal sealed class CompositeKeyContext : DbContext
                 entity.NodeKey,
             })
             .OnDelete(DeleteBehavior.Restrict);
+
         node.HasNestedSet(nestedSet => nestedSet
             .HasNodeKey(entity => entity.NodeKey)
             .HasScope(entity => entity.TenantId)

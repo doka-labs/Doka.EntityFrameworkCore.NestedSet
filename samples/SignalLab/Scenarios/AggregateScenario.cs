@@ -62,9 +62,11 @@ internal static class AggregateScenario
         SampleConsole.Require(
             selectedTreeCount == 7,
             $"The selected tree should contain seven instruments, found {selectedTreeCount}.");
+
         SampleConsole.Require(
             archivedCount == 444,
             $"The separate reporting period should total 444, found {archivedCount}.");
+
         SampleConsole.Require(
             otherProjectCount == 999,
             $"The other project should total 999, found {otherProjectCount}.");

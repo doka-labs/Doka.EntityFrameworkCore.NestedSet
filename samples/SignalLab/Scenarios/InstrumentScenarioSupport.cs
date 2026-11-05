@@ -42,7 +42,10 @@ internal static class InstrumentScenarioSupport
 
         foreach (var instrument in nodes)
         {
-            var measurement = instrument.PulseCount is { } count ? $" = {count}" : string.Empty;
+            var measurement = instrument.PulseCount is { } count
+                ? $" = {count}"
+                : string.Empty;
+
             var structure = details
                 ? $" [Id={instrument.NodeId}, TreeId={instrument.TreeId}, Depth={instrument.Level}, "
                 + $"Position={instrument.SiblingPosition}, Bounds={instrument.Start}..{instrument.End}]"
@@ -80,7 +83,10 @@ internal static class InstrumentScenarioSupport
 
         foreach (var root in roots)
         {
-            var project = root.ProjectId == InstrumentDataset.ProjectId ? "main project" : "other project";
+            var project = root.ProjectId == InstrumentDataset.ProjectId
+                ? "main project"
+                : "other project";
+
             var instruments = context
                 .NestedSet<Instrument>()
                 .ForScope(root.ProjectId);
@@ -104,6 +110,7 @@ internal static class InstrumentScenarioSupport
         var reportingRoots = await context
             .Nodes
             .AsNoTracking()
+
             // WHY: EF translates this shadow-parent predicate before materialization.
             // ReSharper disable once EntityFramework.ClientSideDbFunctionCall
             .Where(node => EF.Property<Guid?>(node, SignalStorage.ParentId) == null)
@@ -111,6 +118,7 @@ internal static class InstrumentScenarioSupport
             .Select(node => new
             {
                 node.TenantId,
+
                 // WHY: EF projects the shadow tree identity directly from the database.
                 // ReSharper disable once EntityFramework.ClientSideDbFunctionCall
                 TreeId = EF.Property<Guid>(node, SignalStorage.TreeId),
@@ -120,7 +128,10 @@ internal static class InstrumentScenarioSupport
 
         foreach (var root in reportingRoots)
         {
-            var identity = details ? $" (tenant {root.TenantId}, tree {root.TreeId})" : string.Empty;
+            var identity = details
+                ? $" (tenant {root.TenantId}, tree {root.TreeId})"
+                : string.Empty;
+
             await SampleConsole.HeadingAsync(root.Name + identity, cancellationToken);
             var rows = await context
                 .NestedSet<SignalNode>()
@@ -139,7 +150,10 @@ internal static class InstrumentScenarioSupport
 
             foreach (var row in rows)
             {
-                var structure = details ? $" [Id={row.Id}, Bounds={row.Left}..{row.Right}]" : string.Empty;
+                var structure = details
+                    ? $" [Id={row.Id}, Bounds={row.Left}..{row.Right}]"
+                    : string.Empty;
+
                 await SampleConsole.WriteLineAsync(
                     $"{new string(' ', row.Depth * 2)}{row.Name}{structure}",
                     cancellationToken);
@@ -169,8 +183,8 @@ internal static class InstrumentScenarioSupport
     {
         var trees = new[]
         {
-            (ProjectId: InstrumentDataset.ProjectId, data.TreeId),
-            (ProjectId: InstrumentDataset.ProjectId, TreeId: data.RelatedTreeId),
+            (InstrumentDataset.ProjectId, data.TreeId),
+            (InstrumentDataset.ProjectId, TreeId: data.RelatedTreeId),
             (ProjectId: InstrumentDataset.OtherProjectId, data.TreeId),
         };
 

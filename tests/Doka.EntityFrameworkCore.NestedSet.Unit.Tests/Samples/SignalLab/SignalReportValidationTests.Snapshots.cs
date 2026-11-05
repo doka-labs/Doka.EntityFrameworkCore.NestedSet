@@ -14,7 +14,8 @@ public sealed partial class SignalReportValidationTests
         var first = SignalReportDataset.Id(2);
         var second = SignalReportDataset.Id(1);
         var band = new TagCriterion(SignalReportDataset.ArrayKind, "Band", "Narrow");
-        var rackCode = new TagCriterion(SignalReportDataset.SensorKind,
+        var rackCode = new TagCriterion(
+            SignalReportDataset.SensorKind,
             "RackCode",
             "R9",
             TagOwnerMode.Nearest);
@@ -47,8 +48,10 @@ public sealed partial class SignalReportValidationTests
         Assert.Equal([first, second], snapshot.AnchorIds);
         Assert.Equal([SignalReportDataset.SweepChannel, SignalReportDataset.PulseChannel], snapshot.ChannelIds);
         Assert.Equal([CapturePort.Sweep, CapturePort.Pulse, CapturePort.Burst], snapshot.Sources);
-        Assert.Equal([SignalReportDataset.SensorKind, SignalReportDataset.ArrayKind],
+        Assert.Equal(
+            [SignalReportDataset.SensorKind, SignalReportDataset.ArrayKind],
             snapshot.Groups.Select(group => group.TypeId));
+
         Assert.Equal([rackCode, cooling], snapshot.Groups[0].Criteria);
         Assert.Equal([band, carrier], snapshot.Groups[1].Criteria);
         Assert.Equal(TagOwnerMode.Nearest, snapshot.Groups[0].Mode);
@@ -87,8 +90,12 @@ public sealed partial class SignalReportValidationTests
         Assert.Equal(SignalReportDataset.Id(1), Assert.Single(snapshot.AnchorIds));
         Assert.Equal(SignalReportDataset.PulseChannel, Assert.Single(snapshot.ChannelIds));
         Assert.Equal(CapturePort.Pulse, Assert.Single(snapshot.Sources));
-        Assert.Same(criterion,
-            Assert.Single(Assert.Single(snapshot.Groups).Criteria));
+        Assert.Same(
+            criterion,
+            Assert.Single(
+                Assert.Single(snapshot.Groups)
+                    .Criteria));
+
         Assert.NotSame(anchors, snapshot.AnchorIds);
         Assert.NotSame(signals, snapshot.ChannelIds);
         Assert.NotSame(sources, snapshot.Sources);
@@ -102,7 +109,8 @@ public sealed partial class SignalReportValidationTests
     public void SnapshotKeepsOrdinalFieldCodesDistinct()
     {
         // Arrange
-        var criterion = Request().Criteria[0];
+        var criterion = Request()
+            .Criteria[0];
 
         var criteria = new[]
         {
@@ -125,8 +133,10 @@ public sealed partial class SignalReportValidationTests
         var snapshot = SignalReportValidation.Snapshot(request);
 
         // Assert
-        Assert.Equal(criteria,
-            Assert.Single(snapshot.Groups).Criteria);
+        Assert.Equal(
+            criteria,
+            Assert.Single(snapshot.Groups)
+                .Criteria);
     }
 
     /// <summary>
@@ -136,7 +146,8 @@ public sealed partial class SignalReportValidationTests
     public void SnapshotDeduplicatesSeparateOrdinallyEqualCriteria()
     {
         // Arrange
-        var first = Request().Criteria[0];
+        var first = Request()
+            .Criteria[0];
 
         var duplicate = first with { Value = new string(first.Value.AsSpan()) };
         var request = Request() with { Criteria = [first, duplicate] };
@@ -145,8 +156,11 @@ public sealed partial class SignalReportValidationTests
         var snapshot = SignalReportValidation.Snapshot(request);
 
         // Assert
-        Assert.Same(first,
-            Assert.Single(Assert.Single(snapshot.Groups).Criteria));
+        Assert.Same(
+            first,
+            Assert.Single(
+                Assert.Single(snapshot.Groups)
+                    .Criteria));
     }
 
     /// <summary>Null criteria and unsupported owner/classification/scalar forms fail before any catalog read.</summary>
@@ -161,7 +175,8 @@ public sealed partial class SignalReportValidationTests
     )
     {
         // Arrange
-        var criterion = Request().Criteria[0];
+        var criterion = Request()
+            .Criteria[0];
 
         var request = Request() with
         {

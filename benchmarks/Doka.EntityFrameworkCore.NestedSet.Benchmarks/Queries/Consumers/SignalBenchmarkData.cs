@@ -79,7 +79,9 @@ internal static class SignalBenchmarkData
                 {
                     TenantId = data.TenantId,
                     ChildId = entity.Id,
-                    ParentId = parents[index] is { } parent ? entities[parent].Id : SignalReportDataset.Id(3),
+                    ParentId = parents[index] is { } parent
+                        ? entities[parent].Id
+                        : SignalReportDataset.Id(3),
                     FromDate = SignalReportDataset.FirstDay,
                 });
 

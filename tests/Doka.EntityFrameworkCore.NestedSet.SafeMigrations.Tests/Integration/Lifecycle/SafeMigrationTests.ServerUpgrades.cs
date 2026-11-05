@@ -18,7 +18,9 @@ public sealed partial class SafeMigrationTests
     )
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync(engine, qualifySchema,
+        await using var database = await CreateDatabaseAsync(
+            engine,
+            qualifySchema,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var baseline = database.Scaffold(MigrationStage.Baseline, "SafeBaseline");
@@ -52,7 +54,8 @@ public sealed partial class SafeMigrationTests
                 Right = beyondInt32 + 1,
                 Position = beyondInt32,
                 Payload = "upgraded Int64 coordinates",
-            }, cancellationToken: TestContext.Current.CancellationToken);
+            },
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var nodesBeforeReplay = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
         var indexes = await database.ReadIndexesAsync(cancellationToken: TestContext.Current.CancellationToken);
@@ -60,8 +63,11 @@ public sealed partial class SafeMigrationTests
         var foreignKeys = await database.ReadForeignKeysAsync(cancellationToken: TestContext.Current.CancellationToken);
         var columnTypes = await database.ReadColumnTypesAsync(cancellationToken: TestContext.Current.CancellationToken);
         var history = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
-        await SafeMigrationTestServices.ExecuteOperationsAsync(context, replayOperations,
+        await SafeMigrationTestServices.ExecuteOperationsAsync(
+            context,
+            replayOperations,
             cancellationToken: TestContext.Current.CancellationToken);
+
         var replayReport = await context
             .GetService<ISafeMigrationRunner>()
             .AnalyzeAsync(
@@ -95,6 +101,7 @@ public sealed partial class SafeMigrationTests
         Assert.Equal(
             (beyondInt32, beyondInt32 + 1, beyondInt32),
             (largeNode.Left, largeNode.Right, largeNode.Position));
+
         Assert.NotEmpty(replayOperations);
         Assert.Equal(SafeMigrationReportStatus.Ready, replayReport.Status);
         Assert.Equal(replayOperations.Length, replayReport.Assessments.Count);
@@ -102,6 +109,7 @@ public sealed partial class SafeMigrationTests
             3,
             replayReport.Assessments.Count(assessment =>
                 assessment.OperationKind == SafeMigrationOperationKind.DropIndex));
+
         Assert.All(
             replayReport.Assessments,
             assessment =>

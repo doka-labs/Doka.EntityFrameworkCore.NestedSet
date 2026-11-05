@@ -7,7 +7,8 @@ public abstract partial class BulkStageGuardTests
     public async Task ComparerEqualOriginalValuesDoNotPreventExactStaging()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await context.AddAsync(
@@ -44,6 +45,7 @@ public abstract partial class BulkStageGuardTests
                 .InTree(Guid.Empty)
                 .Nodes
                 .CountAsync(CancellationToken.None));
+
         Assert.Empty(
             (await tree
                 .InTree(Guid.Empty)
@@ -55,7 +57,8 @@ public abstract partial class BulkStageGuardTests
     public async Task RejectedCallbackRestoresComparerEqualOriginalRepresentations()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await context.AddAsync(
@@ -100,11 +103,13 @@ public abstract partial class BulkStageGuardTests
             NestedSetErrorCode.InvalidImport,
             Assert.IsType<NestedSetException>(error)
                 .Code);
+
         Assert.Equal(("A", "A", 71, 72), (input.Scope, input.ParentId, input.Left, input.Right));
         Assert.Single(
             await context
                 .Set<BulkStageTextNode>()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Empty(
             (await tree
                 .InTree(Guid.Empty)
@@ -116,7 +121,8 @@ public abstract partial class BulkStageGuardTests
     public async Task InitiallySharedBinaryScopeCannotMutateServiceArgument()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         byte[] scope = [1];
@@ -148,6 +154,7 @@ public abstract partial class BulkStageGuardTests
             NestedSetErrorCode.InvalidImport,
             Assert.IsType<NestedSetException>(error)
                 .Code);
+
         Assert.Equal<byte>([1], scope);
         Assert.Equal<byte>([1], input.Scope);
         Assert.Equal((71, 72), (input.Left, input.Right));

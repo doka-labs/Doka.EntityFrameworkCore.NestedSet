@@ -18,7 +18,8 @@ public abstract partial class BulkStageGuardTests : ProviderTest
     public async Task CallbackCannotChangeParentToComparerEqualDatabaseDistinctKey()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await context.AddRangeAsync(
@@ -70,6 +71,7 @@ public abstract partial class BulkStageGuardTests : ProviderTest
             NestedSetErrorCode.InvalidImport,
             Assert.IsType<NestedSetException>(error)
                 .Code);
+
         Assert.Equal(("original", "original", 71, 72), (input.Scope, input.ParentId, input.Left, input.Right));
         Assert.Equal(
             2,
@@ -77,10 +79,12 @@ public abstract partial class BulkStageGuardTests : ProviderTest
                 .InTree(Guid.Empty)
                 .Nodes
                 .CountAsync(CancellationToken.None));
+
         Assert.Empty(
             (await tree
                 .InTree(Guid.Empty)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).Issues);
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -89,7 +93,8 @@ public abstract partial class BulkStageGuardTests : ProviderTest
     public async Task CallbackCannotChangeScopeToComparerEqualDatabaseDistinctValue()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = context
@@ -120,11 +125,13 @@ public abstract partial class BulkStageGuardTests : ProviderTest
             NestedSetErrorCode.InvalidImport,
             Assert.IsType<NestedSetException>(error)
                 .Code);
+
         Assert.Equal(("original", 71, 72), (input.Scope, input.Left, input.Right));
         Assert.Empty(
             await context
                 .Set<BulkStageTextNode>()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -133,7 +140,8 @@ public abstract partial class BulkStageGuardTests : ProviderTest
     public async Task CallbackCannotMutateStagedBinaryParentInPlace()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await context.AddRangeAsync(
@@ -185,6 +193,7 @@ public abstract partial class BulkStageGuardTests : ProviderTest
             NestedSetErrorCode.InvalidImport,
             Assert.IsType<NestedSetException>(error)
                 .Code);
+
         Assert.Equal<byte>([8], input.ParentId!);
         Assert.Equal((17, 71, 72), (input.Scope, input.Left, input.Right));
         Assert.Equal(
@@ -193,6 +202,7 @@ public abstract partial class BulkStageGuardTests : ProviderTest
                 .InTree(Guid.Empty)
                 .Nodes
                 .CountAsync(CancellationToken.None));
+
         Assert.Empty(
             (await tree
                 .InTree(Guid.Empty)
@@ -204,7 +214,8 @@ public abstract partial class BulkStageGuardTests : ProviderTest
     public async Task CallbackCannotMutateStagedBinaryScopeInPlace()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         byte[] scope = [1];
@@ -236,6 +247,7 @@ public abstract partial class BulkStageGuardTests : ProviderTest
             NestedSetErrorCode.InvalidImport,
             Assert.IsType<NestedSetException>(error)
                 .Code);
+
         Assert.Equal<byte>([1], scope);
         Assert.Equal<byte>([8], input.Scope);
         Assert.Equal((71, 72), (input.Left, input.Right));
@@ -243,6 +255,7 @@ public abstract partial class BulkStageGuardTests : ProviderTest
             await context
                 .Set<BulkStageBinaryScope>()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -251,7 +264,8 @@ public abstract partial class BulkStageGuardTests : ProviderTest
     public async Task UnchangedStagedValuesRetainCustomComparerSupport()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await context.AddAsync(
@@ -281,6 +295,7 @@ public abstract partial class BulkStageGuardTests : ProviderTest
             (await tree
                 .InTree(Guid.Empty)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).Issues);
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -289,7 +304,8 @@ public abstract partial class BulkStageGuardTests : ProviderTest
     public async Task EquivalentBinaryScopeReplacementRemainsSupported()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         byte[] scope = [1];
@@ -316,6 +332,7 @@ public abstract partial class BulkStageGuardTests : ProviderTest
             (await tree
                 .InTree(Guid.Empty)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).Issues);
+
         Assert.Single(
             await tree
                 .InTree(Guid.Empty)

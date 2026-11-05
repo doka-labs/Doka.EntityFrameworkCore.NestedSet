@@ -21,7 +21,8 @@ public abstract partial class InheritanceTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<TphContext>(
             Engine,
-            static options => new TphContext(options), cancellationToken: TestContext.Current.CancellationToken);
+            static options => new TphContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<InheritanceNode>();
         var treeId = Guid.NewGuid();
@@ -66,7 +67,8 @@ public abstract partial class InheritanceTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<TptContext>(
             Engine,
-            static options => new TptContext(options), cancellationToken: TestContext.Current.CancellationToken);
+            static options => new TptContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<InheritanceNode>();
         var treeId = Guid.NewGuid();
@@ -123,12 +125,19 @@ public abstract partial class InheritanceTests : ProviderTest
     {
         // Arrange
         await using DbContext context = tpt
-            ? await _fixture.CreateContextAsync<TptContext>(Engine, static options => new TptContext(options),
+            ? await _fixture.CreateContextAsync<TptContext>(
+                Engine,
+                static options => new TptContext(options),
                 cancellationToken: TestContext.Current.CancellationToken)
-            : await _fixture.CreateContextAsync<TphContext>(Engine, static options => new TphContext(options),
+            : await _fixture.CreateContextAsync<TphContext>(
+                Engine,
+                static options => new TphContext(options),
                 cancellationToken: TestContext.Current.CancellationToken);
 
-        var rootId = tpt ? 1_001 : 2_001;
+        var rootId = tpt
+            ? 1_001
+            : 2_001;
+
         var hierarchy = context.NestedSet<InheritanceNode>();
         var treeId = Guid.NewGuid();
         await hierarchy.InsertRootAsync(Node(rootId, "Root"), treeId, CancellationToken.None);
@@ -188,7 +197,8 @@ public abstract partial class InheritanceTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<TphContext>(
             Engine,
-            static options => new TphContext(options), cancellationToken: TestContext.Current.CancellationToken);
+            static options => new TphContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<InheritanceNode>();
         var treeId = Guid.NewGuid();
@@ -205,7 +215,10 @@ public abstract partial class InheritanceTests : ProviderTest
         var error = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
 
         var persisted = await context
             .Set<InheritanceNode>()

@@ -8,11 +8,11 @@ internal sealed class NestedSetTrackedStructure<TEntity, TKey, TTreeId, TScope>
     where TScope : notnull
 {
     private readonly DbContext _context;
-    private readonly NestedSetMapping<TEntity, TKey, TScope> _map;
     private readonly EntityEntry<TEntity>[] _entries;
-    private readonly IProperty[] _properties;
-    private readonly Expression<Func<NestedSetTrackedRowset<TEntity>.Row, object[]>> _projection;
+    private readonly NestedSetMapping<TEntity, TKey, TScope> _map;
     private readonly Expression<Func<TEntity, object[]>> _nativeProjection;
+    private readonly Expression<Func<NestedSetTrackedRowset<TEntity>.Row, object[]>> _projection;
+    private readonly IProperty[] _properties;
 
     /// <summary>Creates a complete refresh capture after persisted membership has been resolved.</summary>
     private NestedSetTrackedStructure(
@@ -152,7 +152,10 @@ internal sealed class NestedSetTrackedStructure<TEntity, TKey, TTreeId, TScope>
                 map.DepthProperty,
                 map.PositionProperty,
             }
-            .Concat(map.ScopeProperty is { } scopeProperty ? [scopeProperty] : []);
+            .Concat(
+                map.ScopeProperty is { } scopeProperty
+                    ? [scopeProperty]
+                    : []);
 
         var properties = NestedSetRefreshProperties.Collect(map.EntityType, structure);
 
@@ -277,7 +280,9 @@ internal sealed class NestedSetTrackedStructure<TEntity, TKey, TTreeId, TScope>
         NestedSetMapping<TEntity, TKey, TScope> map,
         IEnumerable<EntityEntry<TEntity>> entries
     ) => entries.GroupBy(
-        entry => map.Scope is null ? default! : NestedSetTypedValue<TScope>.Read(entry, map.ScopeProperty!),
+        entry => map.Scope is null
+            ? default!
+            : NestedSetTypedValue<TScope>.Read(entry, map.ScopeProperty!),
         map.ScopeComparer);
 
     /// <summary>Keeps a rowset's key correlation within the tracked node's immutable scope.</summary>
@@ -285,7 +290,9 @@ internal sealed class NestedSetTrackedStructure<TEntity, TKey, TTreeId, TScope>
         NestedSetMapping<TEntity, TKey, TScope> map,
         IQueryable<TEntity> source,
         TScope scope
-    ) => map.Scope is null ? source : source.Where(NestedSetKeyFilter<TEntity>.Matches(map.ScopeProperty!, [scope]));
+    ) => map.Scope is null
+        ? source
+        : source.Where(NestedSetKeyFilter<TEntity>.Matches(map.ScopeProperty!, [scope]));
 
     /// <summary>Matches nodes in one bounded batch of exact locked tree identities.</summary>
     private static Expression<Func<TEntity, bool>> LockedNodes(

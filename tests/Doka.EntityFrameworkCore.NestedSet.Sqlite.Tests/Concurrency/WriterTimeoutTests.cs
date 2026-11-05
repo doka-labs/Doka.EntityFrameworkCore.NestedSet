@@ -1,3 +1,4 @@
+using Doka.EntityFrameworkCore.NestedSet.Mapping;
 using Microsoft.Data.Sqlite;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Sqlite;
@@ -16,7 +17,8 @@ public sealed class WriterTimeoutTests : ProviderTest, IClassFixture<ProviderFix
     public async Task BusyWriterPreservesStructureAndRegistryUntilFreshRetry()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var firstTree = Guid.Parse("11111111-1111-1111-1111-111111111111");
@@ -75,6 +77,7 @@ public sealed class WriterTimeoutTests : ProviderTest, IClassFixture<ProviderFix
         Assert.Equal(
             (1L, 2L, 0, (int?)null),
             (retriedRoot.Start, retriedRoot.End, retriedRoot.Depth, retriedRoot.Parent));
+
         Assert.Equal(secondTree, retriedRoot.TreeId);
         Assert.Equal(firstTree, afterRetry.Registry[0].TreeId);
         Assert.Equal(secondTree, afterRetry.Registry[1].TreeId);
@@ -106,7 +109,9 @@ public sealed class WriterTimeoutTests : ProviderTest, IClassFixture<ProviderFix
             .ToArrayAsync(cancellationToken);
 
         var hierarchy = context.Model.FindEntityType(typeof(TreeNode))!;
-        var registry = Mapping.NestedSetTreeRegistryMapping.For(hierarchy).Registry;
+        var registry = NestedSetTreeRegistryMapping.For(hierarchy)
+            .Registry;
+
         var rows = await context
             .Set<NestedSetTreeRegistry>(registry.Name)
             .AsNoTracking()

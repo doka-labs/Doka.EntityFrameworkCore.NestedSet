@@ -62,20 +62,36 @@ public abstract class RootSiblingPlacementTests : ProviderTest
 
         var inputBefore = Capture(input);
         var rowsBefore = await RowsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
-        var registriesBefore = await RegistryRowsAsync(context,
+        var registriesBefore = await RegistryRowsAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        var error = await Record.ExceptionAsync(() => ApplyAsync(hierarchy, input, operation,
+        var error = await Record.ExceptionAsync(() => ApplyAsync(
+            hierarchy,
+            input,
+            operation,
             cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.OperationRejected, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.OperationRejected,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Equal(rowsBefore, await RowsAsync(context, cancellationToken: TestContext.Current.CancellationToken));
-        Assert.Equal(registriesBefore, await RegistryRowsAsync(context,
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            registriesBefore,
+            await RegistryRowsAsync(
+                context,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Equal(inputBefore, Capture(input));
-        Assert.Equal(EntityState.Detached, context.Entry(input).State);
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(input)
+                .State);
+
         Assert.Empty(context.ChangeTracker.Entries());
         Assert.True(
             (await hierarchy
@@ -139,7 +155,8 @@ public abstract class RootSiblingPlacementTests : ProviderTest
     )
     {
         var entityType = context.Model.FindEntityType(typeof(TreeNode))!;
-        var registry = NestedSetTreeRegistryMapping.For(entityType).Registry;
+        var registry = NestedSetTreeRegistryMapping.For(entityType)
+            .Registry;
 
         return context
             .Set<NestedSetTreeRegistry>(registry.Name)

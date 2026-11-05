@@ -3,21 +3,6 @@ namespace Doka.EntityFrameworkCore.NestedSet.Mapping;
 /// <summary>Names structural roles independently of configured CLR properties and database columns.</summary>
 internal static class NestedSetPropertyRoles
 {
-    // WHY: Role names form persisted annotation keys. Explicit values keep source renames from changing metadata.
-
-    /// <summary>Contains every structural role recognized in model annotations.</summary>
-    internal static readonly string[] All =
-    [
-        NodeKey,
-        Scope,
-        TreeId,
-        Parent,
-        Left,
-        Right,
-        Depth,
-        Position,
-    ];
-
     /// <summary>Identifies the stable scalar key used by hierarchy operations.</summary>
     internal const string NodeKey = "NodeKey";
 
@@ -41,4 +26,19 @@ internal static class NestedSetPropertyRoles
 
     /// <summary>Identifies the zero-based position among siblings.</summary>
     internal const string Position = "Position";
+
+    // WHY: Role names form persisted annotation keys. Explicit values keep source renames from changing metadata.
+
+    /// <summary>Contains every structural role recognized in model annotations.</summary>
+    internal static readonly string[] All =
+    [
+        NodeKey,
+        Scope,
+        TreeId,
+        Parent,
+        Left,
+        Right,
+        Depth,
+        Position,
+    ];
 }

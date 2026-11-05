@@ -21,7 +21,9 @@ public sealed partial class SafeMigrationTests
     )
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync(engine, qualifySchema,
+        await using var database = await CreateDatabaseAsync(
+            engine,
+            qualifySchema,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var initial = database.Scaffold(MigrationStage.Current, "SafeInitial");
@@ -66,6 +68,7 @@ public sealed partial class SafeMigrationTests
             serviceType.Assembly.GetName()
                 .Name!,
             StringComparison.Ordinal);
+
         Assert.IsAssignableFrom<IDesignTimeServices>(Activator.CreateInstance(serviceType));
     }
 
@@ -84,7 +87,9 @@ public sealed partial class SafeMigrationTests
     )
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync("Sqlite", false,
+        await using var database = await CreateDatabaseAsync(
+            "Sqlite",
+            false,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var baseline = database.Scaffold(MigrationStage.Baseline, "SafeBaseline");
@@ -93,8 +98,9 @@ public sealed partial class SafeMigrationTests
         var upgrade = database.Scaffold(MigrationStage.Current, "SafeScopeKey", baseline);
         await using var context = database.CreateContext(MigrationStage.Current, upgrade.Assembly);
         var migrator = context.GetService<IMigrator>();
-        var indexesBefore = IndexSignatures(await database.ReadIndexesAsync(
-            cancellationToken: TestContext.Current.CancellationToken));
+        var indexesBefore = IndexSignatures(
+            await database.ReadIndexesAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
 
         var nodesBefore = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
@@ -106,10 +112,17 @@ public sealed partial class SafeMigrationTests
         // Assert
         var scriptException = Assert.IsType<NotSupportedException>(exception);
         Assert.Contains(expectedMessage, scriptException.Message, StringComparison.Ordinal);
-        Assert.Equal(indexesBefore, IndexSignatures(await database.ReadIndexesAsync(
-            cancellationToken: TestContext.Current.CancellationToken)));
-        Assert.Equal(nodesBefore, await database.ReadNodesAsync(
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            indexesBefore,
+            IndexSignatures(
+                await database.ReadIndexesAsync(
+                    cancellationToken: TestContext.Current.CancellationToken)));
+
+        Assert.Equal(
+            nodesBefore,
+            await database.ReadNodesAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Equal([baseline.MigrationIds[0]], historyBefore);
         Assert.Equal(historyBefore, await context.Database.GetAppliedMigrationsAsync(CancellationToken.None));
     }

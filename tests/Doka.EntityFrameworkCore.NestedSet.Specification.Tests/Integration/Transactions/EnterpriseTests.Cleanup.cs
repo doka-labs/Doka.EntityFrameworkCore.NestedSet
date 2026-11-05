@@ -12,14 +12,18 @@ public abstract partial class EnterpriseTests
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(129),
+        await EnterpriseForestTestSupport.SeedForestAsync(
+            setup,
+            EnterpriseForestTestSupport.CreateForest(129),
             cancellationToken: TestContext.Current.CancellationToken,
             true);
+
         var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var commands = new EnterpriseProbe { FailSecondNodeUpdate = true };
         var cleanup = new EnterpriseTransactionProbe();
         await using var context = database.CreateContext(commands, cleanup);
-        await using var transaction = await BeginCallerAsync(context,
+        await using var transaction = await BeginCallerAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = context
@@ -41,8 +45,11 @@ public abstract partial class EnterpriseTests
         Assert.True(retainedOwnership);
         Assert.Equal(1, commands.CompletedNodeUpdates);
         await using var verification = database.CreateContext();
-        Assert.Equal(before, await SnapshotAsync(verification,
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            before,
+            await SnapshotAsync(
+                verification,
+                cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Verifies that owned-transaction rollback failure does not hide the operation error.</summary>
@@ -53,9 +60,12 @@ public abstract partial class EnterpriseTests
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(129),
+        await EnterpriseForestTestSupport.SeedForestAsync(
+            setup,
+            EnterpriseForestTestSupport.CreateForest(129),
             cancellationToken: TestContext.Current.CancellationToken,
             true);
+
         var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var commands = new EnterpriseProbe { FailSecondNodeUpdate = true };
         var cleanup = new EnterpriseTransactionProbe { FailOwnedRollback = true };
@@ -76,7 +86,10 @@ public abstract partial class EnterpriseTests
         Assert.Equal(1, commands.CompletedNodeUpdates);
         Assert.Null(context.Database.CurrentTransaction);
         await using var verification = database.CreateContext();
-        Assert.Equal(before, await SnapshotAsync(verification,
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            before,
+            await SnapshotAsync(
+                verification,
+                cancellationToken: TestContext.Current.CancellationToken));
     }
 }

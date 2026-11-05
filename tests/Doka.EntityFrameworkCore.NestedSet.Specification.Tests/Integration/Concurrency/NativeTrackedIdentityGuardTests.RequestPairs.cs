@@ -20,12 +20,27 @@ public abstract partial class NativeTrackedIdentityGuardTests
         var secondScope = new BroadScope($"PAIR-B-{root}");
         var firstTree = Guid.NewGuid();
         var secondTree = Guid.NewGuid();
-        await SeedPairRootAsync(context, firstScope, firstTree, root,
+        await SeedPairRootAsync(
+            context,
+            firstScope,
+            firstTree,
+            root,
             cancellationToken: TestContext.Current.CancellationToken);
-        await SeedPairRootAsync(context, secondScope, secondTree, root + 10,
+
+        await SeedPairRootAsync(
+            context,
+            secondScope,
+            secondTree,
+            root + 10,
             cancellationToken: TestContext.Current.CancellationToken);
-        await SeedPairRootAsync(context, firstScope, secondTree, root + 20,
+
+        await SeedPairRootAsync(
+            context,
+            firstScope,
+            secondTree,
+            root + 20,
             cancellationToken: TestContext.Current.CancellationToken);
+
         var tracked = await context
             .Set<BroadScopeNode>()
             .SingleAsync(node => node.Scope == firstScope && node.Id == root + 20, CancellationToken.None);
@@ -67,7 +82,11 @@ public abstract partial class NativeTrackedIdentityGuardTests
         Assert.Equal(1, probe.NativeReads);
         Assert.InRange(probe.MaximumNativeParameters, 1, 6);
         Assert.Equal(before, PairSnapshot(tracked));
-        Assert.Equal(EntityState.Unchanged, context.Entry(tracked).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(tracked)
+                .State);
+
         Assert.Single(context.ChangeTracker.Entries<BroadScopeNode>());
         Assert.Equal(
             before,
@@ -99,10 +118,20 @@ public abstract partial class NativeTrackedIdentityGuardTests
         var secondScope = new BroadScope($"PAIR-EXACT-B-{root}");
         var firstTree = Guid.NewGuid();
         var secondTree = Guid.NewGuid();
-        await SeedPairRootAsync(context, firstScope, firstTree, root,
+        await SeedPairRootAsync(
+            context,
+            firstScope,
+            firstTree,
+            root,
             cancellationToken: TestContext.Current.CancellationToken);
-        await SeedPairRootAsync(context, secondScope, secondTree, root + 10,
+
+        await SeedPairRootAsync(
+            context,
+            secondScope,
+            secondTree,
+            root + 10,
             cancellationToken: TestContext.Current.CancellationToken);
+
         var tracked = await context
             .Set<BroadScopeNode>()
             .SingleAsync(node => node.Scope == firstScope && node.Id == root, CancellationToken.None);
@@ -139,11 +168,19 @@ public abstract partial class NativeTrackedIdentityGuardTests
             CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Equal(0, calls);
         Assert.Equal(0, probe.Commands);
         Assert.Equal(before, PairSnapshot(tracked));
-        Assert.Equal(EntityState.Unchanged, context.Entry(tracked).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(tracked)
+                .State);
+
         Assert.Single(context.ChangeTracker.Entries<BroadScopeNode>());
         Assert.Equal(
             before,

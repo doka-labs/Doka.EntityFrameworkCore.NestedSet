@@ -25,14 +25,18 @@ public class MoveBenchmarks : DatabaseBenchmark
     }
 
     /// <inheritdoc />
-    public override async Task PrepareAsync(CancellationToken cancellationToken)
+    public override async Task PrepareAsync(
+        CancellationToken cancellationToken
+    )
     {
         _moved = 0;
         await base.PrepareAsync(cancellationToken);
     }
 
     /// <inheritdoc />
-    public override async Task VerifyAsync(CancellationToken cancellationToken)
+    public override async Task VerifyAsync(
+        CancellationToken cancellationToken
+    )
     {
         var node = await Fixture
             .Context

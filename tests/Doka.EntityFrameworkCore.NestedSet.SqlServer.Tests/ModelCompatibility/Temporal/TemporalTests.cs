@@ -15,7 +15,8 @@ public sealed class TemporalTests : ProviderTest, IClassFixture<ProviderFixture<
     {
         // Arrange
         var connection = await (await TestDatabaseServers.GetCurrentAsync(
-            cancellationToken: TestContext.Current.CancellationToken)).NewConnectionStringAsync(Engine,
+            cancellationToken: TestContext.Current.CancellationToken)).NewConnectionStringAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var options = new DbContextOptionsBuilder<TemporalContext>()

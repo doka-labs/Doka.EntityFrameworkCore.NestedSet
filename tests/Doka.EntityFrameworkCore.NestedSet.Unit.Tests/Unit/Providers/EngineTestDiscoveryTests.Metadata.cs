@@ -12,7 +12,10 @@ public sealed partial class EngineTestDiscoveryTests
         bool databaseIndependent = false
     )
     {
-        var project = engine == "MariaDb" ? "MySql" : engine;
+        var project = engine == "MariaDb"
+            ? "MySql"
+            : engine;
+
         var name = new AssemblyName($"Doka.EntityFrameworkCore.NestedSet.{project}.Tests");
         var assembly = AssemblyBuilder.DefineDynamicAssembly(name, AssemblyBuilderAccess.RunAndCollect);
         var module = assembly.DefineDynamicModule(name.Name!);
@@ -20,9 +23,10 @@ public sealed partial class EngineTestDiscoveryTests
 
         if (databaseIndependent)
         {
-            builder.SetCustomAttribute(new CustomAttributeBuilder(
-                typeof(DatabaseIndependentAttribute).GetConstructor(Type.EmptyTypes)!,
-                []));
+            builder.SetCustomAttribute(
+                new CustomAttributeBuilder(
+                    typeof(DatabaseIndependentAttribute).GetConstructor(Type.EmptyTypes)!,
+                    []));
         }
 
         fixtureTypes ??= [GetFixtureType(engine)];
@@ -42,6 +46,7 @@ public sealed partial class EngineTestDiscoveryTests
                 null,
                 Type.EmptyTypes,
                 null)!);
+
         il.Emit(OpCodes.Ret);
         var type = builder.CreateType();
 

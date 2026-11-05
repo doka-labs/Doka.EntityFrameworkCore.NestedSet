@@ -5,10 +5,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Migrations.Tests;
 /// <summary>Scaffolds and executes the opt-in schema through real provider design-time services.</summary>
 public sealed class AncestorIndexDatabase : IAsyncDisposable
 {
-    private readonly MigrationDatabase _database;
-    private readonly string _connection;
-    private readonly Action<DbContextOptionsBuilder>? _configureOptions;
     private readonly Action<IServiceCollection, DbContext>? _configureDesignServices;
+    private readonly Action<DbContextOptionsBuilder>? _configureOptions;
+    private readonly string _connection;
 
     private AncestorIndexDatabase(
         MigrationDatabase database,
@@ -17,14 +16,17 @@ public sealed class AncestorIndexDatabase : IAsyncDisposable
         Action<IServiceCollection, DbContext>? configureDesignServices
     )
     {
-        _database = database;
+        PhysicalDatabase = database;
         _connection = connection;
         _configureOptions = configureOptions;
         _configureDesignServices = configureDesignServices;
     }
 
     /// <summary>Gets the existing catalog and direct-insertion support for the same physical table.</summary>
-    public MigrationDatabase PhysicalDatabase => _database;
+    public MigrationDatabase PhysicalDatabase { get; }
+
+    /// <inheritdoc />
+    public ValueTask DisposeAsync() => PhysicalDatabase.DisposeAsync();
 
     /// <summary>Creates an empty isolated database without creating tables.</summary>
     /// <param name="fixture">The owner of reusable database engines.</param>
@@ -69,7 +71,7 @@ public sealed class AncestorIndexDatabase : IAsyncDisposable
         var options = new DbContextOptionsBuilder<AncestorIndexContext>();
         assembly ??= typeof(AncestorIndexContext).Assembly;
 
-        switch (_database.Engine)
+        switch (PhysicalDatabase.Engine)
         {
             case "Sqlite":
                 options.UseSqlite(
@@ -77,6 +79,7 @@ public sealed class AncestorIndexDatabase : IAsyncDisposable
                     x => x
                         .UseNestedSets()
                         .MigrationsAssembly(assembly));
+
                 break;
             case "PostgreSql":
                 options.UseNpgsql(
@@ -84,6 +87,7 @@ public sealed class AncestorIndexDatabase : IAsyncDisposable
                     x => x
                         .UseNestedSets()
                         .MigrationsAssembly(assembly));
+
                 break;
             case "SqlServer":
                 options.UseSqlServer(
@@ -91,15 +95,20 @@ public sealed class AncestorIndexDatabase : IAsyncDisposable
                     x => x
                         .UseNestedSets()
                         .MigrationsAssembly(assembly));
+
                 break;
             default:
-                var version = _database.Engine == "MariaDb" ? DatabaseTestTargets.MariaDb : DatabaseTestTargets.MySql;
+                var version = PhysicalDatabase.Engine == "MariaDb"
+                    ? DatabaseTestTargets.MariaDb
+                    : DatabaseTestTargets.MySql;
+
                 options.UseMySql(
                     _connection,
                     version,
                     x => x
                         .UseNestedSets()
                         .MigrationsAssembly(assembly));
+
                 break;
         }
 
@@ -116,7 +125,7 @@ public sealed class AncestorIndexDatabase : IAsyncDisposable
             options.UseModel(model);
         }
 
-        return new AncestorIndexContext(options.Options, enabled, _database.Schema, adoptIndex, splitStructure);
+        return new AncestorIndexContext(options.Options, enabled, PhysicalDatabase.Schema, adoptIndex, splitStructure);
     }
 
     /// <summary>Generates and compiles an actual migration and its complete snapshot.</summary>
@@ -160,7 +169,7 @@ public sealed class AncestorIndexDatabase : IAsyncDisposable
         using var serviceProvider = services.BuildServiceProvider();
         var generated = serviceProvider
             .GetRequiredService<IMigrationsScaffolder>()
-            .ScaffoldMigration(name, "Doka.Generated.Ancestor", "Migrations", "C#", false);
+            .ScaffoldMigration(name, "Doka.Generated.Ancestor", "Migrations", "C#");
 
         var sources = prior?.Sources.ToList() ?? [];
         sources.Add(generated.MigrationCode);
@@ -206,7 +215,4 @@ public sealed class AncestorIndexDatabase : IAsyncDisposable
             .GetService<IMigrator>()
             .MigrateAsync(target, cancellationToken);
     }
-
-    /// <inheritdoc />
-    public ValueTask DisposeAsync() => _database.DisposeAsync();
 }

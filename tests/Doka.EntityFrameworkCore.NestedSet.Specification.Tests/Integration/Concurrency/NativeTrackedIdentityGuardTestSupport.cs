@@ -11,6 +11,7 @@ internal static class NativeTrackedIdentityGuardTestSupport
     internal static int NextRoot(
         int spacing
     ) =>
+
         // WHY: Shared and provider-local suites still write the same compatibility model tables. A single
         // allocator prevents the physical source move from introducing overlapping assigned key ranges.
         Interlocked.Add(ref s_nextRoot, spacing);

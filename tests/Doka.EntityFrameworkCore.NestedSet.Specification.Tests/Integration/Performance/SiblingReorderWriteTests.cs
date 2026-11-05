@@ -18,18 +18,22 @@ public abstract partial class SiblingReorderWriteTests : ProviderTest
     public async Task StableInteriorSubtreeIsExcludedFromEveryUpdate()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedAsync(
             setup,
             [1, 1, 257, 1, 1],
-            ["B", "A", "C", "E", "D"], cancellationToken: TestContext.Current.CancellationToken);
+            ["B", "A", "C", "E", "D"],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var probe = new StructuralWriteProbe("OrderingNodes", "Left", "Right");
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict", probe);
+            "Strict",
+            probe);
 
         // Act
         await ReorderAsync(context, CancellationToken.None);
@@ -46,6 +50,7 @@ public abstract partial class SiblingReorderWriteTests : ProviderTest
                 .Where(node => node.Id == 3)
                 .Select(node => node.Left)
                 .SingleAsync(CancellationToken.None));
+
         Assert.True(
             (await context
                 .NestedSet<OrderingNode>()
@@ -59,15 +64,22 @@ public abstract partial class SiblingReorderWriteTests : ProviderTest
     public async Task PositionOnlySiblingDoesNotRewriteItsDescendants()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        await SeedAsync(setup, [1, 1, 257, 2], ["C", "D", "B", "A"],
+        await SeedAsync(
+            setup,
+            [1, 1, 257, 2],
+            ["C", "D", "B", "A"],
             cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new StructuralWriteProbe("OrderingNodes", "Left", "Right");
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict", probe);
+            "Strict",
+            probe);
 
         // Act
         await ReorderAsync(context, CancellationToken.None);
@@ -98,7 +110,8 @@ public abstract partial class SiblingReorderWriteTests : ProviderTest
     public async Task MultipleBatchesSkipTheStableInteriorSubtree()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var sizes = Enumerable
@@ -119,9 +132,11 @@ public abstract partial class SiblingReorderWriteTests : ProviderTest
 
         await SeedAsync(setup, sizes, names, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new StructuralWriteProbe("OrderingNodes", "Left", "Right");
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict", probe);
+            "Strict",
+            probe);
 
         // Act
         await ReorderAsync(context, CancellationToken.None);
@@ -136,6 +151,7 @@ public abstract partial class SiblingReorderWriteTests : ProviderTest
                 .Where(node => node.Id == 41)
                 .Select(node => node.Left)
                 .SingleAsync(CancellationToken.None));
+
         Assert.True(
             (await context
                 .NestedSet<OrderingNode>()
@@ -198,7 +214,7 @@ public abstract partial class SiblingReorderWriteTests : ProviderTest
         for (var root = 0; root < sizes.Length; root++)
         {
             var left = boundary;
-            var right = checked(left + (sizes[root] * 2) - 1);
+            var right = checked(left + sizes[root] * 2 - 1);
             nodes.Add(
                 new OrderingNode
                 {
@@ -219,8 +235,8 @@ public abstract partial class SiblingReorderWriteTests : ProviderTest
                         Scope = 1,
                         ParentId = root + 1,
                         Name = $"Child-{child:D4}",
-                        Left = left + (child * 2) + 1,
-                        Right = left + (child * 2) + 2,
+                        Left = left + child * 2 + 1,
+                        Right = left + child * 2 + 2,
                         Depth = 1,
                         Position = child,
                     });
@@ -256,7 +272,7 @@ public abstract partial class SiblingReorderWriteTests : ProviderTest
                 Scope = 2,
                 Name = "Other scope",
                 Left = 1,
-                Right = 2
+                Right = 2,
             });
 
         await context.AddRangeAsync(nodes, cancellationToken);

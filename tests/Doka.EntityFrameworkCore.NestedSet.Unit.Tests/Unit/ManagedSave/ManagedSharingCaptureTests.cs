@@ -44,17 +44,26 @@ public sealed partial class ManagedSharingCaptureTests
         var sharing = SharedEntries(context, root);
         var seed = sharing[seedIndex];
         MarkWrite(seed, state);
-        var rawPeer = seedIndex == 0 ? Entry(context, root.Details) : sharing[0];
+        var rawPeer = seedIndex == 0
+            ? Entry(context, root.Details)
+            : sharing[0];
+
         // WHY: A CLR-only mutation must remain unmarked; a PropertyEntry setter would change the input contract.
-        SetRawPayload(rawPeer.ToEntityEntry().Entity,
+        SetRawPayload(
+            rawPeer.ToEntityEntry()
+                .Entity,
             "Raw unmarked caller payload");
+
         var before = CaptureState(context);
         var oracleRoot = CreateRoot(1, derived);
         oracleContext.AttachRange(oracleRoot, CreateRoot(2, derived), new JsonOwner { Id = 1 });
         var oracleSharing = SharedEntries(oracleContext, oracleRoot);
         var oracleSeed = oracleSharing[seedIndex];
         MarkWrite(oracleSeed, state);
-        var oracleRawPeer = seedIndex == 0 ? oracleRoot.Details : (object)oracleRoot;
+        var oracleRawPeer = seedIndex == 0
+            ? oracleRoot.Details
+            : (object)oracleRoot;
+
         SetRawPayload(oracleRawPeer, "Raw unmarked caller payload");
         var expected = PrepareOracleEntries(oracleContext, [oracleSeed]);
         var callbacks = new List<IUpdateEntry> { seed };
@@ -71,21 +80,39 @@ public sealed partial class ManagedSharingCaptureTests
             Assert.Single(callbacks, value => Identity(value) == entry);
         }
 
-        Assert.DoesNotContain(callbacks,
-            value => ReferenceEquals(value.ToEntityEntry().Entity,
+        Assert.DoesNotContain(
+            callbacks,
+            value => ReferenceEquals(
+                value.ToEntityEntry()
+                    .Entity,
                 root.Separate));
-        Assert.DoesNotContain(callbacks,
-            value => ReferenceEquals(value.ToEntityEntry().Entity,
+
+        Assert.DoesNotContain(
+            callbacks,
+            value => ReferenceEquals(
+                value.ToEntityEntry()
+                    .Entity,
                 jsonOwner.Document));
-        Assert.DoesNotContain(callbacks,
-            value => ReferenceEquals(value.ToEntityEntry().Entity,
+
+        Assert.DoesNotContain(
+            callbacks,
+            value => ReferenceEquals(
+                value.ToEntityEntry()
+                    .Entity,
                 root.Related[0]));
-        Assert.DoesNotContain(callbacks,
-            value => ReferenceEquals(value.ToEntityEntry().Entity,
+
+        Assert.DoesNotContain(
+            callbacks,
+            value => ReferenceEquals(
+                value.ToEntityEntry()
+                    .Entity,
                 unrelated));
-        Assert.Equal("Raw unmarked caller payload",
+
+        Assert.Equal(
+            "Raw unmarked caller payload",
             rawPeer.GetCurrentValue(
                 rawPeer.EntityType.FindProperty(nameof(SharingRoot.Payload))!));
+
         AssertUnchanged(context, before);
     }
 
@@ -109,8 +136,11 @@ public sealed partial class ManagedSharingCaptureTests
             .ToEntityEntry()
             .Property(nameof(SharingRoot.Payload))
             .IsModified = true;
+
         var excluded = sharing[3];
-        excluded.ToEntityEntry().State = peerState;
+        excluded.ToEntityEntry()
+            .State = peerState;
+
         var callbacks = new List<IUpdateEntry> { sharing[0] };
         var before = CaptureState(context);
 
@@ -140,11 +170,17 @@ public sealed partial class ManagedSharingCaptureTests
             .ToEntityEntry()
             .Property(nameof(SharingRoot.Payload))
             .IsModified = true;
+
         sharing[3]
             .ToEntityEntry()
             .Property(nameof(SharingRoot.Payload))
             .IsModified = true;
-        var callbacks = new List<IUpdateEntry> { sharing[3], sharing[0] };
+
+        var callbacks = new List<IUpdateEntry>
+        {
+            sharing[3],
+            sharing[0],
+        };
 
         var before = CaptureState(context);
 
@@ -195,6 +231,7 @@ public sealed partial class ManagedSharingCaptureTests
             .ToEntityEntry()
             .Property(nameof(SharingRoot.Payload))
             .IsModified = true;
+
         var callbacks = new List<IUpdateEntry> { entry };
         var before = CaptureState(context);
 
@@ -289,7 +326,8 @@ public sealed partial class ManagedSharingCaptureTests
         }
         else
         {
-            entry.ToEntityEntry().State = state;
+            entry.ToEntityEntry()
+                .State = state;
         }
     }
 
@@ -312,8 +350,10 @@ public sealed partial class ManagedSharingCaptureTests
             .ToArray();
 
         Assert.NotEmpty(batches);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
 
         return writes
             .Select(Identity)
@@ -324,7 +364,8 @@ public sealed partial class ManagedSharingCaptureTests
     private static RowIdentity Identity(
         IUpdateEntry entry
     )
-        => new(entry.EntityType.Name,
+        => new(
+            entry.EntityType.Name,
             entry.GetCurrentValue<int>(entry.EntityType.FindPrimaryKey()!.Properties.Single()));
 
     /// <summary>Captures native scalar state before the read-only sharing traversal.</summary>
@@ -342,7 +383,8 @@ public sealed partial class ManagedSharingCaptureTests
                     .GetProperties()
                     .ToArray();
 
-                return new NativeState(entry,
+                return new NativeState(
+                    entry,
                     entry.EntityState,
                     properties,
                     properties
@@ -380,8 +422,10 @@ public sealed partial class ManagedSharingCaptureTests
         }
 
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Changes a real CLR payload without invoking EF's current-value setter.</summary>
@@ -392,9 +436,9 @@ public sealed partial class ManagedSharingCaptureTests
     {
         switch (entity)
         {
-            case SharingRoot root: root.Payload = value; break;
+            case SharingRoot root:       root.Payload = value; break;
             case SharingDetails details: details.Payload = value; break;
-            default: throw new ArgumentOutOfRangeException(nameof(entity));
+            default:                     throw new ArgumentOutOfRangeException(nameof(entity));
         }
     }
 

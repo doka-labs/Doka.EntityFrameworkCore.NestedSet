@@ -26,7 +26,9 @@ public abstract partial class SingleInsertGuardTests : ProviderTest
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         await using var transaction = await context.Database.BeginTransactionAsync(
-            Engine == "Sqlite" ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+            Engine == "Sqlite"
+                ? IsolationLevel.Serializable
+                : IsolationLevel.ReadCommitted,
             CancellationToken.None);
 
         var marker = new UnrelatedRow { Id = 701 };
@@ -55,13 +57,30 @@ public abstract partial class SingleInsertGuardTests : ProviderTest
         var error = await Record.ExceptionAsync(() => tree.InsertRootAsync(root, Guid.Empty, CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidStructure, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidStructure,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Same(transaction, context.Database.CurrentTransaction);
         Assert.Equal((9, 71, 72, 3, 4), (root.Tree, root.Start, root.End, root.Depth, root.Position));
         Assert.Null(root.Parent);
-        Assert.Equal(EntityState.Detached, context.Entry(root).State);
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
-        Assert.Equal(1, await context.Set<UnrelatedRow>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(root)
+                .State);
+
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
+        Assert.Equal(
+            1,
+            await context
+                .Set<UnrelatedRow>()
+                .CountAsync(CancellationToken.None));
+
         Assert.Empty(
             await context
                 .Set<TreeNode>()
@@ -117,16 +136,34 @@ public abstract partial class SingleInsertGuardTests : ProviderTest
         var error = await Record.ExceptionAsync(() => tree.InsertRootAsync(root, Guid.Empty, CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidStructure, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidStructure,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Equal((9, 71, 72), (root.Tree, root.Start, root.End));
-        Assert.Equal(EntityState.Detached, context.Entry(root).State);
-        Assert.Same(unexpected, Assert.Single(context.ChangeTracker.Entries()).Entity);
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(root)
+                .State);
+
+        Assert.Same(
+            unexpected,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
 
         // WHY: The transaction rolled back this callback-created entity. Added truthfully preserves the caller's
         // unsaved work; Unchanged would claim that a row now absent from the database had been persisted.
-        Assert.Equal(EntityState.Added, context.Entry(unexpected).State);
+        Assert.Equal(
+            EntityState.Added,
+            context.Entry(unexpected)
+                .State);
+
         await using var verification = database.CreateContext();
-        Assert.Empty(await verification.Set<TreeNode>().ToArrayAsync(CancellationToken.None));
+        Assert.Empty(
+            await verification
+                .Set<TreeNode>()
+                .ToArrayAsync(CancellationToken.None));
     }
 
     /// <summary>A later save interceptor can add an application row to the same managed insert.</summary>
@@ -157,7 +194,7 @@ public abstract partial class SingleInsertGuardTests : ProviderTest
         if (bulk)
         {
             await tree.InsertForestAsync(
-                [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(root)),],
+                [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(root))],
                 CancellationToken.None);
         }
         else
@@ -167,8 +204,21 @@ public abstract partial class SingleInsertGuardTests : ProviderTest
 
         // Assert
         await using var verification = database.CreateContext();
-        Assert.Equal(101, Assert.Single(await verification.Set<TreeNode>().ToArrayAsync(CancellationToken.None)).NodeId);
-        Assert.Equal(701, Assert.Single(await verification.Set<UnrelatedRow>().ToArrayAsync(CancellationToken.None)).Id);
+        Assert.Equal(
+            101,
+            Assert.Single(
+                    await verification
+                        .Set<TreeNode>()
+                        .ToArrayAsync(CancellationToken.None))
+                .NodeId);
+
+        Assert.Equal(
+            701,
+            Assert.Single(
+                    await verification
+                        .Set<UnrelatedRow>()
+                        .ToArrayAsync(CancellationToken.None))
+                .Id);
     }
 
     /// <summary>A failed application write rolls back the hierarchy row from the same managed save.</summary>
@@ -203,14 +253,24 @@ public abstract partial class SingleInsertGuardTests : ProviderTest
         // Act
         var error = await Record.ExceptionAsync(() => bulk
             ? hierarchy.InsertForestAsync(
-                [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(root)),],
+                [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(root))],
                 CancellationToken.None)
             : hierarchy.InsertRootAsync(root, Guid.Empty, CancellationToken.None));
 
         // Assert
         Assert.IsType<DbUpdateException>(error);
         await using var verification = database.CreateContext();
-        Assert.Empty(await verification.Set<TreeNode>().ToArrayAsync(CancellationToken.None));
-        Assert.Equal(701, Assert.Single(await verification.Set<UnrelatedRow>().ToArrayAsync(CancellationToken.None)).Id);
+        Assert.Empty(
+            await verification
+                .Set<TreeNode>()
+                .ToArrayAsync(CancellationToken.None));
+
+        Assert.Equal(
+            701,
+            Assert.Single(
+                    await verification
+                        .Set<UnrelatedRow>()
+                        .ToArrayAsync(CancellationToken.None))
+                .Id);
     }
 }

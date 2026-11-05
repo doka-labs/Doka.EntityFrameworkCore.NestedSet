@@ -25,7 +25,11 @@ public abstract class ScopeAliasRefreshTests : ProviderTest
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedAsync(context, "tenant-a", cancellationToken: TestContext.Current.CancellationToken);
-        var alias = await AttachAliasAsync(context, "tenant-a", "TENANT-A", 2,
+        var alias = await AttachAliasAsync(
+            context,
+            "tenant-a",
+            "TENANT-A",
+            2,
             cancellationToken: TestContext.Current.CancellationToken);
 
         alias.Name = "Zulu";
@@ -52,7 +56,11 @@ public abstract class ScopeAliasRefreshTests : ProviderTest
 
         await SeedAsync(context, "tenant-b", cancellationToken: TestContext.Current.CancellationToken);
         await SeedAsync(context, "tenant-c", cancellationToken: TestContext.Current.CancellationToken);
-        var alias = await AttachAliasAsync(context, "tenant-b", "TENANT-B", 2,
+        var alias = await AttachAliasAsync(
+            context,
+            "tenant-b",
+            "TENANT-B",
+            2,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var other = await context

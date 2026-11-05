@@ -81,8 +81,10 @@ public sealed class BulkForestTrackerScaleTests : ProviderTest,
             $"Independent roots={RootCount}; unrelated tracked entities={TrackedCount}; "
             + $"detections={detections}; saves={saves}; baseline bytes={baselineAllocated}; "
             + $"crowded bytes={crowdedAllocated}; additional bytes per entry={additionalPerEntry}");
+
         Assert.Equal(3, saves);
         Assert.Equal(4, detections);
+
         // WHY: Four mandatory detections comprise one executor guard and three EF payload saves. The existing
         // single-insert ceiling allows 500 bytes per entry for two detections, so this bounds the same per-scan
         // cost without permitting additional scans or tracker snapshots for each independently imported tree.
@@ -95,8 +97,12 @@ public sealed class BulkForestTrackerScaleTests : ProviderTest,
                 Assert.Equal(
                     (1L, 2L, 0, 0L),
                     (tree.Root.Entity.Start, tree.Root.Entity.End, tree.Root.Entity.Depth, tree.Root.Entity.Position));
+
                 Assert.Null(tree.Root.Entity.Parent);
-                Assert.Equal(EntityState.Detached, context.Entry(tree.Root.Entity).State);
+                Assert.Equal(
+                    EntityState.Detached,
+                    context.Entry(tree.Root.Entity)
+                        .State);
             });
 
         Assert.Equal(
@@ -105,8 +111,9 @@ public sealed class BulkForestTrackerScaleTests : ProviderTest,
                 .ChangeTracker
                 .Entries<UnrelatedRow>()
                 .Count(marker => marker.State == EntityState.Unchanged));
+
         Assert.Equal(
-            (RootCount * 2) + 2,
+            RootCount * 2 + 2,
             await context
                 .Set<TreeNode>()
                 .CountAsync(CancellationToken.None));

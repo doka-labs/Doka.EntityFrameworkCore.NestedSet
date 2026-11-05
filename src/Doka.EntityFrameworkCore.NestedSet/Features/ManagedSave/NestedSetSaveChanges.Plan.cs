@@ -6,10 +6,10 @@ internal static partial class NestedSetSaveChanges
     private sealed class CandidatePlan
     {
         private static readonly ConditionalWeakTable<IEntityType, GuardReader[]> s_readers = new();
-        private readonly GuardValue[] _values;
         private readonly object _entity;
-        private readonly int _parentIndex;
         private readonly object? _intendedParent;
+        private readonly int _parentIndex;
+        private readonly GuardValue[] _values;
 
         /// <summary>Retains independent snapshots for one original candidate.</summary>
         private CandidatePlan(
@@ -21,7 +21,9 @@ internal static partial class NestedSetSaveChanges
             _values = values;
             _entity = entity;
             _parentIndex = Array.FindIndex(values, value => value.Reader.Property == parent && value.Modified);
-            _intendedParent = _parentIndex < 0 ? null : values[_parentIndex].Current;
+            _intendedParent = _parentIndex < 0
+                ? null
+                : values[_parentIndex].Current;
         }
 
         /// <summary>Captures intended Parent and guarded values before the physical FK is suppressed.</summary>
@@ -38,7 +40,8 @@ internal static partial class NestedSetSaveChanges
             // ReSharper disable once LoopCanBeConvertedToQuery
             for (var index = 0; index < readers.Length; index++)
             {
-                values[index] = readers[index].Capture(entry, entity);
+                values[index] = readers[index]
+                    .Capture(entry, entity);
             }
 
             var parent = NestedSetModelMapping
@@ -107,7 +110,8 @@ internal static partial class NestedSetSaveChanges
             // ReSharper disable once LoopCanBeConvertedToQuery
             for (var index = 0; index < _values.Length; index++)
             {
-                if (!_values[index].Matches(entry, _entity))
+                if (!_values[index]
+                    .Matches(entry, _entity))
                 {
                     return false;
                 }
@@ -183,7 +187,9 @@ internal static partial class NestedSetSaveChanges
             return new GuardValue(
                 this,
                 current,
-                hasOriginal ? NestedSetStructuralValue.Snapshot(Property, entry.GetOriginalValue(Property)) : null,
+                hasOriginal
+                    ? NestedSetStructuralValue.Snapshot(Property, entry.GetOriginalValue(Property))
+                    : null,
                 SnapshotClr(entity, current),
                 hasOriginal,
                 entry.IsModified(Property),
@@ -215,9 +221,9 @@ internal static partial class NestedSetSaveChanges
     private sealed class GuardReader<TValue> : GuardReader
         where TValue : notnull
     {
-        private readonly bool _typedReads;
-        private readonly NestedSetProviderComparer<TValue> _comparer;
         private readonly Func<object, TValue>? _clr;
+        private readonly NestedSetProviderComparer<TValue> _comparer;
+        private readonly bool _typedReads;
 
         /// <summary>Captures the one property mapping for every plan using this model.</summary>
         public GuardReader(
@@ -225,7 +231,10 @@ internal static partial class NestedSetSaveChanges
         ) : base(property)
         {
             _comparer = new NestedSetProviderComparer<TValue>(property);
-            _clr = property.IsShadowProperty() ? null : NestedSetClrGetter<TValue>.For(property);
+            _clr = property.IsShadowProperty()
+                ? null
+                : NestedSetClrGetter<TValue>.For(property);
+
             _typedReads = property.IsShadowProperty()
                 || property.GetMemberInfo(false, false) switch
                 {
@@ -245,12 +254,16 @@ internal static partial class NestedSetSaveChanges
             if (!_typedReads)
             {
                 // WHY: A CLR member whose type differs from EF metadata needs EF's exact object getter.
-                var current = original ? entry.GetOriginalValue(Property) : entry.GetCurrentValue(Property);
+                var current = original
+                    ? entry.GetOriginalValue(Property)
+                    : entry.GetCurrentValue(Property);
 
                 return _comparer.Matches(current, snapshot);
             }
 
-            var value = original ? entry.GetOriginalValue<TValue>(Property) : entry.GetCurrentValue<TValue>(Property);
+            var value = original
+                ? entry.GetOriginalValue<TValue>(Property)
+                : entry.GetCurrentValue<TValue>(Property);
 
             return _comparer.Equals(value, (TValue)snapshot!);
         }

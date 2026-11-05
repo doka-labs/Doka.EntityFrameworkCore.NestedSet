@@ -16,7 +16,8 @@ public sealed partial class AncestorIndexTests
     )
     {
         // Arrange
-        using var context = new AncestorContext(engine,
+        using var context = new AncestorContext(
+            engine,
             model =>
             {
                 var entity = model.SharedTypeEntity<Dictionary<string, object>>("StringIndexBudget");
@@ -24,17 +25,21 @@ public sealed partial class AncestorIndexTests
                     .Property<string>("Id")
                     .IsRequired()
                     .HasMaxLength(64);
+
                 entity
                     .Property<string>("Scope")
                     .IsRequired()
                     .HasMaxLength(64);
+
                 entity
                     .Property<string>("Tree")
                     .IsRequired()
                     .HasMaxLength(64);
+
                 entity
                     .Property<string>("Parent")
                     .HasMaxLength(64);
+
                 entity.Property<long>("L");
                 entity.Property<long>("R");
                 entity.Property<int>("Depth");
@@ -91,8 +96,10 @@ public sealed partial class AncestorIndexTests
             .ToArray();
 
         var declaration = Array.FindIndex(conventions, convention => convention is NestedSetAncestorIndexConvention);
-        var budgeting = Array.FindIndex(conventions,
-            convention => convention.GetType().Name
+        var budgeting = Array.FindIndex(
+            conventions,
+            convention => convention.GetType()
+                    .Name
                 == "MySqlIndexLengthConvention");
 
         // Assert

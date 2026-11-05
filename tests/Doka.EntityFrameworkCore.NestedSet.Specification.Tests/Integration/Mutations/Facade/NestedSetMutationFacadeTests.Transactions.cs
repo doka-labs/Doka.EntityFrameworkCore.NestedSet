@@ -10,7 +10,9 @@ public abstract partial class NestedSetMutationFacadeTests
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        await ExecuteApplicationTransactionAsync(database, commit: false,
+        await ExecuteApplicationTransactionAsync(
+            database,
+            commit: false,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -19,6 +21,7 @@ public abstract partial class NestedSetMutationFacadeTests
             await verification
                 .Set<UnrelatedRow>()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Empty(
             await verification
                 .Set<TreeNode>()
@@ -33,7 +36,9 @@ public abstract partial class NestedSetMutationFacadeTests
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        await ExecuteApplicationTransactionAsync(database, commit: true,
+        await ExecuteApplicationTransactionAsync(
+            database,
+            commit: true,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -44,6 +49,7 @@ public abstract partial class NestedSetMutationFacadeTests
                 .Set<UnrelatedRow>()
                 .Select(row => row.Value)
                 .SingleAsync(CancellationToken.None));
+
         Assert.Equal(
             s_firstTree,
             await verification
@@ -61,7 +67,9 @@ public abstract partial class NestedSetMutationFacadeTests
     )
     {
         await using var context = database.CreateContext();
-        var isolation = context.Database.IsSqlite() ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted;
+        var isolation = context.Database.IsSqlite()
+            ? IsolationLevel.Serializable
+            : IsolationLevel.ReadCommitted;
 
         await using var transaction = await context.Database.BeginTransactionAsync(isolation, cancellationToken);
         context.Add(

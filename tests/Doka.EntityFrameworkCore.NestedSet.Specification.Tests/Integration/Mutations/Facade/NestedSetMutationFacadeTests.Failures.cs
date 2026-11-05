@@ -177,19 +177,27 @@ public abstract partial class NestedSetMutationFacadeTests
 
         // Act
         var outcomes = await Task.WhenAll(
-            CaptureAsync(token => firstHierarchy.InsertRootAsync(
-                new TreeNode { NodeId = 1 },
-                s_firstTree,
-                token), cancellationToken: TestContext.Current.CancellationToken),
-            CaptureAsync(token => secondHierarchy.InsertRootAsync(
-                new TreeNode { NodeId = 2 },
-                s_firstTree,
-                token), cancellationToken: TestContext.Current.CancellationToken));
+            CaptureAsync(
+                token => firstHierarchy.InsertRootAsync(
+                    new TreeNode { NodeId = 1 },
+                    s_firstTree,
+                    token),
+                cancellationToken: TestContext.Current.CancellationToken),
+            CaptureAsync(
+                token => secondHierarchy.InsertRootAsync(
+                    new TreeNode { NodeId = 2 },
+                    s_firstTree,
+                    token),
+                cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         Assert.Single(outcomes, error => error is null);
         var failure = Assert.Single(outcomes, error => error is not null);
-        Assert.Equal(NestedSetErrorCode.TreeIdUnavailable, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.TreeIdUnavailable,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         await using var verification = database.CreateContext();
         Assert.Equal(
             1,

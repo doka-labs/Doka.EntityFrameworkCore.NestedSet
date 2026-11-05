@@ -18,7 +18,8 @@ public abstract class SingleInsertExactValueTests : ProviderTest
     public async Task ComparerEqualOriginalValuesDoNotBlockSingleInsertion()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await context.AddAsync(
@@ -56,6 +57,7 @@ public abstract class SingleInsertExactValueTests : ProviderTest
             (await tree
                 .InTree(Guid.Empty)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).Issues);
+
         Assert.Equal(
             2,
             await tree
@@ -73,7 +75,8 @@ public abstract class SingleInsertExactValueTests : ProviderTest
     )
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await context.AddAsync(
@@ -88,7 +91,10 @@ public abstract class SingleInsertExactValueTests : ProviderTest
 
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
-        var scope = parent ? "S" : "A";
+        var scope = parent
+            ? "S"
+            : "A";
+
         var tree = context
             .NestedSet<BulkStageTextNode>()
             .ForScope(scope);
@@ -97,7 +103,9 @@ public abstract class SingleInsertExactValueTests : ProviderTest
         {
             Id = "C",
             Scope = scope,
-            ParentId = parent ? "A" : null,
+            ParentId = parent
+                ? "A"
+                : null,
             Left = 71,
             Right = 72,
         };
@@ -120,12 +128,25 @@ public abstract class SingleInsertExactValueTests : ProviderTest
             : tree.InsertRootAsync(input, Guid.Empty, CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidStructure, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidStructure,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Equal(scope, input.Scope);
-        Assert.Equal(parent ? "A" : null, input.ParentId);
+        Assert.Equal(
+            parent
+                ? "A"
+                : null,
+            input.ParentId);
+
         Assert.Equal((71, 72), (input.Left, input.Right));
         Assert.Empty(context.ChangeTracker.Entries());
-        Assert.Equal(1, await context.Set<BulkStageTextNode>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            1,
+            await context
+                .Set<BulkStageTextNode>()
+                .CountAsync(CancellationToken.None));
     }
 
     /// <summary>Even an initially shared scope array is separated from the service before callbacks execute.</summary>
@@ -133,7 +154,8 @@ public abstract class SingleInsertExactValueTests : ProviderTest
     public async Task SharedInitialScopeArrayCannotMutateSingleInsertionService()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         byte[] scope = [1];
@@ -155,12 +177,19 @@ public abstract class SingleInsertExactValueTests : ProviderTest
         var error = await Record.ExceptionAsync(() => tree.InsertRootAsync(input, Guid.Empty, CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidStructure, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidStructure,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Equal<byte>([1], scope);
         Assert.Equal<byte>([1], input.Scope);
         Assert.Equal((71, 72), (input.Left, input.Right));
         Assert.Empty(context.ChangeTracker.Entries());
-        Assert.Empty(await context.Set<BulkStageBinaryScope>().ToArrayAsync(CancellationToken.None));
+        Assert.Empty(
+            await context
+                .Set<BulkStageBinaryScope>()
+                .ToArrayAsync(CancellationToken.None));
     }
 
     /// <summary>A failed save cannot overwrite the pre-call key snapshot by mutating its byte array.</summary>
@@ -168,7 +197,8 @@ public abstract class SingleInsertExactValueTests : ProviderTest
     public async Task FailedSingleInsertionRestoresMutableOriginalKey()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = context
@@ -199,6 +229,9 @@ public abstract class SingleInsertExactValueTests : ProviderTest
         Assert.Equal<byte>([3], input.Id);
         Assert.Equal((17, 71, 72), (input.Scope, input.Left, input.Right));
         Assert.Empty(context.ChangeTracker.Entries());
-        Assert.Empty(await context.Set<BulkStageBinaryParent>().ToArrayAsync(CancellationToken.None));
+        Assert.Empty(
+            await context
+                .Set<BulkStageBinaryParent>()
+                .ToArrayAsync(CancellationToken.None));
     }
 }

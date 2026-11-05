@@ -24,7 +24,8 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
         // itself needs no scope lookup; otherwise a tracked scope alias must be resolved by the database.
         if (nativeKeys && (_map.Scope is null || _map.HasUniqueNodeKey || _map.HasNativeScopeEquality))
         {
-            await RefreshNativeAsync(capabilities, cancellationToken).ConfigureAwait(false);
+            await RefreshNativeAsync(capabilities, cancellationToken)
+                .ConfigureAwait(false);
 
             return;
         }
@@ -33,12 +34,19 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
 
         if (_map.Scope is null)
         {
-            await RefreshScopelessAsync(source, cancellationToken).ConfigureAwait(false);
+            await RefreshScopelessAsync(source, cancellationToken)
+                .ConfigureAwait(false);
 
             return;
         }
 
-        await RefreshScopedAsync(source, nativeKeys ? capabilities : null, cancellationToken).ConfigureAwait(false);
+        await RefreshScopedAsync(
+                source,
+                nativeKeys
+                    ? capabilities
+                    : null,
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 
     /// <summary>Refreshes tracked rows whose scope equality must be resolved by the database.</summary>
@@ -87,8 +95,8 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
                 }
 
                 foreach (var batch in matching
-                             .SelectMany(index => scopeBatch[index])
-                             .Chunk(NestedSetBatch.MaximumRows))
+                    .SelectMany(index => scopeBatch[index])
+                    .Chunk(NestedSetBatch.MaximumRows))
                 {
                     var scopeValues = new TScope[batch.Length];
                     var keys = new TKey[batch.Length];
@@ -149,10 +157,10 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
             : capabilities.MatchTrackedKeyCollection(scoped, _map.KeyProperty, keys);
 
         await foreach (var row in query
-                           .Select(NativeProjection())
-                           .AsAsyncEnumerable()
-                           .WithCancellation(cancellationToken)
-                           .ConfigureAwait(false))
+            .Select(NativeProjection())
+            .AsAsyncEnumerable()
+            .WithCancellation(cancellationToken)
+            .ConfigureAwait(false))
         {
             if (entries.TryGetValue((TKey)row[0], out var entry))
             {
@@ -247,14 +255,16 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
                 : capabilities.MatchTrackedKeyCollection(affected, _map.KeyProperty, keyValues);
 
             await foreach (var row in query
-                               .Select(projection)
-                               .AsAsyncEnumerable()
-                               .WithCancellation(cancellationToken)
-                               .ConfigureAwait(false))
+                .Select(projection)
+                .AsAsyncEnumerable()
+                .WithCancellation(cancellationToken)
+                .ConfigureAwait(false))
             {
                 // WHY: Streaming avoids retaining another complete projected row array for a large tracker.
                 // The enclosing coordinated save still owns the unchanged pre-save rollback snapshot.
-                var entries = correlateScope ? byScope.GetValueOrDefault((TScope)row[^1]) : byKey;
+                var entries = correlateScope
+                    ? byScope.GetValueOrDefault((TScope)row[^1])
+                    : byKey;
 
                 if (entries is not null
                     && entries.TryGetValue((TKey)row[0], out var entry))
@@ -276,7 +286,10 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
         var parameter = Expression.Parameter(typeof(TEntity), "node");
         var values = new[] { _map.KeyProperty }
             .Concat(_refreshProperties)
-            .Concat(_map.ScopeProperty is { } scopeProperty ? [scopeProperty] : [])
+            .Concat(
+                _map.ScopeProperty is { } scopeProperty
+                    ? [scopeProperty]
+                    : [])
             .Select(property => NestedSetRefreshProperties.Project(parameter, property));
 
         return _nativeProjection = Expression.Lambda<Func<TEntity, object[]>>(
@@ -416,28 +429,6 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
             Combine(clauses, start + half, count - half));
     }
 
-    /// <summary>Rebinds entity parameters when composing scope, coordinate, and ordinal row predicates.</summary>
-    private sealed class ParameterReplacer : ExpressionVisitor
-    {
-        private readonly ParameterExpression _source;
-        private readonly Expression _target;
-
-        /// <summary>Retains only expression nodes for one bounded composition.</summary>
-        internal ParameterReplacer(
-            ParameterExpression source,
-            Expression target
-        )
-        {
-            _source = source;
-            _target = target;
-        }
-
-        /// <inheritdoc />
-        protected override Expression VisitParameter(
-            ParameterExpression node
-        ) => node == _source ? _target : node;
-    }
-
     /// <summary>Synchronizes only library-managed coordinates and store-generated concurrency values.</summary>
     /// <param name="entry">The tracked entry, whose payload originals and flags must remain intact.</param>
     /// <param name="row">The input ordinal followed by the selected structural and concurrency values.</param>
@@ -468,4 +459,28 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
         IProperty property,
         TValue[] values
     ) => NestedSetKeyFilter<TEntity>.Matches(property, values);
+
+    /// <summary>Rebinds entity parameters when composing scope, coordinate, and ordinal row predicates.</summary>
+    private sealed class ParameterReplacer : ExpressionVisitor
+    {
+        private readonly ParameterExpression _source;
+        private readonly Expression _target;
+
+        /// <summary>Retains only expression nodes for one bounded composition.</summary>
+        internal ParameterReplacer(
+            ParameterExpression source,
+            Expression target
+        )
+        {
+            _source = source;
+            _target = target;
+        }
+
+        /// <inheritdoc />
+        protected override Expression VisitParameter(
+            ParameterExpression node
+        ) => node == _source
+            ? _target
+            : node;
+    }
 }

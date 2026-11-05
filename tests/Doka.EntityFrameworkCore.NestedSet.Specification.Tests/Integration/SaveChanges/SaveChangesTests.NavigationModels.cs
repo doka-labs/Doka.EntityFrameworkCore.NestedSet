@@ -3,30 +3,58 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public abstract partial class SaveChangesTests
 {
     /// <summary>Creates an isolated navigation model through the existing real-provider database lifecycle.</summary>
-    private async Task<TestDatabase> CreateNavigationDatabaseAsync(CancellationToken cancellationToken)
+    private async Task<TestDatabase> CreateNavigationDatabaseAsync(
+        CancellationToken cancellationToken
+    )
     {
         var database = await TestDatabase.CreateAsync(Engine, cancellationToken: cancellationToken);
 
         try
         {
-            await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+            await using var context = await CreateNavigationContextAsync(
+                database,
+                wrapped: true,
                 cancellationToken: cancellationToken);
 
-            await context.GetService<IRelationalDatabaseCreator>().CreateTablesAsync(cancellationToken);
+            await context
+                .GetService<IRelationalDatabaseCreator>()
+                .CreateTablesAsync(cancellationToken);
+
             var owner = new NavigationScopeOwner { Value = "owner" };
             await context.AddRangeAsync(
                 [owner, new NavigationScopeOwner { Value = "other owner" }, new NavigationNote { Id = 1 }],
                 cancellationToken);
 
             await context.SaveChangesAsync(cancellationToken);
-            var hierarchy = context.NestedSet<NavigationNode>().ForScope(owner.Id);
-            await hierarchy.InsertRootAsync(new NavigationNode { Id = 1, Name = "Root" }, s_treeId,
+            var hierarchy = context
+                .NestedSet<NavigationNode>()
+                .ForScope(owner.Id);
+
+            await hierarchy.InsertRootAsync(
+                new NavigationNode
+                {
+                    Id = 1,
+                    Name = "Root",
+                },
+                s_treeId,
                 cancellationToken);
 
-            await hierarchy.InsertChildAsync(new NavigationNode { Id = 2, Name = "Alpha" }, 1,
+            await hierarchy.InsertChildAsync(
+                new NavigationNode
+                {
+                    Id = 2,
+                    Name = "Alpha",
+                },
+                1,
                 cancellationToken);
 
-            await hierarchy.InsertChildAsync(new NavigationNode { Id = 3, Name = "Bravo" }, 1,
+            await hierarchy.InsertChildAsync(
+                new NavigationNode
+                {
+                    Id = 3,
+                    Name = "Bravo",
+                },
+                1,
                 cancellationToken);
 
             return database;
@@ -53,11 +81,14 @@ public abstract partial class SaveChangesTests
         params IInterceptor[] interceptors
     )
     {
-        var options = await SaveSemanticsFixture.OptionsAsync(database,
+        var options = await SaveSemanticsFixture.OptionsAsync(
+            database,
             cancellationToken: cancellationToken,
             interceptors);
 
-        return wrapped ? new NavigationSaveContext(options) : new NavigationPlainContext(options);
+        return wrapped
+            ? new NavigationSaveContext(options)
+            : new NavigationPlainContext(options);
     }
 
     /// <summary>
@@ -80,93 +111,156 @@ public abstract partial class SaveChangesTests
     }
 
     /// <summary>Maps parent and scope navigations independently of the scalar-only ordering fixture.</summary>
-    private static void ConfigureNavigationModel(ModelBuilder builder)
+    private static void ConfigureNavigationModel(
+        ModelBuilder builder
+    )
     {
         var node = builder.Entity<NavigationNode>();
         node.ToTable("NavigationSaveNodes");
-        node.Property(value => value.Id).ValueGeneratedNever();
-        node.Property(value => value.Name).HasMaxLength(128);
+        node
+            .Property(value => value.Id)
+            .ValueGeneratedNever();
+
+        node
+            .Property(value => value.Name)
+            .HasMaxLength(128);
+
         node.HasNestedSet(value => value
             .HasTreeId(item => item.TreeId)
             .HasScope(item => item.Scope)
             .HasParent(item => item.ParentId)
             .OrderBy(item => item.Name));
 
-        node.HasOne(value => value.Parent).WithMany(value => value.Children)
-            .HasForeignKey(value => new { value.Scope, value.ParentId })
-            .HasPrincipalKey(value => new { value.Scope, value.Id })
+        node
+            .HasOne(value => value.Parent)
+            .WithMany(value => value.Children)
+            .HasForeignKey(value => new
+            {
+                value.Scope,
+                value.ParentId,
+            })
+            .HasPrincipalKey(value => new
+            {
+                value.Scope,
+                value.Id,
+            })
             .OnDelete(DeleteBehavior.Restrict);
 
-        node.HasOne(value => value.ScopeOwner).WithMany(value => value.Nodes)
-            .HasForeignKey(value => value.Scope).OnDelete(DeleteBehavior.Cascade);
+        node
+            .HasOne(value => value.ScopeOwner)
+            .WithMany(value => value.Nodes)
+            .HasForeignKey(value => value.Scope)
+            .OnDelete(DeleteBehavior.Cascade);
 
-        node.HasOne(value => value.PayloadOwner).WithMany(value => value.Nodes)
-            .HasForeignKey(value => new { value.Scope, value.PayloadOwnerId })
-            .HasPrincipalKey(value => new { value.Scope, value.Id })
+        node
+            .HasOne(value => value.PayloadOwner)
+            .WithMany(value => value.Nodes)
+            .HasForeignKey(value => new
+            {
+                value.Scope,
+                value.PayloadOwnerId,
+            })
+            .HasPrincipalKey(value => new
+            {
+                value.Scope,
+                value.Id,
+            })
             .OnDelete(DeleteBehavior.Restrict);
 
         var owner = builder.Entity<NavigationScopeOwner>();
         owner.ToTable("NavigationSaveOwners");
-        owner.Property(value => value.Value).HasMaxLength(128);
+        owner
+            .Property(value => value.Value)
+            .HasMaxLength(128);
+
         var payloadOwner = builder.Entity<NavigationPayloadOwner>();
         payloadOwner.ToTable("NavigationSavePayloadOwners");
-        payloadOwner.HasKey(value => new { value.Scope, value.Id });
-        payloadOwner.Property(value => value.Id).ValueGeneratedNever();
+        payloadOwner.HasKey(value => new
+        {
+            value.Scope,
+            value.Id,
+        });
+
+        payloadOwner
+            .Property(value => value.Id)
+            .ValueGeneratedNever();
+
         var note = builder.Entity<NavigationNote>();
         note.ToTable("NavigationSaveNotes");
-        note.Property(value => value.Id).ValueGeneratedNever();
-        note.Property(value => value.Value).HasMaxLength(128);
+        note
+            .Property(value => value.Id)
+            .ValueGeneratedNever();
+
+        note
+            .Property(value => value.Value)
+            .HasMaxLength(128);
+    }
+
+    /// <summary>Requires the exact library or EF immutable-key rejection produced by this mapped scope.</summary>
+    private static void AssertScopeChangeRejected(
+        Exception? failure,
+        DbContext context,
+        bool wrapped,
+        bool synchronous,
+        bool automaticDetection
+    )
+    {
+        if (wrapped
+            && !synchronous
+            && automaticDetection)
+        {
+            // WHY: Scope also identifies self-FK principals, so coordinated detection reaches EF's immutable key.
+            var rejection = Assert.IsType<InvalidOperationException>(failure);
+            var metadata = context.Model.FindEntityType(typeof(NavigationNode))!;
+            Assert.Equal(
+                CoreStrings.KeyReadOnly(nameof(NavigationNode.Scope), metadata.DisplayName()),
+                rejection.Message);
+        }
+        else
+        {
+            Assert.Equal(
+                NestedSetErrorCode.InvalidContext,
+                Assert.IsType<NestedSetException>(failure)
+                    .Code);
+        }
     }
 
     /// <summary>Coordinates hierarchy work while preserving ordinary manually detected payload.</summary>
     private sealed class NavigationSaveContext : NestedSetDbContext
     {
         /// <summary>Creates the coordinated context from the established provider options.</summary>
-        internal NavigationSaveContext(DbContextOptions options) : base(options) { }
+        internal NavigationSaveContext(
+            DbContextOptions options
+        ) : base(options) { }
 
         /// <inheritdoc />
-        protected override void OnModelCreating(ModelBuilder modelBuilder) => ConfigureNavigationModel(modelBuilder);
+        protected override void OnModelCreating(
+            ModelBuilder modelBuilder
+        ) => ConfigureNavigationModel(modelBuilder);
     }
 
     /// <summary>Exercises provider registration without supplying a coordinated save override.</summary>
     private sealed class NavigationPlainContext : DbContext
     {
         /// <summary>Creates the ordinary context from the established provider options.</summary>
-        internal NavigationPlainContext(DbContextOptions options) : base(options) { }
+        internal NavigationPlainContext(
+            DbContextOptions options
+        ) : base(options) { }
 
         /// <inheritdoc />
-        protected override void OnModelCreating(ModelBuilder modelBuilder) => ConfigureNavigationModel(modelBuilder);
+        protected override void OnModelCreating(
+            ModelBuilder modelBuilder
+        ) => ConfigureNavigationModel(modelBuilder);
     }
 
     /// <summary>Contains hierarchy-owned scalars and the relationships whose snapshots are guarded.</summary>
     private sealed class NavigationNode : IScopedNestedSetNode<int, Guid, int>
     {
         /// <inheritdoc />
-        public int Id { get; set; }
-
-        /// <inheritdoc />
-        public Guid TreeId { get; set; }
-
-        /// <inheritdoc />
-        public int Scope { get; set; }
-
-        /// <inheritdoc />
         public int? ParentId { get; set; }
 
         /// <summary>Gets or sets the configured sibling order.</summary>
         public string Name { get; set; } = string.Empty;
-
-        /// <inheritdoc />
-        public long Left { get; set; }
-
-        /// <inheritdoc />
-        public long Right { get; set; }
-
-        /// <inheritdoc />
-        public int Depth { get; set; }
-
-        /// <inheritdoc />
-        public long Position { get; set; }
 
         /// <summary>Gets or sets the direct parent without requiring an explicitly assigned FK.</summary>
         public NavigationNode? Parent { get; set; }
@@ -182,6 +276,27 @@ public abstract partial class SaveChangesTests
 
         /// <summary>Gets or sets an ordinary principal whose identity includes the existing hierarchy scope.</summary>
         public NavigationPayloadOwner? PayloadOwner { get; set; }
+
+        /// <inheritdoc />
+        public int Id { get; set; }
+
+        /// <inheritdoc />
+        public Guid TreeId { get; set; }
+
+        /// <inheritdoc />
+        public int Scope { get; set; }
+
+        /// <inheritdoc />
+        public long Left { get; set; }
+
+        /// <inheritdoc />
+        public long Right { get; set; }
+
+        /// <inheritdoc />
+        public int Depth { get; set; }
+
+        /// <inheritdoc />
+        public long Position { get; set; }
     }
 
     /// <summary>Provides a store-generated principal key and a cascade relationship to hierarchy nodes.</summary>
@@ -208,29 +323,6 @@ public abstract partial class SaveChangesTests
 
         /// <summary>Gets the related nodes without making the ordinary relationship a hierarchy role.</summary>
         public List<NavigationNode> Nodes { get; } = [];
-    }
-
-    /// <summary>Requires the exact library or EF immutable-key rejection produced by this mapped scope.</summary>
-    private static void AssertScopeChangeRejected(
-        Exception? failure,
-        DbContext context,
-        bool wrapped,
-        bool synchronous,
-        bool automaticDetection
-    )
-    {
-        if (wrapped && !synchronous && automaticDetection)
-        {
-            // WHY: Scope also identifies self-FK principals, so coordinated detection reaches EF's immutable key.
-            var rejection = Assert.IsType<InvalidOperationException>(failure);
-            var metadata = context.Model.FindEntityType(typeof(NavigationNode))!;
-            Assert.Equal(CoreStrings.KeyReadOnly(nameof(NavigationNode.Scope), metadata.DisplayName()),
-                rejection.Message);
-        }
-        else
-        {
-            Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
-        }
     }
 
     /// <summary>Represents ordinary application payload independent of the hierarchy.</summary>
@@ -300,7 +392,9 @@ public abstract partial class SaveChangesTests
         }
 
         /// <summary>Counts model writes independently of provider-specific RETURNING clauses.</summary>
-        private void Observe(DbCommand command)
+        private void Observe(
+            DbCommand command
+        )
         {
             if (command.CommandText.Contains("NavigationSave", StringComparison.Ordinal)
                 && (command.CommandText.Contains("INSERT ", StringComparison.OrdinalIgnoreCase)

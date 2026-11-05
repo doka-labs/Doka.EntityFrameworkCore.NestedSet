@@ -388,7 +388,9 @@ public sealed class SupervisorChainRuleTests
         var budget = new SupervisorQueries.ChainBudget(Request() with { MaxResultRows = maximumRows });
         var next = new List<SupervisorQueries.ChainPath>();
         var completed = new List<SupervisorChainBranch>();
-        int[] expectedPeople = expected ? [21, 22] : [];
+        int[] expectedPeople = expected
+            ? [21, 22]
+            : [];
 
         // Act
         var admitted = SupervisorQueries.AdvanceBranch(
@@ -407,8 +409,14 @@ public sealed class SupervisorChainRuleTests
         // Assert
         Assert.Equal(expected, admitted);
         Assert.Empty(next);
-        Assert.Equal(expected ? 1 : 0, completed.Count);
-        Assert.Equal(expectedPeople,
+        Assert.Equal(
+            expected
+                ? 1
+                : 0,
+            completed.Count);
+
+        Assert.Equal(
+            expectedPeople,
             completed
                 .SelectMany(branch => branch.Hops)
                 .Select(hop => hop.Evidence.CandidateUserId));
@@ -539,7 +547,11 @@ public sealed class SupervisorChainRuleTests
 
         var second = Candidate(22, 6, 5);
 
-        return new(new SupervisorHop(2, 42, 7, first.StartTreeId, second), firstPath, 7, first.StartTreeId);
+        return new SupervisorQueries.ChainPath(
+            new SupervisorHop(2, 42, 7, first.StartTreeId, second),
+            firstPath,
+            7,
+            first.StartTreeId);
     }
 
     /// <summary>Creates an already unique resolution with its exact continuation occurrence.</summary>

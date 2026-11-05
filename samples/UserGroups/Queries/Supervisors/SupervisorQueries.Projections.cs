@@ -19,22 +19,18 @@ internal static partial class SupervisorQueries
 
     /// <summary>Keeps both exact mapped aliases in an authorized source origin.</summary>
     private static readonly Expression<Func<UserGroupMembership, UserGroup, SupervisorOrigin>> s_originProjection =
-    (
-        member,
-        group
-    ) => new SupervisorOrigin
+    (member,
+        group) => new SupervisorOrigin
     {
         Membership = member,
-        Group = group
+        Group = group,
     };
 
     /// <summary>Retains original mapped endpoints and their structural distance for ancestor composition.</summary>
     private static readonly Expression<Func<UserGroup, UserGroup, int, SupervisorGroupPath>> s_groupPathProjection =
-    (
-        start,
+    (start,
         found,
-        distance
-    ) => new SupervisorGroupPath
+        distance) => new SupervisorGroupPath
     {
         StartGroup = start,
         FoundGroup = found,
@@ -143,22 +139,22 @@ internal static partial class SupervisorQueries
     /// <summary>Classifies one origin with the witness aggregates over its occurrences.</summary>
     private static readonly Expression<Func<IGrouping<SupervisorOriginKey, SupervisorOutcomeInput>,
         SupervisorOriginOutcome>> s_originOutcomeProjection = group => new SupervisorOriginOutcome
-        {
-            SourceUserId = group.Key.SourceUserId,
-            StartGroupId = group.Key.StartGroupId,
-            StartTreeId = group.Key.StartTreeId,
-            Count = group.Min(input => input.CandidateUserId) == null
-                ? 0L
-                : group.Min(input => input.CandidateUserId) == group.Max(input => input.CandidateUserId)
-                    ? 1L
-                    : 2L,
-            PersonId = group.Min(input => input.CandidateUserId) == group.Max(input => input.CandidateUserId)
-                ? group.Min(input => input.CandidateUserId)
-                : null,
-            FoundGroupId = group.Min(input => input.FoundGroupId),
-            Distance = group.Min(input => input.Distance),
-            LeadershipPriority = group.Min(input => input.LeadershipPriority),
-        };
+    {
+        SourceUserId = group.Key.SourceUserId,
+        StartGroupId = group.Key.StartGroupId,
+        StartTreeId = group.Key.StartTreeId,
+        Count = group.Min(input => input.CandidateUserId) == null
+            ? 0L
+            : group.Min(input => input.CandidateUserId) == group.Max(input => input.CandidateUserId)
+                ? 1L
+                : 2L,
+        PersonId = group.Min(input => input.CandidateUserId) == group.Max(input => input.CandidateUserId)
+            ? group.Min(input => input.CandidateUserId)
+            : null,
+        FoundGroupId = group.Min(input => input.FoundGroupId),
+        Distance = group.Min(input => input.Distance),
+        LeadershipPriority = group.Min(input => input.LeadershipPriority),
+    };
 
     /// <summary>Preserves every source status and the unique occurrence proven by a single-group rule.</summary>
     private static readonly Expression<Func<SupervisorOriginOutcome, SupervisorReadRow>> s_singleGroupRowProjection =

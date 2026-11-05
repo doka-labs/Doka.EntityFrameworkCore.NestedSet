@@ -10,7 +10,8 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe,
+        await using var context = await CreateContextAsync(
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
@@ -20,7 +21,9 @@ public abstract partial class SignalReportTests
         probe.AfterFirstReader = _ => cancellation.CancelAsync();
 
         // Act
-        var error = await Record.ExceptionAsync(() => SignalReportBuilder.ReadAsync(context, request,
+        var error = await Record.ExceptionAsync(() => SignalReportBuilder.ReadAsync(
+            context,
+            request,
             cancellation.Token));
 
         // Assert

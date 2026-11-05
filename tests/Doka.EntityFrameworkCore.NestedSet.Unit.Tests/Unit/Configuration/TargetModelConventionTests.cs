@@ -59,39 +59,43 @@ public sealed class TargetModelConventionTests
             indexes,
             index => index.Properties.SequenceEqual(
                 [nameof(TargetNode.Scope), nameof(TargetNode.TreeId), nameof(TargetNode.Left)]));
+
         Assert.Contains(
             indexes,
             index => index.Properties.SequenceEqual(
                 [nameof(TargetNode.Scope), nameof(TargetNode.TreeId), nameof(TargetNode.Right)]));
+
         Assert.Contains(
             indexes,
             index => index.Properties.SequenceEqual(
-                [
-                    nameof(TargetNode.Scope),
-                    nameof(TargetNode.TreeId),
-                    nameof(TargetNode.ParentId),
-                    nameof(TargetNode.Position),
-                ]));
+            [
+                nameof(TargetNode.Scope),
+                nameof(TargetNode.TreeId),
+                nameof(TargetNode.ParentId),
+                nameof(TargetNode.Position),
+            ]));
 
         var order = Assert.Single(
             indexes,
             index => index.Properties.SequenceEqual(
-                [
-                    nameof(TargetNode.Scope),
-                    nameof(TargetNode.TreeId),
-                    nameof(TargetNode.ParentId),
-                    nameof(TargetNode.Name),
-                    nameof(TargetNode.Kind),
-                    nameof(TargetNode.NodeKey),
-                ]));
+            [
+                nameof(TargetNode.Scope),
+                nameof(TargetNode.TreeId),
+                nameof(TargetNode.ParentId),
+                nameof(TargetNode.Name),
+                nameof(TargetNode.Kind),
+                nameof(TargetNode.NodeKey),
+            ]));
 
         Assert.Equal([false, false, false, false, true, false], order.Descending);
         Assert.Equal(
             [nameof(TargetNode.Scope), nameof(TargetNode.ParentId)],
             parent.Properties.Select(property => property.Name));
+
         Assert.Equal(
             [nameof(TargetNode.Scope), nameof(TargetNode.NodeKey)],
             parent.PrincipalKey.Properties.Select(property => property.Name));
+
         Assert.Equal(DeleteBehavior.Restrict, parent.DeleteBehavior);
         Assert.DoesNotContain(parent.Properties, property => property.Name == nameof(TargetNode.TreeId));
         Assert.Equal(["\"Depth\" >= 0", "\"Left\" >= 1", "\"Position\" >= 0", "\"Right\" > \"Left\""], checks);
@@ -105,10 +109,13 @@ public sealed class TargetModelConventionTests
                         .Select(property => property.Name)
                         .SequenceEqual(index.Properties))
                     .IsUnique));
+
         Assert.Equal(nameof(TargetNode.Scope), descriptor.Scope?.Name);
         Assert.Equal(8, descriptor.StructuralProperties.Count);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Removes only scope from the access paths, identity key, and parent relationship.</summary>
@@ -151,26 +158,33 @@ public sealed class TargetModelConventionTests
         Assert.Contains(
             indexes,
             properties => properties.SequenceEqual([nameof(TargetNode.TreeId), nameof(TargetNode.Left)]));
+
         Assert.Contains(
             indexes,
             properties => properties.SequenceEqual([nameof(TargetNode.TreeId), nameof(TargetNode.Right)]));
+
         Assert.Contains(
             indexes,
             properties => properties.SequenceEqual(
                 [nameof(TargetNode.TreeId), nameof(TargetNode.ParentId), nameof(TargetNode.Position)]));
+
         Assert.Equal([nameof(TargetNode.ParentId)], parent.Properties.Select(property => property.Name));
         Assert.Equal([nameof(TargetNode.NodeKey)], parent.PrincipalKey.Properties.Select(property => property.Name));
         Assert.Equal(DeleteBehavior.Restrict, parent.DeleteBehavior);
         Assert.DoesNotContain(parent.Properties, property => property.Name == nameof(TargetNode.TreeId));
-        Assert.Equal(4,
+        Assert.Equal(
+            4,
             entity
                 .GetCheckConstraints()
                 .Count());
+
         Assert.All(indexes, properties => Assert.DoesNotContain(nameof(TargetNode.Scope), properties));
         Assert.Null(descriptor.Scope);
         Assert.Equal(7, descriptor.StructuralProperties.Count);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Rejects a scoped parent relationship whose application-owned delete behavior can cascade.</summary>
@@ -305,7 +319,9 @@ public sealed class TargetModelConventionTests
         Assert.DoesNotContain(
             entity.GetForeignKeys(),
             foreignKey => foreignKey.Properties.Contains(entity.FindProperty(nameof(TargetNode.ParentName))!));
-        Assert.Equal(4,
+
+        Assert.Equal(
+            4,
             entity
                 .GetCheckConstraints()
                 .Count());
@@ -344,11 +360,16 @@ public sealed class TargetModelConventionTests
                 .Properties
                 .Select(property => property.Name)
                 .SequenceEqual([nameof(TargetNode.Scope), nameof(TargetNode.NodeKey)]));
-        Assert.Equal(nameof(TargetNode.NodeKey),
+
+        Assert.Equal(
+            nameof(TargetNode.NodeKey),
             entity.FindAnnotation("Doka:NestedSet:NodeKey")
                 ?.Value);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Rejects an explicitly selected NodeKey that has no unique EF identity.</summary>
@@ -398,8 +419,11 @@ public sealed class TargetModelConventionTests
                 .Properties
                 .Select(property => property.Name)
                 .SequenceEqual(["Tree", "LeftBoundary"]));
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Rejects Int32 boundaries selected through the untyped shadow-property surface.</summary>
@@ -738,6 +762,24 @@ public sealed class TargetModelConventionTests
         .Model
         .FindEntityType(typeof(TargetNode))!;
 
+    /// <summary>Creates provider options with convention registration and variant-aware model caching.</summary>
+    /// <typeparam name="TContext">The context receiving the options.</typeparam>
+    /// <returns>SQLite options that never open a physical connection during these tests.</returns>
+    private static DbContextOptions<TContext> Options<TContext>()
+        where TContext : DbContext
+    {
+        var options = new DbContextOptionsBuilder<TContext>()
+            .ConfigureTestWarnings()
+            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets());
+
+        if (typeof(ITestModelVariant).IsAssignableFrom(typeof(TContext)))
+        {
+            options.ReplaceService<IModelCacheKeyFactory, TestModelCacheKeyFactory>();
+        }
+
+        return options.Options;
+    }
+
     /// <summary>Builds one isolated SQLite model without opening its connection.</summary>
     private sealed class TargetModelContext : DbContext, ITestModelVariant
     {
@@ -845,9 +887,24 @@ public sealed class TargetModelConventionTests
         {
             var entity = modelBuilder.Entity<InvalidRoleNode>();
             entity.HasKey(node => node.Id);
-            entity.Property(Variant == "tree-nullable" ? typeof(Guid?) : typeof(Guid), "Tree");
-            entity.Property(Variant == "parent-string" ? typeof(string) : typeof(int?), "Parent");
-            entity.Property(Variant == "left-nullable" ? typeof(long?) : typeof(long), "LeftBoundary");
+            entity.Property(
+                Variant == "tree-nullable"
+                    ? typeof(Guid?)
+                    : typeof(Guid),
+                "Tree");
+
+            entity.Property(
+                Variant == "parent-string"
+                    ? typeof(string)
+                    : typeof(int?),
+                "Parent");
+
+            entity.Property(
+                Variant == "left-nullable"
+                    ? typeof(long?)
+                    : typeof(long),
+                "LeftBoundary");
+
             entity.Property(
                 Variant switch
                 {
@@ -856,6 +913,7 @@ public sealed class TargetModelConventionTests
                     _ => typeof(long),
                 },
                 "RightBoundary");
+
             entity.Property(
                 Variant switch
                 {
@@ -864,6 +922,7 @@ public sealed class TargetModelConventionTests
                     _ => typeof(int),
                 },
                 "NodeDepth");
+
             entity.Property(
                 Variant switch
                 {
@@ -872,6 +931,7 @@ public sealed class TargetModelConventionTests
                     _ => typeof(long),
                 },
                 "SiblingPosition");
+
             entity.Property<int>("Scope");
             entity.HasNestedSet(builder => builder
                 .HasNodeKey(node => node.Id)
@@ -923,24 +983,6 @@ public sealed class TargetModelConventionTests
                     .SetAfterSaveBehavior(PropertySaveBehavior.Throw);
             }
         }
-    }
-
-    /// <summary>Creates provider options with convention registration and variant-aware model caching.</summary>
-    /// <typeparam name="TContext">The context receiving the options.</typeparam>
-    /// <returns>SQLite options that never open a physical connection during these tests.</returns>
-    private static DbContextOptions<TContext> Options<TContext>()
-        where TContext : DbContext
-    {
-        var options = new DbContextOptionsBuilder<TContext>()
-            .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets());
-
-        if (typeof(ITestModelVariant).IsAssignableFrom(typeof(TContext)))
-        {
-            options.ReplaceService<IModelCacheKeyFactory, TestModelCacheKeyFactory>();
-        }
-
-        return options.Options;
     }
 
     /// <summary>Supplies composite identity fields and the complete target hierarchy structure.</summary>

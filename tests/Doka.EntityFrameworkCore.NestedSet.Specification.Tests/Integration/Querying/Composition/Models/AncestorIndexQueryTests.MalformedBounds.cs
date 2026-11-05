@@ -7,44 +7,73 @@ public abstract partial class AncestorIndexQueryTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task IndexedSplitIntervalsRetainOriginalContainmentForMalformedWidths(bool includeSelf)
+    public async Task IndexedSplitIntervalsRetainOriginalContainmentForMalformedWidths(
+        bool includeSelf
+    )
     {
         // Arrange
         var first = MalformedIntervalTestSupport.NextIdentity();
         var tree = Guid.NewGuid();
         var foreignTree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await _fixture.CreateContextAsync<AncestorIndexMappedContext>(Engine,
+        await using var context = await _fixture.CreateContextAsync<AncestorIndexMappedContext>(
+            Engine,
             static options => new AncestorIndexMappedContext(options),
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var bounds = MalformedIntervalTestSupport.Bounds();
-        var nodes = await MalformedIntervalTestSupport.SeedAsync(context, first, tree, foreignTree, bounds,
+        var nodes = await MalformedIntervalTestSupport.SeedAsync(
+            context,
+            first,
+            tree,
+            foreignTree,
+            bounds,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<EntitySplitNode>();
         var query = includeSelf
-            ? hierarchy.SelectAncestorsOrSelf(source => source.Id >= first && source.Id < first + bounds.Length,
-                (source, owner, distance) => new { Source = source.Id, Owner = owner.Id })
-            : hierarchy.SelectAncestors(source => source.Id >= first && source.Id < first + bounds.Length,
-                (source, owner, distance) => new { Source = source.Id, Owner = owner.Id });
+            ? hierarchy.SelectAncestorsOrSelf(
+                source => source.Id >= first && source.Id < first + bounds.Length,
+                (source, owner, distance) => new
+                {
+                    Source = source.Id,
+                    Owner = owner.Id,
+                })
+            : hierarchy.SelectAncestors(
+                source => source.Id >= first && source.Id < first + bounds.Length,
+                (source, owner, distance) => new
+                {
+                    Source = source.Id,
+                    Owner = owner.Id,
+                });
 
         // WHY: This independent oracle states the original four comparisons directly, including
         // strict overlap guards. It must reject zero/reversed leaf self-pairs without assuming valid input,
         // and native width guards must retain both extremes of the signed bound domain.
-        var expected = nodes.Take(bounds.Length).SelectMany(source => nodes
+        var expected = nodes
+            .Take(bounds.Length)
+            .SelectMany(source => nodes
                 .Where(owner => owner.TreeId == source.TreeId
-                    && (includeSelf ? owner.Left <= source.Left : owner.Left < source.Left)
-                    && (includeSelf ? owner.Right >= source.Right : owner.Right > source.Right)
-                    && source.Left < owner.Right && source.Right > owner.Left)
+                    && (includeSelf
+                        ? owner.Left <= source.Left
+                        : owner.Left < source.Left)
+                    && (includeSelf
+                        ? owner.Right >= source.Right
+                        : owner.Right > source.Right)
+                    && source.Left < owner.Right
+                    && source.Right > owner.Left)
                 .Select(owner => (Source: source.Id, Owner: owner.Id)))
-            .OrderBy(pair => pair.Source).ThenBy(pair => pair.Owner).ToArray();
+            .OrderBy(pair => pair.Source)
+            .ThenBy(pair => pair.Owner)
+            .ToArray();
 
         probe.Reset();
 
         // Act
-        var actual = await query.OrderBy(pair => pair.Source).ThenBy(pair => pair.Owner)
+        var actual = await query
+            .OrderBy(pair => pair.Source)
+            .ThenBy(pair => pair.Owner)
             .ToArrayAsync(CancellationToken.None);
 
         // Assert

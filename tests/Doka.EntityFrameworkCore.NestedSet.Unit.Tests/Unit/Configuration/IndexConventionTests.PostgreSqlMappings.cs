@@ -45,7 +45,12 @@ public sealed partial class IndexConventionTests
             .Where(index => index.Name.StartsWith("IX_NestedSet_Roots_", StringComparison.Ordinal))
             .ToArray();
 
-        Assert.Equal(mapping == "EntitySplit" ? 0 : 1, roots.Length);
+        Assert.Equal(
+            mapping == "EntitySplit"
+                ? 0
+                : 1,
+            roots.Length);
+
         Assert.All(
             roots,
             index =>

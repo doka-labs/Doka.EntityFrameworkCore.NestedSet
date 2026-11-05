@@ -40,31 +40,47 @@ public abstract partial class GroupSupervisorTests
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         if (profile is "priority-tie" or "rank-tie")
         {
-            await context.UserGroupMemberships.Where(member => member.TenantId == data.TenantId
-                    && member.UserId == data.Users[2] && member.UserGroupId == data.Groups[4])
-                .ExecuteUpdateAsync(setters => setters.SetProperty(member => member.LeadershipPriority, 10),
+            await context
+                .UserGroupMemberships
+                .Where(member => member.TenantId == data.TenantId
+                    && member.UserId == data.Users[2]
+                    && member.UserGroupId == data.Groups[4])
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(member => member.LeadershipPriority, 10),
                     CancellationToken.None);
         }
 
         if (profile == "routing-rejects-first")
         {
-            await context.MembershipMetadatas.Where(value => value.TenantId == data.TenantId
-                    && value.UserId == data.Users[1] && value.UserGroupId == data.Groups[4])
-                .ExecuteUpdateAsync(setters => setters.SetProperty(value => value.Value, "different-route"),
+            await context
+                .MembershipMetadatas
+                .Where(value => value.TenantId == data.TenantId
+                    && value.UserId == data.Users[1]
+                    && value.UserGroupId == data.Groups[4])
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(value => value.Value, "different-route"),
                     CancellationToken.None);
         }
 
         if (profile == "expired-edge")
         {
-            await context.GroupRelationPeriods.Where(period => period.TenantId == data.TenantId
-                    && period.ParentId == data.Groups[4] && period.ChildId == data.Groups[5])
-                .ExecuteUpdateAsync(setters => setters.SetProperty(period => period.ToDate,
-                    new DateOnly(2026, 10, 15)), CancellationToken.None);
+            await context
+                .GroupRelationPeriods
+                .Where(period => period.TenantId == data.TenantId
+                    && period.ParentId == data.Groups[4]
+                    && period.ChildId == data.Groups[5])
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(
+                        period => period.ToDate,
+                        new DateOnly(2026, 10, 15)),
+                    CancellationToken.None);
         }
 
         var request = data.Request(group: data.Groups[5]) with
         {
-            Groups = typeFirst ? new App.NthTypeGroupThenValidate(3, 1) : new App.NthEligibleGroup([3], 1),
+            Groups = typeFirst
+                ? new App.NthTypeGroupThenValidate(3, 1)
+                : new App.NthEligibleGroup([3], 1),
         };
 
         var selection = profile switch
@@ -80,25 +96,46 @@ public abstract partial class GroupSupervisorTests
 
         // Act
         var result = await App.SupervisorQueries.ResolveAsync(
-            context, data.TenantId, request, selection, CancellationToken.None);
+            context,
+            data.TenantId,
+            request,
+            selection,
+            CancellationToken.None);
 
         // Assert
         Assert.Equal(App.SupervisorBatchStatus.Completed, result.Status);
         var origin = Assert.Single(result.Origins);
         Assert.Equal(status, origin.Status.ToString());
         Assert.Equal(data.Groups[5], origin.StartGroupId);
-        Assert.Equal(winner < 0 ? 0 : 1, origin.Evidence.Count);
-        Assert.Equal(winner < 0 ? (int?)null : data.Users[winner], origin.Continuation?.CandidateUserId);
-        Assert.All(origin.Evidence, row =>
-        {
-            Assert.Equal(data.TenantId, row.TenantId);
-            Assert.Equal(data.TreeId, row.StartTreeId);
-            Assert.Equal(data.Users[0], row.SourceUserId);
-            Assert.Equal(data.Groups[5], row.StartGroupId);
-            Assert.Equal(data.Groups[4], row.FoundGroupId);
-            Assert.Equal(1, row.Distance);
-            Assert.Equal(winner == 1 ? 10 : 20, row.LeadershipPriority);
-        });
+        Assert.Equal(
+            winner < 0
+                ? 0
+                : 1,
+            origin.Evidence.Count);
+
+        Assert.Equal(
+            winner < 0
+                ? null
+                : data.Users[winner],
+            origin.Continuation?.CandidateUserId);
+
+        Assert.All(
+            origin.Evidence,
+            row =>
+            {
+                Assert.Equal(data.TenantId, row.TenantId);
+                Assert.Equal(data.TreeId, row.StartTreeId);
+                Assert.Equal(data.Users[0], row.SourceUserId);
+                Assert.Equal(data.Groups[5], row.StartGroupId);
+                Assert.Equal(data.Groups[4], row.FoundGroupId);
+                Assert.Equal(1, row.Distance);
+                Assert.Equal(
+                    winner == 1
+                        ? 10
+                        : 20,
+                    row.LeadershipPriority);
+            });
+
         Assert.Single(probe.Commands);
         Assert.InRange(probe.ReaderAdvances, 2, 3);
         Assert.Equal(0, probe.Entities);
@@ -111,13 +148,16 @@ public abstract partial class GroupSupervisorTests
     [InlineData(false)]
     [InlineData(true)]
     [Trait("Category", "Capacity")]
-    public async Task SingleGroupWitnessKeepsNativeCandidateWorkAndTransportBounded(bool typeFirst)
+    public async Task SingleGroupWitnessKeepsNativeCandidateWorkAndTransportBounded(
+        bool typeFirst
+    )
     {
         // Arrange
         const int people = 1_000;
         var probe = new SupervisorCommandProbe();
         var plans = new EnterpriseProbe(captureParameterBindings: true);
-        await using var context = await CreateAsync(probe,
+        await using var context = await CreateAsync(
+            probe,
             cancellationToken: TestContext.Current.CancellationToken,
             plans);
 
@@ -125,16 +165,23 @@ public abstract partial class GroupSupervisorTests
         await SeedFanInAsync(context, data, people, cancellationToken: TestContext.Current.CancellationToken);
         var request = data.Request(App.SearchStart.IncludeSelf, data.Groups[5]) with
         {
-            Roles = new App.NoRoleFilter(), Matches = [], OnDay = null,
-            Groups = typeFirst ? new App.NthTypeGroupThenValidate(4, 1) : new App.NthEligibleGroup([4], 1),
+            Roles = new App.NoRoleFilter(),
+            Matches = [],
+            OnDay = null,
+            Groups = typeFirst
+                ? new App.NthTypeGroupThenValidate(4, 1)
+                : new App.NthEligibleGroup([4], 1),
         };
 
         Dictionary<string, long>? before = null;
         if (Engine is "MySql" or "MariaDb")
         {
             await context.Database.OpenConnectionAsync(CancellationToken.None);
-            _ = await CalibrateRankingHandlersAsync(context, data.Users[0],
+            _ = await CalibrateRankingHandlersAsync(
+                context,
+                data.Users[0],
                 cancellationToken: TestContext.Current.CancellationToken);
+
             before = await ReadRankingHandlersAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         }
 
@@ -143,27 +190,47 @@ public abstract partial class GroupSupervisorTests
         var started = Stopwatch.GetTimestamp();
 
         // Act
-        var result = await App.SupervisorQueries.ResolveAsync(context, data.TenantId, request,
-            App.SupervisorSelection.RequireUnique, CancellationToken.None);
+        var result = await App.SupervisorQueries.ResolveAsync(
+            context,
+            data.TenantId,
+            request,
+            App.SupervisorSelection.RequireUnique,
+            CancellationToken.None);
 
         var elapsed = Stopwatch.GetElapsedTime(started);
         var commands = probe.Commands.Count;
         var readerAdvances = probe.ReaderAdvances;
         probe.Enabled = false;
-        var handlers = before is null ? null : RankingHandlerDelta(before, await ReadRankingHandlersAsync(context,
-            cancellationToken: TestContext.Current.CancellationToken));
+        var handlers = before is null
+            ? null
+            : RankingHandlerDelta(
+                before,
+                await ReadRankingHandlersAsync(
+                    context,
+                    cancellationToken: TestContext.Current.CancellationToken));
 
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, plans, commandIndex, Engine,
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            plans,
+            commandIndex,
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await QueryPlanTestSupport.WriteEvidenceAsync(
             $"{Engine}-usergroups-single-group-witness-{typeFirst}",
-            [$"People={people}; elapsed={elapsed.TotalMilliseconds:F3} ms; readers={commands}; "
+            [
+                $"People={people}; elapsed={elapsed.TotalMilliseconds:F3} ms; readers={commands}; "
                 + $"readerAdvances={readerAdvances}; SESSION requests={FormatRankingHandlers(handlers)}",
-                plans.Commands[commandIndex], plan], cancellationToken: TestContext.Current.CancellationToken);
+                plans.Commands[commandIndex], plan,
+            ],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Equal(App.SupervisorResolutionStatus.Ambiguous, Assert.Single(result.Origins).Status);
+        Assert.Equal(
+            App.SupervisorResolutionStatus.Ambiguous,
+            Assert.Single(result.Origins)
+                .Status);
+
         Assert.Empty(result.Origins[0].Evidence);
         Assert.Equal(1, commands);
         Assert.InRange(readerAdvances, 2, 3);

@@ -60,7 +60,8 @@ public sealed partial class CompositionCoordinateProjectionTests
     {
         var method = root
             .GetType()
-            .GetMethod("AncestorIndexCoordinates",
+            .GetMethod(
+                "AncestorIndexCoordinates",
                 BindingFlags.NonPublic | BindingFlags.Instance)!;
 
         var query = Assert.IsAssignableFrom<IQueryable>(method.Invoke(root, [nodes, includeNonLeaf]));
@@ -76,9 +77,10 @@ public sealed partial class CompositionCoordinateProjectionTests
     {
         var options = CoordinateOptions();
         using var provider = CoordinateServices(options);
-        using var context = new CoordinateContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        using var context = new CoordinateContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         _ = Coordinates(context, CoordinateContext.Scoped, includeNonLeaf: true);
 
@@ -99,9 +101,10 @@ public sealed partial class CompositionCoordinateProjectionTests
         // unchanged. The counterfactual must isolate witness observation rather than factory lifetime.
         var options = CoordinateOptions();
         using var provider = CoordinateServices(options);
-        using var context = new CoordinateContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        using var context = new CoordinateContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         _ = Coordinates(context, CoordinateContext.Scoped, includeNonLeaf: true);
         model = context.Model;
@@ -153,9 +156,11 @@ public sealed partial class CompositionCoordinateProjectionTests
             node
                 .Property(entity => entity.Id)
                 .ValueGeneratedNever();
+
             node
                 .Property<Guid>("TreeId")
                 .HasConversion<string>();
+
             node.Property<int?>("ParentId");
             node.Property<long>("Left");
             node.Property<long>("Right");
@@ -165,6 +170,7 @@ public sealed partial class CompositionCoordinateProjectionTests
                 .HasMany(entity => entity.Items)
                 .WithOne()
                 .HasForeignKey(entity => entity.NodeId);
+
             node.HasNestedSet(hierarchy => hierarchy
                 .HasNodeKey(entity => entity.Id)
                 .HasTreeId("TreeId")
@@ -182,21 +188,39 @@ public sealed partial class CompositionCoordinateProjectionTests
             bool scoped
         )
         {
-            modelBuilder.SharedTypeEntity<Dictionary<string, object>>(mapping,
+            modelBuilder.SharedTypeEntity<Dictionary<string, object>>(
+                mapping,
                 entity =>
                 {
-                    var key = scoped ? "NodeId" : "Key";
-                    var tree = scoped ? "TreeId" : "Tree";
-                    var parent = scoped ? "ParentId" : "Parent";
-                    var left = scoped ? "Start" : "Left";
-                    var right = scoped ? "End" : "Right";
+                    var key = scoped
+                        ? "NodeId"
+                        : "Key";
+
+                    var tree = scoped
+                        ? "TreeId"
+                        : "Tree";
+
+                    var parent = scoped
+                        ? "ParentId"
+                        : "Parent";
+
+                    var left = scoped
+                        ? "Start"
+                        : "Left";
+
+                    var right = scoped
+                        ? "End"
+                        : "Right";
+
                     entity.ToTable(mapping);
                     entity
                         .Property<int>(key)
                         .ValueGeneratedNever();
+
                     entity
                         .Property<Guid>(tree)
                         .HasConversion<string>();
+
                     entity.Property<int?>(parent);
                     entity.Property<long>(left);
                     entity.Property<long>(right);
@@ -222,7 +246,10 @@ public sealed partial class CompositionCoordinateProjectionTests
                             .HasBounds(left, right)
                             .HasDepth("Depth")
                             .HasPosition("Position")
-                            .HasAncestorIndex(scoped ? "HasChildren" : "Branches");
+                            .HasAncestorIndex(
+                                scoped
+                                    ? "HasChildren"
+                                    : "Branches");
 
                         if (scoped)
                         {

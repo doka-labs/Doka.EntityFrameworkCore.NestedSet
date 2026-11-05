@@ -32,7 +32,11 @@ internal static class EngineTestSelection
 
         // WHY: Collections can register both MySQL engines; only the actual constructor selects this suite's engine.
         var engines = fixtures
-            .Select(type => s_engines.GetValue(type.GetGenericArguments()[1], ReadIdentity).Name)
+            .Select(type => s_engines.GetValue(
+                    type
+                        .GetGenericArguments()[1],
+                    ReadIdentity)
+                .Name)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
@@ -45,9 +49,9 @@ internal static class EngineTestSelection
         var engine = engines[0];
 
         if (!ProviderEngineOwnership.Includes(
-                engine,
-                concreteSuite.Assembly.GetName()
-                    .Name!))
+            engine,
+            concreteSuite.Assembly.GetName()
+                .Name!))
         {
             throw new InvalidOperationException(
                 $"Suite '{concreteSuite.FullName}' injects engine '{engine}' from a foreign provider project.");

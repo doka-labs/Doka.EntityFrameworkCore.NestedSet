@@ -11,7 +11,7 @@ internal sealed partial class SqliteNestedSetProvider
     )
     {
         if (key.GetTypeMapping()
-                .Converter is not null)
+            .Converter is not null)
         {
             return false;
         }

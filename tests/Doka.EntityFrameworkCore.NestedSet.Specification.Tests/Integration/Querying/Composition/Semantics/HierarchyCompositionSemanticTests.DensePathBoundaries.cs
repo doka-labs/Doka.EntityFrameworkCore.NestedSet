@@ -42,36 +42,68 @@ public abstract partial class HierarchyCompositionSemanticTests
         var scope = Guid.NewGuid();
         var treeId = Guid.NewGuid();
         var (local, lower) = DenseBoundaryNodes(scope, treeId, layout);
-        var all = local.Concat(DensePathDecoys(local, Guid.NewGuid(), treeId, 0))
-            .Concat(DensePathDecoys(local, scope, Guid.NewGuid(), 10_000)).ToArray();
+        var all = local
+            .Concat(DensePathDecoys(local, Guid.NewGuid(), treeId, 0))
+            .Concat(DensePathDecoys(local, scope, Guid.NewGuid(), 10_000))
+            .ToArray();
 
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateLongPathContextAsync(scope, lower, all, probe,
+        await using var context = await CreateLongPathContextAsync(
+            scope,
+            lower,
+            all,
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope).InTree(treeId);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope)
+            .InTree(treeId);
+
         var rows = LongRows(context, scope, 2, 2, lower);
-        var expected = ExpectedLongRows(all, scope, treeId, 2, 2, lower, filter);
+        var expected = ExpectedLongRows(
+            all,
+            scope,
+            treeId,
+            2,
+            2,
+            lower,
+            filter);
+
         var expectedCoordinates = DenseBoundaryCoordinates(layout);
 
         // Act
         var query = filter switch
         {
-            "independent" => hierarchy.WherePathEdges(rows, row => row.Upper, row => row.Node,
+            "independent" => hierarchy.WherePathEdges(
+                rows,
+                row => row.Upper,
+                row => row.Node,
                 (row, parent, child) => child.EdgeOpen),
-            "correlated" => hierarchy.WherePathEdges(rows, row => row.Upper, row => row.Node,
-                (row, parent, child) => child.EdgeOpen && child.FromDate <= row.Day
+            "correlated" => hierarchy.WherePathEdges(
+                rows,
+                row => row.Upper,
+                row => row.Node,
+                (row, parent, child) => child.EdgeOpen
+                    && child.FromDate <= row.Day
                     && (!child.ToDate.HasValue || row.Day <= child.ToDate.Value)),
-            "nearest" => hierarchy.WhereNearestAncestorOrSelf(rows, row => row.Node,
-                (row, owner) => owner.Candidate, (row, owner) => owner.Matches),
+            "nearest" => hierarchy.WhereNearestAncestorOrSelf(
+                rows,
+                row => row.Node,
+                (row, owner) => owner.Candidate,
+                (row, owner) => owner.Matches),
             _ => throw new ArgumentOutOfRangeException(nameof(filter)),
         };
 
         var actual = await ReadLongRowsAsync(query, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Equal(expectedCoordinates, (local.Single(node => node.Id == 2).Left,
-            local.Single(node => node.Id == lower).Left));
+        Assert.Equal(
+            expectedCoordinates,
+            (local.Single(node => node.Id == 2)
+                    .Left,
+                local.Single(node => node.Id == lower)
+                    .Left));
 
         Assert.Equal((1L, 400L), (local[0].Left, local[0].Right));
         Assert.Equal(expectedCount, expected.Length);
@@ -80,7 +112,11 @@ public abstract partial class HierarchyCompositionSemanticTests
     }
 
     /// <summary>Creates dense valid coordinates before introducing independent Parent or visibility failures.</summary>
-    private static (CompositionNode[] Nodes, int Lower) DenseBoundaryNodes(Guid scope, Guid treeId, string layout)
+    private static (CompositionNode[] Nodes, int Lower) DenseBoundaryNodes(
+        Guid scope,
+        Guid treeId,
+        string layout
+    )
     {
         var leadingLeaves = layout switch
         {
@@ -90,7 +126,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         };
 
         var interior = layout is "interior" or "interior-failure" or "empty-interior" or "hidden-intermediate";
-        var lower = layout is "lower-boundary" or "lower-boundary-failure" ? 5 : 7;
+        var lower = layout is "lower-boundary" or "lower-boundary-failure"
+            ? 5
+            : 7;
+
         var nodes = new List<CompositionNode>();
         Add(1, null);
         var upperParent = 1;
@@ -174,9 +213,11 @@ public abstract partial class HierarchyCompositionSemanticTests
 
         return (nodes.ToArray(), lower);
 
-        void Add(int id, int? parent)
-        {
-            nodes.Add(new CompositionNode
+        void Add(
+            int id,
+            int? parent
+        ) => nodes.Add(
+            new CompositionNode
             {
                 Scope = scope,
                 TreeId = treeId,
@@ -184,9 +225,12 @@ public abstract partial class HierarchyCompositionSemanticTests
                 ParentId = parent,
                 Matches = true,
             });
-        }
 
-        void Visit(CompositionNode node, int depth, long position)
+        void Visit(
+            CompositionNode node,
+            int depth,
+            long position
+        )
         {
             node.Left = next++;
             node.Depth = depth;
@@ -203,7 +247,9 @@ public abstract partial class HierarchyCompositionSemanticTests
     }
 
     /// <summary>Protects the fixed geometric layouts without deriving expected acceptance from coordinates.</summary>
-    private static (long Upper, long Lower) DenseBoundaryCoordinates(string layout)
+    private static (long Upper, long Lower) DenseBoundaryCoordinates(
+        string layout
+    )
         => layout switch
         {
             "compact" or "compact-lower-failure" => (2, 7),

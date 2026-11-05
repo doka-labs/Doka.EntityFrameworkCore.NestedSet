@@ -22,7 +22,14 @@ public sealed class AncestorIndexBoundaryTests
         get
         {
             var cases = new TheoryData<string, long, long, bool>();
-            foreach (var engine in new[] { "Sqlite", "MySql", "MariaDb", "PostgreSql", "SqlServer" })
+            foreach (var engine in new[]
+                {
+                    "Sqlite",
+                    "MySql",
+                    "MariaDb",
+                    "PostgreSql",
+                    "SqlServer",
+                })
             {
                 cases.Add(engine, long.MaxValue, long.MaxValue, false);
                 cases.Add(engine, long.MaxValue, long.MinValue, false);
@@ -50,18 +57,27 @@ public sealed class AncestorIndexBoundaryTests
     )
     {
         // Arrange
-        await using var database = await AncestorIndexDatabase.CreateAsync(_fixture, engine,
+        await using var database = await AncestorIndexDatabase.CreateAsync(
+            _fixture,
+            engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var chain = database.Scaffold(true, "AncestorSignedInitial", splitStructure: true);
-        await database.MigrateAsync(chain, splitStructure: true,
+        await database.MigrateAsync(
+            chain,
+            splitStructure: true,
             cancellationToken: TestContext.Current.CancellationToken);
+
         await using var context = database.CreateContext(assembly: chain.Assembly, splitStructure: true);
 
         // WHY: A raw legacy/imported interval can be empty or malformed until repaired. Adding an optional
         // read access path must not introduce arithmetic failure before validation can inspect that row.
         // Act
-        await InsertSplitRowAsync(context, database.PhysicalDatabase.Schema, left, right,
+        await InsertSplitRowAsync(
+            context,
+            database.PhysicalDatabase.Schema,
+            left,
+            right,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -71,7 +87,7 @@ public sealed class AncestorIndexBoundaryTests
             {
                 x.Left,
                 x.Right,
-                Flag = EF.Property<bool>(x, AncestorIndexContext.FlagProperty)
+                Flag = EF.Property<bool>(x, AncestorIndexContext.FlagProperty),
             })
             .SingleAsync(CancellationToken.None);
 
@@ -95,23 +111,34 @@ public sealed class AncestorIndexBoundaryTests
     )
     {
         // Arrange
-        await using var database = await AncestorIndexDatabase.CreateAsync(_fixture, engine,
+        await using var database = await AncestorIndexDatabase.CreateAsync(
+            _fixture,
+            engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var initial = database.Scaffold(false, "AOrdinarySignedInitial", splitStructure: true);
-        await database.MigrateAsync(initial,
+        await database.MigrateAsync(
+            initial,
             cancellationToken: TestContext.Current.CancellationToken,
-            false, splitStructure: true);
+            false,
+            splitStructure: true);
+
         await using (var ordinary = database.CreateContext(false, initial.Assembly, splitStructure: true))
         {
-            await InsertSplitRowAsync(ordinary, database.PhysicalDatabase.Schema, left, right,
+            await InsertSplitRowAsync(
+                ordinary,
+                database.PhysicalDatabase.Schema,
+                left,
+                right,
                 cancellationToken: TestContext.Current.CancellationToken);
         }
 
         var upgrade = database.Scaffold(true, "BAncestorSignedUpgrade", initial, splitStructure: true);
 
         // Act
-        await database.MigrateAsync(upgrade, splitStructure: true,
+        await database.MigrateAsync(
+            upgrade,
+            splitStructure: true,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -122,7 +149,7 @@ public sealed class AncestorIndexBoundaryTests
             {
                 x.Left,
                 x.Right,
-                Flag = EF.Property<bool>(x, AncestorIndexContext.FlagProperty)
+                Flag = EF.Property<bool>(x, AncestorIndexContext.FlagProperty),
             })
             .SingleAsync(CancellationToken.None);
 
@@ -166,14 +193,16 @@ public sealed class AncestorIndexBoundaryTests
             context,
             transaction.GetDbTransaction(),
             $"INSERT INTO {primary} ({key}, {payload}, {category}) VALUES (@value0, @value1, @value2)",
-            [61, string.Empty, 0], cancellationToken: cancellationToken);
+            [61, string.Empty, 0],
+            cancellationToken: cancellationToken);
 
         await ExecuteInsertAsync(
             context,
             transaction.GetDbTransaction(),
             $"INSERT INTO {structure} ({key}, {scope}, {tree}, {leftColumn}, {rightColumn}, {depth}, {position}) "
             + "VALUES (@value0, @value1, @value2, @value3, @value4, @value5, @value6)",
-            [61, 7, 11, left, right, 0, 0], cancellationToken: cancellationToken);
+            [61, 7, 11, left, right, 0, 0],
+            cancellationToken: cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
     }

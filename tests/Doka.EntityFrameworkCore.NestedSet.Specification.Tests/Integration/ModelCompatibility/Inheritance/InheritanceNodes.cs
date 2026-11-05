@@ -75,6 +75,7 @@ internal sealed class TphContext : DbContext
             .HasDiscriminator<string>("NodeType")
             .HasValue<TphFolderNode>("Folder")
             .HasValue<TphMetricNode>("Metric");
+
         Configure(node);
     }
 
@@ -87,6 +88,7 @@ internal sealed class TphContext : DbContext
         node
             .Property(entity => entity.Id)
             .ValueGeneratedNever();
+
         node.Property(entity => entity.Name);
         node.HasNestedSet(nestedSet =>
         {

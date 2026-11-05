@@ -10,7 +10,8 @@ public sealed class ProviderFixtureIsolationTests
     public async Task ProviderFixtureChainsRemainIsolatedDuringConcurrentDisposal()
     {
         // Arrange
-        var firstClass = CreateTestMethod("MySql", nameof(FixtureContextProbe.ContextAssemblyHasAnOwner)).TestClass;
+        var firstClass = CreateTestMethod("MySql", nameof(FixtureContextProbe.ContextAssemblyHasAnOwner))
+            .TestClass;
 
         var secondClass = CreateTestMethod("PostgreSql", nameof(FixtureContextProbe.ContextAssemblyHasAnOwner))
             .TestClass;
@@ -65,7 +66,7 @@ public sealed class ProviderFixtureIsolationTests
                 finally
                 {
                     // WHY: Release the peer if lookup or cleanup fails so an isolation regression cannot hang
-        // the suite.
+                    // the suite.
                     firstReady.TrySetResult();
                     firstDisposed.TrySetResult();
                 }
@@ -221,7 +222,8 @@ public sealed class ProviderFixtureIsolationTests
 
         // Assert
         Assert.Contains("Allocation", budgetMetadata.Traits["Category"]);
-        Assert.False(validationMetadata.Traits.TryGetValue("Category", out var categories)
+        Assert.False(
+            validationMetadata.Traits.TryGetValue("Category", out var categories)
             && categories.Contains("Allocation", StringComparer.Ordinal));
     }
 
@@ -288,6 +290,7 @@ public sealed class ProviderFixtureIsolationTests
     }
 
     /// <summary>Supplies ordinary inherited metadata for separate executable assembly contexts.</summary>
+
     // WHY: Abstract metadata subjects are not Unit suites; emitted provider leaves expose their real owner identity.
     public abstract class FixtureContextProbe
     {

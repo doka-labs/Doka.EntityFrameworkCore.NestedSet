@@ -30,7 +30,9 @@ public abstract partial class SingleInsertGuardTests
 
         // Act
         var error = await Record.ExceptionAsync(() => tree.InsertRootAsync(input, Guid.Empty, CancellationToken.None));
-        var restored = (input.Id.Value, input.TreeId, input.ParentId?.Value, input.Left, input.Right, input.Depth, input.Position);
+        var restored = (input.Id.Value, input.TreeId, input.ParentId?.Value, input.Left, input.Right, input.Depth,
+            input.Position);
+
         var tracked = context
             .ChangeTracker
             .Entries()
@@ -55,12 +57,17 @@ public abstract partial class SingleInsertGuardTests
             NestedSetErrorCode.InvalidStructure,
             Assert.IsType<NestedSetException>(error)
                 .Code);
+
         Assert.Equal((3, originalTreeId, (int?)8, 71L, 72L, 3, 4L), restored);
         Assert.Same(marker, Assert.Single(tracked));
         Assert.Null(originalLookup);
         Assert.Null(changedLookup);
         Assert.Equal(0, rolledBackRows);
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
         Assert.Equal(
             1,
             await context
@@ -95,7 +102,9 @@ public abstract partial class SingleInsertGuardTests
 
         // Act
         var error = await Record.ExceptionAsync(() => tree.InsertRootAsync(input, Guid.Empty, CancellationToken.None));
-        var restored = (input.Id.Value, input.TreeId, input.ParentId?.Value, input.Left, input.Right, input.Depth, input.Position);
+        var restored = (input.Id.Value, input.TreeId, input.ParentId?.Value, input.Left, input.Right, input.Depth,
+            input.Position);
+
         var tracked = context
             .ChangeTracker
             .Entries()
@@ -115,7 +124,11 @@ public abstract partial class SingleInsertGuardTests
         Assert.Same(marker, Assert.Single(tracked));
         Assert.Null(lookup);
         Assert.Equal(0, rolledBackRows);
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
         Assert.Equal(
             1,
             await context
@@ -162,12 +175,17 @@ public abstract partial class SingleInsertGuardTests
         Assert.Equal(root.Id, child.ParentId);
         Assert.Same(marker, Assert.Single(tracked));
         Assert.NotSame(root, found);
-        Assert.Equal(root.Id, Assert.IsType<BulkStageBinaryScope>(found).Id);
+        Assert.Equal(
+            root.Id,
+            Assert.IsType<BulkStageBinaryScope>(found)
+                .Id);
+
         Assert.Equal(
             2,
             await context
                 .Set<BulkStageBinaryScope>()
                 .CountAsync(CancellationToken.None));
+
         Assert.Equal(
             1,
             await context
@@ -223,14 +241,22 @@ public abstract partial class SingleInsertGuardTests
             .CountAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidStructure, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidStructure,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Equal((0, originalTreeId, (int?)9, 71L, 72L, 3, 4L), restored);
         Assert.Equal<byte>([8], restoredScope);
         Assert.Same(marker, Assert.Single(tracked));
         Assert.Null(changedLookup);
         Assert.Null(generatedLookup);
         Assert.Equal(0, rolledBackRows);
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
         Assert.Equal(
             1,
             await context

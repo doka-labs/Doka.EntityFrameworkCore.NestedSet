@@ -133,9 +133,15 @@ public sealed class CompositionQueryCacheTests
                 var node = new CompositionGuardNode
                 {
                     Id = offset + depth + 1,
-                    Scope = group == 0 ? 11 : 22,
-                    TreeId = group == 0 ? firstTree : secondTree,
-                    ParentId = depth == 0 ? null : offset + depth,
+                    Scope = group == 0
+                        ? 11
+                        : 22,
+                    TreeId = group == 0
+                        ? firstTree
+                        : secondTree,
+                    ParentId = depth == 0
+                        ? null
+                        : offset + depth,
                     Left = depth + 1,
                     Right = 6 - depth,
                     Depth = depth,
@@ -173,7 +179,8 @@ public sealed class CompositionQueryCacheTests
         // WHY: Raw sources retain endpoint membership. Bound variants separately exercise its provenance
         // shortcut, so both physical shapes must retain parameterization across scope/tree/value changes.
         var rows = operation.EndsWith("-bound", StringComparison.Ordinal)
-            ? hierarchy.SelectSubtrees(upper => Enumerable.Contains(anchors, upper.Id),
+            ? hierarchy.SelectSubtrees(
+                upper => Enumerable.Contains(anchors, upper.Id),
                 (upper, lower, distance) => new CompositionGuardRow
                 {
                     Upper = upper,
@@ -181,7 +188,8 @@ public sealed class CompositionQueryCacheTests
                 })
             : nodes
                 .Where(upper => Enumerable.Contains(anchors, upper.Id))
-                .SelectMany(upper => nodes.Where(lower => lower.Left >= upper.Left && lower.Right <= upper.Right),
+                .SelectMany(
+                    upper => nodes.Where(lower => lower.Left >= upper.Left && lower.Right <= upper.Right),
                     (upper, lower) => new CompositionGuardRow
                     {
                         Upper = upper,
@@ -190,25 +198,31 @@ public sealed class CompositionQueryCacheTests
 
         var query = operation.Replace("-bound", string.Empty, StringComparison.Ordinal) switch
         {
-            "ancestors" => hierarchy.SelectAncestors(node => Enumerable.Contains(anchors, node.Id),
+            "ancestors" => hierarchy.SelectAncestors(
+                node => Enumerable.Contains(anchors, node.Id),
                 (node, ancestor, distance) => ancestor.Id),
-            "ancestors-or-self" => hierarchy.SelectAncestorsOrSelf(node => Enumerable.Contains(anchors, node.Id),
+            "ancestors-or-self" => hierarchy.SelectAncestorsOrSelf(
+                node => Enumerable.Contains(anchors, node.Id),
                 (node, ancestor, distance) => ancestor.Id),
-            "subtrees" => hierarchy.SelectSubtrees(anchor => Enumerable.Contains(anchors, anchor.Id),
+            "subtrees" => hierarchy.SelectSubtrees(
+                anchor => Enumerable.Contains(anchors, anchor.Id),
                 (anchor, node, distance) => node.Id),
             "path" => hierarchy
-                .WherePathEdges(rows,
+                .WherePathEdges(
+                    rows,
                     row => row.Upper,
                     row => row.Lower,
                     (row, parent, child) => child.Id > minimumId)
                 .Select(row => row.Lower.Id),
             "any" => hierarchy
-                .WhereAnyAncestorOrSelf(rows,
+                .WhereAnyAncestorOrSelf(
+                    rows,
                     row => row.Lower,
                     (row, owner) => owner.Id > minimumId)
                 .Select(row => row.Lower.Id),
             "nearest" => hierarchy
-                .WhereNearestAncestorOrSelf(rows,
+                .WhereNearestAncestorOrSelf(
+                    rows,
                     row => row.Lower,
                     (row, owner) => owner.Depth == 0,
                     (row, owner) => owner.Id > minimumId)

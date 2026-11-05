@@ -8,23 +8,37 @@ public abstract partial class SignalReportTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task TrailingValueSpacesDoNotMatchAKnownTagChoice(bool nearest)
+    public async Task TrailingValueSpacesDoNotMatchAKnownTagChoice(
+        bool nearest
+    )
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe,
+        await using var context = await CreateContextAsync(
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var data = await SignalReportDataset.CreateAsync(context, 7, false, CancellationToken.None, Guid.NewGuid());
-        await context.TagValues.Where(value => value.TenantId == data.TenantId
-                && value.NodeId == SignalReportDataset.Id(3) && value.FieldCode == "ModuleClass")
-            .ExecuteUpdateAsync(setters => setters.SetProperty(value => value.Value, "Receiver "), CancellationToken.None);
+        await context
+            .TagValues
+            .Where(value => value.TenantId == data.TenantId
+                && value.NodeId == SignalReportDataset.Id(3)
+                && value.FieldCode == "ModuleClass")
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(value => value.Value, "Receiver "),
+                CancellationToken.None);
+
         var request = SingleAnchor(data) with
         {
             Criteria =
             [
-                new TagCriterion(SignalReportDataset.ModuleKind, "ModuleClass", "Receiver",
-                    nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any),
+                new TagCriterion(
+                    SignalReportDataset.ModuleKind,
+                    "ModuleClass",
+                    "Receiver",
+                    nearest
+                        ? TagOwnerMode.Nearest
+                        : TagOwnerMode.Any),
             ],
         };
 
@@ -34,7 +48,10 @@ public abstract partial class SignalReportTests
         var cells = await SignalReportBuilder.ReadAsync(context, request, CancellationToken.None);
 
         // Assert
-        Assert.False(Assert.Single(cells).HasData);
+        Assert.False(
+            Assert.Single(cells)
+                .HasData);
+
         AssertReportBoundary(context, probe);
     }
 
@@ -45,24 +62,37 @@ public abstract partial class SignalReportTests
             + "through their exact-text definition FK.")]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task TrailingFieldSpacesDoNotAliasAKnownMetadataField(bool nearest)
+    public async Task TrailingFieldSpacesDoNotAliasAKnownMetadataField(
+        bool nearest
+    )
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe,
+        await using var context = await CreateContextAsync(
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var data = await SignalReportDataset.CreateAsync(context, 7, false, CancellationToken.None, Guid.NewGuid());
-        await context.TagValues.Where(value => value.TenantId == data.TenantId
-                && value.NodeId == SignalReportDataset.Id(3) && value.FieldCode == "ModuleClass")
-            .ExecuteUpdateAsync(setters => setters.SetProperty(value => value.FieldCode, "ModuleClass "),
+        await context
+            .TagValues
+            .Where(value => value.TenantId == data.TenantId
+                && value.NodeId == SignalReportDataset.Id(3)
+                && value.FieldCode == "ModuleClass")
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(value => value.FieldCode, "ModuleClass "),
                 CancellationToken.None);
+
         var request = SingleAnchor(data) with
         {
             Criteria =
             [
-                new TagCriterion(SignalReportDataset.ModuleKind, "ModuleClass", "Receiver",
-                    nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any),
+                new TagCriterion(
+                    SignalReportDataset.ModuleKind,
+                    "ModuleClass",
+                    "Receiver",
+                    nearest
+                        ? TagOwnerMode.Nearest
+                        : TagOwnerMode.Any),
             ],
         };
 
@@ -72,7 +102,10 @@ public abstract partial class SignalReportTests
         var cells = await SignalReportBuilder.ReadAsync(context, request, CancellationToken.None);
 
         // Assert
-        Assert.False(Assert.Single(cells).HasData);
+        Assert.False(
+            Assert.Single(cells)
+                .HasData);
+
         AssertReportBoundary(context, probe);
     }
 }

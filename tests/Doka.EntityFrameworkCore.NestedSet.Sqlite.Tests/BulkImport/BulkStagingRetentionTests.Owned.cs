@@ -9,7 +9,8 @@ public sealed partial class BulkStagingRetentionTests
     public async Task OwnedTrackingFailureReleasesTheCompletePartialGraph()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var source = database.CreateContext();
@@ -52,7 +53,11 @@ public sealed partial class BulkStagingRetentionTests
         };
 
         // Act
-        var result = await ImportWithoutRetainingInputAsync(context, getter: false, tracking: true, payload: true,
+        var result = await ImportWithoutRetainingInputAsync(
+            context,
+            getter: false,
+            tracking: true,
+            payload: true,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -67,9 +72,22 @@ public sealed partial class BulkStagingRetentionTests
         Assert.Equal(1, parentTrackingEvents);
         Assert.Equal(1, childTrackingEvents);
         Assert.Equal(0, childStateEvents);
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
-        Assert.Equal(EntityState.Unchanged, context.Entry(marker).State);
-        Assert.Equal(0, await context.Set<StagingNode>().CountAsync(CancellationToken.None));
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(marker)
+                .State);
+
+        Assert.Equal(
+            0,
+            await context
+                .Set<StagingNode>()
+                .CountAsync(CancellationToken.None));
+
         GC.KeepAlive(context);
     }
 
@@ -83,7 +101,8 @@ public sealed partial class BulkStagingRetentionTests
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var source = database.CreateContext();
@@ -120,7 +139,10 @@ public sealed partial class BulkStagingRetentionTests
         context.ChangeTracker.StateChanged += (_, _) => changedEvents++;
 
         // Act
-        var result = await ImportWithoutRetainingInputAsync(context, getter: false, tracking: true,
+        var result = await ImportWithoutRetainingInputAsync(
+            context,
+            getter: false,
+            tracking: true,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -141,9 +163,24 @@ public sealed partial class BulkStagingRetentionTests
         GC.Collect();
         Assert.False(result.Input.TryGetTarget(out _));
         Assert.Equal(1, trackingEvents);
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
-        Assert.Equal(EntityState.Unchanged, context.Entry(marker).State);
-        Assert.Equal(fail ? 0 : 1, await context.Set<StagingNode>().CountAsync(CancellationToken.None));
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(marker)
+                .State);
+
+        Assert.Equal(
+            fail
+                ? 0
+                : 1,
+            await context
+                .Set<StagingNode>()
+                .CountAsync(CancellationToken.None));
+
         GC.KeepAlive(context);
     }
 
@@ -152,7 +189,8 @@ public sealed partial class BulkStagingRetentionTests
     public async Task TrackingFailureAllowsInputRetry()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var source = database.CreateContext();
@@ -210,7 +248,11 @@ public sealed partial class BulkStagingRetentionTests
         Assert.Equal(2, trackingEvents);
         Assert.Equal(1, input.Left);
         Assert.Equal(2, input.Right);
-        Assert.Equal(1, await context.Set<StagingNode>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            1,
+            await context
+                .Set<StagingNode>()
+                .CountAsync(CancellationToken.None));
 
         var storedMarker = await context
             .Set<StagingMarker>()
@@ -218,8 +260,15 @@ public sealed partial class BulkStagingRetentionTests
             .SingleAsync(CancellationToken.None);
 
         Assert.Equal("before", storedMarker.Name);
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
-        Assert.Equal(EntityState.Unchanged, context.Entry(marker).State);
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(marker)
+                .State);
     }
 
     /// <summary>A root callback can observe owned metadata without retaining either input after it throws.</summary>
@@ -227,7 +276,8 @@ public sealed partial class BulkStagingRetentionTests
     public async Task RootTrackingFailureReleasesObservedOwnedInput()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var source = database.CreateContext();
@@ -256,7 +306,11 @@ public sealed partial class BulkStagingRetentionTests
         };
 
         // Act
-        var result = await ImportWithoutRetainingInputAsync(context, getter: false, tracking: true, payload: true,
+        var result = await ImportWithoutRetainingInputAsync(
+            context,
+            getter: false,
+            tracking: true,
+            payload: true,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -268,8 +322,17 @@ public sealed partial class BulkStagingRetentionTests
         GC.Collect();
         Assert.False(result.Input.TryGetTarget(out _));
         Assert.False(result.Payload!.TryGetTarget(out _));
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
-        Assert.Equal(0, await context.Set<StagingNode>().CountAsync(CancellationToken.None));
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
+        Assert.Equal(
+            0,
+            await context
+                .Set<StagingNode>()
+                .CountAsync(CancellationToken.None));
+
         GC.KeepAlive(context);
     }
 
@@ -278,7 +341,8 @@ public sealed partial class BulkStagingRetentionTests
     public async Task TrackedOwnedPayloadRejectionPreservesItsExistingAggregate()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var source = database.CreateContext();
@@ -326,13 +390,41 @@ public sealed partial class BulkStagingRetentionTests
                 CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidImport, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidImport,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Same(payload, existing.Payload);
         Assert.Same(payload, input.Payload);
-        Assert.Equal(EntityState.Unchanged, context.Entry(existing).State);
-        Assert.Equal(EntityState.Unchanged, context.Entry(payload).State);
-        Assert.Equal(2, context.Entry(payload).Property(ownedKey.Name).CurrentValue);
-        Assert.Equal(2, context.ChangeTracker.Entries().Count());
-        Assert.Equal(1, await context.Set<StagingNode>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(existing)
+                .State);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(payload)
+                .State);
+
+        Assert.Equal(
+            2,
+            context
+                .Entry(payload)
+                .Property(ownedKey.Name)
+                .CurrentValue);
+
+        Assert.Equal(
+            2,
+            context
+                .ChangeTracker
+                .Entries()
+                .Count());
+
+        Assert.Equal(
+            1,
+            await context
+                .Set<StagingNode>()
+                .CountAsync(CancellationToken.None));
     }
 }

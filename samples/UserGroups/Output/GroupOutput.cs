@@ -146,22 +146,60 @@ internal static class GroupOutput
             }).ToListAsync(cancellationToken);
         */
 
-        var assignments = await context.GroupRoles
+        var assignments = await context
+            .GroupRoles
             .Join(
                 context.Groups,
-                assignment => new { assignment.TenantId, Id = assignment.UserGroupId },
-                node => new { node.TenantId, node.Id },
-                (assignment, node) => new { assignment, node })
+                assignment => new
+                {
+                    assignment.TenantId,
+                    Id = assignment.UserGroupId,
+                },
+                node => new
+                {
+                    node.TenantId,
+                    node.Id,
+                },
+                (assignment, node) => new
+                {
+                    assignment,
+                    node,
+                })
             .Join(
                 context.Roles,
-                pair => new { pair.assignment.TenantId, Id = pair.assignment.RoleId },
-                role => new { role.TenantId, role.Id },
-                (pair, role) => new { pair.node, role })
+                pair => new
+                {
+                    pair.assignment.TenantId,
+                    Id = pair.assignment.RoleId,
+                },
+                role => new
+                {
+                    role.TenantId,
+                    role.Id,
+                },
+                (pair, role) => new
+                {
+                    pair.node,
+                    role,
+                })
             .Join(
                 context.RolePrivileges,
-                pair => new { pair.role.TenantId, RoleId = pair.role.Id },
-                grant => new { grant.TenantId, grant.RoleId },
-                (pair, grant) => new { pair.node, pair.role, grant })
+                pair => new
+                {
+                    pair.role.TenantId,
+                    RoleId = pair.role.Id,
+                },
+                grant => new
+                {
+                    grant.TenantId,
+                    grant.RoleId,
+                },
+                (pair, grant) => new
+                {
+                    pair.node,
+                    pair.role,
+                    grant,
+                })
             .OrderBy(row => row.node.Name)
             .ThenBy(row => row.role.Name)
             .ThenBy(row => row.grant.PrivilegeCode)

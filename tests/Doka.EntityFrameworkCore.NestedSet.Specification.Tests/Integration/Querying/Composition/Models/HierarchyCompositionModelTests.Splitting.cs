@@ -37,25 +37,34 @@ public abstract partial class HierarchyCompositionModelTests
         for (var depth = 0; depth < 3; depth++)
         {
             await context.AddRangeAsync(
-            [
-                new TableSplitNode
-                {
-                    Id = first + depth,
-                    ParentId = depth == 0 ? null : first + depth - 1,
-                    TreeId = treeId,
-                    Left = depth + 1,
-                    Right = 6 - depth,
-                    Depth = depth,
-                    Name = $"Node {depth}",
-                },
-                new TableSplitPayload { Id = first + depth, Description = "Optional application payload" },
-            ], CancellationToken.None);
+                [
+                    new TableSplitNode
+                    {
+                        Id = first + depth,
+                        ParentId = depth == 0
+                            ? null
+                            : first + depth - 1,
+                        TreeId = treeId,
+                        Left = depth + 1,
+                        Right = 6 - depth,
+                        Depth = depth,
+                        Name = $"Node {depth}",
+                    },
+                    new TableSplitPayload
+                    {
+                        Id = first + depth,
+                        Description = "Optional application payload",
+                    },
+                ],
+                CancellationToken.None);
         }
 
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         probe.Reset();
-        var hierarchy = context.NestedSet<TableSplitNode>().InTree(treeId);
+        var hierarchy = context
+            .NestedSet<TableSplitNode>()
+            .InTree(treeId);
 
         // Act
         var actual = await QueryDepths(hierarchy, operation)
@@ -95,21 +104,29 @@ public abstract partial class HierarchyCompositionModelTests
             TestMaterializationObserver.Instance);
 
         TestMaterializationObserver.Instance.Register(context, _ => materialized++);
-        await context.AddRangeAsync(Enumerable.Range(0, 3).Select(depth => new EntitySplitNode
-        {
-            Id = first + depth,
-            ParentId = depth == 0 ? null : first + depth - 1,
-            TreeId = treeId,
-            Left = depth + 1,
-            Right = 6 - depth,
-            Depth = depth,
-            Name = $"Node {depth}",
-        }), CancellationToken.None);
+        await context.AddRangeAsync(
+            Enumerable
+                .Range(0, 3)
+                .Select(depth => new EntitySplitNode
+                {
+                    Id = first + depth,
+                    ParentId = depth == 0
+                        ? null
+                        : first + depth - 1,
+                    TreeId = treeId,
+                    Left = depth + 1,
+                    Right = 6 - depth,
+                    Depth = depth,
+                    Name = $"Node {depth}",
+                }),
+            CancellationToken.None);
 
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         probe.Reset();
-        var hierarchy = context.NestedSet<EntitySplitNode>().InTree(treeId);
+        var hierarchy = context
+            .NestedSet<EntitySplitNode>()
+            .InTree(treeId);
 
         // Act
         var actual = await QueryDepths(hierarchy, operation)

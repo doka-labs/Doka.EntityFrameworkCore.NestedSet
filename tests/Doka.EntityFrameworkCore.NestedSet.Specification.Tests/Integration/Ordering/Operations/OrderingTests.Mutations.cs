@@ -2,12 +2,35 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class OrderingTests
 {
+    /// <summary>Enumerates every explicit placement API for every real provider.</summary>
+    public static IEnumerable<object[]> ExplicitPlacements
+    {
+        get
+        {
+            foreach (var placement in new[]
+                {
+                    "InsertFirst",
+                    "InsertLast",
+                    "InsertBefore",
+                    "InsertAfter",
+                    "MoveSubtreeFirst",
+                    "MoveSubtreeLast",
+                    "MoveBefore",
+                    "MoveAfter",
+                })
+            {
+                yield return [placement];
+            }
+        }
+    }
+
     /// <summary>Verifies automatic insertion orders every sibling group and preserves whole-tree preorder.</summary>
     [Fact]
     public async Task OutOfOrderInsertsMaintainEveryLevel()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = Tree(context);
@@ -18,9 +41,17 @@ public abstract partial class OrderingTests
         await tree.InsertChildAsync(Node(6, "Alpha"), 2, CancellationToken.None);
 
         // Assert
-        await AssertIdsAsync(tree.TreeContaining(5),
+        await AssertIdsAsync(
+            tree.TreeContaining(5),
             cancellationToken: TestContext.Current.CancellationToken,
-            1, 2, 6, 7, 3, 5, 4);
+            1,
+            2,
+            6,
+            7,
+            3,
+            5,
+            4);
+
         await AssertIdsAsync(tree.SubtreeOf(2), cancellationToken: TestContext.Current.CancellationToken, 2, 6, 7);
         await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken);
     }
@@ -30,7 +61,8 @@ public abstract partial class OrderingTests
     public async Task ChildrenAreInsertedInConfiguredOrder()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = Tree(context);
@@ -51,7 +83,8 @@ public abstract partial class OrderingTests
     public async Task EqualValuesUseAscendingPrimaryKeyTieBreaker()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = Tree(context);
@@ -74,7 +107,8 @@ public abstract partial class OrderingTests
     public async Task MixedDirectionsAndNullsMatchNativeDatabaseOrder()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = Tree(context);
@@ -101,15 +135,21 @@ public abstract partial class OrderingTests
         // WHY: The explicit rank removes provider-dependent null defaults; the database remains the collation oracle.
         var expected = await Nodes(context)
             .Where(node => node.ParentId == 100)
-            .OrderBy(node => node.Name == null ? 1 : 0)
+            .OrderBy(node => node.Name == null
+                ? 1
+                : 0)
             .ThenBy(node => node.Name)
             .ThenByDescending(node => node.Priority)
             .ThenBy(node => node.Id)
             .Select(node => node.Id)
             .ToArrayAsync(CancellationToken.None);
 
-        Assert.Equal(expected, await IdsAsync(tree.ChildrenOf(100),
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            expected,
+            await IdsAsync(
+                tree.ChildrenOf(100),
+                cancellationToken: TestContext.Current.CancellationToken));
+
         await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken);
     }
 
@@ -118,7 +158,8 @@ public abstract partial class OrderingTests
     public async Task ConvertedPayloadSortUsesPersistedRepresentation()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             "Converted");
 
@@ -146,7 +187,8 @@ public abstract partial class OrderingTests
     public async Task MoveToUsesDestinationOrderAndRetainsDescendants()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = Tree(context);
@@ -159,10 +201,13 @@ public abstract partial class OrderingTests
         // Assert
         await AssertIdsAsync(tree.ChildrenOf(2), cancellationToken: TestContext.Current.CancellationToken, 3, 6);
         await AssertIdsAsync(tree.SubtreeOf(3), cancellationToken: TestContext.Current.CancellationToken, 3, 5);
-        Assert.Equal(3, await Nodes(context)
-            .Where(node => node.Id == 5)
-            .Select(node => node.Depth)
-            .SingleAsync(CancellationToken.None));
+        Assert.Equal(
+            3,
+            await Nodes(context)
+                .Where(node => node.Id == 5)
+                .Select(node => node.Depth)
+                .SingleAsync(CancellationToken.None));
+
         await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken);
     }
 
@@ -173,7 +218,8 @@ public abstract partial class OrderingTests
     public async Task DetachAsTreePreservesOrderedSubtree()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = Tree(context);
@@ -184,28 +230,16 @@ public abstract partial class OrderingTests
         await tree.DetachAsTreeAsync(3, detachedTreeId, CancellationToken.None);
 
         // Assert
-        await AssertIdsAsync(tree.InTree(detachedTreeId).Nodes,
+        await AssertIdsAsync(
+            tree.InTree(detachedTreeId)
+                .Nodes,
             cancellationToken: TestContext.Current.CancellationToken,
-            3, 5);
+            3,
+            5);
+
         await AssertIdsAsync(tree.TreeContaining(1), cancellationToken: TestContext.Current.CancellationToken, 1, 2, 4);
         await AssertIdsAsync(tree.TreeContaining(5), cancellationToken: TestContext.Current.CancellationToken, 3, 5);
         await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken);
-    }
-
-    /// <summary>Enumerates every explicit placement API for every real provider.</summary>
-    public static IEnumerable<object[]> ExplicitPlacements
-    {
-        get
-        {
-            foreach (var placement in new[]
-                     {
-                         "InsertFirst", "InsertLast", "InsertBefore", "InsertAfter",
-                         "MoveSubtreeFirst", "MoveSubtreeLast", "MoveBefore", "MoveAfter",
-                     })
-            {
-                yield return [placement];
-            }
-        }
     }
 
     /// <summary>Verifies strict mode rejects each positional override without changing any row.</summary>
@@ -216,7 +250,8 @@ public abstract partial class OrderingTests
     )
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = Tree(context);
@@ -224,7 +259,9 @@ public abstract partial class OrderingTests
         var before = await SnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        var exception = await Record.ExceptionAsync(() => PlaceAsync(tree, placement,
+        var exception = await Record.ExceptionAsync(() => PlaceAsync(
+            tree,
+            placement,
             cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
@@ -242,7 +279,8 @@ public abstract partial class OrderingTests
     )
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             "Flexible");
 
@@ -266,8 +304,12 @@ public abstract partial class OrderingTests
             _ => throw new ArgumentOutOfRangeException(nameof(placement)),
         };
 
-        Assert.Equal(expected, await IdsAsync(tree.ChildrenOf(1),
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            expected,
+            await IdsAsync(
+                tree.ChildrenOf(1),
+                cancellationToken: TestContext.Current.CancellationToken));
+
         await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken);
     }
 

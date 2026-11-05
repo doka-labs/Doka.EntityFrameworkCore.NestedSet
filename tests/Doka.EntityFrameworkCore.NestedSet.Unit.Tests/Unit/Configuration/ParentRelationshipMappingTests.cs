@@ -38,8 +38,10 @@ public sealed class ParentRelationshipMappingTests
             Assert.Null(error);
         }
 
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Uses EF's standard relationship convention with the same existing synthetic node model.</summary>

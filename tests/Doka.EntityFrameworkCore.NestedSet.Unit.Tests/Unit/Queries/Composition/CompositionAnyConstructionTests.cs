@@ -19,7 +19,8 @@ public sealed class CompositionAnyConstructionTests
         // Arrange
         var boundary = new CompositionIoBoundary();
         var options = new DbContextOptionsBuilder<CompositionContext>(
-                ModelCompatibilityDatabase.Options<CompositionContext>(engine,
+                ModelCompatibilityDatabase.Options<CompositionContext>(
+                    engine,
                     "Server=127.0.0.1;Database=composition_any;User ID=unused;Pooling=false"))
             .AddInterceptors(boundary, boundary.Commands);
 
@@ -33,16 +34,18 @@ public sealed class CompositionAnyConstructionTests
         // WHY: Each dialect owns its complete provider graph instead of changing EF's process-wide
         // service cache. This test observes expression construction only, including direct-edge sources.
         await using var provider = services.BuildServiceProvider();
-        await using var context = new CompositionContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new CompositionContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
             .ForScope(Guid.Parse("820bc0eb-7a3c-4dd9-9cbb-87d758889237"))
             .InTree(Guid.Empty);
 
-        var rows = hierarchy.SelectSubtrees(node => node.Id == 1,
+        var rows = hierarchy.SelectSubtrees(
+            node => node.Id == 1,
             (upper, lower, distance) => new
             {
                 Upper = upper,
@@ -50,7 +53,8 @@ public sealed class CompositionAnyConstructionTests
             });
 
         // Act
-        var query = hierarchy.WherePathEdges(rows,
+        var query = hierarchy.WherePathEdges(
+            rows,
             row => row.Upper,
             row => row.Lower,
             (row, parent, child) => CallerAllowsEdge(parent.Id, child.Id));
@@ -59,15 +63,22 @@ public sealed class CompositionAnyConstructionTests
         observer.Visit(query.Expression);
 
         // Assert
-        Assert.Contains(observer.Calls,
-            call => call.Method.GetGenericArguments()[0]
+        Assert.Contains(
+            observer.Calls,
+            call => call
+                    .Method
+                    .GetGenericArguments()[0]
                 == typeof(CompositionNode));
 
-        Assert.Contains(observer.Calls,
-            call => call.Method.GetGenericArguments()[0]
+        Assert.Contains(
+            observer.Calls,
+            call => call
+                    .Method
+                    .GetGenericArguments()[0]
                 == typeof(NestedSetQueryEdge<CompositionNode>));
 
-        Assert.All(observer.Calls,
+        Assert.All(
+            observer.Calls,
             call =>
             {
                 var elementType = Assert.Single(call.Method.GetGenericArguments());
@@ -75,8 +86,11 @@ public sealed class CompositionAnyConstructionTests
                 var lambda = Assert.IsAssignableFrom<LambdaExpression>(quoted.Operand);
 
                 Assert.Equal(ExpressionType.Quote, quoted.NodeType);
-                Assert.Equal(elementType,
-                    Assert.Single(lambda.Parameters).Type);
+                Assert.Equal(
+                    elementType,
+                    Assert.Single(lambda.Parameters)
+                        .Type);
+
                 Assert.Equal(typeof(Func<,>).MakeGenericType(elementType, typeof(bool)), lambda.Type);
             });
 
@@ -102,7 +116,8 @@ public sealed class CompositionAnyConstructionTests
         var nodes = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
         var foreign = context.Set<CompositionGuardNode>(CompositionGuardContext.SecondMapping);
         var rows = foreignAnchor
-            ? nodes.Join(foreign,
+            ? nodes.Join(
+                foreign,
                 node => node.Id,
                 other => other.Id,
                 (node, other) => new CompositionGuardRow
@@ -110,7 +125,8 @@ public sealed class CompositionAnyConstructionTests
                     Upper = other,
                     Lower = node,
                 })
-            : nodes.Join(foreign,
+            : nodes.Join(
+                foreign,
                 node => node.Id,
                 other => other.Id,
                 (node, other) => new CompositionGuardRow
@@ -120,7 +136,8 @@ public sealed class CompositionAnyConstructionTests
                 });
 
         // Act
-        var error = Record.Exception(() => hierarchy.WherePathEdges(rows,
+        var error = Record.Exception(() => hierarchy.WherePathEdges(
+            rows,
             row => row.Upper,
             row => row.Lower,
             (row, parent, child) => CallerAllowsEdge(parent.Id, child.Id)));

@@ -8,7 +8,8 @@ public abstract partial class ConfiguredMutableIdentityTests
     public async Task DeferredAnchorQueryOwnsConfiguredScopeAndNodeKey()
     {
         // Arrange
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedQueryRowsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
@@ -31,6 +32,7 @@ public abstract partial class ConfiguredMutableIdentityTests
             ("child", "scope", "source", "root", 2L, 3L, 1, 0L),
             (child.Id.Value, child.Scope.Value, child.TreeId.Value, child.ParentId!.Value, child.Left, child.Right,
                 child.Depth, child.Position));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -40,7 +42,8 @@ public abstract partial class ConfiguredMutableIdentityTests
     public async Task DeferredTreeQueryOwnsConfiguredScopeAndTreeId()
     {
         // Arrange
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedQueryRowsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
@@ -62,6 +65,7 @@ public abstract partial class ConfiguredMutableIdentityTests
             rows,
             root => Assert.Equal(("root", 1L, 4L, 0), (root.Id.Value, root.Left, root.Right, root.Depth)),
             child => Assert.Equal(("child", 2L, 3L, 1), (child.Id.Value, child.Left, child.Right, child.Depth)));
+
         Assert.All(rows, row => Assert.Equal(("scope", "source"), (row.Scope.Value, row.TreeId.Value)));
         Assert.Empty(context.ChangeTracker.Entries());
     }
@@ -72,7 +76,8 @@ public abstract partial class ConfiguredMutableIdentityTests
     public async Task TreeValidationOwnsConfiguredScopeAndTreeId()
     {
         // Arrange
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedQueryRowsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
@@ -95,8 +100,12 @@ public abstract partial class ConfiguredMutableIdentityTests
         Assert.True(report.IsValid);
         Assert.Equal(2, report.NodeCount);
         Assert.Equal(before, await RowsAsync(context, cancellationToken: TestContext.Current.CancellationToken));
-        Assert.Equal(registryBefore, await RegistriesAsync(context,
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            registryBefore,
+            await RegistriesAsync(
+                context,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -106,7 +115,8 @@ public abstract partial class ConfiguredMutableIdentityTests
     public async Task RebuildPlanOwnsConfiguredScopeAndTreeId()
     {
         // Arrange
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedQueryRowsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
@@ -130,8 +140,12 @@ public abstract partial class ConfiguredMutableIdentityTests
         Assert.Equal(2, plan.NodeCount);
         Assert.Equal(0, plan.ChangedNodeCount);
         Assert.Equal(before, await RowsAsync(context, cancellationToken: TestContext.Current.CancellationToken));
-        Assert.Equal(registryBefore, await RegistriesAsync(context,
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            registryBefore,
+            await RegistriesAsync(
+                context,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 

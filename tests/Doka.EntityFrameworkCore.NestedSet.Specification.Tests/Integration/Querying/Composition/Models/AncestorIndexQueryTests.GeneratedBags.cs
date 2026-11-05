@@ -10,11 +10,15 @@ public abstract partial class AncestorIndexQueryTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task IndexedGeneratedBagInsertionAcceptsMissingOrNullIdentity(bool bulk, bool nullKey)
+    public async Task IndexedGeneratedBagInsertionAcceptsMissingOrNullIdentity(
+        bool bulk,
+        bool nullKey
+    )
     {
         // Arrange
         var tree = Guid.NewGuid();
-        await using var context = await _fixture.CreateContextAsync<AncestorIndexGeneratedBagContext>(Engine,
+        await using var context = await _fixture.CreateContextAsync<AncestorIndexGeneratedBagContext>(
+            Engine,
             static options => new AncestorIndexGeneratedBagContext(options),
             cancellationToken: TestContext.Current.CancellationToken);
 
@@ -26,7 +30,12 @@ public abstract partial class AncestorIndexQueryTests
         var leaf = GeneratedBag("leaf", nullKey);
 
         // Act
-        await InsertGeneratedBagAsync(hierarchy, child, leaf, rootKey, bulk,
+        await InsertGeneratedBagAsync(
+            hierarchy,
+            child,
+            leaf,
+            rootKey,
+            bulk,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -34,7 +43,9 @@ public abstract partial class AncestorIndexQueryTests
         Assert.True(childKey > 0);
         Assert.NotEqual(rootKey, childKey);
         Assert.Equal(rootKey, child[NestedSetPropertyRoles.Parent]);
-        Assert.Equal(bulk, Assert.IsType<bool>(child[GeneratedBagFlag(context, AncestorIndexGeneratedBagContext.Mapping)]));
+        Assert.Equal(
+            bulk,
+            Assert.IsType<bool>(child[GeneratedBagFlag(context, AncestorIndexGeneratedBagContext.Mapping)]));
 
         if (bulk)
         {
@@ -42,7 +53,15 @@ public abstract partial class AncestorIndexQueryTests
             Assert.True(Assert.IsType<int>(leaf[NestedSetPropertyRoles.NodeKey]) > 0);
         }
 
-        Assert.Equal(bulk ? 3 : 2, await hierarchy.InTree(tree).Nodes.CountAsync(CancellationToken.None));
+        Assert.Equal(
+            bulk
+                ? 3
+                : 2,
+            await hierarchy
+                .InTree(tree)
+                .Nodes
+                .CountAsync(CancellationToken.None));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -54,12 +73,16 @@ public abstract partial class AncestorIndexQueryTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task IndexedGeneratedBagLateFailureRestoresExactRawInput(bool bulk, bool nullKey)
+    public async Task IndexedGeneratedBagLateFailureRestoresExactRawInput(
+        bool bulk,
+        bool nullKey
+    )
     {
         // Arrange
         var tree = Guid.NewGuid();
         var failure = new BagSaveFailure();
-        await using var context = await _fixture.CreateContextAsync<AncestorIndexGeneratedBagContext>(Engine,
+        await using var context = await _fixture.CreateContextAsync<AncestorIndexGeneratedBagContext>(
+            Engine,
             static options => new AncestorIndexGeneratedBagContext(options),
             cancellationToken: TestContext.Current.CancellationToken,
             failure);
@@ -75,16 +98,31 @@ public abstract partial class AncestorIndexQueryTests
         failure.Enabled = true;
 
         // Act
-        var error = await Record.ExceptionAsync(() => InsertGeneratedBagAsync(hierarchy, child, leaf, rootKey, bulk,
+        var error = await Record.ExceptionAsync(() => InsertGeneratedBagAsync(
+            hierarchy,
+            child,
+            leaf,
+            rootKey,
+            bulk,
             cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
-        Assert.Equal(BagSaveFailure.Message, Assert.IsType<InvalidOperationException>(error).Message);
+        Assert.Equal(
+            BagSaveFailure.Message,
+            Assert.IsType<InvalidOperationException>(error)
+                .Message);
+
         Assert.Equal(beforeChild.OrderBy(pair => pair.Key), child.OrderBy(pair => pair.Key));
         Assert.Equal(beforeLeaf.OrderBy(pair => pair.Key), leaf.OrderBy(pair => pair.Key));
         Assert.False(Assert.IsType<bool>(root[GeneratedBagFlag(context, AncestorIndexGeneratedBagContext.Mapping)]));
         Assert.Equal(2L, root[NestedSetPropertyRoles.Right]);
-        Assert.Equal(1, await hierarchy.InTree(tree).Nodes.CountAsync(CancellationToken.None));
+        Assert.Equal(
+            1,
+            await hierarchy
+                .InTree(tree)
+                .Nodes
+                .CountAsync(CancellationToken.None));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -96,12 +134,16 @@ public abstract partial class AncestorIndexQueryTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task IndexedGeneratedBagCanRetryAfterLateFailure(bool bulk, bool nullKey)
+    public async Task IndexedGeneratedBagCanRetryAfterLateFailure(
+        bool bulk,
+        bool nullKey
+    )
     {
         // Arrange
         var tree = Guid.NewGuid();
         var failure = new BagSaveFailure();
-        await using var context = await _fixture.CreateContextAsync<AncestorIndexGeneratedBagContext>(Engine,
+        await using var context = await _fixture.CreateContextAsync<AncestorIndexGeneratedBagContext>(
+            Engine,
             static options => new AncestorIndexGeneratedBagContext(options),
             cancellationToken: TestContext.Current.CancellationToken,
             failure);
@@ -113,27 +155,55 @@ public abstract partial class AncestorIndexQueryTests
         var child = GeneratedBag("child", nullKey);
         var leaf = GeneratedBag("leaf", nullKey);
         failure.Enabled = true;
-        var setupError = await Record.ExceptionAsync(() => InsertGeneratedBagAsync(hierarchy, child, leaf, rootKey, bulk,
+        var setupError = await Record.ExceptionAsync(() => InsertGeneratedBagAsync(
+            hierarchy,
+            child,
+            leaf,
+            rootKey,
+            bulk,
             cancellationToken: TestContext.Current.CancellationToken));
 
-        Assert.Equal(BagSaveFailure.Message, Assert.IsType<InvalidOperationException>(setupError).Message);
+        Assert.Equal(
+            BagSaveFailure.Message,
+            Assert.IsType<InvalidOperationException>(setupError)
+                .Message);
+
         failure.Enabled = false;
 
         // Act
-        await InsertGeneratedBagAsync(hierarchy, child, leaf, rootKey, bulk,
+        await InsertGeneratedBagAsync(
+            hierarchy,
+            child,
+            leaf,
+            rootKey,
+            bulk,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var childKey = Assert.IsType<int>(child[NestedSetPropertyRoles.NodeKey]);
         Assert.True(childKey > 0);
         Assert.Equal(rootKey, child[NestedSetPropertyRoles.Parent]);
-        Assert.Equal(bulk, Assert.IsType<bool>(child[GeneratedBagFlag(context, AncestorIndexGeneratedBagContext.Mapping)]));
-        Assert.Equal(bulk ? 3 : 2, await hierarchy.InTree(tree).Nodes.CountAsync(CancellationToken.None));
+        Assert.Equal(
+            bulk,
+            Assert.IsType<bool>(child[GeneratedBagFlag(context, AncestorIndexGeneratedBagContext.Mapping)]));
+
+        Assert.Equal(
+            bulk
+                ? 3
+                : 2,
+            await hierarchy
+                .InTree(tree)
+                .Nodes
+                .CountAsync(CancellationToken.None));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
     /// <summary>Preserves the exact consumer distinction between an absent and an explicitly null generated key.</summary>
-    private static Dictionary<string, object?> GeneratedBag(string label, bool nullKey)
+    private static Dictionary<string, object?> GeneratedBag(
+        string label,
+        bool nullKey
+    )
     {
         var node = new Dictionary<string, object?> { [AncestorIndexMappedContext.Payload] = label };
 
@@ -154,7 +224,11 @@ public abstract partial class AncestorIndexQueryTests
         bool bulk,
         CancellationToken cancellationToken
     ) => bulk
-        ? hierarchy.InsertSubtreeAsync(new NestedSetBranch<Dictionary<string, object?>>(
-            child, [new NestedSetBranch<Dictionary<string, object?>>(leaf)]), rootKey, cancellationToken)
+        ? hierarchy.InsertSubtreeAsync(
+            new NestedSetBranch<Dictionary<string, object?>>(
+                child,
+                [new NestedSetBranch<Dictionary<string, object?>>(leaf)]),
+            rootKey,
+            cancellationToken)
         : hierarchy.InsertChildAsync(child, rootKey, cancellationToken);
 }

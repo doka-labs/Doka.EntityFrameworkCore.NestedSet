@@ -54,13 +54,13 @@ public sealed partial class ProviderTestContractTests
         var method = CreateProbe(
             [
                 NeutralFact(
-                    [
-                        "MySql",
-                        "MariaDb",
-                        "PostgreSql",
-                        "SqlServer",
-                        "Sqlite",
-                    ]),
+                [
+                    "MySql",
+                    "MariaDb",
+                    "PostgreSql",
+                    "SqlServer",
+                    "Sqlite",
+                ]),
             ])
             .GetMethod("Probe0")!;
 
@@ -132,7 +132,8 @@ public sealed partial class ProviderTestContractTests
             .GetMethod("Probe0")!;
 
         // Act
-        var errors = await ProviderTestContract.FindSharedDataErrorsAsync(method,
+        var errors = await ProviderTestContract.FindSharedDataErrorsAsync(
+            method,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -150,7 +151,8 @@ public sealed partial class ProviderTestContractTests
             .GetMethod("Probe0")!;
 
         // Act
-        var errors = await ProviderTestContract.FindSharedDataErrorsAsync(method,
+        var errors = await ProviderTestContract.FindSharedDataErrorsAsync(
+            method,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -170,7 +172,8 @@ public sealed partial class ProviderTestContractTests
             .GetMethod("Probe0")!;
 
         // Act
-        var errors = await ProviderTestContract.FindSharedDataErrorsAsync(method,
+        var errors = await ProviderTestContract.FindSharedDataErrorsAsync(
+            method,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -188,7 +191,8 @@ public sealed partial class ProviderTestContractTests
             .GetMethod("Probe0")!;
 
         // Act
-        var errors = await ProviderTestContract.FindSharedDataErrorsAsync(method,
+        var errors = await ProviderTestContract.FindSharedDataErrorsAsync(
+            method,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert

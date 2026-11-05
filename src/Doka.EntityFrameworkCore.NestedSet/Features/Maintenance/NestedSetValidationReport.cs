@@ -31,7 +31,9 @@ public sealed class NestedSetValidationReport
                     .ToDictionary(group => group.Key, group => (long)group.Count())
                 : new Dictionary<NestedSetValidationCode, long>(issueCounts));
 
-        TotalIssueCount = totalIssueCount < 0 ? issues.Count : totalIssueCount;
+        TotalIssueCount = totalIssueCount < 0
+            ? issues.Count
+            : totalIssueCount;
     }
 
     /// <summary>Gets the validation detail used to produce this report.</summary>

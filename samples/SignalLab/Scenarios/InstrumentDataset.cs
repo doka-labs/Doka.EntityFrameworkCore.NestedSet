@@ -105,5 +105,16 @@ internal sealed record InstrumentDataset(
     private static Guid CreateId(
         int scenarioNumber,
         byte ordinal
-    ) => new(scenarioNumber, 0x51ab, 0x4000, 0x80, 0, 0, 0, 0, 0, 0, ordinal);
+    ) => new(
+        scenarioNumber,
+        0x51ab,
+        0x4000,
+        0x80,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        ordinal);
 }

@@ -10,7 +10,8 @@ public sealed class CompositionSqlServerPlanWorkTests
     public void RepeatedReadsExceedTheUnchangedPathBudget()
     {
         // Arrange
-        var plan = Plan("""
+        var plan = Plan(
+            """
             <RunTimeCountersPerThread Thread="0" ActualRows="95050" ActualRowsRead="10000100" ActualExecutions="100" />
             """);
 
@@ -31,7 +32,8 @@ public sealed class CompositionSqlServerPlanWorkTests
     public void ParallelCumulativeRowsAreNotMultipliedByExecutions()
     {
         // Arrange
-        var plan = Plan("""
+        var plan = Plan(
+            """
             <RunTimeCountersPerThread Thread="1" ActualRows="4" ActualRowsRead="9" ActualExecutions="10" />
             <RunTimeCountersPerThread Thread="2" ActualRows="6" ActualRowsRead="11" ActualExecutions="20" />
             """);
@@ -88,8 +90,9 @@ public sealed class CompositionSqlServerPlanWorkTests
     )
     {
         // Arrange
-        var plan = Plan(FormattableString.Invariant(
-            $"""<RunTimeCountersPerThread ActualRows="{output}" ActualRowsRead="{read}" ActualExecutions="100" />"""));
+        var plan = Plan(
+            FormattableString.Invariant(
+                $"""<RunTimeCountersPerThread ActualRows="{output}" ActualRowsRead="{read}" ActualExecutions="100" />"""));
 
         var budget = CompositionPlanWorkBudget.ForPaths(100_001, 100, 95_050);
 
@@ -144,7 +147,7 @@ public sealed class CompositionSqlServerPlanWorkTests
     )
     {
         // Arrange
-        Action read = () =>
+        var read = () =>
         {
             _ = CompositionSqlServerPlanWork.ReadXml(plan);
         };

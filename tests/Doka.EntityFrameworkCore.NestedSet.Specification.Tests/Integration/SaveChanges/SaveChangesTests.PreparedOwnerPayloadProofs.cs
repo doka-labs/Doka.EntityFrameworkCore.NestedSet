@@ -20,20 +20,32 @@ public abstract partial class SaveChangesTests
         await using var database = await CreateNavigationDatabaseAsync(
             cancellationToken: TestContext.Current.CancellationToken);
 
-        await SeedPreparedNavigationDestinationAsync(database,
+        await SeedPreparedNavigationDestinationAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
-        await SeedPayloadOwnersAsync(database, assigned: false,
+
+        await SeedPayloadOwnersAsync(
+            database,
+            assigned: false,
             cancellationToken: TestContext.Current.CancellationToken);
+
         var callback = new SaveBoundaryCallback();
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true,
+        await using var context = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
             cancellationToken: TestContext.Current.CancellationToken,
-            callback, probe);
+            callback,
+            probe);
 
-        var graph = await PrepareOwnerImportAsync(context, nodes,
+        var graph = await PrepareOwnerImportAsync(
+            context,
+            nodes,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var payloadOwner = await context.Set<NavigationPayloadOwner>().Include(owner => owner.Nodes)
+        var payloadOwner = await context
+            .Set<NavigationPayloadOwner>()
+            .Include(owner => owner.Nodes)
             .SingleAsync(owner => owner.Scope == graph.Owner.Id && owner.Id == 1, CancellationToken.None);
 
         foreach (var input in graph.Inputs)
@@ -55,7 +67,8 @@ public abstract partial class SaveChangesTests
             expectedInputs[^1] = expectedInputs[^1] with { PayloadOwnerId = 2 };
         }
 
-        var storedBefore = await ReadPreparedOwnerStoreAsync(database,
+        var storedBefore = await ReadPreparedOwnerStoreAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var callbacks = 0;
@@ -71,7 +84,10 @@ public abstract partial class SaveChangesTests
                 return;
             }
 
-            activeAtCallback = current.GetService<IUpdateAdapterFactory>().Create().Entries
+            activeAtCallback = current
+                .GetService<IUpdateAdapterFactory>()
+                .Create()
+                .Entries
                 .Count(entry => entry.EntityType.ClrType == typeof(NavigationNode));
 
             writesAtCallback = probe.Writes;
@@ -92,21 +108,28 @@ public abstract partial class SaveChangesTests
         var after = CapturePlannedParentState(context);
         var inputAfter = CapturePreparedOwnerInputs(graph.Inputs);
 
-        if (!changeFuturePayload && error is null)
+        if (!changeFuturePayload
+            && error is null)
         {
             callback.OnSaving = null;
             graph.NoteValue.CurrentValue = "following payload";
             await context.SaveChangesAsync(CancellationToken.None);
         }
 
-        var storedAfter = await ReadPreparedOwnerStoreAsync(database,
+        var storedAfter = await ReadPreparedOwnerStoreAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true,
+        await using var verification = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var storedOwners = await verification.Set<NavigationNode>().Where(node => node.Id >= 1000)
-            .Select(node => node.PayloadOwnerId).ToArrayAsync(CancellationToken.None);
+        var storedOwners = await verification
+            .Set<NavigationNode>()
+            .Where(node => node.Id >= 1000)
+            .Select(node => node.PayloadOwnerId)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(64, activeAtCallback);
@@ -116,7 +139,11 @@ public abstract partial class SaveChangesTests
 
         if (changeFuturePayload)
         {
-            Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(error).Code);
+            Assert.Equal(
+                NestedSetErrorCode.InvalidContext,
+                Assert.IsType<NestedSetException>(error)
+                    .Code);
+
             Assert.Equal(writesAtCallback, probe.Writes);
             AssertPlannedParentState(before, after);
             Assert.Equal(expectedInputs, inputAfter);
@@ -136,7 +163,13 @@ public abstract partial class SaveChangesTests
         }
 
         Assert.Equal(0, storedAfter.Issues);
-        Assert.All(graph.Inputs, input => Assert.Equal(EntityState.Detached, context.Entry(input).State));
+        Assert.All(
+            graph.Inputs,
+            input => Assert.Equal(
+                EntityState.Detached,
+                context.Entry(input)
+                    .State));
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
     }
 }

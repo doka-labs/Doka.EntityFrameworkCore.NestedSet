@@ -7,8 +7,8 @@ public sealed partial class ScopedNestedSet<TEntity, TScope>
     where TEntity : class
     where TScope : notnull
 {
-    private readonly NestedSetQuery<TEntity> _query;
     private readonly NestedSetMutationBinding<TEntity> _mutations;
+    private readonly NestedSetQuery<TEntity> _query;
 
     /// <summary>Creates a facade from an already validated Scope binding.</summary>
     /// <param name="query">The immutable bound query builder.</param>

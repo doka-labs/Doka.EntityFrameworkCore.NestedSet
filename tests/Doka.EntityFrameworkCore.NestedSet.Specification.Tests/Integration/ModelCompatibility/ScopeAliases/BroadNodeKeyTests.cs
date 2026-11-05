@@ -65,7 +65,11 @@ public abstract class BroadNodeKeyTests : ProviderTest
             CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidStructure, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidStructure,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Null(input.ParentId);
         Assert.Equal(
             1,
@@ -105,7 +109,11 @@ public abstract class BroadNodeKeyTests : ProviderTest
                 CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidImport, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidImport,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Null(child.ParentId);
         Assert.Equal(
             0,
@@ -230,7 +238,9 @@ public abstract class BroadNodeKeyTests : ProviderTest
         // Assert
         Assert.Equal(
             "The imported refresh contains an unexpected node.",
-            Assert.IsType<DbUpdateConcurrencyException>(error).Message);
+            Assert.IsType<DbUpdateConcurrencyException>(error)
+                .Message);
+
         Assert.Single(probe.Commands);
         Assert.Equal("E", input.Id.Value);
         Assert.Equal(
@@ -280,7 +290,9 @@ public abstract class BroadNodeKeyTests : ProviderTest
         // Assert
         Assert.Equal(
             "An imported input changed its identity during refresh.",
-            Assert.IsType<DbUpdateConcurrencyException>(error).Message);
+            Assert.IsType<DbUpdateConcurrencyException>(error)
+                .Message);
+
         Assert.Single(probe.Commands);
         Assert.Equal("F", input.Id.Value);
         Assert.Equal(

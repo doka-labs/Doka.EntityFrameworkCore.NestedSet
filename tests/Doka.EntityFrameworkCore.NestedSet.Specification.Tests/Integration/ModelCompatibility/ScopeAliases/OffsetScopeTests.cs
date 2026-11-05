@@ -24,7 +24,15 @@ public abstract class OffsetScopeTests : ProviderTest
             static options => new OffsetScopeContext(options),
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var firstScope = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var firstScope = new DateTimeOffset(
+            2026,
+            1,
+            1,
+            0,
+            0,
+            0,
+            TimeSpan.Zero);
+
         var secondScope = firstScope.ToOffset(TimeSpan.FromHours(2));
         var firstTree = Guid.NewGuid();
         var secondTree = Guid.NewGuid();
@@ -37,8 +45,11 @@ public abstract class OffsetScopeTests : ProviderTest
             .Set<OffsetScopeNode>()
             .ToArrayAsync(CancellationToken.None);
 
-        tracked.Single(node => node.Scope.Offset == firstScope.Offset && node.Id == 2).Name = "Zulu";
-        tracked.Single(node => node.Scope.Offset == secondScope.Offset && node.Id == 2).Name = "Zulu";
+        tracked.Single(node => node.Scope.Offset == firstScope.Offset && node.Id == 2)
+            .Name = "Zulu";
+
+        tracked.Single(node => node.Scope.Offset == secondScope.Offset && node.Id == 2)
+            .Name = "Zulu";
 
         // Act
         await context.SaveNestedSetChangesAsync(
@@ -63,6 +74,7 @@ public abstract class OffsetScopeTests : ProviderTest
                 .ForScope(firstScope)
                 .InTree(firstTree)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+
         Assert.True(
             (await context
                 .NestedSet<OffsetScopeNode>()

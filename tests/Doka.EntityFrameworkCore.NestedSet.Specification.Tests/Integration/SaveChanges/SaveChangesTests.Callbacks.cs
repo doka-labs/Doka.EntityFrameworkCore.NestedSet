@@ -16,7 +16,8 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
@@ -77,14 +78,16 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new SaveBoundaryProbe();
         var callback = new SaveBoundaryCallback();
         await using var context = new SaveBoundaryContext(
-            SaveBoundaryTestSupport.Options(setup, probe, callback).Options);
+            SaveBoundaryTestSupport.Options(setup, probe, callback)
+                .Options);
 
         var node = await context
             .Set<OrderingNode>()
@@ -134,12 +137,14 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = new SaveBoundaryContext(
-            SaveBoundaryTestSupport.Options(setup).Options);
+            SaveBoundaryTestSupport.Options(setup)
+                .Options);
 
         var node = await context
             .Set<OrderingNode>()
@@ -157,7 +162,10 @@ public abstract partial class SaveChangesTests
         if (orderedChange && !automaticDetection)
         {
             // WHY: Manual mode requires explicit intent for the order change, independently of raw payload.
-            context.Entry(node).Property(value => value.Name).IsModified = true;
+            context
+                .Entry(node)
+                .Property(value => value.Name)
+                .IsModified = true;
         }
 
         var detections = 0;
@@ -165,13 +173,35 @@ public abstract partial class SaveChangesTests
 
         // Act
         await context.SaveChangesAsync(CancellationToken.None);
-        var stored = await setup.Set<OrderingNode>().Where(value => value.Id == 1)
-            .Select(value => new { value.Name, value.Payload }).SingleAsync(CancellationToken.None);
+        var stored = await setup
+            .Set<OrderingNode>()
+            .Where(value => value.Id == 1)
+            .Select(value => new
+            {
+                value.Name,
+                value.Payload,
+            })
+            .SingleAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(automaticDetection ? 2 : 0, detections);
-        Assert.Equal(orderedChange ? "Zulu" : "Alpha", stored.Name);
-        Assert.Equal(automaticDetection ? "changed" : "original", stored.Payload);
+        Assert.Equal(
+            automaticDetection
+                ? 2
+                : 0,
+            detections);
+
+        Assert.Equal(
+            orderedChange
+                ? "Zulu"
+                : "Alpha",
+            stored.Name);
+
+        Assert.Equal(
+            automaticDetection
+                ? "changed"
+                : "original",
+            stored.Payload);
+
         Assert.Equal(automaticDetection, context.ChangeTracker.AutoDetectChangesEnabled);
     }
 }

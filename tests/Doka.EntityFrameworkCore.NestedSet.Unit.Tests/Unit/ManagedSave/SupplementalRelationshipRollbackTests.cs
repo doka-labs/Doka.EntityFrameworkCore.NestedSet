@@ -38,16 +38,21 @@ public sealed class SupplementalRelationshipRollbackTests
         var raw = new Node { Id = 20 };
         original.Nodes.Add(node);
         context.AttachRange(original, temporary, raw);
+
         // WHY: The raw-null CLR collection and installed native membership are independent before capture.
         original.Nodes = null;
         var updates = context
             .GetService<IUpdateAdapterFactory>()
             .Create();
 
-        var update = updates.Entries.Single(entry => ReferenceEquals(entry.ToEntityEntry().Entity,
+        var update = updates.Entries.Single(entry => ReferenceEquals(
+            entry.ToEntityEntry()
+                .Entity,
             node));
 
-        var owner = updates.Entries.Single(entry => ReferenceEquals(entry.ToEntityEntry().Entity,
+        var owner = updates.Entries.Single(entry => ReferenceEquals(
+            entry.ToEntityEntry()
+                .Entity,
             original));
 
         var navigation = owner.EntityType.FindNavigation(nameof(Owner.Nodes))!;
@@ -56,11 +61,13 @@ public sealed class SupplementalRelationshipRollbackTests
             .Entry(node)
             .Property(value => value.OwnerId)
             .CurrentValue = temporary.Id;
+
         node.OwnerId = original.Id;
         context
             .Entry(node)
             .Property(value => value.OwnerId)
             .IsModified = true;
+
         var replacement = new List<Node> { node };
 
         if (pendingMember)
@@ -89,7 +96,8 @@ public sealed class SupplementalRelationshipRollbackTests
             Assert.Same(raw, Assert.Single(original.Nodes!));
             Assert.Null(raw.OwnerId);
             Assert.Null(raw.Owner);
-            Assert.DoesNotContain(raw,
+            Assert.DoesNotContain(
+                raw,
                 Assert.IsAssignableFrom<ISet<object>>(owner.GetRelationshipSnapshotValue(navigation)));
         }
         else
@@ -98,8 +106,10 @@ public sealed class SupplementalRelationshipRollbackTests
         }
 
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Native presence survives an unmarked round trip while its raw CLR reorder remains pending.</summary>
@@ -204,20 +214,31 @@ public sealed class SupplementalRelationshipRollbackTests
         // Assert
         Assert.Equal(originalMembership, nativeBefore.Contains(middle, ReferenceEqualityComparer.Instance));
         Assert.Equal(new[] { first, last, middle }, pendingOrder);
-        Assert.Equal(marked ? new[] { first, middle, last } : pendingOrder, original.Nodes);
-        Assert.True(Assert
-            .IsAssignableFrom<ISet<object>>(owner.GetRelationshipSnapshotValue(navigation))
-            .SetEquals(nativeBefore));
+        Assert.Equal(
+            marked
+                ? new[] { first, middle, last }
+                : pendingOrder,
+            original.Nodes);
+
+        Assert.True(
+            Assert
+                .IsAssignableFrom<ISet<object>>(owner.GetRelationshipSnapshotValue(navigation))
+                .SetEquals(nativeBefore));
+
         Assert.Equal(original.Id, middle.OwnerId);
         Assert.Same(original, middle.Owner);
-        Assert.Same(original,
+        Assert.Same(
+            original,
             update.GetRelationshipSnapshotValue(
                 update.EntityType.FindNavigation(nameof(Node.Owner))!));
+
         Assert.False(property.IsModified);
         Assert.Empty(transient.Nodes!);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Required-FK recovery preserves actual bucket preimages independently of scalar/null flags.</summary>
@@ -259,14 +280,19 @@ public sealed class SupplementalRelationshipRollbackTests
             .GetService<IUpdateAdapterFactory>()
             .Create();
 
-        var update = updates.Entries.Single(entry => ReferenceEquals(entry.ToEntityEntry().Entity,
+        var update = updates.Entries.Single(entry => ReferenceEquals(
+            entry.ToEntityEntry()
+                .Entity,
             node));
 
-        var principal = updates.Entries.Single(entry => ReferenceEquals(entry.ToEntityEntry().Entity,
+        var principal = updates.Entries.Single(entry => ReferenceEquals(
+            entry.ToEntityEntry()
+                .Entity,
             owner));
 
         var reference = update.EntityType.FindNavigation(nameof(Node.Owner))!;
         var property = update.EntityType.FindProperty(nameof(Node.OwnerId))!;
+
         // WHY: EF's public read initializes its lazy map before the tested initial changes. Otherwise the
         // first later lookup would rebuild membership from current values and conceal these distinct states.
         var initialBucket = updates.GetDependents(principal, reference.ForeignKey);
@@ -313,13 +339,17 @@ public sealed class SupplementalRelationshipRollbackTests
 
         Assert.True(nativeMembers.SetEquals(originalNativeMembers));
         Assert.Equal(originalState, update.EntityState);
-        Assert.Empty(NestedSetInsertionContract.Instance.GetOrCreateDependents(
-            NestedSetInsertionContract.Instance.Manager(update),
-            [3],
-            reference.ForeignKey));
+        Assert.Empty(
+            NestedSetInsertionContract.Instance.GetOrCreateDependents(
+                NestedSetInsertionContract.Instance.Manager(update),
+                [3],
+                reference.ForeignKey));
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Preserves a native bucket first initialized after an unrelated raw FK edit.</summary>
@@ -336,7 +366,10 @@ public sealed class SupplementalRelationshipRollbackTests
     )
     {
         // Arrange
-        await using var context = conceptualNull ? new RequiredContext() : new SupplementalContext();
+        await using var context = conceptualNull
+            ? new RequiredContext()
+            : new SupplementalContext();
+
         context.ChangeTracker.DeleteOrphansTiming = CascadeTiming.Never;
         var original = new Owner
         {
@@ -364,14 +397,19 @@ public sealed class SupplementalRelationshipRollbackTests
         };
 
         original.Nodes.Add(node);
+
         // WHY: Track only the dependent so owner attachment cannot initialize the FK map first. Use the
         // production key lookup: the public update adapter requires a registered principal for this read.
-        context.Entry(node).State = EntityState.Unchanged;
+        context.Entry(node)
+            .State = EntityState.Unchanged;
+
         var updates = context
             .GetService<IUpdateAdapterFactory>()
             .Create();
 
-        var update = updates.Entries.Single(entry => ReferenceEquals(entry.ToEntityEntry().Entity,
+        var update = updates.Entries.Single(entry => ReferenceEquals(
+            entry.ToEntityEntry()
+                .Entity,
             node));
 
         var contract = NestedSetInsertionContract.Instance;
@@ -425,14 +463,19 @@ public sealed class SupplementalRelationshipRollbackTests
         snapshot.Restore();
 
         // Assert
-        Assert.Single(originalBuckets[initializeBeforeRawEdit ? 1 : 0]);
+        Assert.Single(
+            originalBuckets[initializeBeforeRawEdit
+                ? 1
+                : 0]);
+
         Assert.Equal(pending.Id, node.OwnerId);
         Assert.Equal(original.Id, update.GetRelationshipSnapshotValue(property));
         Assert.Same(originalReference, node.Owner);
         Assert.Same(originalNativeReference, update.GetRelationshipSnapshotValue(reference));
         Assert.Equal(originalModified, update.IsModified(property));
         Assert.Equal(conceptualNull, update.IsConceptualNull(property));
-        Assert.Equal(originalBuckets,
+        Assert.Equal(
+            originalBuckets,
             keys
                 .Select(key => contract
                     .GetOrCreateDependents(
@@ -441,13 +484,18 @@ public sealed class SupplementalRelationshipRollbackTests
                         reference.ForeignKey)
                     .ToArray())
                 .ToArray());
-        Assert.Equal(originalCollections,
+
+        Assert.Equal(
+            originalCollections,
             new[] { pending, original, callback }
                 .Select(owner => owner.Nodes!.ToArray())
                 .ToArray());
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>
@@ -465,29 +513,43 @@ public sealed class SupplementalRelationshipRollbackTests
         switch (state)
         {
             case "attached":
-                entry.Reference(value => value.Owner).CurrentValue = owner;
+                entry.Reference(value => value.Owner)
+                    .CurrentValue = owner;
+
                 break;
             case "reference-null":
-                entry.Reference(value => value.Owner).CurrentValue = null;
+                entry.Reference(value => value.Owner)
+                    .CurrentValue = null;
+
                 break;
             case "scalar-attached":
-                entry.Property(value => value.OwnerId).CurrentValue = owner.Id;
+                entry.Property(value => value.OwnerId)
+                    .CurrentValue = owner.Id;
+
                 break;
             case "scalar-null":
-                entry.Property(value => value.OwnerId).CurrentValue = null;
+                entry.Property(value => value.OwnerId)
+                    .CurrentValue = null;
+
                 break;
             case "raw-reset":
-                entry.Property(value => value.OwnerId).CurrentValue = 3;
+                entry.Property(value => value.OwnerId)
+                    .CurrentValue = 3;
+
                 node.OwnerId = owner.Id;
                 break;
             case "scalar-roundtrip":
             case "unmarked-roundtrip":
-                entry.Reference(value => value.Owner).CurrentValue = null;
-                entry.Property(value => value.OwnerId).CurrentValue = owner.Id;
+                entry.Reference(value => value.Owner)
+                    .CurrentValue = null;
+
+                entry.Property(value => value.OwnerId)
+                    .CurrentValue = owner.Id;
 
                 if (state == "unmarked-roundtrip")
                 {
-                    entry.Property(value => value.OwnerId).IsModified = false;
+                    entry.Property(value => value.OwnerId)
+                        .IsModified = false;
                 }
 
                 break;
@@ -500,7 +562,10 @@ public sealed class SupplementalRelationshipRollbackTests
     private class SupplementalContext : DbContext
     {
         /// <summary>Keeps native fixup distinct from manual raw graph edits.</summary>
-        internal SupplementalContext() => ChangeTracker.AutoDetectChangesEnabled = false;
+        internal SupplementalContext()
+        {
+            ChangeTracker.AutoDetectChangesEnabled = false;
+        }
 
         /// <inheritdoc />
         protected override void OnConfiguring(
@@ -516,10 +581,12 @@ public sealed class SupplementalRelationshipRollbackTests
                 .Entity<Owner>()
                 .Property(owner => owner.Id)
                 .ValueGeneratedNever();
+
             modelBuilder
                 .Entity<Node>()
                 .Property(node => node.Id)
                 .ValueGeneratedNever();
+
             modelBuilder
                 .Entity<Node>()
                 .HasOne(node => node.Owner)
@@ -542,6 +609,7 @@ public sealed class SupplementalRelationshipRollbackTests
                 .Entity<Node>()
                 .Property(node => node.OwnerId)
                 .IsRequired();
+
             modelBuilder
                 .Entity<Node>()
                 .HasOne(node => node.Owner)

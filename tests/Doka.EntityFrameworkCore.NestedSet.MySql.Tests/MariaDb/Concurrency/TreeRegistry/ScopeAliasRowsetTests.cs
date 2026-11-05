@@ -1,7 +1,9 @@
+using Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.MariaDb;
 
 /// <summary>Runs the Doka family's database-equal Scope rowset regressions on MariaDB.</summary>
-public sealed class ScopeAliasRowsetTests : MySql.ScopeAliasRowsetTestBase,
+public sealed class ScopeAliasRowsetTests : ScopeAliasRowsetTestBase,
     IClassFixture<ProviderFixture<RelationalFixture, MariaDbEngine>>
 {
     /// <summary>Uses the provider assembly's isolated fixture.</summary>

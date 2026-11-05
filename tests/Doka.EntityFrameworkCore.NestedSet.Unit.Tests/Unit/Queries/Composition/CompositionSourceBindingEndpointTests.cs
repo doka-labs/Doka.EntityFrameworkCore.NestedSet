@@ -35,7 +35,8 @@ public sealed partial class CompositionSourceBindingEndpointTests(
         var query = shape switch
         {
             "identity" => Bind(nodes, selected => selected),
-            "projection" => Bind(nodes,
+            "projection" => Bind(
+                nodes,
                 selected => selected
                     .Select(node => new { Node = node })
                     .Select(row => row.Node)),
@@ -76,7 +77,8 @@ public sealed partial class CompositionSourceBindingEndpointTests(
         var second = context.Set<CompositionGuardNode>(CompositionGuardContext.SecondMapping);
         var query = shape switch
         {
-            "constructed" => Bind(first,
+            "constructed" => Bind(
+                first,
                 selected => selected.Select(node => new CompositionGuardNode { Id = node.Id })),
             "foreign" => Bind(second, selected => selected),
             "untrusted" => Bind(first, selected => selected),
@@ -84,7 +86,9 @@ public sealed partial class CompositionSourceBindingEndpointTests(
         };
 
         var mapping = context.Model.FindEntityType(CompositionGuardContext.FirstMapping)!;
-        var trusted = shape == "untrusted" ? null : s_binding;
+        var trusted = shape == "untrusted"
+            ? null
+            : s_binding;
 
         // Act
         var error = Record.Exception(() => NestedSetQueryEndpoint.Require(
@@ -128,8 +132,10 @@ public sealed partial class CompositionSourceBindingEndpointTests(
         {
             "input" => Bind(nodes.IgnoreQueryFilters(), selected => selected),
             "compose" => Bind(nodes, selected => selected.IgnoreQueryFilters()),
-            "payload" => Bind(nodes,
-                selected => selected.Join(payloads,
+            "payload" => Bind(
+                nodes,
+                selected => selected.Join(
+                    payloads,
                     node => node.Id,
                     payload => payload.Id,
                     (node, payload) => node)),
@@ -186,7 +192,8 @@ public sealed partial class CompositionSourceBindingEndpointTests(
         {
             "field" => (Expression)Expression.Field(Expression.Constant(holder), nameof(ObjectQueryCapture.Query)),
             "property" => Expression.Property(Expression.Constant(holder), nameof(ObjectQueryCapture.QueryProperty)),
-            "static-field" => Expression.Field(null,
+            "static-field" => Expression.Field(
+                null,
                 typeof(ObjectQueryCapture),
                 nameof(ObjectQueryCapture.StaticQuery)),
             _ => throw new ArgumentOutOfRangeException(nameof(carrier)),
@@ -199,7 +206,8 @@ public sealed partial class CompositionSourceBindingEndpointTests(
         {
             "cast" => (Expression)Expression.Convert(capture, typeof(IQueryable<CompositionGuardNode>)),
             "type-as" => Expression.TypeAs(capture, typeof(IQueryable<CompositionGuardNode>)),
-            "as-queryable" => Expression.Call(((MethodCallExpression)asQueryable.Body).Method,
+            "as-queryable" => Expression.Call(
+                ((MethodCallExpression)asQueryable.Body).Method,
                 Expression.Convert(capture, typeof(IEnumerable<CompositionGuardNode>))),
             _ => throw new ArgumentOutOfRangeException(nameof(conversion)),
         };
@@ -207,7 +215,8 @@ public sealed partial class CompositionSourceBindingEndpointTests(
         var captured = nodes.Provider.CreateQuery<CompositionGuardNode>(converted);
         var parameter = Expression.Parameter(typeof(IQueryable<CompositionGuardNode>), "selected");
         var selected = nodes.Provider.CreateQuery<CompositionGuardNode>(parameter);
-        var composed = selected.Join(captured,
+        var composed = selected.Join(
+            captured,
             node => node.Id,
             payload => payload.Id,
             (node, payload) => node);
@@ -228,7 +237,8 @@ public sealed partial class CompositionSourceBindingEndpointTests(
             if (carrier != "property")
             {
                 _ = nodes
-                    .Join(captured,
+                    .Join(
+                        captured,
                         node => node.Id,
                         payload => payload.Id,
                         (node, payload) => node.Id)
@@ -334,16 +344,20 @@ public sealed partial class CompositionSourceBindingEndpointTests(
 
         var parameter = Expression.Parameter(typeof(IQueryable<CompositionGuardNode>), "selected");
         var method = s_binding.MakeGenericMethod(typeof(CompositionGuardNode), typeof(CompositionGuardNode));
-        var inner = Expression.Call(method,
+        var inner = Expression.Call(
+            method,
             parameter,
             Expression.Quote(
-                Expression.Lambda<Func<IQueryable<CompositionGuardNode>, IQueryable<CompositionGuardNode>>>(parameter,
+                Expression.Lambda<Func<IQueryable<CompositionGuardNode>, IQueryable<CompositionGuardNode>>>(
+                    parameter,
                     parameter)));
 
-        var outer = Expression.Call(method,
+        var outer = Expression.Call(
+            method,
             nodes.Expression,
             Expression.Quote(
-                Expression.Lambda<Func<IQueryable<CompositionGuardNode>, IQueryable<CompositionGuardNode>>>(inner,
+                Expression.Lambda<Func<IQueryable<CompositionGuardNode>, IQueryable<CompositionGuardNode>>>(
+                    inner,
                     parameter)));
 
         var query = nodes.Provider.CreateQuery<CompositionGuardNode>(outer);
@@ -372,10 +386,12 @@ public sealed partial class CompositionSourceBindingEndpointTests(
         var selected = Expression.Parameter(typeof(IQueryable<CompositionGuardNode>), "selected");
         var unbound = Expression.Parameter(typeof(IQueryable<CompositionGuardNode>), "unbound");
         var method = s_binding.MakeGenericMethod(typeof(CompositionGuardNode), typeof(CompositionGuardNode));
-        var expression = Expression.Call(method,
+        var expression = Expression.Call(
+            method,
             nodes.Expression,
             Expression.Quote(
-                Expression.Lambda<Func<IQueryable<CompositionGuardNode>, IQueryable<CompositionGuardNode>>>(unbound,
+                Expression.Lambda<Func<IQueryable<CompositionGuardNode>, IQueryable<CompositionGuardNode>>>(
+                    unbound,
                     selected)));
 
         var query = nodes.Provider.CreateQuery<CompositionGuardNode>(expression);
@@ -403,8 +419,9 @@ public sealed partial class CompositionSourceBindingEndpointTests(
     private static IQueryable<TResult> Bind<TSource, TResult>(
         IQueryable<TSource> source,
         Expression<Func<IQueryable<TSource>, IQueryable<TResult>>> compose
-    ) => source.Provider.CreateQuery<TResult>(Expression.Call(
-        s_binding.MakeGenericMethod(typeof(TSource), typeof(TResult)),
-        source.Expression,
-        Expression.Quote(compose)));
+    ) => source.Provider.CreateQuery<TResult>(
+        Expression.Call(
+            s_binding.MakeGenericMethod(typeof(TSource), typeof(TResult)),
+            source.Expression,
+            Expression.Quote(compose)));
 }

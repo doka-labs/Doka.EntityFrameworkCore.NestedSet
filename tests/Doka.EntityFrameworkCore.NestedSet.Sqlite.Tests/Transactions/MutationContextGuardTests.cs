@@ -1,3 +1,5 @@
+using Doka.EntityFrameworkCore.NestedSet.Execution;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Sqlite;
 
 /// <summary>Checks clean-context guard allocation and automatic detection using an isolated SQLite boundary.</summary>
@@ -40,7 +42,7 @@ public sealed class MutationContextGuardTests : ProviderTest,
         context.ChangeTracker.AutoDetectChangesEnabled = false;
         var detected = 0;
         context.ChangeTracker.DetectedAllChanges += (_, _) => detected++;
-        var executor = new Execution.NestedSetMutationExecutor<OrderingNode, int, Guid, int>(
+        var executor = new NestedSetMutationExecutor<OrderingNode, int, Guid, int>(
             context,
             context.Model.FindEntityType(typeof(OrderingNode))!);
 
@@ -49,21 +51,21 @@ public sealed class MutationContextGuardTests : ProviderTest,
         await executor.ExecuteAsync(
             _ => Task.CompletedTask,
             [
-                new Execution.NestedSetTreeLockRequest<Guid, int>(
+                new NestedSetTreeLockRequest<Guid, int>(
                     context.Model.FindEntityType(typeof(OrderingNode))!,
                     1,
                     Guid.Empty,
-                    Execution.NestedSetTreeLockMode.New),
+                    NestedSetTreeLockMode.New),
             ],
             CancellationToken.None);
 
         var requests = new[]
         {
-            new Execution.NestedSetTreeLockRequest<Guid, int>(
+            new NestedSetTreeLockRequest<Guid, int>(
                 context.Model.FindEntityType(typeof(OrderingNode))!,
                 1,
                 Guid.Empty,
-                Execution.NestedSetTreeLockMode.Existing),
+                NestedSetTreeLockMode.Existing),
         };
 
         var before = GC.GetAllocatedBytesForCurrentThread();
@@ -79,6 +81,7 @@ public sealed class MutationContextGuardTests : ProviderTest,
             },
             requests,
             CancellationToken.None);
+
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         // Assert
@@ -109,7 +112,7 @@ public sealed class MutationContextGuardTests : ProviderTest,
         entity.Value = "Changed";
         var detected = 0;
         context.ChangeTracker.DetectedAllChanges += (_, _) => detected++;
-        var executor = new Execution.NestedSetMutationExecutor<OrderingNode, int, Guid, int>(
+        var executor = new NestedSetMutationExecutor<OrderingNode, int, Guid, int>(
             context,
             context.Model.FindEntityType(typeof(OrderingNode))!);
 
@@ -117,22 +120,27 @@ public sealed class MutationContextGuardTests : ProviderTest,
         var failure = await Record.ExceptionAsync(() => executor.ExecuteAsync(
             _ => Task.CompletedTask,
             [
-                new Execution.NestedSetTreeLockRequest<Guid, int>(
+                new NestedSetTreeLockRequest<Guid, int>(
                     context.Model.FindEntityType(typeof(OrderingNode))!,
                     1,
                     Guid.Empty,
-                    Execution.NestedSetTreeLockMode.Existing)
+                    NestedSetTreeLockMode.Existing),
             ],
             CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Equal(1, detected);
         Assert.True(
             context
                 .Entry(entity)
                 .Property(node => node.Value)
                 .IsModified);
+
         Assert.Null(context.Database.CurrentTransaction);
     }
 }

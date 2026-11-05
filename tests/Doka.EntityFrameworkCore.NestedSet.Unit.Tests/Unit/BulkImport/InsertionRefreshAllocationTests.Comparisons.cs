@@ -110,7 +110,9 @@ public sealed partial class InsertionRefreshAllocationTests
 
         // WHY: The measured scalar snapshot costs 272 bytes; 280 leaves no room for an empty list per root.
         Assert.InRange(allocated, 0, count * 280L + 2048);
-        var property = entries[0].Metadata.FindPrimaryKey()!.Properties[0];
+        var property = entries[0]
+            .Metadata
+            .FindPrimaryKey()!.Properties[0];
 
         Assert.All(identities, identity => Assert.True(identity.Matches(property)));
         GC.KeepAlive(identities);

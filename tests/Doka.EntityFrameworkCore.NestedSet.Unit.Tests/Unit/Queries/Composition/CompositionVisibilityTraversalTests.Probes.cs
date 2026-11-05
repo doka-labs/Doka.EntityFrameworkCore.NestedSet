@@ -15,26 +15,6 @@ public sealed partial class CompositionVisibilityTraversalTests
         /// <summary>Gets the number of metadata inspections after the source was constructed.</summary>
         internal int DeclaringTypeReads { get; private set; }
 
-        /// <summary>Starts the observation after expression factories have validated the method metadata.</summary>
-        internal void Reset()
-        {
-            DeclaringTypeReads = 0;
-            _observing = true;
-        }
-
-        /// <summary>Retains an actual Where call whose predicate can contain a controlled test extension.</summary>
-        internal MethodCallExpression Where(
-            Expression source,
-            Expression predicate
-        )
-        {
-            var node = Expression.Parameter(typeof(CompositionGuardNode), "node");
-
-            return Expression.Call(this,
-                source,
-                Expression.Quote(Expression.Lambda<Func<CompositionGuardNode, bool>>(predicate, node)));
-        }
-
         /// <inheritdoc />
         public override Type? DeclaringType
         {
@@ -79,6 +59,27 @@ public sealed partial class CompositionVisibilityTraversalTests
 
         /// <inheritdoc />
         public override bool ContainsGenericParameters => s_where.ContainsGenericParameters;
+
+        /// <summary>Starts the observation after expression factories have validated the method metadata.</summary>
+        internal void Reset()
+        {
+            DeclaringTypeReads = 0;
+            _observing = true;
+        }
+
+        /// <summary>Retains an actual Where call whose predicate can contain a controlled test extension.</summary>
+        internal MethodCallExpression Where(
+            Expression source,
+            Expression predicate
+        )
+        {
+            var node = Expression.Parameter(typeof(CompositionGuardNode), "node");
+
+            return Expression.Call(
+                this,
+                source,
+                Expression.Quote(Expression.Lambda<Func<CompositionGuardNode, bool>>(predicate, node)));
+        }
 
         /// <inheritdoc />
         public override MethodInfo GetBaseDefinition() => s_where.GetBaseDefinition();
@@ -141,13 +142,6 @@ public sealed partial class CompositionVisibilityTraversalTests
         /// <summary>Gets the number of type inspections after expression construction.</summary>
         internal int TypeReads { get; private set; }
 
-        /// <summary>Starts observation after expression factories have validated the initial bool property.</summary>
-        internal void Reset()
-        {
-            TypeReads = 0;
-            _observing = true;
-        }
-
         /// <inheritdoc />
         public override Type PropertyType
         {
@@ -158,7 +152,9 @@ public sealed partial class CompositionVisibilityTraversalTests
                     TypeReads++;
                 }
 
-                return rejectSecondVisit && TypeReads > 1 ? typeof(IQueryable<CompositionGuardNode>) : typeof(bool);
+                return rejectSecondVisit && TypeReads > 1
+                    ? typeof(IQueryable<CompositionGuardNode>)
+                    : typeof(bool);
             }
         }
 
@@ -179,6 +175,13 @@ public sealed partial class CompositionVisibilityTraversalTests
 
         /// <inheritdoc />
         public override Type? ReflectedType => _property.ReflectedType;
+
+        /// <summary>Starts observation after expression factories have validated the initial bool property.</summary>
+        internal void Reset()
+        {
+            TypeReads = 0;
+            _observing = true;
+        }
 
         /// <inheritdoc />
         public override MethodInfo[] GetAccessors(
@@ -277,7 +280,10 @@ public sealed partial class CompositionVisibilityTraversalTests
         {
             Visits++;
 
-            return visitor.Visit(Visits > 1 ? secondVisit : Constant(true));
+            return visitor.Visit(
+                Visits > 1
+                    ? secondVisit
+                    : Constant(true));
         }
     }
 
@@ -301,7 +307,10 @@ public sealed partial class CompositionVisibilityTraversalTests
         )
         {
             Visits++;
-            visitor.Visit(Visits > 1 ? secondVisit : Constant(true));
+            visitor.Visit(
+                Visits > 1
+                    ? secondVisit
+                    : Constant(true));
 
             return this;
         }

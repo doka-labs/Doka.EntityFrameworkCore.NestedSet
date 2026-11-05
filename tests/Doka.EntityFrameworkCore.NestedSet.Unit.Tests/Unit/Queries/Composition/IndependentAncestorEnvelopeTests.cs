@@ -26,7 +26,8 @@ public sealed class IndependentAncestorEnvelopeTests
         // Arrange
         var boundary = new CompositionIoBoundary();
         var options = new DbContextOptionsBuilder<CompositionContext>(
-                ModelCompatibilityDatabase.Options<CompositionContext>(engine,
+                ModelCompatibilityDatabase.Options<CompositionContext>(
+                    engine,
                     "Server=127.0.0.1;Database=unindexed_envelope;User ID=unused;Pooling=false"))
             .AddInterceptors(boundary);
 
@@ -38,9 +39,10 @@ public sealed class IndependentAncestorEnvelopeTests
         }
 
         await using var provider = services.BuildServiceProvider();
-        await using var context = new CompositionContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new CompositionContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -49,14 +51,16 @@ public sealed class IndependentAncestorEnvelopeTests
         var query = treeBound
             ? hierarchy
                 .InTree(Guid.Empty)
-                .SelectAncestors(node => node.Id == 3,
+                .SelectAncestors(
+                    node => node.Id == 3,
                     (source, owner, distance) => new
                     {
                         Source = source.Id,
                         Owner = owner.Id,
                         Distance = distance,
                     })
-            : hierarchy.SelectAncestors(node => node.Id == 3,
+            : hierarchy.SelectAncestors(
+                node => node.Id == 3,
                 (source, owner, distance) => new
                 {
                     Source = source.Id,
@@ -64,11 +68,15 @@ public sealed class IndependentAncestorEnvelopeTests
                     Distance = distance,
                 });
 
-        var enabled = NestedSetProviderCapabilities.Resolve(context).CompletedSourceMethod is not null
-            && NestedSetProviderCapabilities.Resolve(context).OrderedJoinMethod is not null;
+        var enabled = NestedSetProviderCapabilities.Resolve(context)
+                .CompletedSourceMethod is not null
+            && NestedSetProviderCapabilities.Resolve(context)
+                .OrderedJoinMethod is not null;
 
         var expectedCompletions = enabled
-            ? engine == "MySql" ? 2 : 1
+            ? engine == "MySql"
+                ? 2
+                : 1
             : 0;
 
         // Act
@@ -79,10 +87,13 @@ public sealed class IndependentAncestorEnvelopeTests
         Assert.Equal(enabled, sql.Contains("MAX(", StringComparison.OrdinalIgnoreCase));
         Assert.Equal(enabled, sql.Contains("MIN(", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain("HasChildren", sql, StringComparison.Ordinal);
+
         // WHY: Each completed source has one recursive dead arm. MySQL needs a second boundary
         // against semijoin pullout; applying that extra materialization to MariaDB regressed branched chains.
-        Assert.Equal(expectedCompletions,
-            sql.Split("UNION ALL", StringSplitOptions.None).Length
+        Assert.Equal(
+            expectedCompletions,
+            sql.Split("UNION ALL")
+                .Length
             - 1);
 
         if (enabled)
@@ -116,7 +127,8 @@ public sealed class IndependentAncestorEnvelopeTests
         var query = context
             .NestedSet<CompositionNode>()
             .ForScope(Guid.Empty)
-            .SelectAncestors(node => node.Id == 3,
+            .SelectAncestors(
+                node => node.Id == 3,
                 (source, owner, distance) => new
                 {
                     Source = source.Id,
@@ -124,16 +136,23 @@ public sealed class IndependentAncestorEnvelopeTests
                     Distance = distance,
                 });
 
-        var enabled = NestedSetProviderCapabilities.Resolve(context).CompletedSourceMethod is not null
-            && NestedSetProviderCapabilities.Resolve(context).OrderedJoinMethod is not null;
+        var enabled = NestedSetProviderCapabilities.Resolve(context)
+                .CompletedSourceMethod is not null
+            && NestedSetProviderCapabilities.Resolve(context)
+                .OrderedJoinMethod is not null;
 
         // Act
         var sql = query.ToQueryString();
 
         // Assert
-        Assert.Equal(enabled ? 1 : 0,
-            sql.Split("STRAIGHT_JOIN", StringSplitOptions.None).Length
+        Assert.Equal(
+            enabled
+                ? 1
+                : 0,
+            sql.Split("STRAIGHT_JOIN")
+                .Length
             - 1);
+
         Assert.DoesNotContain("SELECT STRAIGHT_JOIN", sql, StringComparison.OrdinalIgnoreCase);
 
         if (enabled)
@@ -177,7 +196,8 @@ public sealed class IndependentAncestorEnvelopeTests
             .ForScope(Guid.Empty);
 
         // Act
-        var query = hierarchy.SelectAncestors(selected,
+        var query = hierarchy.SelectAncestors(
+            selected,
             (source, owner, distance) => new
             {
                 Source = source.Id,
@@ -211,7 +231,8 @@ public sealed class IndependentAncestorEnvelopeTests
         var query = context
             .NestedSet<CompositionNode>()
             .ForScope(Guid.Empty)
-            .SelectAncestors(node => EF.Functions.Random() >= 0,
+            .SelectAncestors(
+                node => EF.Functions.Random() >= 0,
                 (source, owner, distance) => new
                 {
                     Source = source.Id,
@@ -223,9 +244,12 @@ public sealed class IndependentAncestorEnvelopeTests
         var sql = query.ToQueryString();
 
         // Assert
-        Assert.Equal(1,
-            sql.Split("RAND()", StringSplitOptions.None).Length
+        Assert.Equal(
+            1,
+            sql.Split("RAND()")
+                .Length
             - 1);
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -249,7 +273,8 @@ public sealed class IndependentAncestorEnvelopeTests
         // Arrange
         var boundary = new CompositionIoBoundary();
         var options = new DbContextOptionsBuilder<CompositionContext>(
-                ModelCompatibilityDatabase.Options<CompositionContext>(engine,
+                ModelCompatibilityDatabase.Options<CompositionContext>(
+                    engine,
                     "Server=127.0.0.1;Database=unindexed_facts;User ID=unused;Pooling=false"))
             .AddInterceptors(boundary);
 
@@ -261,9 +286,10 @@ public sealed class IndependentAncestorEnvelopeTests
         }
 
         await using var provider = services.BuildServiceProvider();
-        await using var context = new CompositionContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new CompositionContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var facts = context
             .Set<CompositionInputOne>()
@@ -271,7 +297,8 @@ public sealed class IndependentAncestorEnvelopeTests
 
         var selection = shape switch
         {
-            "embedded" => FactSelection(facts,
+            "embedded" => FactSelection(
+                facts,
                 (node, fact) => fact.Scope == node.Scope && fact.NodeId == node.Id),
             "captured" => node => facts.Any(fact => fact.Scope == node.Scope && fact.NodeId == node.Id),
             "hierarchy" => node => facts.Any(fact => fact.Scope == node.Scope
@@ -285,7 +312,8 @@ public sealed class IndependentAncestorEnvelopeTests
         var query = context
             .NestedSet<CompositionNode>()
             .ForScope(Guid.Empty)
-            .SelectAncestors(selection,
+            .SelectAncestors(
+                selection,
                 (source, owner, distance) => new
                 {
                     Source = source.Id,
@@ -294,8 +322,10 @@ public sealed class IndependentAncestorEnvelopeTests
                 });
 
         var enabled = shape != "hierarchy"
-            && NestedSetProviderCapabilities.Resolve(context).CompletedSourceMethod is not null
-            && NestedSetProviderCapabilities.Resolve(context).OrderedJoinMethod is not null;
+            && NestedSetProviderCapabilities.Resolve(context)
+                .CompletedSourceMethod is not null
+            && NestedSetProviderCapabilities.Resolve(context)
+                .OrderedJoinMethod is not null;
 
         // Act
         var sql = query.ToQueryString();
@@ -323,7 +353,8 @@ public sealed class IndependentAncestorEnvelopeTests
         Expression<Func<CompositionNode, CompositionInputOne, bool>> match
     )
     {
-        var exists = Expression.Call(typeof(Queryable),
+        var exists = Expression.Call(
+            typeof(Queryable),
             nameof(Queryable.Any),
             [typeof(CompositionInputOne)],
             facts.Expression,

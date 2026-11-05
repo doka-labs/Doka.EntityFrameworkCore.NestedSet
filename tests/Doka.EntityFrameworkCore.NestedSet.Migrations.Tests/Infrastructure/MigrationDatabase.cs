@@ -5,9 +5,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Migrations.Tests;
 /// <summary>Scaffolds, compiles and applies real migrations against one isolated database.</summary>
 public sealed class MigrationDatabase : IAsyncDisposable
 {
-    private readonly string _connection;
-    private readonly Action<DbContextOptionsBuilder>? _configureOptions;
     private readonly Action<IServiceCollection, DbContext>? _configureDesignServices;
+    private readonly Action<DbContextOptionsBuilder>? _configureOptions;
+    private readonly string _connection;
     private readonly string? _file;
 
     internal MigrationDatabase(
@@ -32,6 +32,20 @@ public sealed class MigrationDatabase : IAsyncDisposable
 
     /// <summary>Gets the explicit server schema, or null for SQLite.</summary>
     public string? Schema { get; }
+
+    /// <summary>Releases temporary SQLite files; the fixture owns and removes server databases.</summary>
+    /// <returns>An already completed value task.</returns>
+    public ValueTask DisposeAsync()
+    {
+        if (_file is not null)
+        {
+            File.Delete(_file);
+            File.Delete(_file + "-wal");
+            File.Delete(_file + "-shm");
+        }
+
+        return ValueTask.CompletedTask;
+    }
 
     /// <summary>Creates an independent context using the real provider and optional integration.</summary>
     /// <param name="stage">The historical model version.</param>
@@ -71,7 +85,9 @@ public sealed class MigrationDatabase : IAsyncDisposable
         }
         else
         {
-            var version = Engine == "MariaDb" ? DatabaseTestTargets.MariaDb : DatabaseTestTargets.MySql;
+            var version = Engine == "MariaDb"
+                ? DatabaseTestTargets.MariaDb
+                : DatabaseTestTargets.MySql;
 
             options.UseMySql(
                 _connection,
@@ -166,7 +182,9 @@ public sealed class MigrationDatabase : IAsyncDisposable
                     Right = 4,
                     Payload = "parent payload",
                     Category = 2,
-                }, cancellationToken: cancellationToken);
+                },
+                cancellationToken: cancellationToken);
+
             await InsertNodeDirectlyAsync(
                 new MigrationNode
                 {
@@ -179,7 +197,8 @@ public sealed class MigrationDatabase : IAsyncDisposable
                     Depth = 1,
                     Payload = "child payload",
                     Category = 1,
-                }, cancellationToken: cancellationToken);
+                },
+                cancellationToken: cancellationToken);
 
             return;
         }
@@ -265,7 +284,9 @@ public sealed class MigrationDatabase : IAsyncDisposable
 
         parent.ParameterName = "@parent";
         parent.DbType = DbType.Int32;
-        parent.Value = node.ParentId is null ? DBNull.Value : node.ParentId.Value;
+        parent.Value = node.ParentId is null
+            ? DBNull.Value
+            : node.ParentId.Value;
 
         return await context.Database.ExecuteSqlRawAsync(
             command,
@@ -334,7 +355,9 @@ public sealed class MigrationDatabase : IAsyncDisposable
     /// <summary>Reads physical nonprimary indexes and their ordered columns from the engine's catalog.</summary>
     /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
     /// <returns>Indexes in database-name order.</returns>
-    public async Task<MigrationIndex[]> ReadIndexesAsync(CancellationToken cancellationToken)
+    public async Task<MigrationIndex[]> ReadIndexesAsync(
+        CancellationToken cancellationToken
+    )
     {
         await using var context = CreateContext();
         await context.Database.OpenConnectionAsync(cancellationToken);
@@ -383,10 +406,10 @@ public sealed class MigrationDatabase : IAsyncDisposable
             // WHY: Catalog lookup needs the connection database for unqualified MySQL mappings,
             // while unqualified PostgreSQL and SQL Server mappings use their default schemas.
             var catalogSchema = Schema
-                ?? (Engine switch
+                ?? Engine switch
                 {
                     "PostgreSql" => "public", "SqlServer" => "dbo", _ => command.Connection!.Database,
-                });
+                };
 
             AddParameter(command, "@schema", catalogSchema);
         }
@@ -425,7 +448,9 @@ public sealed class MigrationDatabase : IAsyncDisposable
     /// <summary>Reads every physical check constraint from the provider catalog.</summary>
     /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
     /// <returns>Checks in database-name order.</returns>
-    public async Task<MigrationCheck[]> ReadChecksAsync(CancellationToken cancellationToken)
+    public async Task<MigrationCheck[]> ReadChecksAsync(
+        CancellationToken cancellationToken
+    )
     {
         await using var context = CreateContext();
         await context.Database.OpenConnectionAsync(cancellationToken);
@@ -484,7 +509,9 @@ public sealed class MigrationDatabase : IAsyncDisposable
     /// <summary>Reads physical foreign keys with dependent and principal columns in ordinal order.</summary>
     /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
     /// <returns>Foreign keys in database-name order.</returns>
-    public async Task<MigrationForeignKey[]> ReadForeignKeysAsync(CancellationToken cancellationToken)
+    public async Task<MigrationForeignKey[]> ReadForeignKeysAsync(
+        CancellationToken cancellationToken
+    )
     {
         await using var context = CreateContext();
         await context.Database.OpenConnectionAsync(cancellationToken);
@@ -570,7 +597,9 @@ public sealed class MigrationDatabase : IAsyncDisposable
     /// <summary>Reads physical column type names for the current hierarchy table.</summary>
     /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
     /// <returns>A case-insensitive map from physical column name to provider type name.</returns>
-    public async Task<IReadOnlyDictionary<string, string>> ReadColumnTypesAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyDictionary<string, string>> ReadColumnTypesAsync(
+        CancellationToken cancellationToken
+    )
     {
         await using var context = CreateContext();
         await context.Database.OpenConnectionAsync(cancellationToken);
@@ -606,20 +635,6 @@ public sealed class MigrationDatabase : IAsyncDisposable
         return types;
     }
 
-    /// <summary>Releases temporary SQLite files; the fixture owns and removes server databases.</summary>
-    /// <returns>An already completed value task.</returns>
-    public ValueTask DisposeAsync()
-    {
-        if (_file is not null)
-        {
-            File.Delete(_file);
-            File.Delete(_file + "-wal");
-            File.Delete(_file + "-shm");
-        }
-
-        return ValueTask.CompletedTask;
-    }
-
     /// <summary>Binds catalog names as values instead of interpolating application metadata into SQL.</summary>
     private static void AddParameter(
         DbCommand command,
@@ -637,10 +652,10 @@ public sealed class MigrationDatabase : IAsyncDisposable
     private string CatalogSchema(
         DbCommand command
     ) => Schema
-        ?? (Engine switch
+        ?? Engine switch
         {
             "PostgreSql" => "public", "SqlServer" => "dbo", _ => command.Connection!.Database,
-        });
+        };
 
     /// <summary>Normalizes provider catalog booleans, which may be represented as Boolean or integral values.</summary>
     private static bool ReadBoolean(

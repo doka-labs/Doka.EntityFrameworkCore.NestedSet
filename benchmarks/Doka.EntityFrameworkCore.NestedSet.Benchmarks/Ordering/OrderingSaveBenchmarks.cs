@@ -5,9 +5,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks;
 /// </summary>
 public class OrderingSaveBenchmarks : DatabaseBenchmark
 {
-    private BenchmarkNode? _renamed;
-    private int _key;
     private int _expected;
+    private int _key;
+    private BenchmarkNode? _renamed;
 
     /// <inheritdoc />
     protected override bool Ordered => true;
@@ -26,18 +26,25 @@ public class OrderingSaveBenchmarks : DatabaseBenchmark
     }
 
     /// <inheritdoc />
-    public override async Task PrepareAsync(CancellationToken cancellationToken)
+    public override async Task PrepareAsync(
+        CancellationToken cancellationToken
+    )
     {
         _key = 0;
         await base.PrepareAsync(cancellationToken);
 
         // WHY: Node 3 has a preceding sibling in wide/balanced trees; their rename must perform a real reorder.
-        var renameKey = Shape == BenchmarkShape.Deep ? Fixture.LeafKey : 3;
+        var renameKey = Shape == BenchmarkShape.Deep
+            ? Fixture.LeafKey
+            : 3;
+
         _renamed = await Fixture.Context.Nodes.SingleAsync(node => node.Id == renameKey, cancellationToken);
     }
 
     /// <inheritdoc />
-    public override async Task VerifyAsync(CancellationToken cancellationToken)
+    public override async Task VerifyAsync(
+        CancellationToken cancellationToken
+    )
     {
         var node = await Fixture
             .Context

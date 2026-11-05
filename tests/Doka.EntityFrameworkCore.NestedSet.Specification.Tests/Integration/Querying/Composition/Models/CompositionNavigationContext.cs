@@ -6,12 +6,22 @@ internal sealed class CompositionNavigationContext(DbContextOptions<CompositionN
     : DbContext(options)
 {
     /// <inheritdoc />
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    protected override void OnModelCreating(
+        ModelBuilder modelBuilder
+    )
     {
         var node = modelBuilder.Entity<CompositionNavigationNode>();
         node.ToTable("CompositionNavigationNodes");
-        node.HasKey(value => new { value.Scope, value.Id });
-        node.Property(value => value.Id).ValueGeneratedNever();
+        node.HasKey(value => new
+        {
+            value.Scope,
+            value.Id,
+        });
+
+        node
+            .Property(value => value.Id)
+            .ValueGeneratedNever();
+
         node.Property(value => value.Visible);
         node.HasQueryFilter(value => value.Visible);
         node.HasNestedSet(mapping => mapping
@@ -23,27 +33,63 @@ internal sealed class CompositionNavigationContext(DbContextOptions<CompositionN
             .HasDepth(value => value.Depth)
             .HasPosition(value => value.Position));
 
-        node.OwnsOne(value => value.Details, detail => detail.Property(value => value.Caption).HasMaxLength(80));
-        node.Navigation(value => value.Details).IsRequired();
+        node.OwnsOne(
+            value => value.Details,
+            detail => detail
+                .Property(value => value.Caption)
+                .HasMaxLength(80));
+
+        node
+            .Navigation(value => value.Details)
+            .IsRequired();
+
         const string ownerScope = nameof(CompositionNavigationNode.Scope);
         const string ownerKey = nameof(CompositionNavigationItem.NodeId);
-        node.OwnsMany(value => value.Tags, tag =>
-        {
-            tag.ToTable("CompositionNavigationTags");
-            tag.WithOwner().HasForeignKey(ownerScope, ownerKey);
-            tag.Property<Guid>(ownerScope);
-            tag.Property<int>(ownerKey);
-            tag.Property(value => value.Id).ValueGeneratedNever();
-            tag.HasKey(ownerScope, ownerKey, nameof(CompositionNavigationTag.Id));
-            tag.Property(value => value.Value).HasMaxLength(80);
-        });
+        node.OwnsMany(
+            value => value.Tags,
+            tag =>
+            {
+                tag.ToTable("CompositionNavigationTags");
+                tag
+                    .WithOwner()
+                    .HasForeignKey(ownerScope, ownerKey);
+
+                tag.Property<Guid>(ownerScope);
+                tag.Property<int>(ownerKey);
+                tag
+                    .Property(value => value.Id)
+                    .ValueGeneratedNever();
+
+                tag.HasKey(ownerScope, ownerKey, nameof(CompositionNavigationTag.Id));
+                tag
+                    .Property(value => value.Value)
+                    .HasMaxLength(80);
+            });
 
         var item = modelBuilder.Entity<CompositionNavigationItem>();
         item.ToTable("CompositionNavigationItems");
-        item.HasKey(value => new { value.Scope, value.Id });
-        item.Property(value => value.Id).ValueGeneratedNever();
-        item.Property(value => value.Label).HasMaxLength(80);
-        node.HasMany(value => value.Items).WithOne()
-            .HasForeignKey(value => new { value.Scope, value.NodeId }).OnDelete(DeleteBehavior.Cascade);
+        item.HasKey(value => new
+        {
+            value.Scope,
+            value.Id,
+        });
+
+        item
+            .Property(value => value.Id)
+            .ValueGeneratedNever();
+
+        item
+            .Property(value => value.Label)
+            .HasMaxLength(80);
+
+        node
+            .HasMany(value => value.Items)
+            .WithOne()
+            .HasForeignKey(value => new
+            {
+                value.Scope,
+                value.NodeId,
+            })
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

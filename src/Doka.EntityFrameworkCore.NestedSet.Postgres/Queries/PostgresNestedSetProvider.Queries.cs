@@ -6,7 +6,8 @@ internal sealed partial class PostgresNestedSetProvider
     internal override bool UsesQueryAnchorKeyset => true;
 
     /// <inheritdoc />
-    internal override NestedSetNearestQueryStrategy NearestQueryStrategy => NestedSetNearestQueryStrategy.ProjectedDepth;
+    internal override NestedSetNearestQueryStrategy NearestQueryStrategy =>
+        NestedSetNearestQueryStrategy.ProjectedDepth;
 
     /// <inheritdoc />
     internal override bool SupportsTrackedKeyCollection(
@@ -14,7 +15,7 @@ internal sealed partial class PostgresNestedSetProvider
     )
     {
         if (key.GetTypeMapping()
-                .Converter is not null)
+            .Converter is not null)
         {
             return false;
         }

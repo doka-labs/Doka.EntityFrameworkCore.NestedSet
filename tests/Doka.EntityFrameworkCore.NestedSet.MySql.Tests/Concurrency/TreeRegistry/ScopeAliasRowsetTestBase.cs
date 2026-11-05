@@ -18,28 +18,48 @@ public abstract class ScopeAliasRowsetTestBase : ProviderTest
     [Theory]
     [InlineData(2)]
     [InlineData(256)]
-    public async Task RowsetRejectsDatabaseEqualScopeAliases(int count)
+    public async Task RowsetRejectsDatabaseEqualScopeAliases(
+        int count
+    )
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var entityType = context.Model.FindEntityType(typeof(TextNode))!;
-        var requests = Enumerable.Range(0, count - 2)
-            .Select(_ => new NestedSetTreeLockRequest<Guid, string>(entityType, "other", Guid.NewGuid(),
+        var requests = Enumerable
+            .Range(0, count - 2)
+            .Select(_ => new NestedSetTreeLockRequest<Guid, string>(
+                entityType,
+                "other",
+                Guid.NewGuid(),
                 NestedSetTreeLockMode.New))
             .ToList();
 
         var duplicateTreeId = Guid.NewGuid();
-        requests.Add(new NestedSetTreeLockRequest<Guid, string>(entityType, "ALPHA", duplicateTreeId,
-            NestedSetTreeLockMode.New));
-        requests.Add(new NestedSetTreeLockRequest<Guid, string>(entityType, "alpha", duplicateTreeId,
-            NestedSetTreeLockMode.New));
+        requests.Add(
+            new NestedSetTreeLockRequest<Guid, string>(
+                entityType,
+                "ALPHA",
+                duplicateTreeId,
+                NestedSetTreeLockMode.New));
+
+        requests.Add(
+            new NestedSetTreeLockRequest<Guid, string>(
+                entityType,
+                "alpha",
+                duplicateTreeId,
+                NestedSetTreeLockMode.New));
 
         // Act
         var error = await Record.ExceptionAsync(() => NestedSetTreeLocks.RequireDistinctAsync(
-            context, requests, CancellationToken.None));
+            context,
+            requests,
+            CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidImport, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidImport,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
     }
 }

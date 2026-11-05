@@ -48,7 +48,7 @@ internal sealed partial class
                     async () =>
                     {
                         if (!await SameTreeAsync(binding, anchorKey, source, target, token)
-                                .ConfigureAwait(false))
+                            .ConfigureAwait(false))
                         {
                             if (placement is not NestedSetPlacement.LastChild
                                 || !automatic)
@@ -131,7 +131,8 @@ internal sealed partial class
                 throw new ArgumentNullException(nameof(newTreeId));
             }
 
-            var sourceTreeId = await ResolveTreeIdAsync(binding, sourceKey, token).ConfigureAwait(false);
+            var sourceTreeId = await ResolveTreeIdAsync(binding, sourceKey, token)
+                .ConfigureAwait(false);
 
             await ExecuteResolvedAsync(
                     binding,

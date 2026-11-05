@@ -20,7 +20,8 @@ public sealed class GeneratedValueTests : ProviderTest,
     public async Task ImportedNodeCanBeAttachedAndSavedWithRefreshedConcurrencyToken()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = context
@@ -31,7 +32,7 @@ public sealed class GeneratedValueTests : ProviderTest,
         var child = new BulkGeneratedNode { Name = "Child" };
         var branch = new NestedSetBranch<BulkGeneratedNode>(root, [new NestedSetBranch<BulkGeneratedNode>(child)]);
         await tree.InsertForestAsync(
-            [new NestedSetTreeImport<BulkGeneratedNode, Guid>(Guid.Empty, branch),],
+            [new NestedSetTreeImport<BulkGeneratedNode, Guid>(Guid.Empty, branch)],
             CancellationToken.None);
 
         var importedVersion = child.Version;
@@ -60,6 +61,7 @@ public sealed class GeneratedValueTests : ProviderTest,
                 .Where(node => node.Id == child.Id)
                 .Select(node => node.Version)
                 .SingleAsync(CancellationToken.None));
+
         Assert.Equal(
             "Renamed",
             await context
@@ -76,7 +78,8 @@ public sealed class GeneratedValueTests : ProviderTest,
     public async Task ImportedComplexPayloadReflectsFinalGeneratedValues()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = context
@@ -89,7 +92,7 @@ public sealed class GeneratedValueTests : ProviderTest,
 
         // Act
         await tree.InsertForestAsync(
-            [new NestedSetTreeImport<BulkGeneratedNode, Guid>(Guid.Empty, branch),],
+            [new NestedSetTreeImport<BulkGeneratedNode, Guid>(Guid.Empty, branch)],
             CancellationToken.None);
 
         // Assert
@@ -103,6 +106,7 @@ public sealed class GeneratedValueTests : ProviderTest,
                 .Where(node => node.Id == child.Id)
                 .Select(node => node.Details.Revision)
                 .SingleAsync(CancellationToken.None));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 }

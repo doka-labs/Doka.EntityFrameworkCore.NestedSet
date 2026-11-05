@@ -52,7 +52,7 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
         if (bulk)
         {
             await hierarchy.InsertForestAsync(
-                [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(root)),],
+                [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(root))],
                 CancellationToken.None);
         }
         else
@@ -62,7 +62,11 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
 
         // Assert
         Assert.Equal(1, observed);
-        Assert.Equal(EntityState.Detached, context.Entry(root).State);
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(root)
+                .State);
+
         await using var verification = database.CreateContext();
         Assert.Equal(
             1,
@@ -99,7 +103,10 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
         var callback = new SaveBoundaryCallback();
         var failure = new PostSaveFailure();
         await using var context = database.CreateContext(callback, failure);
-        var (changed, removed, audit) = await PrepareCallbackWritesAsync(database, context, callback,
+        var (changed, removed, audit) = await PrepareCallbackWritesAsync(
+            database,
+            context,
+            callback,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var root = new TreeNode { NodeId = 101 };
@@ -110,35 +117,54 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
         // Act
         var error = await Record.ExceptionAsync(() => bulk
             ? hierarchy.InsertForestAsync(
-                [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(root)),],
+                [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(root))],
                 CancellationToken.None)
             : hierarchy.InsertRootAsync(root, Guid.Empty, CancellationToken.None));
 
         // Assert
         Assert.Same(failure.Error, error);
-        Assert.Equal(EntityState.Detached, context.Entry(root).State);
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(root)
+                .State);
 
         var auditEntry = context.Entry(audit);
         Assert.Equal(EntityState.Added, auditEntry.State);
-        Assert.True(auditEntry.Property(row => row.Id).IsTemporary);
-        Assert.NotEqual(0, auditEntry.Property(row => row.Id).CurrentValue);
+        Assert.True(
+            auditEntry.Property(row => row.Id)
+                .IsTemporary);
+
+        Assert.NotEqual(
+            0,
+            auditEntry.Property(row => row.Id)
+                .CurrentValue);
+
         Assert.Equal(0, audit.Id);
 
         var changedEntry = context.Entry(changed);
         Assert.Equal(EntityState.Modified, changedEntry.State);
-        Assert.Equal("stored", changedEntry.Property(row => row.Value).OriginalValue);
+        Assert.Equal(
+            "stored",
+            changedEntry.Property(row => row.Value)
+                .OriginalValue);
+
         Assert.Equal("changed", changed.Value);
-        Assert.Equal(EntityState.Deleted, context.Entry(removed).State);
+        Assert.Equal(
+            EntityState.Deleted,
+            context.Entry(removed)
+                .State);
 
         await using var verification = database.CreateContext();
         Assert.Empty(
             await verification
                 .Set<TreeNode>()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Empty(
             await verification
                 .Set<GeneratedAuditRow>()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal(
             "stored",
             await verification
@@ -146,6 +172,7 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
                 .Where(row => row.Id == 701)
                 .Select(row => row.Value)
                 .SingleAsync(CancellationToken.None));
+
         Assert.True(
             await verification
                 .Set<UnrelatedRow>()
@@ -165,8 +192,12 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
         var callback = new SaveBoundaryCallback();
         var failure = new PostSaveFailure();
         await using var context = database.CreateContext(callback, failure);
-        var (_, _, audit) = await PrepareCallbackWritesAsync(database, context, callback,
+        var (_, _, audit) = await PrepareCallbackWritesAsync(
+            database,
+            context,
+            callback,
             cancellationToken: TestContext.Current.CancellationToken);
+
         var root = new TreeNode { NodeId = 101 };
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -174,7 +205,7 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
 
         var error = await Record.ExceptionAsync(() => bulk
             ? hierarchy.InsertForestAsync(
-                [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(root)),],
+                [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(root))],
                 CancellationToken.None)
             : hierarchy.InsertRootAsync(root, Guid.Empty, CancellationToken.None));
 
@@ -195,10 +226,12 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
                         .Set<GeneratedAuditRow>()
                         .ToArrayAsync(CancellationToken.None))
                 .Value);
+
         Assert.Empty(
             await retried
                 .Set<TreeNode>()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal(
             "changed",
             await retried
@@ -206,6 +239,7 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
                 .Where(row => row.Id == 701)
                 .Select(row => row.Value)
                 .SingleAsync(CancellationToken.None));
+
         Assert.False(
             await retried
                 .Set<UnrelatedRow>()
@@ -282,6 +316,7 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
         {
             var audit = new GeneratedAuditRow { Value = $"batch-{audits.Count + 1}" };
             audits.Add(audit);
+
             // WHY: This synchronous SavingChanges callback must finish attaching the audit before it returns.
             // The configured identity generator does not query the database during Add.
             // ReSharper disable once MethodHasAsyncOverload
@@ -319,7 +354,10 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
             {
                 Assert.Equal(Guid.Empty, tree.Root.Entity.TreeId);
                 Assert.Equal((0L, 0L), (tree.Root.Entity.Start, tree.Root.Entity.End));
-                Assert.Equal(EntityState.Detached, context.Entry(tree.Root.Entity).State);
+                Assert.Equal(
+                    EntityState.Detached,
+                    context.Entry(tree.Root.Entity)
+                        .State);
             });
 
         Assert.All(
@@ -330,8 +368,14 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
 
                 Assert.Equal(0, audit.Id);
                 Assert.Equal(EntityState.Added, entry.State);
-                Assert.True(entry.Property(row => row.Id).IsTemporary);
-                Assert.NotEqual(0, entry.Property(row => row.Id).CurrentValue);
+                Assert.True(
+                    entry.Property(row => row.Id)
+                        .IsTemporary);
+
+                Assert.NotEqual(
+                    0,
+                    entry.Property(row => row.Id)
+                        .CurrentValue);
             });
 
         await using var verification = database.CreateContext();
@@ -339,6 +383,7 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
             await verification
                 .Set<TreeNode>()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Empty(
             await verification
                 .Set<GeneratedAuditRow>()
@@ -364,13 +409,21 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
         // Act
         var error = await Record.ExceptionAsync(() => bulk
             ? hierarchy.InsertForestAsync(
-                [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(root)),],
+                [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, new NestedSetBranch<TreeNode>(root))],
                 CancellationToken.None)
             : hierarchy.InsertRootAsync(root, Guid.Empty, CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(error).Code);
-        Assert.Equal(EntityState.Detached, context.Entry(root).State);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(root)
+                .State);
+
         await using var verification = database.CreateContext();
         Assert.Empty(
             await verification

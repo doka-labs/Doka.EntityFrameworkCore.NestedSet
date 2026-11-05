@@ -174,7 +174,11 @@ public abstract partial class AncestorIndexWorkTestBase
 
         for (var warmup = 0; warmup < readWarmups; warmup++)
         {
-            var actual = await ReadConsumerFactsAsync(context, originalCapture, query, lightProfile,
+            var actual = await ReadConsumerFactsAsync(
+                context,
+                originalCapture,
+                query,
+                lightProfile,
                 cancellationToken: cancellationToken);
 
             RequireConsumerOracle(actual, expected);
@@ -188,7 +192,11 @@ public abstract partial class AncestorIndexWorkTestBase
             profileEvents.BeginRead(Engine, profile, "observer-light", sample);
             var allocatedBefore = GC.GetTotalAllocatedBytes(precise: true);
             var started = Stopwatch.GetTimestamp();
-            var actual = await ReadConsumerFactsAsync(context, originalCapture, query, lightProfile,
+            var actual = await ReadConsumerFactsAsync(
+                context,
+                originalCapture,
+                query,
+                lightProfile,
                 cancellationToken: cancellationToken);
 
             var elapsed = Stopwatch.GetElapsedTime(started);
@@ -214,7 +222,8 @@ public abstract partial class AncestorIndexWorkTestBase
 
         await QueryPlanTestSupport.WriteEvidenceAsync(
             Engine + "-ancestor-consumer-" + profile + "-observer-light",
-            [summary], cancellationToken: cancellationToken);
+            [summary],
+            cancellationToken: cancellationToken);
     }
 
     /// <summary>

@@ -42,13 +42,18 @@ public sealed class UserSupervisorCommandTests
     {
         // Arrange
         await using var directory = new SampleLifecycleDirectory();
-        await SeedAsync(directory.DirectoryPath, ["--provider", "sqlite", "--scenario", "supervisors"],
+        await SeedAsync(
+            directory.DirectoryPath,
+            ["--provider", "sqlite", "--scenario", "supervisors"],
             cancellationToken: TestContext.Current.CancellationToken);
+
         var databasePath = Path.Combine(directory.DirectoryPath, "nestedset_sample_usergroups.sqlite");
         var before = await File.ReadAllBytesAsync(databasePath, CancellationToken.None);
 
         // Act
-        var result = await RunAsync(directory.DirectoryPath, ["--provider", "sqlite", "--inspect", "--details"],
+        var result = await RunAsync(
+            directory.DirectoryPath,
+            ["--provider", "sqlite", "--inspect", "--details"],
             cancellationToken: TestContext.Current.CancellationToken);
 
         var after = await File.ReadAllBytesAsync(databasePath, CancellationToken.None);
@@ -74,7 +79,9 @@ public sealed class UserSupervisorCommandTests
         await using var directory = new SampleLifecycleDirectory();
 
         // Act
-        var result = await RunAsync(directory.DirectoryPath, ["--provider", "sqlite"],
+        var result = await RunAsync(
+            directory.DirectoryPath,
+            ["--provider", "sqlite"],
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -149,8 +156,11 @@ public sealed class UserSupervisorCommandTests
         var error = await Record.ExceptionAsync(async () => await run);
 
         // Assert
-        Assert.Equal(stop.Token,
-            Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
+        Assert.Equal(
+            stop.Token,
+            Assert.IsAssignableFrom<OperationCanceledException>(error)
+                .CancellationToken);
+
         Assert.True(process.HasExited);
     }
 
@@ -188,8 +198,11 @@ public sealed class UserSupervisorCommandTests
         var associationError = Record.Exception(() => _ = process.Id);
 
         // Assert
-        Assert.Equal(stop.Token,
-            Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
+        Assert.Equal(
+            stop.Token,
+            Assert.IsAssignableFrom<OperationCanceledException>(error)
+                .CancellationToken);
+
         Assert.IsType<InvalidOperationException>(associationError);
     }
 
@@ -203,12 +216,17 @@ public sealed class UserSupervisorCommandTests
         await stop.CancelAsync();
 
         // Act
-        var error = await Record.ExceptionAsync(() => RunAsync(directory.DirectoryPath,
-            ["--provider", "sqlite"], stop.Token));
+        var error = await Record.ExceptionAsync(() => RunAsync(
+            directory.DirectoryPath,
+            ["--provider", "sqlite"],
+            stop.Token));
 
         // Assert
-        Assert.Equal(stop.Token,
-            Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
+        Assert.Equal(
+            stop.Token,
+            Assert.IsAssignableFrom<OperationCanceledException>(error)
+                .CancellationToken);
+
         Assert.False(Directory.Exists(directory.DirectoryPath));
     }
 
@@ -218,7 +236,8 @@ public sealed class UserSupervisorCommandTests
     {
         // Arrange
         using var process = CreateBlockingProcess(0);
-        process.StartInfo.FileName = Path.Combine(Path.GetTempPath(),
+        process.StartInfo.FileName = Path.Combine(
+            Path.GetTempPath(),
             Guid
                 .NewGuid()
                 .ToString("N"),
@@ -376,7 +395,8 @@ public sealed class UserSupervisorCommandTests
             {
                 cleanupFailures.Insert(0, failure);
 
-                throw new AggregateException("The sample command failed and its child cleanup also failed.",
+                throw new AggregateException(
+                    "The sample command failed and its child cleanup also failed.",
                     cleanupFailures);
             }
 
@@ -391,7 +411,10 @@ public sealed class UserSupervisorCommandTests
         int exitCode
     )
     {
-        var startInfo = new ProcessStartInfo(OperatingSystem.IsWindows() ? "cmd.exe" : "/bin/sh")
+        var startInfo = new ProcessStartInfo(
+            OperatingSystem.IsWindows()
+                ? "cmd.exe"
+                : "/bin/sh")
         {
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
@@ -399,10 +422,15 @@ public sealed class UserSupervisorCommandTests
             UseShellExecute = false,
         };
 
-        startInfo.ArgumentList.Add(OperatingSystem.IsWindows() ? "/C" : "-c");
-        startInfo.ArgumentList.Add(OperatingSystem.IsWindows()
-            ? $"echo child-output& echo child-error 1>&2& set /p release=& exit /b {exitCode}"
-            : $"printf 'child-output\\n'; printf 'child-error\\n' >&2; IFS= read -r release; exit {exitCode}");
+        startInfo.ArgumentList.Add(
+            OperatingSystem.IsWindows()
+                ? "/C"
+                : "-c");
+
+        startInfo.ArgumentList.Add(
+            OperatingSystem.IsWindows()
+                ? $"echo child-output& echo child-error 1>&2& set /p release=& exit /b {exitCode}"
+                : $"printf 'child-output\\n'; printf 'child-error\\n' >&2; IFS= read -r release; exit {exitCode}");
 
         return new Process { StartInfo = startInfo };
     }

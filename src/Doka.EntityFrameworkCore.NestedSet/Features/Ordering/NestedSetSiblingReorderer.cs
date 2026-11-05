@@ -11,8 +11,8 @@ internal sealed class NestedSetSiblingReorderer<TEntity, TKey, TTreeId, TScope>
     where TTreeId : notnull
     where TScope : notnull
 {
-    private readonly NestedSetStore<TEntity, TKey, TTreeId, TScope> _store;
     private readonly NestedSetMappedBatch<TEntity, TKey, TTreeId, TScope> _batch;
+    private readonly NestedSetStore<TEntity, TKey, TTreeId, TScope> _store;
     private readonly Dictionary<(int Count, bool Mark), string> _templates = new();
 
     /// <summary>Uses the transaction and write lock already held by the calling mutation.</summary>
@@ -42,7 +42,8 @@ internal sealed class NestedSetSiblingReorderer<TEntity, TKey, TTreeId, TScope>
             .ToArrayAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return await ReorderAsync(siblings, cancellationToken).ConfigureAwait(false);
+        return await ReorderAsync(siblings, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     /// <summary>Applies an already resolved sibling order, including bulk-import placement plans.</summary>
@@ -118,12 +119,18 @@ internal sealed class NestedSetSiblingReorderer<TEntity, TKey, TTreeId, TScope>
                 var count = Math.Min(NestedSetBatch.MaximumRows, moved.Count - offset);
                 if (!_templates.TryGetValue((count, mark), out var sql))
                 {
-                    sql = mark ? CreateMarkTemplate(count) : CreateTemplate(count);
+                    sql = mark
+                        ? CreateMarkTemplate(count)
+                        : CreateTemplate(count);
+
                     _templates.Add((count, mark), sql);
                 }
 
-                var stride = mark ? 2 : 4;
-                var values = new NestedSetBatchParameter[(count * stride) + 3];
+                var stride = mark
+                    ? 2
+                    : 4;
+
+                var values = new NestedSetBatchParameter[count * stride + 3];
                 var minimumRight = long.MaxValue;
                 var maximumRight = long.MinValue;
 
@@ -133,17 +140,26 @@ internal sealed class NestedSetSiblingReorderer<TEntity, TKey, TTreeId, TScope>
                 for (var index = 0; index < count; index++)
                 {
                     var (node, delta, position) = moved[offset + index];
-                    var first = mark ? node.Left : checked(node.Left + stagingOffset);
-                    var last = mark ? node.Right : checked(node.Right + stagingOffset);
+                    var first = mark
+                        ? node.Left
+                        : checked(node.Left + stagingOffset);
+
+                    var last = mark
+                        ? node.Right
+                        : checked(node.Right + stagingOffset);
+
                     minimumRight = Math.Min(minimumRight, first);
                     maximumRight = Math.Max(maximumRight, last);
                     values[index * stride] = new NestedSetBatchParameter($"a{index}", _store.Map.Right, first);
-                    values[(index * stride) + 1] = new NestedSetBatchParameter($"b{index}", _store.Map.Right, last);
+                    values[index * stride + 1] = new NestedSetBatchParameter($"b{index}", _store.Map.Right, last);
 
                     if (!mark)
                     {
-                        values[(index * stride) + 2] = new NestedSetBatchParameter($"d{index}", _store.Map.Left, delta);
-                        values[(index * stride) + 3] = new NestedSetBatchParameter($"p{index}", _store.Map.Position, position);
+                        values[index * stride + 2] = new NestedSetBatchParameter($"d{index}", _store.Map.Left, delta);
+                        values[index * stride + 3] = new NestedSetBatchParameter(
+                            $"p{index}",
+                            _store.Map.Position,
+                            position);
                     }
                 }
 
@@ -175,7 +191,7 @@ internal sealed class NestedSetSiblingReorderer<TEntity, TKey, TTreeId, TScope>
             {
                 var item = positions[offset + index];
                 values[index * 2] = new NestedSetBatchParameter($"l{index}", _store.Map.Left, item.Left);
-                values[(index * 2) + 1] = new NestedSetBatchParameter($"p{index}", _store.Map.Position, item.Position);
+                values[index * 2 + 1] = new NestedSetBatchParameter($"p{index}", _store.Map.Position, item.Position);
                 assignments.Append(
                     CultureInfo.InvariantCulture,
                     $" WHEN {_batch.Parameter($"l{index}")} THEN {_batch.Parameter($"p{index}")}");
@@ -240,7 +256,7 @@ internal sealed class NestedSetSiblingReorderer<TEntity, TKey, TTreeId, TScope>
             if (current.Last == long.MaxValue
                 || next.First <= checked(current.Last + 1))
             {
-                current = new(current.First, Math.Max(current.Last, next.Last));
+                current = new NestedSetChangedInterval(current.First, Math.Max(current.Last, next.Last));
             }
             else
             {

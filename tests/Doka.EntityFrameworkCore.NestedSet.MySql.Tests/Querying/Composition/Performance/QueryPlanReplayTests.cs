@@ -17,7 +17,8 @@ public sealed class QueryPlanReplayTests : ProviderTest,
     public async Task CompletedReplayRetainsActualExecutionEvidence()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var context = database.CreateContext();
@@ -25,7 +26,11 @@ public sealed class QueryPlanReplayTests : ProviderTest,
         var probe = Probe("SELECT SLEEP(0.01) AS replay_value");
 
         // Act
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, probe, 0, Engine,
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            probe,
+            0,
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -39,7 +44,8 @@ public sealed class QueryPlanReplayTests : ProviderTest,
     public async Task InterruptedReplayCannotReturnPartialExecutionEvidence()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var context = database.CreateContext();
@@ -47,16 +53,23 @@ public sealed class QueryPlanReplayTests : ProviderTest,
         var probe = Probe("SELECT SLEEP(2) AS replay_value");
 
         // Act
-        var error = await Record.ExceptionAsync(
-            () => QueryPlanTestSupport.ExplainAsync(context, probe, 0, Engine,
-                cancellationToken: TestContext.Current.CancellationToken));
+        var error = await Record.ExceptionAsync(() => QueryPlanTestSupport.ExplainAsync(
+            context,
+            probe,
+            0,
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         // WHY: Drivers may reject the interrupted command directly. If MySQL instead returns a
         // partial TREE with warning 1317, the helper must reject it rather than accepting that plan.
-        Assert.True(error is InvalidOperationException observation
-                && observation.Message.Contains("1317", StringComparison.Ordinal)
-            || error is MySqlException { ErrorCode: MySqlErrorCode.CommandTimeoutExpired or MySqlErrorCode.QueryInterrupted },
+        Assert.True(
+            (error is InvalidOperationException observation
+                && observation.Message.Contains("1317", StringComparison.Ordinal))
+            || error is MySqlException
+            {
+                ErrorCode: MySqlErrorCode.CommandTimeoutExpired or MySqlErrorCode.QueryInterrupted,
+            },
             error?.ToString() ?? "The interrupted replay returned partial plan evidence as a success.");
 
         Assert.Equal(1, context.Database.GetCommandTimeout());

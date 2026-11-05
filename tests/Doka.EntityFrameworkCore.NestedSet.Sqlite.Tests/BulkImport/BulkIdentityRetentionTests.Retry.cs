@@ -18,7 +18,8 @@ public sealed partial class BulkIdentityRetentionTests
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var source = database.CreateContext();
@@ -64,7 +65,9 @@ public sealed partial class BulkIdentityRetentionTests
                     .Single()
                     .Entity;
 
-                (scope ? input.Scope : input.Id)[0] = 4;
+                (scope
+                    ? input.Scope
+                    : input.Id)[0] = 4;
             }
             else
             {
@@ -74,7 +77,9 @@ public sealed partial class BulkIdentityRetentionTests
                     .Single()
                     .Entity;
 
-                (scope ? input.Scope : input.Id).Value = "changed";
+                (scope
+                    ? input.Scope
+                    : input.Id).Value = "changed";
             }
         };
 
@@ -86,16 +91,38 @@ public sealed partial class BulkIdentityRetentionTests
         // Assert
         Assert.Equal(
             NestedSetErrorCode.InvalidImport,
-            Assert.IsType<NestedSetException>(rejection).Code);
-        Assert.Same(payload, binary ? bufferNode.Payload : classNode.Payload);
+            Assert.IsType<NestedSetException>(rejection)
+                .Code);
+
+        Assert.Same(
+            payload,
+            binary
+                ? bufferNode.Payload
+                : classNode.Payload);
+
         Assert.Equal("kept", payload.Label);
         Assert.Empty(context.ChangeTracker.Entries());
-        Assert.Equal(binary ? 1 : 0, await context.Set<BinaryNode>().CountAsync(CancellationToken.None));
-        Assert.Equal(binary ? 0 : 1, await context.Set<MutableNode>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            binary
+                ? 1
+                : 0,
+            await context
+                .Set<BinaryNode>()
+                .CountAsync(CancellationToken.None));
+
+        Assert.Equal(
+            binary
+                ? 0
+                : 1,
+            await context
+                .Set<MutableNode>()
+                .CountAsync(CancellationToken.None));
 
         return;
 
-        Task Import(CancellationToken cancellationToken) => binary
+        Task Import(
+            CancellationToken cancellationToken
+        ) => binary
             ? context
                 .NestedSet<BinaryNode>()
                 .ForScope<byte[]>([1])
@@ -103,7 +130,7 @@ public sealed partial class BulkIdentityRetentionTests
                     [
                         new NestedSetTreeImport<BinaryNode, Guid>(
                             Guid.Empty,
-                            new NestedSetBranch<BinaryNode>(bufferNode))
+                            new NestedSetBranch<BinaryNode>(bufferNode)),
                     ],
                     cancellationToken)
             : context
@@ -113,7 +140,7 @@ public sealed partial class BulkIdentityRetentionTests
                     [
                         new NestedSetTreeImport<MutableNode, Guid>(
                             Guid.Empty,
-                            new NestedSetBranch<MutableNode>(classNode))
+                            new NestedSetBranch<MutableNode>(classNode)),
                     ],
                     cancellationToken);
     }
@@ -128,7 +155,8 @@ public sealed partial class BulkIdentityRetentionTests
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var source = database.CreateContext();
@@ -152,14 +180,19 @@ public sealed partial class BulkIdentityRetentionTests
                 .Single()
                 .Entity;
 
-            var identity = scope ? node.Scope : node.Id;
+            var identity = scope
+                ? node.Scope
+                : node.Id;
+
             identity.Value = "intermediate";
             context.ChangeTracker.DetectChanges();
             identity.Value = "changed";
         };
 
         // Act
-        var result = await ImportMutableAsync(context, binary: false,
+        var result = await ImportMutableAsync(
+            context,
+            binary: false,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -175,7 +208,15 @@ public sealed partial class BulkIdentityRetentionTests
                 && error.Message.Contains("Discard the context", StringComparison.Ordinal));
 
         Assert.True(result.Restored);
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
-        Assert.Equal(0, await context.Set<MutableNode>().CountAsync(CancellationToken.None));
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
+        Assert.Equal(
+            0,
+            await context
+                .Set<MutableNode>()
+                .CountAsync(CancellationToken.None));
     }
 }

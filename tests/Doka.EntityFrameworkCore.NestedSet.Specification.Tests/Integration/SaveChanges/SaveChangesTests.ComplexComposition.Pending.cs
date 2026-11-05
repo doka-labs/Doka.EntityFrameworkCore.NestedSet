@@ -30,31 +30,40 @@ public abstract partial class SaveChangesTests
         var callback = new SaveBoundaryCallback();
         Action? mutateOnCompletion = null;
         var failure = new ComplexCallbackCompletionFailure(() => mutateOnCompletion?.Invoke());
-        await using var context = await CreateComplexCallbackContextAsync(database,
+        await using var context = await CreateComplexCallbackContextAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken,
-            callback, failure);
+            callback,
+            failure);
 
-        var graph = await LoadComplexCallbackGraphAsync(context,
+        var graph = await LoadComplexCallbackGraphAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var inputs = CreateComplexCompositionInputs(shape);
-        await PrepareComplexCompositionOperationAsync(context, shape,
+        await PrepareComplexCompositionOperationAsync(
+            context,
+            shape,
             cancellationToken: TestContext.Current.CancellationToken);
+
         context.ChangeTracker.AutoDetectChangesEnabled = automaticDetection;
         PlannedEntryState[]? before = null;
         ComplexCallbackClrState? clrBefore = null;
         ComplexCompositionNativeState? nativeBefore = null;
         ComplexCallbackStoredRow? expectedAfterRetry = null;
         var inputBefore = CapturePreparedOwnerInputs(inputs);
-        var storedBefore = await ReadComplexCallbackRowAsync(database,
+        var storedBefore = await ReadComplexCallbackRowAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchyBefore = await ReadPreparedOwnerStoreAsync(database,
+        var hierarchyBefore = await ReadPreparedOwnerStoreAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        Action mutation = () =>
+        var mutation = () =>
         {
             ChangePendingComplexComposition(graph.Row.Entity, pending);
+
             // WHY: Force EF to create the callback's larger native child lane; raw CLR equality alone misses it.
             context.ChangeTracker.DetectChanges();
         };
@@ -75,9 +84,12 @@ public abstract partial class SaveChangesTests
             callback.OnSaving = current =>
             {
                 callback.OnSaving = null;
+
                 // WHY: Facade entry rejects preexisting writes. This callback creates the pending Added graph
                 // before the managed snapshot, and the completion callback mutates it after that snapshot.
-                graph.Row.Property(value => value.Label).CurrentValue = "explicit composed payload";
+                graph.Row.Property(value => value.Label)
+                    .CurrentValue = "explicit composed payload";
+
                 AddPendingComplexComposition(graph.Row.Entity, pending);
                 current.ChangeTracker.DetectChanges();
                 CaptureBaseline();
@@ -98,16 +110,21 @@ public abstract partial class SaveChangesTests
         }
 
         var firstError = await Record.ExceptionAsync(() =>
-            RunComplexCompositionOperationAsync(context, shape, inputs,
+            RunComplexCompositionOperationAsync(
+                context,
+                shape,
+                inputs,
                 cancellationToken: TestContext.Current.CancellationToken));
 
         var afterFailure = CaptureComplexCompositionEntries(context, graph);
         var clrAfterFailure = CaptureComplexCallbackClr(graph.Row.Entity);
         var nativeAfterFailure = CaptureComplexCompositionNative(graph);
-        var storedAfterFailure = await ReadComplexCallbackRowAsync(database,
+        var storedAfterFailure = await ReadComplexCallbackRowAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchyAfterFailure = await ReadPreparedOwnerStoreAsync(database,
+        var hierarchyAfterFailure = await ReadPreparedOwnerStoreAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
@@ -117,10 +134,12 @@ public abstract partial class SaveChangesTests
             await context.SaveChangesAsync(CancellationToken.None);
         });
 
-        var storedAfterRetry = await ReadComplexCallbackRowAsync(database,
+        var storedAfterRetry = await ReadComplexCallbackRowAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchyAfterRetry = await ReadPreparedOwnerStoreAsync(database,
+        var hierarchyAfterRetry = await ReadPreparedOwnerStoreAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -132,7 +151,10 @@ public abstract partial class SaveChangesTests
         AssertPlannedParentState(before, afterFailure);
         AssertComplexCallbackClr(clrBefore, clrAfterFailure);
         AssertComplexCompositionNative(nativeBefore, nativeAfterFailure);
-        var pendingState = pending == "deleted" ? EntityState.Deleted : EntityState.Added;
+        var pendingState = pending == "deleted"
+            ? EntityState.Deleted
+            : EntityState.Added;
+
         Assert.Contains(nativeBefore.Owners, owner => owner.State == pendingState);
         Assert.Equal(storedBefore, storedAfterFailure);
         Assert.Equal(hierarchyBefore.Nodes, hierarchyAfterFailure.Nodes);
@@ -143,7 +165,13 @@ public abstract partial class SaveChangesTests
         AssertComplexCallbackClr(clrBefore, CaptureComplexCallbackClr(graph.Row.Entity));
         AssertComplexCompositionHierarchyAfterRetry(shape, hierarchyBefore, hierarchyAfterRetry);
         Assert.Equal(inputBefore, CapturePreparedOwnerInputs(inputs));
-        Assert.All(inputs, input => Assert.Equal(EntityState.Detached, context.Entry(input).State));
+        Assert.All(
+            inputs,
+            input => Assert.Equal(
+                EntityState.Detached,
+                context.Entry(input)
+                    .State));
+
         Assert.Equal("sentinel", graph.Sentinel.Entity.Value);
         Assert.Equal(EntityState.Unchanged, graph.Sentinel.State);
         Assert.Equal(automaticDetection, context.ChangeTracker.AutoDetectChangesEnabled);

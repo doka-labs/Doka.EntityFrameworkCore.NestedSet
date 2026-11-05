@@ -74,7 +74,9 @@ internal static partial class NestedSetQueryEndpoint
 
                 if (source is EntityQueryRootExpression root)
                 {
-                    return ReferenceEquals(endpoint, row) ? new Resolution(root.EntityType, visible) : null;
+                    return ReferenceEquals(endpoint, row)
+                        ? new Resolution(root.EntityType, visible)
+                        : null;
                 }
 
                 if (source is ConstantExpression or MemberExpression
@@ -197,6 +199,7 @@ internal static partial class NestedSetQueryEndpoint
                                 var collection = Lambda(call.Arguments[1]);
                                 var projection = Lambda(call.Arguments[2]);
                                 var selected = Substitute(row, endpoint, projection.Body);
+
                                 // WHY: The result selector identifies its actual source binding. An inner endpoint
                                 // must not walk an unrelated outer projection chain or inspect its captured query.
                                 var outer = NestedSetQueryExpressions.References(selected, projection.Parameters[0])
@@ -252,7 +255,9 @@ internal static partial class NestedSetQueryEndpoint
                             {
                                 var actual = Resolve(call.Arguments[0], row, endpoint, visible);
 
-                                return actual is { } resolved ? resolved with { IsVisible = false } : null;
+                                return actual is { } resolved
+                                    ? resolved with { IsVisible = false }
+                                    : null;
                             }
                         case nameof(Queryable.Cast):
                         case nameof(Queryable.Where):
@@ -343,7 +348,9 @@ internal static partial class NestedSetQueryEndpoint
             (MethodCallExpression Call, SourceBinding? Parent) value
         ) => HashCode.Combine(
             RuntimeHelpers.GetHashCode(value.Call),
-            value.Parent is null ? 0 : RuntimeHelpers.GetHashCode(value.Parent));
+            value.Parent is null
+                ? 0
+                : RuntimeHelpers.GetHashCode(value.Parent));
     }
 
     /// <summary>Associates one lexical query parameter with its input and the input's outer scope.</summary>
@@ -356,6 +363,10 @@ internal static partial class NestedSetQueryEndpoint
         SourceBinding? parent
     )
     {
+        private Dictionary<EndpointKey, Resolution?>? _resolutions;
+
+        private bool? _stable;
+
         /// <summary>Gets the query parameter owned by this compose lambda.</summary>
         internal ParameterExpression Parameter { get; } = parameter;
 
@@ -364,9 +375,6 @@ internal static partial class NestedSetQueryEndpoint
 
         /// <summary>Gets the input's enclosing lexical environment.</summary>
         internal SourceBinding? Parent { get; } = parent;
-
-        private bool? _stable;
-        private Dictionary<EndpointKey, Resolution?>? _resolutions;
 
         /// <summary>Proves an input and its outer environments only when an endpoint actually uses this binding.</summary>
         internal bool CanReuse(

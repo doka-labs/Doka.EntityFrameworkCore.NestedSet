@@ -112,7 +112,11 @@ public abstract partial class OrderingTrackerTests : ProviderTest
     private static TrackerNode Node(
         int id,
         string name
-    ) => new() { Id = id, Name = name };
+    ) => new()
+    {
+        Id = id,
+        Name = name,
+    };
 
     /// <summary>Selects the public facade for the application partition used by this isolated database.</summary>
     private static ScopedNestedSet<TrackerNode, int> Tree(

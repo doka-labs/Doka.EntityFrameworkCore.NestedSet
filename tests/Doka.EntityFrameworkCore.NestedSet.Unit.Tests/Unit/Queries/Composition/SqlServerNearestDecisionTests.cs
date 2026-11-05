@@ -34,9 +34,10 @@ public sealed class SqlServerNearestDecisionTests
             .AddInterceptors(boundary);
 
         await using var services = NestedSetTestAdapters.BuildServices(options.Options);
-        await using var context = new CompositionContext(options
-            .UseInternalServiceProvider(services)
-            .Options);
+        await using var context = new CompositionContext(
+            options
+                .UseInternalServiceProvider(services)
+                .Options);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -45,11 +46,13 @@ public sealed class SqlServerNearestDecisionTests
 
         var rows = hierarchy.Nodes.Select(node => new { Node = node });
         var nearest = rowAware
-            ? hierarchy.WhereNearestAncestorOrSelf(rows,
+            ? hierarchy.WhereNearestAncestorOrSelf(
+                rows,
                 row => row.Node,
                 (row, owner) => owner.Candidate && owner.Id < row.Node.Id + 100,
                 (row, owner) => owner.Matches)
-            : hierarchy.WhereNearestAncestorOrSelf(rows,
+            : hierarchy.WhereNearestAncestorOrSelf(
+                rows,
                 row => row.Node,
                 (row, owner) => owner.Candidate,
                 (row, owner) => owner.Matches);
@@ -65,6 +68,7 @@ public sealed class SqlServerNearestDecisionTests
         // Assert
         Assert.Single(selections);
         Assert.Contains("SELECT TOP(1) CASE", sql, StringComparison.Ordinal);
+
         // WHY: A row-aware candidate changes owner selection, not structural edge eligibility.
         // Its selected owner's path can still share the same row-independent completed failure points.
         Assert.Single(Regex.Matches(sql, @"ORDER BY \[\w+\]\.\[Left\]\s+OFFSET 0 ROWS"));

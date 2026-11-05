@@ -56,7 +56,8 @@ public sealed class CompositionCoordinateWidthTests
     )
     {
         var node = Expression.Parameter(typeof(CompositionGuardNode), "node");
-        var select = Expression.Call(typeof(Queryable),
+        var select = Expression.Call(
+            typeof(Queryable),
             nameof(Queryable.Select),
             [typeof(CompositionGuardNode), typeof(long)],
             nodes.Expression,

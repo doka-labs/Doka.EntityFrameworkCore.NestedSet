@@ -35,7 +35,10 @@ public sealed partial class UnchangedForeignKeyRollbackTests
     )
     {
         // Arrange
-        await using var context = composite ? new CompositeRollbackContext() : new RollbackContext();
+        await using var context = composite
+            ? new CompositeRollbackContext()
+            : new RollbackContext();
+
         var original = new RollbackOwner { Id = 2 };
         var transient = new RollbackOwner
         {
@@ -61,10 +64,18 @@ public sealed partial class UnchangedForeignKeyRollbackTests
         var node = new RollbackNode
         {
             Id = 20,
-            OwnerId = originallyNull ? null : original.Id,
-            Owner = originallyNull ? null : original,
-            ReviewerId = composite ? reviewer.Id : null,
-            Reviewer = composite ? reviewer : null,
+            OwnerId = originallyNull
+                ? null
+                : original.Id,
+            Owner = originallyNull
+                ? null
+                : original,
+            ReviewerId = composite
+                ? reviewer.Id
+                : null,
+            Reviewer = composite
+                ? reviewer
+                : null,
         };
 
         original.Nodes.Add(first);
@@ -88,7 +99,9 @@ public sealed partial class UnchangedForeignKeyRollbackTests
         }
 
         node.Name = "Pending name";
-        entry.Property(value => value.Name).IsModified = true;
+        entry.Property(value => value.Name)
+            .IsModified = true;
+
         var update = Update(context, node);
         var originalUpdate = Update(context, original);
         var transientUpdate = Update(context, transient);
@@ -128,14 +141,21 @@ public sealed partial class UnchangedForeignKeyRollbackTests
             ? NestedSetTrackerSnapshot.Capture(context)
             : NestedSetTrackerSnapshot.Capture(context, [update]);
 
-        entry.Reference(value => value.Owner).CurrentValue = transient;
-        node.OwnerId = originallyNull ? null : original.Id;
+        entry.Reference(value => value.Owner)
+            .CurrentValue = transient;
+
+        node.OwnerId = originallyNull
+            ? null
+            : original.Id;
+
         node.OwnerScope = original.Scope;
-        entry.Property(value => value.OwnerId).IsModified = marked;
+        entry.Property(value => value.OwnerId)
+            .IsModified = marked;
 
         if (composite)
         {
-            entry.Property(value => value.OwnerScope).IsModified = marked;
+            entry.Property(value => value.OwnerScope)
+                .IsModified = marked;
         }
 
         var hiddenInstalled = Installed(update, key);
@@ -156,6 +176,7 @@ public sealed partial class UnchangedForeignKeyRollbackTests
 
         // Act
         snapshot.Restore();
+
         // WHY: A later cleanup attempt must not replay an already retired inverse delta over the restored
         // original member. Both restores belong to this same idempotent rollback contract.
         snapshot.Restore();
@@ -175,22 +196,34 @@ public sealed partial class UnchangedForeignKeyRollbackTests
         Assert.Equal(originalMembers, original.Nodes, ReferenceEqualityComparer.Instance);
         Assert.Same(transientCollection, transient.Nodes);
         Assert.Equal(transientMembers, transient.Nodes, ReferenceEqualityComparer.Instance);
-        Assert.True(nativeOriginal
-            .ToHashSet(ReferenceEqualityComparer.Instance)
-            .SetEquals(Members(originalUpdate, inverse)));
-        Assert.True(nativeTransient
-            .ToHashSet(ReferenceEqualityComparer.Instance)
-            .SetEquals(Members(transientUpdate, inverse)));
-        Assert.Equal(!originallyNull,
+        Assert.True(
+            nativeOriginal
+                .ToHashSet(ReferenceEqualityComparer.Instance)
+                .SetEquals(Members(originalUpdate, inverse)));
+
+        Assert.True(
+            nativeTransient
+                .ToHashSet(ReferenceEqualityComparer.Instance)
+                .SetEquals(Members(transientUpdate, inverse)));
+
+        Assert.Equal(
+            !originallyNull,
             updates
                 .GetDependents(originalUpdate, key)
                 .Contains(update));
+
         Assert.DoesNotContain(update, updates.GetDependents(transientUpdate, key));
         Assert.All(key.Properties, property => Assert.False(update.IsModified(property)));
         Assert.Equal("Pending name", node.Name);
-        Assert.Equal("Before",
-            entry.Property(value => value.Name).OriginalValue);
-        Assert.True(entry.Property(value => value.Name).IsModified);
+        Assert.Equal(
+            "Before",
+            entry.Property(value => value.Name)
+                .OriginalValue);
+
+        Assert.True(
+            entry.Property(value => value.Name)
+                .IsModified);
+
         Assert.Equal(EntityState.Modified, entry.State);
 
         if (composite)
@@ -205,8 +238,10 @@ public sealed partial class UnchangedForeignKeyRollbackTests
         }
 
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>A matching restored FK cannot invent native membership absent before the operation.</summary>
@@ -223,7 +258,10 @@ public sealed partial class UnchangedForeignKeyRollbackTests
     )
     {
         // Arrange
-        await using var context = composite ? new CompositeRollbackContext() : new RollbackContext();
+        await using var context = composite
+            ? new CompositeRollbackContext()
+            : new RollbackContext();
+
         var original = new RollbackOwner { Id = 2 };
         var transient = new RollbackOwner
         {
@@ -241,7 +279,9 @@ public sealed partial class UnchangedForeignKeyRollbackTests
         original.Nodes.Add(node);
         var entry = context.Attach(node);
         node.Name = "Pending name";
-        entry.Property(value => value.Name).IsModified = true;
+        entry.Property(value => value.Name)
+            .IsModified = true;
+
         var update = Update(context, node);
         var originalUpdate = Update(context, original);
         var transientUpdate = Update(context, transient);
@@ -260,14 +300,18 @@ public sealed partial class UnchangedForeignKeyRollbackTests
             ? NestedSetTrackerSnapshot.Capture(context)
             : NestedSetTrackerSnapshot.Capture(context, [update]);
 
-        entry.Reference(value => value.Owner).CurrentValue = transient;
+        entry.Reference(value => value.Owner)
+            .CurrentValue = transient;
+
         node.OwnerId = original.Id;
         node.OwnerScope = original.Scope;
-        entry.Property(value => value.OwnerId).IsModified = true;
+        entry.Property(value => value.OwnerId)
+            .IsModified = true;
 
         if (composite)
         {
-            entry.Property(value => value.OwnerScope).IsModified = true;
+            entry.Property(value => value.OwnerScope)
+                .IsModified = true;
         }
 
         original.Nodes.Add(node);
@@ -291,11 +335,19 @@ public sealed partial class UnchangedForeignKeyRollbackTests
         Assert.Same(collection, original.Nodes);
         Assert.Same(node, Assert.Single(original.Nodes));
         Assert.Empty(transient.Nodes);
-        Assert.False(entry.Property(value => value.OwnerId).IsModified);
-        Assert.True(entry.Property(value => value.Name).IsModified);
+        Assert.False(
+            entry.Property(value => value.OwnerId)
+                .IsModified);
+
+        Assert.True(
+            entry.Property(value => value.Name)
+                .IsModified);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Composite repair cannot steal a unique dependent at a mixed old/new key tuple.</summary>
@@ -323,8 +375,12 @@ public sealed partial class UnchangedForeignKeyRollbackTests
 
         var intermediate = new RollbackOwner
         {
-            Id = originalScope ? transient.Id : original.Id,
-            Scope = originalScope ? original.Scope : transient.Scope,
+            Id = originalScope
+                ? transient.Id
+                : original.Id,
+            Scope = originalScope
+                ? original.Scope
+                : transient.Scope,
         };
 
         var node = new RollbackNode
@@ -349,7 +405,9 @@ public sealed partial class UnchangedForeignKeyRollbackTests
         var entry = context.Entry(node);
         var victimEntry = context.Entry(victim);
         node.Name = "Pending name";
-        entry.Property(value => value.Name).IsModified = true;
+        entry.Property(value => value.Name)
+            .IsModified = true;
+
         var update = Update(context, node);
         var victimUpdate = Update(context, victim);
         var originalUpdate = Update(context, original);
@@ -363,26 +421,38 @@ public sealed partial class UnchangedForeignKeyRollbackTests
         var key = reference.ForeignKey;
         var installedBefore = Installed(update, key);
         var victimInstalled = Installed(victimUpdate, key);
+
         // WHY: Only the actual candidate belongs to this snapshot. A wrong intermediate traversal cannot
         // rely on another entry snapshot to hide native victim-stealing or restore its lost unique reference.
         var snapshot = NestedSetTrackerSnapshot.Capture(context, [update]);
+
         // WHY: The callback must leave the victim intact. Reference assignment itself traverses mixed tuples;
         // select the public scalar order that avoids the occupied hybrid so only rollback is under test.
         if (originalScope)
         {
-            entry.Property(value => value.OwnerScope).CurrentValue = transient.Scope;
-            entry.Property(value => value.OwnerId).CurrentValue = transient.Id;
+            entry.Property(value => value.OwnerScope)
+                .CurrentValue = transient.Scope;
+
+            entry.Property(value => value.OwnerId)
+                .CurrentValue = transient.Id;
         }
         else
         {
-            entry.Property(value => value.OwnerId).CurrentValue = transient.Id;
-            entry.Property(value => value.OwnerScope).CurrentValue = transient.Scope;
+            entry.Property(value => value.OwnerId)
+                .CurrentValue = transient.Id;
+
+            entry.Property(value => value.OwnerScope)
+                .CurrentValue = transient.Scope;
         }
 
         node.OwnerScope = original.Scope;
         node.OwnerId = original.Id;
-        entry.Property(value => value.OwnerScope).IsModified = false;
-        entry.Property(value => value.OwnerId).IsModified = false;
+        entry.Property(value => value.OwnerScope)
+            .IsModified = false;
+
+        entry.Property(value => value.OwnerId)
+            .IsModified = false;
+
         var victimAfterCallback = Installed(victimUpdate, key);
         var hiddenInstalled = Installed(update, key);
 
@@ -408,11 +478,19 @@ public sealed partial class UnchangedForeignKeyRollbackTests
         Assert.Same(intermediate, victimUpdate.GetRelationshipSnapshotValue(reference));
         Assert.Equal(EntityState.Unchanged, victimEntry.State);
         Assert.All(key.Properties, property => Assert.False(victimUpdate.IsModified(property)));
-        Assert.False(victimEntry.Property(value => value.Name).IsModified);
-        Assert.True(entry.Property(value => value.Name).IsModified);
+        Assert.False(
+            victimEntry.Property(value => value.Name)
+                .IsModified);
+
+        Assert.True(
+            entry.Property(value => value.Name)
+                .IsModified);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Supplemental repair restores selected duplicates without discarding unrelated raw list edits.</summary>
@@ -458,16 +536,22 @@ public sealed partial class UnchangedForeignKeyRollbackTests
         var collection = original.Nodes;
         var entry = context.Entry(node);
         node.Name = "Pending name";
-        entry.Property(value => value.Name).IsModified = true;
+        entry.Property(value => value.Name)
+            .IsModified = true;
+
         var update = Update(context, node);
         var originalUpdate = Update(context, original);
         var transientUpdate = Update(context, transient);
         var key = entry.Metadata.FindNavigation(nameof(RollbackNode.Owner))!.ForeignKey;
         var inverse = key.PrincipalToDependent!;
         var snapshot = NestedSetTrackerSnapshot.Capture(context, [update]);
-        entry.Reference(value => value.Owner).CurrentValue = transient;
+        entry.Reference(value => value.Owner)
+            .CurrentValue = transient;
+
         node.OwnerId = original.Id;
-        entry.Property(value => value.OwnerId).IsModified = true;
+        entry.Property(value => value.OwnerId)
+            .IsModified = true;
+
         // WHY: These ordinary raw edits have no native FK effect. They remain application-owned, while
         // the moved candidate's two original occurrences retain their surviving anchor on either side.
         original.Nodes.Remove(first);
@@ -486,9 +570,11 @@ public sealed partial class UnchangedForeignKeyRollbackTests
 
         // Assert
         Assert.Same(collection, original.Nodes);
-        Assert.Equal(pendingUnselected,
+        Assert.Equal(
+            pendingUnselected,
             original.Nodes.Where(value => !ReferenceEquals(value, node)),
             ReferenceEqualityComparer.Instance);
+
         Assert.Equal(2, original.Nodes.Count(value => ReferenceEquals(value, node)));
         var anchor = original.Nodes.IndexOf(last);
 
@@ -505,15 +591,29 @@ public sealed partial class UnchangedForeignKeyRollbackTests
         Assert.Same(original, node.Owner);
         Assert.Same(transient, alias.Owner);
         Assert.Equal(transient.Id, alias.OwnerId);
-        Assert.Equal(EntityState.Unchanged,
-            context.Entry(alias).State);
-        Assert.Equal(EntityState.Unchanged,
-            context.Entry(first).State);
-        Assert.False(entry.Property(value => value.OwnerId).IsModified);
-        Assert.True(entry.Property(value => value.Name).IsModified);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(alias)
+                .State);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(first)
+                .State);
+
+        Assert.False(
+            entry.Property(value => value.OwnerId)
+                .IsModified);
+
+        Assert.True(
+            entry.Property(value => value.Name)
+                .IsModified);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Conflicting raw anchor order cannot reverse selected original dependent occurrences.</summary>
@@ -558,11 +658,13 @@ public sealed partial class UnchangedForeignKeyRollbackTests
                 .Entry(node)
                 .Property(value => value.OwnerId)
                 .CurrentValue = transient.Id;
+
             node.OwnerId = original.Id;
             context
                 .Entry(node)
                 .Property(value => value.OwnerId)
                 .IsModified = true;
+
             original.Nodes.Add(node);
             snapshot.RecordPersistedAddition(owner, key.PrincipalToDependent!, node);
             NestedSetInsertionContract.Instance.AddCollectionSnapshot(owner, key.PrincipalToDependent!, node);
@@ -586,27 +688,37 @@ public sealed partial class UnchangedForeignKeyRollbackTests
         snapshot.Restore();
 
         // Assert
-        Assert.Equal(selected,
+        Assert.Equal(
+            selected,
             original.Nodes.Where(node => selected.Contains(node)),
             ReferenceEqualityComparer.Instance);
-        Assert.Equal(pending,
+
+        Assert.Equal(
+            pending,
             original.Nodes.Where(node => !selected.Contains(node)),
             ReferenceEqualityComparer.Instance);
+
         Assert.Equal(4, original.Nodes.Count);
         Assert.Empty(transient.Nodes);
         Assert.All(selected, node => Assert.Same(original, node.Owner));
-        Assert.All(selected,
-            node => Assert.False(context
-                .Entry(node)
-                .Property(value => value.OwnerId)
-                .IsModified));
-        Assert.True(Members(owner, key.PrincipalToDependent!)
-            .ToHashSet(ReferenceEqualityComparer.Instance)
-            .SetEquals(members));
+        Assert.All(
+            selected,
+            node => Assert.False(
+                context
+                    .Entry(node)
+                    .Property(value => value.OwnerId)
+                    .IsModified));
+
+        Assert.True(
+            Members(owner, key.PrincipalToDependent!)
+                .ToHashSet(ReferenceEqualityComparer.Instance)
+                .SetEquals(members));
 
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>
@@ -673,18 +785,27 @@ public sealed partial class UnchangedForeignKeyRollbackTests
         // Assert
         Assert.Equal(mode == "public", written);
         Assert.Equal([members[1], members[2], members[0]], pendingOrder);
-        Assert.Equal(mode == "public" ? members : pendingOrder, original.Nodes, ReferenceEqualityComparer.Instance);
+        Assert.Equal(
+            mode == "public"
+                ? members
+                : pendingOrder,
+            original.Nodes,
+            ReferenceEqualityComparer.Instance);
+
         Assert.Same(original, node.Owner);
         Assert.Equal(original.Id, node.OwnerId);
         Assert.False(property.IsModified);
         Assert.Empty(transient.Nodes);
-        Assert.True(Members(owner, key.PrincipalToDependent!)
-            .ToHashSet(ReferenceEqualityComparer.Instance)
-            .SetEquals(members));
+        Assert.True(
+            Members(owner, key.PrincipalToDependent!)
+                .ToHashSet(ReferenceEqualityComparer.Instance)
+                .SetEquals(members));
 
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Full FK preimages retain a generated principal's original temporary relationship sidecars.</summary>
@@ -710,9 +831,13 @@ public sealed partial class UnchangedForeignKeyRollbackTests
         var entry = context.Attach(node);
         var generated = new RollbackOwner();
         var generatedEntry = await context.AddAsync(generated, CancellationToken.None);
-        entry.Reference(value => value.Owner).CurrentValue = generated;
+        entry.Reference(value => value.Owner)
+            .CurrentValue = generated;
+
         node.Name = "Pending name";
-        entry.Property(value => value.Name).IsModified = true;
+        entry.Property(value => value.Name)
+            .IsModified = true;
+
         var update = Update(context, node);
         var generatedUpdate = Update(context, generated);
         var property = entry.Property(value => value.OwnerId);
@@ -730,7 +855,8 @@ public sealed partial class UnchangedForeignKeyRollbackTests
             : NestedSetTrackerSnapshot.Capture(context, [update]);
 
         node.Name = "Callback name";
-        entry.Property(value => value.Name).OriginalValue = "Callback original";
+        entry.Property(value => value.Name)
+            .OriginalValue = "Callback original";
 
         // Act
         snapshot.Restore();
@@ -746,20 +872,30 @@ public sealed partial class UnchangedForeignKeyRollbackTests
         Assert.Equal(valuesBefore, Installed(update, key));
         Assert.Same(generated, node.Owner);
         Assert.Same(generated, update.GetRelationshipSnapshotValue(reference));
-        Assert.Contains(update,
+        Assert.Contains(
+            update,
             context
                 .GetService<IUpdateAdapterFactory>()
                 .Create()
                 .GetDependents(generatedUpdate, key));
+
         Assert.Same(node, Assert.Single(generated.Nodes));
         Assert.Equal(EntityState.Added, generatedEntry.State);
         Assert.Equal("Pending name", node.Name);
-        Assert.Equal("Before",
-            entry.Property(value => value.Name).OriginalValue);
-        Assert.True(entry.Property(value => value.Name).IsModified);
+        Assert.Equal(
+            "Before",
+            entry.Property(value => value.Name)
+                .OriginalValue);
+
+        Assert.True(
+            entry.Property(value => value.Name)
+                .IsModified);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Resolves the exact native entry without asking EF to detect any pending raw changes.</summary>
@@ -771,7 +907,9 @@ public sealed partial class UnchangedForeignKeyRollbackTests
             .GetService<IUpdateAdapterFactory>()
             .Create()
             .Entries
-            .Single(entry => ReferenceEquals(entry.ToEntityEntry().Entity,
+            .Single(entry => ReferenceEquals(
+                entry.ToEntityEntry()
+                    .Entity,
                 entity));
 
     /// <summary>Copies the installed native FK vector independently of current and original scalar storage.</summary>

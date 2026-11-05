@@ -11,8 +11,6 @@ internal sealed class NestedSetMappedBatch<TEntity, TKey, TTreeId, TScope>
     where TTreeId : notnull
     where TScope : notnull
 {
-    private readonly NestedSetStore<TEntity, TKey, TTreeId, TScope> _store;
-    private readonly ISqlGenerationHelper _sql;
     private readonly Dictionary<string, string> _columns = new(StringComparer.Ordinal);
 
     /// <summary>Resolves SQL identifiers once for a context-scoped structural writer.</summary>
@@ -20,18 +18,20 @@ internal sealed class NestedSetMappedBatch<TEntity, TKey, TTreeId, TScope>
         NestedSetStore<TEntity, TKey, TTreeId, TScope> store
     )
     {
-        _store = store;
-        _sql = store.Context.GetService<ISqlGenerationHelper>();
+        Store = store;
+        Sql = store.Context.GetService<ISqlGenerationHelper>();
         var table = store.Map.Store;
-        Table = _sql.DelimitIdentifier(table.Name, table.Schema);
-        KeyBatchIdentityPredicate = NestedSetProviderCapabilities.Resolve(store.Context).KeyBatchIdentityPredicate(this);
+        Table = Sql.DelimitIdentifier(table.Name, table.Schema);
+        KeyBatchIdentityPredicate = NestedSetProviderCapabilities
+            .Resolve(store.Context)
+            .KeyBatchIdentityPredicate(this);
     }
 
     /// <summary>Gets the exact mapped store used by native keyed-access implementations.</summary>
-    internal NestedSetStore<TEntity, TKey, TTreeId, TScope> Store => _store;
+    internal NestedSetStore<TEntity, TKey, TTreeId, TScope> Store { get; }
 
     /// <summary>Gets the provider identifier service already resolved for this command writer.</summary>
-    internal ISqlGenerationHelper Sql => _sql;
+    internal ISqlGenerationHelper Sql { get; }
 
     /// <summary>The safely delimited schema-qualified hierarchy table.</summary>
     internal string Table { get; }
@@ -44,9 +44,9 @@ internal sealed class NestedSetMappedBatch<TEntity, TKey, TTreeId, TScope>
     {
         get
         {
-            var tree = $"{Column(_store.Map.TreeId)} = {Parameter("treeId")}";
+            var tree = $"{Column(Store.Map.TreeId)} = {Parameter("treeId")}";
 
-            return _store.Map.Scope is { } scope
+            return Store.Map.Scope is { } scope
                 ? $"{Column(scope)} = {Parameter("scope")} AND {tree}"
                 : tree;
         }
@@ -59,7 +59,10 @@ internal sealed class NestedSetMappedBatch<TEntity, TKey, TTreeId, TScope>
     {
         if (!_columns.TryGetValue(property, out var column))
         {
-            column = _sql.DelimitIdentifier(_store.Map.PropertyMapping(property).ColumnName);
+            column = Sql.DelimitIdentifier(
+                Store.Map.PropertyMapping(property)
+                    .ColumnName);
+
             _columns.Add(property, column);
         }
 
@@ -69,7 +72,7 @@ internal sealed class NestedSetMappedBatch<TEntity, TKey, TTreeId, TScope>
     /// <summary>Creates a provider-specific marker for a fixed internally generated parameter name.</summary>
     internal string Parameter(
         string name
-    ) => _sql.GenerateParameterName(name);
+    ) => Sql.GenerateParameterName(name);
 
     /// <summary>Executes through EF with command interception, logging, and caller transactions intact.</summary>
     /// <param name="sql">A template containing only delimited model identifiers and parameter markers.</param>
@@ -82,7 +85,7 @@ internal sealed class NestedSetMappedBatch<TEntity, TKey, TTreeId, TScope>
         CancellationToken cancellationToken
     )
     {
-        var command = _store
+        var command = Store
             .Context
             .Database
             .GetDbConnection()
@@ -90,25 +93,28 @@ internal sealed class NestedSetMappedBatch<TEntity, TKey, TTreeId, TScope>
 
         await using (command.ConfigureAwait(false))
         {
-            var identityCount = _store.Map.Scope is null ? 1 : 2;
+            var identityCount = Store.Map.Scope is null
+                ? 1
+                : 2;
+
             var parameters = new object[values.Count + identityCount];
             var parameterIndex = 0;
 
-            if (_store.Map.Scope is { } scopeName)
+            if (Store.Map.Scope is { } scopeName)
             {
-                var scope = _store.Map.PropertyMapping(scopeName);
+                var scope = Store.Map.PropertyMapping(scopeName);
                 parameters[parameterIndex++] = scope.TypeMapping.CreateParameter(
                     command,
                     "scope",
-                    _store.Scope,
+                    Store.Scope,
                     nullable: false);
             }
 
-            var treeId = _store.Map.PropertyMapping(_store.Map.TreeId);
+            var treeId = Store.Map.PropertyMapping(Store.Map.TreeId);
             parameters[parameterIndex++] = treeId.TypeMapping.CreateParameter(
                 command,
                 "treeId",
-                _store.TreeId,
+                Store.TreeId,
                 nullable: false);
 
             // WHY: Place each mapped value in the command parameter slot after the structural prefix.
@@ -117,7 +123,7 @@ internal sealed class NestedSetMappedBatch<TEntity, TKey, TTreeId, TScope>
             for (var index = 0; index < values.Count; index++)
             {
                 var value = values[index];
-                var property = _store.Map.PropertyMapping(value.Property);
+                var property = Store.Map.PropertyMapping(value.Property);
                 parameters[index + parameterIndex] = property.TypeMapping.CreateParameter(
                     command,
                     value.Name,
@@ -127,7 +133,7 @@ internal sealed class NestedSetMappedBatch<TEntity, TKey, TTreeId, TScope>
 
             // WHY: Parameters come from each property's relational mapping, including converters and facets.
             // Only parameter construction uses this command; EF owns execution so interception cannot be bypassed.
-            var affected = await _store
+            var affected = await Store
                 .Context
                 .Database
                 .ExecuteSqlRawAsync(sql, parameters, cancellationToken)

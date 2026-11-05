@@ -46,7 +46,9 @@ public sealed class DatabaseFileLifecycleTests : ProviderTest,
             async (context, token) =>
             {
                 await context.Database.EnsureCreatedAsync(token);
-                databaseFile = context.Database.GetDbConnection().DataSource;
+                databaseFile = context.Database.GetDbConnection()
+                    .DataSource;
+
                 await cancellation.CancelAsync();
                 token.ThrowIfCancellationRequested();
             },
@@ -73,7 +75,9 @@ public sealed class DatabaseFileLifecycleTests : ProviderTest,
         try
         {
             // Act
-            var actual = await Record.ExceptionAsync(() => TestDatabase.CreateAsync(Engine, Initialize,
+            var actual = await Record.ExceptionAsync(() => TestDatabase.CreateAsync(
+                Engine,
+                Initialize,
                 cancellationToken: TestContext.Current.CancellationToken));
 
             // Assert
@@ -102,7 +106,9 @@ public sealed class DatabaseFileLifecycleTests : ProviderTest,
         )
         {
             await context.Database.EnsureCreatedAsync(cancellationToken);
-            databaseFile = context.Database.GetDbConnection().DataSource;
+            databaseFile = context.Database.GetDbConnection()
+                .DataSource;
+
             existedDuringInitialization = File.Exists(databaseFile);
 
             throw failure;
@@ -120,7 +126,9 @@ public sealed class DatabaseFileLifecycleTests : ProviderTest,
         try
         {
             // Act
-            var actual = await Record.ExceptionAsync(() => TestDatabase.CreateAsync(Engine, Initialize,
+            var actual = await Record.ExceptionAsync(() => TestDatabase.CreateAsync(
+                Engine,
+                Initialize,
                 cancellationToken: TestContext.Current.CancellationToken));
 
             // Assert
@@ -146,8 +154,11 @@ public sealed class DatabaseFileLifecycleTests : ProviderTest,
         )
         {
             await context.Database.EnsureCreatedAsync(cancellationToken);
-            databaseFile = context.Database.GetDbConnection().DataSource;
+            databaseFile = context.Database.GetDbConnection()
+                .DataSource;
+
             File.Delete(databaseFile);
+
             // WHY: A directory at the owned file path makes File.Delete fail consistently without changing permissions.
             Directory.CreateDirectory(databaseFile);
 

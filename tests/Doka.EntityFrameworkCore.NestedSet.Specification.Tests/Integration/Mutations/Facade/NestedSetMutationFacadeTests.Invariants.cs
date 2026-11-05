@@ -20,7 +20,8 @@ public abstract partial class NestedSetMutationFacadeTests
         await hierarchy.InsertRootAsync(new TreeNode { NodeId = 10 }, s_secondTree, CancellationToken.None);
         await hierarchy.InsertChildAsync(new TreeNode { NodeId = 11 }, 10, CancellationToken.None);
         var structureBefore = await StructureAsync(context, cancellationToken: TestContext.Current.CancellationToken);
-        var registryBefore = await ActiveTargetRegistriesAsync(context,
+        var registryBefore = await ActiveTargetRegistriesAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
@@ -30,19 +31,33 @@ public abstract partial class NestedSetMutationFacadeTests
             CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.TreeIdUnavailable, Assert.IsType<NestedSetException>(error).Code);
-        Assert.Equal(structureBefore, await StructureAsync(context,
-            cancellationToken: TestContext.Current.CancellationToken));
-        Assert.Equal(registryBefore, await ActiveTargetRegistriesAsync(context,
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            NestedSetErrorCode.TreeIdUnavailable,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
+        Assert.Equal(
+            structureBefore,
+            await StructureAsync(
+                context,
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal(
+            registryBefore,
+            await ActiveTargetRegistriesAsync(
+                context,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.True(
             (await hierarchy
                 .InTree(s_firstTree)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+
         Assert.True(
             (await hierarchy
                 .InTree(s_secondTree)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -53,7 +68,8 @@ public abstract partial class NestedSetMutationFacadeTests
         CancellationToken cancellationToken
     )
     {
-        var registry = NestedSetTreeRegistryMapping.For(context.Model.FindEntityType(typeof(TreeNode))!).Registry;
+        var registry = NestedSetTreeRegistryMapping.For(context.Model.FindEntityType(typeof(TreeNode))!)
+            .Registry;
 
         return context
             .Set<NestedSetTreeRegistry>(registry.Name)

@@ -3,7 +3,7 @@ using Xunit.v3;
 namespace Doka.EntityFrameworkCore.NestedSet.Migrations.Tests;
 
 /// <summary>Checks database applicability before mixed-engine or explicitly engine-bound migration tests run.</summary>
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, Inherited = true)]
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 public sealed class DatabasePlatformAttribute : BeforeAfterTestAttribute
 {
     private readonly string? _engine;
@@ -38,7 +38,8 @@ public sealed class DatabasePlatformAttribute : BeforeAfterTestAttribute
 
         for (var index = 0; index < parameters.Length; index++)
         {
-            if (parameters[index] is { Name: "engine", ParameterType: var type } && type == typeof(string))
+            if (parameters[index] is { Name: "engine", ParameterType: var type }
+                && type == typeof(string))
             {
                 return arguments[index] as string
                     ?? throw new InvalidOperationException("A database theory must provide its engine argument.");

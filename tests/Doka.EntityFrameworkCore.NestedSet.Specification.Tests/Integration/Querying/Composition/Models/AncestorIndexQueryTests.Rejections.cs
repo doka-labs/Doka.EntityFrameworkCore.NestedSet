@@ -7,21 +7,30 @@ public abstract partial class AncestorIndexQueryTests
     [Theory]
     [InlineData(3L)]
     [InlineData(2L)]
-    public async Task IndexedModelRejectsNonPositiveWidthAtDatabaseBoundary(long right)
+    public async Task IndexedModelRejectsNonPositiveWidthAtDatabaseBoundary(
+        long right
+    )
     {
         // Arrange
         var scope = Guid.NewGuid();
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, tree, probe,
+        await using var context = await CreateContextAsync(
+            scope,
+            tree,
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var source = context.Set<CompositionNavigationNode>().Where(node => node.Scope == scope && node.Id == 3);
+        var source = context
+            .Set<CompositionNavigationNode>()
+            .Where(node => node.Scope == scope && node.Id == 3);
+
         probe.Reset();
 
         // Act
         var error = await Record.ExceptionAsync(() => source.ExecuteUpdateAsync(
-            setters => setters.SetProperty(node => node.Right, right), CancellationToken.None));
+            setters => setters.SetProperty(node => node.Right, right),
+            CancellationToken.None));
 
         // Assert
         var databaseError = Assert.IsAssignableFrom<DbException>(error);
@@ -39,22 +48,43 @@ public abstract partial class AncestorIndexQueryTests
         var scope = Guid.NewGuid();
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await _fixture.CreateContextAsync<AncestorIndexMappedContext>(Engine,
+        await using var context = await _fixture.CreateContextAsync<AncestorIndexMappedContext>(
+            Engine,
             static options => new AncestorIndexMappedContext(options),
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
-        await SeedNamedQueriesAsync(context, tree, scope, first, includeSelf: true,
+        await SeedNamedQueriesAsync(
+            context,
+            tree,
+            scope,
+            first,
+            includeSelf: true,
             cancellationToken: TestContext.Current.CancellationToken);
-        var hierarchy = context.NestedSet<Dictionary<string, object?>>(AncestorIndexMappedContext.First).InTree(tree);
-        var foreign = context.NestedSet<Dictionary<string, object?>>(AncestorIndexMappedContext.Second).InTree(tree);
-        var pairs = foreign.SelectAncestors(node => EF.Property<int>(node, NestedSetPropertyRoles.Depth) == 12,
-            (source, owner, distance) => new { Source = source, Owner = owner });
+
+        var hierarchy = context
+            .NestedSet<Dictionary<string, object?>>(AncestorIndexMappedContext.First)
+            .InTree(tree);
+
+        var foreign = context
+            .NestedSet<Dictionary<string, object?>>(AncestorIndexMappedContext.Second)
+            .InTree(tree);
+
+        var pairs = foreign.SelectAncestors(
+            node => EF.Property<int>(node, NestedSetPropertyRoles.Depth) == 12,
+            (source, owner, distance) => new
+            {
+                Source = source,
+                Owner = owner,
+            });
 
         probe.Reset();
 
         // Act
-        var error = Record.Exception(() => hierarchy.WherePathEdges(pairs, pair => pair.Owner, pair => pair.Source,
+        var error = Record.Exception(() => hierarchy.WherePathEdges(
+            pairs,
+            pair => pair.Owner,
+            pair => pair.Source,
             (pair, parent, child) => true));
 
         // Assert

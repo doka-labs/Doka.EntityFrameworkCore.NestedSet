@@ -134,7 +134,7 @@ internal sealed partial class NestedSetQuery<TEntity>
             (pair, related) => new
             {
                 pair.Source,
-                Related = related
+                Related = related,
             });
 
         return ProjectPairs(pairs, pair => pair.Source, pair => pair.Related, projection);
@@ -158,8 +158,12 @@ internal sealed partial class NestedSetQuery<TEntity>
         var result = Expression.Lambda<Func<TPair, TResult>>(
             NestedSetQueryExpressions.Inline(
                 projection,
-                ancestors ? lower : upper,
-                ancestors ? upper : lower,
+                ancestors
+                    ? lower
+                    : upper,
+                ancestors
+                    ? upper
+                    : lower,
                 Expression.Subtract(Depth(lower), Depth(upper))),
             occurrence);
 
@@ -176,14 +180,21 @@ internal sealed partial class NestedSetQuery<TEntity>
     {
         var first = Expression.Parameter(typeof(TEntity), "source");
         var second = Expression.Parameter(typeof(TEntity), "related");
-        var upper = ancestors ? second : first;
-        var lower = ancestors ? first : second;
+        var upper = ancestors
+            ? second
+            : first;
+
+        var lower = ancestors
+            ? first
+            : second;
 
         // WHY: Both aliases of a tree-bound root already have the exact same scope and tree filter.
         // Repeating their identity equality offers PostgreSQL a constant-key hash join, expanding
         // every selected anchor against the whole tree before applying the coordinate range.
         // Forest joins and independently supplied endpoints still require explicit identity equality.
-        var containment = _treeBound ? ContainedBounds(upper, lower, includeSelf) : Contains(upper, lower, includeSelf);
+        var containment = _treeBound
+            ? ContainedBounds(upper, lower, includeSelf)
+            : Contains(upper, lower, includeSelf);
 
         var relatedNodes = _nodes;
         if (ancestors && !includeSelf)

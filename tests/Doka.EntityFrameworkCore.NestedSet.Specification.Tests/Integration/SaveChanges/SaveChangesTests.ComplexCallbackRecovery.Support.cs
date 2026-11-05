@@ -5,34 +5,77 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public abstract partial class SaveChangesTests
 {
     /// <summary>Seeds deterministic JSON through EF with empty materialization-time collection initializers.</summary>
-    private async Task<TestDatabase> CreateComplexCallbackDatabaseAsync(CancellationToken cancellationToken)
+    private async Task<TestDatabase> CreateComplexCallbackDatabaseAsync(
+        CancellationToken cancellationToken
+    )
     {
         var database = await TestDatabase.CreateAsync(Engine, cancellationToken: cancellationToken);
 
         try
         {
-            await using var context = await CreateComplexCallbackContextAsync(database,
+            await using var context = await CreateComplexCallbackContextAsync(
+                database,
                 cancellationToken: cancellationToken);
 
-            await context.GetService<IRelationalDatabaseCreator>().CreateTablesAsync(cancellationToken);
+            await context
+                .GetService<IRelationalDatabaseCreator>()
+                .CreateTablesAsync(cancellationToken);
+
             var owner = new NavigationScopeOwner { Value = "owner" };
             var row = new ComplexCallbackRow
             {
                 Id = 1,
                 Items = [NewComplexCallbackItem("first"), NewComplexCallbackItem("second")],
-                Address = new ComplexCallbackAddress { Text = "original address", Tags = NewComplexCallbackLeaves() },
+                Address = new ComplexCallbackAddress
+                {
+                    Text = "original address",
+                    Tags = NewComplexCallbackLeaves(),
+                },
             };
 
-            await context.AddRangeAsync([owner, new NavigationScopeOwner { Value = "other owner" },
-                new NavigationNote { Id = 1, Value = "sentinel" }, row], cancellationToken);
-
-            await context.SaveChangesAsync(cancellationToken);
-            var tree = context.NestedSet<NavigationNode>().ForScope(owner.Id);
-            await tree.InsertRootAsync(new NavigationNode { Id = 1, Name = "Root" }, s_treeId,
+            await context.AddRangeAsync(
+                [
+                    owner, new NavigationScopeOwner { Value = "other owner" },
+                    new NavigationNote
+                    {
+                        Id = 1,
+                        Value = "sentinel",
+                    },
+                    row,
+                ],
                 cancellationToken);
 
-            await tree.InsertChildAsync(new NavigationNode { Id = 2, Name = "Alpha" }, 1, cancellationToken);
-            await tree.InsertChildAsync(new NavigationNode { Id = 3, Name = "Bravo" }, 1, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
+            var tree = context
+                .NestedSet<NavigationNode>()
+                .ForScope(owner.Id);
+
+            await tree.InsertRootAsync(
+                new NavigationNode
+                {
+                    Id = 1,
+                    Name = "Root",
+                },
+                s_treeId,
+                cancellationToken);
+
+            await tree.InsertChildAsync(
+                new NavigationNode
+                {
+                    Id = 2,
+                    Name = "Alpha",
+                },
+                1,
+                cancellationToken);
+
+            await tree.InsertChildAsync(
+                new NavigationNode
+                {
+                    Id = 3,
+                    Name = "Bravo",
+                },
+                1,
+                cancellationToken);
 
             return database;
         }
@@ -53,8 +96,14 @@ public abstract partial class SaveChangesTests
         => new(await SaveSemanticsFixture.OptionsAsync(database, cancellationToken: cancellationToken, interceptors));
 
     /// <summary>Supplies explicit seed values without causing EF materialization to append duplicates.</summary>
-    private static ComplexCallbackItem NewComplexCallbackItem(string text)
-        => new() { Text = text, Parts = NewComplexCallbackLeaves() };
+    private static ComplexCallbackItem NewComplexCallbackItem(
+        string text
+    )
+        => new()
+        {
+            Text = text,
+            Parts = NewComplexCallbackLeaves(),
+        };
 
     /// <summary>Provides two independent reference elements at every nested collection boundary.</summary>
     private static List<ComplexCallbackLeaf> NewComplexCallbackLeaves()
@@ -66,8 +115,14 @@ public abstract partial class SaveChangesTests
         CancellationToken cancellationToken
     )
     {
-        var row = await context.Set<ComplexCallbackRow>().SingleAsync(cancellationToken);
-        var sentinel = await context.Set<NavigationNote>().SingleAsync(cancellationToken);
+        var row = await context
+            .Set<ComplexCallbackRow>()
+            .SingleAsync(cancellationToken);
+
+        var sentinel = await context
+            .Set<NavigationNote>()
+            .SingleAsync(cancellationToken);
+
         context.ChangeTracker.AutoDetectChangesEnabled = false;
 
         return new ComplexCallbackGraph(context.Entry(row), context.Entry(sentinel));
@@ -79,13 +134,22 @@ public abstract partial class SaveChangesTests
         CancellationToken cancellationToken
     )
     {
-        var node = await context.Set<NavigationNode>().SingleAsync(value => value.Id == 2, cancellationToken);
+        var node = await context
+            .Set<NavigationNode>()
+            .SingleAsync(value => value.Id == 2, cancellationToken);
+
         node.Name = "Zulu";
-        context.Entry(node).Property(value => value.Name).IsModified = true;
+        context
+            .Entry(node)
+            .Property(value => value.Name)
+            .IsModified = true;
     }
 
     /// <summary>Mutates only raw complex CLR values at the requested callback boundary.</summary>
-    private static void ChangeComplexCallbackRow(ComplexCallbackRow row, string mutation)
+    private static void ChangeComplexCallbackRow(
+        ComplexCallbackRow row,
+        string mutation
+    )
     {
         switch (mutation)
         {
@@ -122,20 +186,51 @@ public abstract partial class SaveChangesTests
     }
 
     /// <summary>Copies direct caller identities and values without relying on live collection aliases.</summary>
-    private static ComplexCallbackClrState CaptureComplexCallbackClr(ComplexCallbackRow row)
-        => new(row, row.Items, row.Items?.Select(item => new ComplexCallbackItemState(item, item.Text,
-                item.Parts, item.Parts?.Select(part => new ComplexCallbackLeafState(part, part.Text)).ToArray() ?? []))
-            .ToArray() ?? [], row.Address, row.Address?.Text, row.Address?.Tags,
-            row.Address?.Tags?.Select(tag => new ComplexCallbackLeafState(tag, tag.Text)).ToArray() ?? []);
+    private static ComplexCallbackClrState CaptureComplexCallbackClr(
+        ComplexCallbackRow row
+    )
+        => new(
+            row,
+            row.Items,
+            row
+                .Items
+                ?.Select(item => new ComplexCallbackItemState(
+                    item,
+                    item.Text,
+                    item.Parts,
+                    item
+                        .Parts
+                        ?.Select(part => new ComplexCallbackLeafState(part, part.Text))
+                        .ToArray()
+                    ?? []))
+                .ToArray()
+            ?? [],
+            row.Address,
+            row.Address?.Text,
+            row.Address?.Tags,
+            row
+                .Address
+                ?.Tags
+                ?.Select(tag => new ComplexCallbackLeafState(tag, tag.Text))
+                .ToArray()
+            ?? []);
 
     /// <summary>Captures public EF complex entries separately from caller-owned containers.</summary>
-    private static ComplexCallbackNativeState[] CaptureComplexCallbackNative(ComplexCallbackGraph graph)
+    private static ComplexCallbackNativeState[] CaptureComplexCallbackNative(
+        ComplexCallbackGraph graph
+    )
     {
         var states = new List<ComplexCallbackNativeState>();
         CaptureComplexCallbackCollection(graph.Row.ComplexCollection(value => value.Items), "Items", "Parts", states);
         var address = graph.Row.ComplexProperty(value => value.Address);
-        states.Add(new ComplexCallbackNativeState("Address", address.CurrentValue, null, address.IsModified,
-            CaptureComplexPeerLeaves(address.Properties), []));
+        states.Add(
+            new ComplexCallbackNativeState(
+                "Address",
+                address.CurrentValue,
+                null,
+                address.IsModified,
+                CaptureComplexPeerLeaves(address.Properties),
+                []));
 
         if (address.CurrentValue is not null)
         {
@@ -153,14 +248,25 @@ public abstract partial class SaveChangesTests
         List<ComplexCallbackNativeState> states
     )
     {
-        var originals = Enumerable.Range(0, 2).SelectMany(index => collection.GetOriginalEntry(index).Properties
-            .OrderBy(property => property.Metadata.Name, StringComparer.Ordinal)
-            .Select(property => new ComplexPeerOriginalLeafState(
-                index.ToString(CultureInfo.InvariantCulture) + ":" + property.Metadata.Name, property.OriginalValue)))
+        var originals = Enumerable
+            .Range(0, 2)
+            .SelectMany(index => collection
+                .GetOriginalEntry(index)
+                .Properties
+                .OrderBy(property => property.Metadata.Name, StringComparer.Ordinal)
+                .Select(property => new ComplexPeerOriginalLeafState(
+                    index.ToString(CultureInfo.InvariantCulture) + ":" + property.Metadata.Name,
+                    property.OriginalValue)))
             .ToArray();
 
-        states.Add(new ComplexCallbackNativeState(path, collection.CurrentValue, null, collection.IsModified,
-            [], originals));
+        states.Add(
+            new ComplexCallbackNativeState(
+                path,
+                collection.CurrentValue,
+                null,
+                collection.IsModified,
+                [],
+                originals));
 
         if (collection.CurrentValue is not IList values)
         {
@@ -174,13 +280,22 @@ public abstract partial class SaveChangesTests
         {
             var entry = collection[index];
             var elementPath = path + "[" + index.ToString(CultureInfo.InvariantCulture) + "]";
-            states.Add(new ComplexCallbackNativeState(elementPath, values[index], entry.State, entry.IsModified,
-                CaptureComplexPeerLeaves(entry.Properties), []));
+            states.Add(
+                new ComplexCallbackNativeState(
+                    elementPath,
+                    values[index],
+                    entry.State,
+                    entry.IsModified,
+                    CaptureComplexPeerLeaves(entry.Properties),
+                    []));
 
             if (nestedName is not null)
             {
-                CaptureComplexCallbackCollection(entry.ComplexCollection(nestedName), elementPath + "." + nestedName,
-                    null, states);
+                CaptureComplexCallbackCollection(
+                    entry.ComplexCollection(nestedName),
+                    elementPath + "." + nestedName,
+                    null,
+                    states);
             }
         }
     }
@@ -208,7 +323,10 @@ public abstract partial class SaveChangesTests
     }
 
     /// <summary>Checks original containers, element identities and order together with copied raw values.</summary>
-    private static void AssertComplexCallbackClr(ComplexCallbackClrState before, ComplexCallbackClrState after)
+    private static void AssertComplexCallbackClr(
+        ComplexCallbackClrState before,
+        ComplexCallbackClrState after
+    )
     {
         Assert.Same(before.Row, after.Row);
         Assert.Same(before.Items, after.Items);
@@ -238,15 +356,31 @@ public abstract partial class SaveChangesTests
         CancellationToken cancellationToken
     )
     {
-        await using var verification = await CreateComplexCallbackContextAsync(database,
+        await using var verification = await CreateComplexCallbackContextAsync(
+            database,
             cancellationToken: cancellationToken);
 
-        var row = await verification.Set<ComplexCallbackRow>().AsNoTracking().SingleAsync(cancellationToken);
+        var row = await verification
+            .Set<ComplexCallbackRow>()
+            .AsNoTracking()
+            .SingleAsync(cancellationToken);
 
-        return new ComplexCallbackStoredRow(row.Label, row.Version, row.Address?.Text,
-            row.Items is null ? null : string.Join("|", row.Items.Select(item => item.Text + ":"
-                + (item.Parts is null ? "null" : string.Join(",", item.Parts.Select(part => part.Text))))),
-            row.Address?.Tags is null ? null : string.Join("|", row.Address.Tags.Select(tag => tag.Text)));
+        return new ComplexCallbackStoredRow(
+            row.Label,
+            row.Version,
+            row.Address?.Text,
+            row.Items is null
+                ? null
+                : string.Join(
+                    "|",
+                    row.Items.Select(item => item.Text
+                        + ":"
+                        + (item.Parts is null
+                            ? "null"
+                            : string.Join(",", item.Parts.Select(part => part.Text))))),
+            row.Address?.Tags is null
+                ? null
+                : string.Join("|", row.Address.Tags.Select(tag => tag.Text)));
     }
 
     /// <summary>Advances only the independent application token to provoke genuine optimistic concurrency.</summary>
@@ -255,7 +389,8 @@ public abstract partial class SaveChangesTests
         CancellationToken cancellationToken
     )
     {
-        await using var external = await CreateComplexCallbackContextAsync(database,
+        await using var external = await CreateComplexCallbackContextAsync(
+            database,
             cancellationToken: cancellationToken);
 
         var sql = external.GetService<ISqlGenerationHelper>();
@@ -273,47 +408,80 @@ public abstract partial class SaveChangesTests
         CancellationToken cancellationToken
     )
     {
-        var tree = context.NestedSet<NavigationNode>().ForScope(1);
+        var tree = context
+            .NestedSet<NavigationNode>()
+            .ForScope(1);
 
         return shape switch
         {
             "single" => tree.InsertChildAsync(inputs[0], 1, cancellationToken),
-            "subtree" => tree.InsertSubtreeAsync(PreparedOwnerBranch(inputs, 0, inputs.Length), 1,
+            "subtree" => tree.InsertSubtreeAsync(
+                PreparedOwnerBranch(inputs, 0, inputs.Length),
+                1,
                 cancellationToken),
             "forest" => tree.InsertForestAsync(
-                [new NestedSetTreeImport<NavigationNode, Guid>(s_manualFirstImportTree,
+                [
+                    new NestedSetTreeImport<NavigationNode, Guid>(
+                        s_manualFirstImportTree,
                         PreparedOwnerBranch(inputs, 0, inputs.Length / 2)),
-                    new NestedSetTreeImport<NavigationNode, Guid>(s_manualSecondImportTree,
-                        PreparedOwnerBranch(inputs, inputs.Length / 2, inputs.Length / 2))], cancellationToken),
+                    new NestedSetTreeImport<NavigationNode, Guid>(
+                        s_manualSecondImportTree,
+                        PreparedOwnerBranch(inputs, inputs.Length / 2, inputs.Length / 2)),
+                ],
+                cancellationToken),
             _ => throw new ArgumentOutOfRangeException(nameof(shape)),
         };
     }
 
     /// <summary>Retains exact application entries without incidental automatic detection.</summary>
     private sealed record ComplexCallbackGraph(
-        EntityEntry<ComplexCallbackRow> Row, EntityEntry<NavigationNote> Sentinel);
+        EntityEntry<ComplexCallbackRow> Row,
+        EntityEntry<NavigationNote> Sentinel
+    );
 
     /// <summary>Retains caller object references and copied values before callback mutation.</summary>
     private sealed record ComplexCallbackClrState(
-        ComplexCallbackRow Row, List<ComplexCallbackItem>? Items, ComplexCallbackItemState[] ItemValues,
-        ComplexCallbackAddress? Address, string? AddressText, List<ComplexCallbackLeaf>? Tags,
-        ComplexCallbackLeafState[] TagValues);
+        ComplexCallbackRow Row,
+        List<ComplexCallbackItem>? Items,
+        ComplexCallbackItemState[] ItemValues,
+        ComplexCallbackAddress? Address,
+        string? AddressText,
+        List<ComplexCallbackLeaf>? Tags,
+        ComplexCallbackLeafState[] TagValues
+    );
 
     /// <summary>Retains each element and its nested list without retaining mutable value aliases.</summary>
     private sealed record ComplexCallbackItemState(
-        ComplexCallbackItem Item, string Text, List<ComplexCallbackLeaf>? Parts, ComplexCallbackLeafState[] PartValues);
+        ComplexCallbackItem Item,
+        string Text,
+        List<ComplexCallbackLeaf>? Parts,
+        ComplexCallbackLeafState[] PartValues
+    );
 
     /// <summary>Copies a nested element's value while retaining its caller-owned object reference.</summary>
-    private sealed record ComplexCallbackLeafState(ComplexCallbackLeaf Leaf, string Text);
+    private sealed record ComplexCallbackLeafState(
+        ComplexCallbackLeaf Leaf,
+        string Text
+    );
 
     /// <summary>Copies actual EF scalar, original and modification state at a bounded fixture path.</summary>
     private sealed record ComplexCallbackNativeState(
-        string Path, object? Instance, EntityState? State, bool Modified, ComplexPeerLeafState[] Leaves,
-        ComplexPeerOriginalLeafState[] Originals);
+        string Path,
+        object? Instance,
+        EntityState? State,
+        bool Modified,
+        ComplexPeerLeafState[] Leaves,
+        ComplexPeerOriginalLeafState[] Originals
+    );
 
     /// <summary>Copies every stored ordinary payload component relevant to recovery.</summary>
     private sealed record ComplexCallbackStoredRow(
-        string Label, int Version, string? Address, string? Items, string? Tags);
+        string Label,
+        int Version,
+        string? Address,
+        string? Items,
+        string? Tags
+    );
 
     /// <summary>Mutates a captured ordinary callback write only after provider completion, then fails once.</summary>
     private sealed class ComplexCallbackCompletionFailure(Action mutation) : SaveChangesInterceptor

@@ -58,7 +58,9 @@ public abstract class ServerQueryPlanTests : ProviderTest
     {
         // Arrange
         var probe = new EnterpriseProbe(captureParameterBindings: true);
-        await using var context = await _fixture.CreateContextAsync(Engine, probe,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var service = context
@@ -80,7 +82,11 @@ public abstract class ServerQueryPlanTests : ProviderTest
             .Select(node => node.Id)
             .ToArrayAsync(CancellationToken.None);
 
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, probe, commandIndex, Engine,
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            probe,
+            commandIndex,
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var queryIndex = query switch
@@ -118,7 +124,9 @@ public abstract class ServerQueryPlanTests : ProviderTest
     {
         // Arrange
         var probe = new EnterpriseProbe(captureParameterBindings: true);
-        await using var context = await _fixture.CreateContextAsync(Engine, probe,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var store = new NestedSetStore<OrderingNode, int, Guid, int>(
@@ -134,7 +142,11 @@ public abstract class ServerQueryPlanTests : ProviderTest
             new NestedSetParent<int>(true, 10000),
             CancellationToken.None);
 
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, probe, commandIndex + 1, Engine,
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            probe,
+            commandIndex + 1,
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         _fixture.RecordPredecessorEvidence(plan);
@@ -177,11 +189,13 @@ public abstract class ServerQueryPlanTests : ProviderTest
                     table
                         .GetProperty("key")
                         .GetString());
+
                 Assert.True(
                     table
                         .GetProperty("access_type")
                         .GetString() is "const" or "eq_ref",
                     plan);
+
                 var rows = table.TryGetProperty("rows_examined_per_scan", out var estimated)
                     ? estimated
                     : table.GetProperty("rows");

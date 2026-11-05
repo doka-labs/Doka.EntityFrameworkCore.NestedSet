@@ -24,7 +24,8 @@ public sealed partial class CompositionAncestorIndexTests
     )
     {
         // Arrange
-        var options = ModelCompatibilityDatabase.Options<IndexCompositionContext>("MariaDb",
+        var options = ModelCompatibilityDatabase.Options<IndexCompositionContext>(
+            "MariaDb",
             "Server=127.0.0.1;Database=deferred_lifetime;User ID=unused;Pooling=false");
 
         await using var provider = SelectionServices(options);
@@ -40,6 +41,7 @@ public sealed partial class CompositionAncestorIndexTests
         // Assert
         Assert.Equal(retainContext, witnesses[0].IsAlive);
         Assert.False(witnesses[1].IsAlive);
+
         // WHY: The actual compiled-query cache remains alive throughout the observation. Disposing
         // or clearing it before GC would hide a delegate retaining its original context or query.
         GC.KeepAlive(provider);
@@ -67,7 +69,8 @@ public sealed partial class CompositionAncestorIndexTests
             .ForScope(Guid.Empty)
             .InTree(Guid.Empty);
 
-        var pairs = hierarchy.SelectAncestorsOrSelf(node => facts.Any(fact => fact.NodeId == node.Id),
+        var pairs = hierarchy.SelectAncestorsOrSelf(
+            node => facts.Any(fact => fact.NodeId == node.Id),
             (node, owner, distance) => new
             {
                 Node = node,
@@ -78,14 +81,17 @@ public sealed partial class CompositionAncestorIndexTests
         var filtered = operation switch
         {
             "ancestors" => pairs,
-            "path" => hierarchy.WherePathEdges(pairs,
+            "path" => hierarchy.WherePathEdges(
+                pairs,
                 row => row.Owner,
                 row => row.Node,
                 (row, parent, child) => child.Id > 0),
-            "any" => hierarchy.WhereAnyAncestorOrSelf(pairs,
+            "any" => hierarchy.WhereAnyAncestorOrSelf(
+                pairs,
                 row => row.Node,
                 (row, owner) => owner.Id > 0),
-            "nearest" => hierarchy.WhereNearestAncestorOrSelf(pairs,
+            "nearest" => hierarchy.WhereNearestAncestorOrSelf(
+                pairs,
                 row => row.Node,
                 (row, owner) => owner.Id > 0,
                 (row, owner) => owner.Visible),
@@ -95,7 +101,9 @@ public sealed partial class CompositionAncestorIndexTests
         var query = filtered.Select(row => row.Owner.Id);
 
         Assert.Contains("EXISTS", query.ToQueryString(), StringComparison.OrdinalIgnoreCase);
-        retained = retainContext ? context : null;
+        retained = retainContext
+            ? context
+            : null;
 
         return [new WeakReference(context), new WeakReference(query)];
     }

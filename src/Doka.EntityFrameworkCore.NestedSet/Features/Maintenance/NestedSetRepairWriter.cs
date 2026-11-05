@@ -11,8 +11,8 @@ internal sealed class NestedSetRepairWriter<TEntity, TKey, TTreeId, TScope>
     where TTreeId : notnull
     where TScope : notnull
 {
-    private readonly NestedSetStore<TEntity, TKey, TTreeId, TScope> _store;
     private readonly NestedSetMappedBatch<TEntity, TKey, TTreeId, TScope> _batch;
+    private readonly NestedSetStore<TEntity, TKey, TTreeId, TScope> _store;
     private readonly Dictionary<int, string> _templates = new();
 
     /// <summary>Shares one metadata and template cache across every batch in an operation.</summary>

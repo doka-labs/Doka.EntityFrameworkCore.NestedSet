@@ -3,13 +3,13 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Observes capacity operations with aggregate counters and sampled occupied heap.</summary>
 internal sealed class CapacityProbe : DbCommandInterceptor, IAsyncDisposable
 {
-    private Timer? _timer;
     private readonly ManagedHeapObservation _heap = new();
-    private long _baseline;
     private long _allocatedBaseline;
+    private long _baseline;
     private long _maximumOccupied;
-    private long _samples;
     private int _measuring;
+    private long _samples;
+    private Timer? _timer;
 
     /// <summary>Gets the number of attempted bounded repair commands.</summary>
     internal int RepairCommands { get; private set; }
@@ -53,6 +53,17 @@ internal sealed class CapacityProbe : DbCommandInterceptor, IAsyncDisposable
     /// <summary>Gets the number of timer and command-boundary samples.</summary>
     internal long Samples => Interlocked.Read(ref _samples);
 
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        Volatile.Write(ref _measuring, 0);
+        if (_timer is { } timer)
+        {
+            await timer.DisposeAsync();
+            _timer = null;
+        }
+    }
+
     /// <summary>Starts measurement only after caller-owned input and provider warmup exist.</summary>
     internal void Start()
     {
@@ -75,17 +86,6 @@ internal sealed class CapacityProbe : DbCommandInterceptor, IAsyncDisposable
 
     /// <summary>Counts successful EF payload waves without retaining caller-owned entities.</summary>
     internal void Saved() => CompletedSaves++;
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        Volatile.Write(ref _measuring, 0);
-        if (_timer is { } timer)
-        {
-            await timer.DisposeAsync();
-            _timer = null;
-        }
-    }
 
     /// <inheritdoc />
     public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
@@ -180,7 +180,9 @@ internal sealed class CapacityProbe : DbCommandInterceptor, IAsyncDisposable
 
     /// <summary>Injects a fault or fully completed cancellation at the same late command boundary.</summary>
     /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
-    private async Task FailAsync(CancellationToken cancellationToken)
+    private async Task FailAsync(
+        CancellationToken cancellationToken
+    )
     {
         cancellationToken.ThrowIfCancellationRequested();
 

@@ -3,13 +3,16 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Separates an immutable comparison seed from sibling cases that reset their own rows.</summary>
 public sealed class KeyFilterComparisonFixture : IAsyncLifetime
 {
-    private readonly RelationalFixture _resettable = new();
     private readonly SortedDictionary<(int Count, int Representation), string[]> _evidence = [];
+    private readonly RelationalFixture _resettable = new();
     private Task<TestDatabase>? _comparison;
     private string? _engine;
 
     /// <inheritdoc />
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
+
+    /// <summary>Writes one complete legacy evidence file and releases both class-owned databases.</summary>
+    public ValueTask DisposeAsync() => QueryPlanTestSupport.CompleteFixtureAsync(WriteEvidenceAsync, CleanupAsync);
 
     /// <summary>Resets the original mutable database used by native-type and collection-mode cases.</summary>
     /// <param name="engine">The immutable engine supplied by the consuming provider fixture.</param>
@@ -72,10 +75,8 @@ public sealed class KeyFilterComparisonFixture : IAsyncLifetime
         _evidence.Add((count, order), evidence.ToArray());
     }
 
-    /// <summary>Writes one complete legacy evidence file and releases both class-owned databases.</summary>
-    public ValueTask DisposeAsync() => QueryPlanTestSupport.CompleteFixtureAsync(WriteEvidenceAsync, CleanupAsync);
-
     /// <summary>Writes the complete comparison artifact only when this suite observed comparison cases.</summary>
+
     // WHY: This callback is terminal teardown; request cancellation must not discard its retained evidence.
     private Task WriteEvidenceAsync() => _evidence.Count == 0
         ? Task.CompletedTask
@@ -84,7 +85,8 @@ public sealed class KeyFilterComparisonFixture : IAsyncLifetime
             _evidence
                 .Values
                 .SelectMany(entries => entries)
-                .ToArray(), cancellationToken: CancellationToken.None);
+                .ToArray(),
+            cancellationToken: CancellationToken.None);
 
     /// <summary>Returns both owned database cleanups without wrapping away a secondary task failure.</summary>
     private Task CleanupAsync()
@@ -121,8 +123,17 @@ public sealed class KeyFilterComparisonFixture : IAsyncLifetime
             for (var value = 1; value <= 256; value++)
             {
                 var identity = new Guid(
-
-                    value, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+                    value,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0);
 
                 await context.AddAsync(
                     new TreeNode
@@ -131,7 +142,7 @@ public sealed class KeyFilterComparisonFixture : IAsyncLifetime
                         Tree = 1,
                         TreeId = identity,
                         Start = 1,
-                        End = 2
+                        End = 2,
                     },
                     cancellationToken);
 
@@ -142,7 +153,7 @@ public sealed class KeyFilterComparisonFixture : IAsyncLifetime
                         Tree = 1,
                         TreeId = identity,
                         Left = 1,
-                        Right = 2
+                        Right = 2,
                     },
                     cancellationToken);
 
@@ -164,19 +175,30 @@ public sealed class KeyFilterComparisonFixture : IAsyncLifetime
                         Tree = "scope",
                         TreeId = identity,
                         Left = 1,
-                        Right = 2
+                        Right = 2,
                     },
                     cancellationToken);
             }
 
             await context.SavePrecomputedHierarchyAsync(cancellationToken);
-            await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(context, engine,
+            await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(
+                context,
+                engine,
                 cancellationToken: cancellationToken);
-            await QueryPlanTestSupport.RefreshStatisticsAsync<GuidNode>(context, engine,
+
+            await QueryPlanTestSupport.RefreshStatisticsAsync<GuidNode>(
+                context,
+                engine,
                 cancellationToken: cancellationToken);
-            await QueryPlanTestSupport.RefreshStatisticsAsync<BinaryNode>(context, engine,
+
+            await QueryPlanTestSupport.RefreshStatisticsAsync<BinaryNode>(
+                context,
+                engine,
                 cancellationToken: cancellationToken);
-            await QueryPlanTestSupport.RefreshStatisticsAsync<TextNode>(context, engine,
+
+            await QueryPlanTestSupport.RefreshStatisticsAsync<TextNode>(
+                context,
+                engine,
                 cancellationToken: cancellationToken);
 
             return database;

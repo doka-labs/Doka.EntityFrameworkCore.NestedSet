@@ -54,7 +54,9 @@ public sealed partial class BulkIdentityRetentionTests
     {
         var node = new ScalarNode
         {
-            Id = generated ? 0 : 3,
+            Id = generated
+                ? 0
+                : 3,
             Left = 71,
             Right = 72,
         };
@@ -66,7 +68,11 @@ public sealed partial class BulkIdentityRetentionTests
                 cancellationToken));
 
         return (new WeakReference<ScalarNode>(node), error,
-            node.Id == (generated ? 0 : 3) && node is { Left: 71, Right: 72 });
+            node.Id
+            == (generated
+                ? 0
+                : 3)
+            && node is { Left: 71, Right: 72 });
     }
 
     /// <summary>Uses the configured mutable representation while keeping weak references outside JIT roots.</summary>

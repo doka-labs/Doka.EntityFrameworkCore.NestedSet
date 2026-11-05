@@ -16,7 +16,8 @@ public sealed class TreeRegistryConventionTests
         using var context = new RegistryContext(options);
 
         // Act
-        var model = context.GetService<IDesignTimeModel>().Model;
+        var model = context.GetService<IDesignTimeModel>()
+            .Model;
 
         var node = model.FindEntityType(typeof(ScopedNode))!;
         var registry = RegistryFor(node, model);
@@ -42,7 +43,8 @@ public sealed class TreeRegistryConventionTests
         using var context = new RegistryContext(options);
 
         // Act
-        var model = context.GetService<IDesignTimeModel>().Model;
+        var model = context.GetService<IDesignTimeModel>()
+            .Model;
 
         var node = model.FindEntityType(typeof(UnscopedNode))!;
         var registry = RegistryFor(node, model);
@@ -65,9 +67,13 @@ public sealed class TreeRegistryConventionTests
         Assert.Equal(source.IsUnicode(), registry.IsUnicode());
         Assert.Equal(source.GetCollation(), registry.GetCollation());
         Assert.Equal(
-            source.GetRelationalTypeMapping().Converter
+            source
+                .GetRelationalTypeMapping()
+                .Converter
                 ?.GetType(),
-            registry.GetRelationalTypeMapping().Converter
+            registry
+                .GetRelationalTypeMapping()
+                .Converter
                 ?.GetType());
     }
 
@@ -77,8 +83,9 @@ public sealed class TreeRegistryConventionTests
         IModel model
     )
     {
-        var name = Assert.IsType<string>(hierarchy.FindAnnotation("Doka:NestedSet:TreeRegistryEntity")
-            ?.Value);
+        var name = Assert.IsType<string>(
+            hierarchy.FindAnnotation("Doka:NestedSet:TreeRegistryEntity")
+                ?.Value);
 
         return Assert.IsType<IEntityType>(model.FindEntityType(name), exactMatch: false);
     }
@@ -103,12 +110,14 @@ public sealed class TreeRegistryConventionTests
                 .HasMaxLength(80)
                 .IsUnicode(false)
                 .UseCollation("NOCASE");
+
             scoped
                 .Property(node => node.TreeId)
                 .HasConversion<string>()
                 .HasMaxLength(36)
                 .IsUnicode(false)
                 .UseCollation("NOCASE");
+
             scoped.HasNestedSet(nestedSet => nestedSet
                 .HasNodeKey(node => node.Id)
                 .HasScope(node => node.Scope)
@@ -125,6 +134,7 @@ public sealed class TreeRegistryConventionTests
                 .HasMaxLength(120)
                 .IsUnicode(false)
                 .UseCollation("NOCASE");
+
             unscoped.HasNestedSet(nestedSet => nestedSet
                 .HasNodeKey(node => node.Id)
                 .HasTreeId(node => node.TreeId)

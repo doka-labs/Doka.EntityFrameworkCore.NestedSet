@@ -28,7 +28,8 @@ public abstract partial class KeyFilterComparisonTests
     public async Task ResettingSiblingRowsPreservesComparisonSeed()
     {
         // Arrange
-        var comparison = await _fixture.ComparisonAsync(Engine,
+        var comparison = await _fixture.ComparisonAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Act

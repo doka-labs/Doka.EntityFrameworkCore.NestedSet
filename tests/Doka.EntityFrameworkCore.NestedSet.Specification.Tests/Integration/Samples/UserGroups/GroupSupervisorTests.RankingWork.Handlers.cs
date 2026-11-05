@@ -27,11 +27,13 @@ public abstract partial class GroupSupervisorTests
         }
 
         await using var command = connection.CreateCommand();
+
         // WHY: Only these read-request counters are session-scoped on both engines. MariaDB's GLOBAL-only
         // Handler_read_retry and its deleted-row counter cannot calibrate this cross-engine observation.
         command.CommandText = "SHOW SESSION STATUS WHERE Variable_name IN ("
             + "'Handler_read_first','Handler_read_key','Handler_read_last','Handler_read_next',"
             + "'Handler_read_prev','Handler_read_rnd','Handler_read_rnd_next')";
+
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var values = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
         while (await reader.ReadAsync(cancellationToken))
@@ -64,7 +66,8 @@ public abstract partial class GroupSupervisorTests
         var delta = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
         foreach (var counter in before)
         {
-            if (!after.TryGetValue(counter.Key, out var value) || value < counter.Value)
+            if (!after.TryGetValue(counter.Key, out var value)
+                || value < counter.Value)
             {
                 throw new InvalidOperationException("The ranking session read counters changed identity or reset.");
             }
@@ -86,7 +89,11 @@ public abstract partial class GroupSupervisorTests
     /// <param name="source">The existing fixture source key used by the physical calibration read.</param>
     /// <returns>Raw status-only and lookup deltas, plus the number of completely drained lookup rows.</returns>
     private static async Task<(Dictionary<string, long> Empty, Dictionary<string, long> Lookup, int Rows)>
-        CalibrateRankingHandlersAsync(App.UserGroupContext context, int source, CancellationToken cancellationToken)
+        CalibrateRankingHandlersAsync(
+            App.UserGroupContext context,
+            int source,
+            CancellationToken cancellationToken
+        )
     {
         var before = await ReadRankingHandlersAsync(context, cancellationToken: cancellationToken);
         var empty = await ReadRankingHandlersAsync(context, cancellationToken: cancellationToken);
@@ -104,10 +111,15 @@ public abstract partial class GroupSupervisorTests
             ?? throw new InvalidOperationException("The rank calibration key column is missing.");
 
         var sql = context.GetService<ISqlGenerationHelper>();
-        await using var command = context.Database.GetDbConnection().CreateCommand();
+        await using var command = context
+            .Database
+            .GetDbConnection()
+            .CreateCommand();
+
         command.CommandText = $"SELECT {sql.DelimitIdentifier(column)} "
             + $"FROM {sql.DelimitIdentifier(table, entity.GetSchema())} "
             + $"WHERE {sql.DelimitIdentifier(column)} = @source";
+
         var key = command.CreateParameter();
         key.ParameterName = "source";
         key.DbType = DbType.Int32;
@@ -128,8 +140,14 @@ public abstract partial class GroupSupervisorTests
     }
 
     /// <summary>Labels raw requests without equating them with rows, disk I/O, or equal engine totals.</summary>
-    private static string FormatRankingHandlers(IReadOnlyDictionary<string, long>? values)
-        => values is null ? "not applicable" : string.Join("; ", values
-            .OrderBy(row => row.Key, StringComparer.Ordinal)
-            .Select(row => FormattableString.Invariant($"{row.Key}={row.Value}")));
+    private static string FormatRankingHandlers(
+        IReadOnlyDictionary<string, long>? values
+    )
+        => values is null
+            ? "not applicable"
+            : string.Join(
+                "; ",
+                values
+                    .OrderBy(row => row.Key, StringComparer.Ordinal)
+                    .Select(row => FormattableString.Invariant($"{row.Key}={row.Value}")));
 }

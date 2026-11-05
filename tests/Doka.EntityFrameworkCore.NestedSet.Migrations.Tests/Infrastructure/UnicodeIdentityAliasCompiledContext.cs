@@ -18,14 +18,17 @@ public sealed class UnicodeIdentityAliasCompiledContext : NestedSetDbContext
         node
             .Property(value => value.Id)
             .ValueGeneratedNever();
+
         node
             .Property(value => value.Scope)
             .HasMaxLength(8)
             .HasColumnType("bpchar(8)");
+
         node
             .Property(value => value.TreeId)
             .HasMaxLength(8)
             .HasColumnType("bpchar(8)");
+
         node.HasNestedSet(builder => builder
             .HasScope(value => value.Scope)
             .HasTreeId(value => value.TreeId)

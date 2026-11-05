@@ -46,16 +46,23 @@ internal sealed class StrongIdContext : DbContext
             .Property(entity => entity.Id)
             .HasConversion(id => id.Value, value => new StrongNodeId(value))
             .ValueGeneratedNever();
+
         node
             .Property(entity => entity.ParentId)
             .HasConversion(
-                id => id.HasValue ? id.Value.Value : (int?)null,
-                value => value.HasValue ? new StrongNodeId(value.Value) : null);
+                id => id.HasValue
+                    ? id.Value.Value
+                    : (int?)null,
+                value => value.HasValue
+                    ? new StrongNodeId(value.Value)
+                    : null);
+
         node
             .HasOne<StrongIdNode>()
             .WithMany()
             .HasForeignKey(entity => entity.ParentId)
             .OnDelete(DeleteBehavior.Restrict);
+
         node.HasNestedSet(nestedSet => nestedSet
             .HasNodeKey(entity => entity.Id)
             .HasTreeId(entity => entity.TreeId)

@@ -18,8 +18,10 @@ public sealed class ManagedHeapObservationTests
         var error = await Record.ExceptionAsync(() => ManagedHeapProbe.RunIsolatedAsync("not-a-shape", stop.Token));
 
         // Assert
-        Assert.Equal(stop.Token,
-            Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
+        Assert.Equal(
+            stop.Token,
+            Assert.IsAssignableFrom<OperationCanceledException>(error)
+                .CancellationToken);
     }
 
     /// <summary>A preceding global count proves the newer anchor is before the recorded background cycle.</summary>
@@ -163,12 +165,14 @@ public sealed class ManagedHeapObservationTests
         var firstRequired = completed.HeapSizeBytes - completed.FragmentedBytes + uncollected;
         var firstIndex = completed.Index;
         var first = observation.Sample();
-        var firstStable = GC.GetGCMemoryInfo().Index
+        var firstStable = GC.GetGCMemoryInfo()
+                .Index
             == firstIndex;
 
         if (collectBetween)
         {
             baselineState.Release();
+
             // WHY: Explicit collection exercises the sampler's GC-index transition; operation sampling itself
             // never forces collection or changes the measured code's garbage-collection behavior.
             GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true);
@@ -180,7 +184,8 @@ public sealed class ManagedHeapObservationTests
         var secondRequired = completed.HeapSizeBytes - completed.FragmentedBytes + uncollected;
         var secondIndex = completed.Index;
         var second = observation.Sample();
-        var secondStable = GC.GetGCMemoryInfo().Index
+        var secondStable = GC.GetGCMemoryInfo()
+                .Index
             == secondIndex;
 
         // Assert
@@ -203,6 +208,7 @@ public sealed class ManagedHeapObservationTests
         if (baselineState.Released is { } released)
         {
             Assert.False(released.TryGetTarget(out _));
+
             // WHY: Reclaimed baseline state reduces net growth without removing either strongly held wave.
             Assert.True(second - observation.Baseline < firstAllocated + secondAllocated);
         }
@@ -221,7 +227,7 @@ public sealed class ManagedHeapObservationTests
             // WHY: Each wave owns disjoint retained slots, and every allocation needs its own GC-epoch check.
             // ReSharper disable once ForCanBeConvertedToForeach
             // ReSharper disable once LoopCanBeConvertedToQuery
-            for (var index = firstIndex; index < firstIndex + (held.Length / 2); index++)
+            for (var index = firstIndex; index < firstIndex + held.Length / 2; index++)
             {
                 var before = GC.GetAllocatedBytesForCurrentThread();
                 held[index] = new byte[100_000];
@@ -251,8 +257,13 @@ public sealed class ManagedHeapObservationTests
         bool releaseBaseline
     )
     {
-        var noise = releaseBaseline ? new byte[4_000_000] : null;
-        var released = noise is null ? null : new WeakReference<byte[]>(noise);
+        var noise = releaseBaseline
+            ? new byte[4_000_000]
+            : null;
+
+        var released = noise is null
+            ? null
+            : new WeakReference<byte[]>(noise);
 
         return (() => noise = null, released);
     }
@@ -272,7 +283,8 @@ public sealed class ManagedHeapObservationTests
         const int expectedObjects = 100_000;
 
         // Act
-        var measurement = await ManagedHeapProbe.RunIsolatedAsync(shape,
+        var measurement = await ManagedHeapProbe.RunIsolatedAsync(
+            shape,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -280,7 +292,8 @@ public sealed class ManagedHeapObservationTests
         // original accuracy bound, which rejects both doubled survivors and missing retained allocations.
         Assert.Equal(expectedObjects, measurement.Objects);
         Assert.True(measurement.Allocated > 0);
-        Assert.InRange(measurement.Retained,
+        Assert.InRange(
+            measurement.Retained,
             measurement.Allocated - measurement.Allocated / 10,
             measurement.Allocated + measurement.Allocated / 10);
     }

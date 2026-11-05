@@ -51,6 +51,7 @@ public abstract partial class ContractTests
         await tree
             .InTree(Guid.Empty)
             .RebuildAsync(CancellationToken.None);
+
         var nodes = await tree
             .InTree(Guid.Empty)
             .Nodes

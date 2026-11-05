@@ -49,6 +49,7 @@ public sealed class TrackerMembershipDeltaAllocationTests
         var collection = owner.ScopeNodes;
         var member = HierarchyChangeDetectionTests.CreateNode(width + 1);
         member.TreeId = Guid.NewGuid();
+
         // WHY: Entry snapshots and relationship eligibility are different contracts. An empty write set
         // isolates this bookkeeping budget while the owner and every existing member use real EF entries.
         var warmup = NestedSetTrackerSnapshot.Capture(context, []);
@@ -73,8 +74,10 @@ public sealed class TrackerMembershipDeltaAllocationTests
         // WHY: One lazy tuple-list allocation fits this fixed allowance; copying an 8,192-member owner
         // requires tens of kilobytes and must fail even though one-member owners would hide that growth.
         const long maximum = 4096;
-        _output.WriteLine($"Native membership delta: width={width}; additions=1; allocated={allocated} B; "
+        _output.WriteLine(
+            $"Native membership delta: width={width}; additions=1; allocated={allocated} B; "
             + $"maximum={maximum} B.");
+
         Assert.InRange(allocated, 0, maximum);
         Assert.Equal(width, countBefore);
         Assert.False(containedBefore);
@@ -89,8 +92,11 @@ public sealed class TrackerMembershipDeltaAllocationTests
         Assert.All(existing, node => Assert.Contains(node, nativeAfter));
         Assert.Equal(EntityState.Unchanged, ownerEntry.EntityState);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
+
         GC.KeepAlive(snapshot);
     }
 }

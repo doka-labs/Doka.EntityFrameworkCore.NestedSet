@@ -127,7 +127,8 @@ public sealed partial class ComplexTopologyRollbackTests
                 {
                     var original = collection.GetOriginalEntry(index);
 
-                    return new OriginalElementObservation(original.State,
+                    return new OriginalElementObservation(
+                        original.State,
                         ObserveScalar(original.Property(nameof(TopologyItem.Text))));
                 })
                 .ToArray()
@@ -148,7 +149,12 @@ public sealed partial class ComplexTopologyRollbackTests
         snapshot.Restore();
 
         // Assert
-        Assert.Equal(deleted ? EntityState.Deleted : EntityState.Added, before.State);
+        Assert.Equal(
+            deleted
+                ? EntityState.Deleted
+                : EntityState.Added,
+            before.State);
+
         AssertEdgeGraph(entry, before);
 
         // WHY: Added entries have no authoritative original lane. Deleted entries instead retain original-only
@@ -188,19 +194,24 @@ public sealed partial class ComplexTopologyRollbackTests
 
                 // WHY: A Deleted containing entry has original-only native elements. This fixture retains its
                 // unchanged CLR list separately; public current-lane indexing is forbidden while its owner is Deleted.
-                var element = originalLane ? collection.GetOriginalEntry(index) : collection[index];
+                var element = originalLane
+                    ? collection.GetOriginalEntry(index)
+                    : collection[index];
 
-                return new ItemObservation(item,
+                return new ItemObservation(
+                    item,
                     element.State,
                     ObserveScalar(element.Property(nameof(TopologyItem.Text))),
                     ObserveDetails(element.ComplexProperty(nameof(TopologyItem.Details)), item.Details),
-                    ObserveEdgeLeaves(element.ComplexCollection(nameof(TopologyItem.Leaves)),
+                    ObserveEdgeLeaves(
+                        element.ComplexCollection(nameof(TopologyItem.Leaves)),
                         item.Leaves,
                         originalLane));
             })
             .ToArray();
 
-        return new EdgeGraphObservation(entry.State,
+        return new EdgeGraphObservation(
+            entry.State,
             ObserveScalar(entry.Property(value => value.Marker)),
             rows,
             collection.IsModified,
@@ -239,22 +250,29 @@ public sealed partial class ComplexTopologyRollbackTests
                 continue;
             }
 
-            var element = originalLane ? collection.GetOriginalEntry(index) : collection[index];
+            var element = originalLane
+                ? collection.GetOriginalEntry(index)
+                : collection[index];
 
             Assert.Same(expected.Instance, rows[index]);
             Assert.Equal(expected.State, element.State);
             AssertScalar(element.Property(nameof(TopologyItem.Text)), expected.Text);
             Assert.Equal(expected.Text.Current, rows[index].Text);
-            AssertDetails(element.ComplexProperty(nameof(TopologyItem.Details)),
+            AssertDetails(
+                element.ComplexProperty(nameof(TopologyItem.Details)),
                 rows[index].Details,
                 expected.Details);
-            AssertEdgeLeaves(element.ComplexCollection(nameof(TopologyItem.Leaves)),
+
+            AssertEdgeLeaves(
+                element.ComplexCollection(nameof(TopologyItem.Leaves)),
                 rows[index].Leaves,
                 expected.Leaves,
                 originalLane);
         }
 
-        Assert.False(entry.Property(value => value.Id).IsModified);
+        Assert.False(
+            entry.Property(value => value.Id)
+                .IsModified);
     }
 
     /// <summary>Observes original-only nested entries without invoking the Deleted parent's current lane.</summary>
@@ -279,7 +297,8 @@ public sealed partial class ComplexTopologyRollbackTests
             for (var index = 0; index < leaves.Count; index++)
             {
                 var original = collection.GetOriginalEntry(index);
-                values[index] = new LeafObservation(leaves[index],
+                values[index] = new LeafObservation(
+                    leaves[index],
                     original.State,
                     ObserveScalar(original.Property(nameof(TopologyLeaf.Text))));
             }

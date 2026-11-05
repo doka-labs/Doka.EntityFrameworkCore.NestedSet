@@ -3,11 +3,11 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Records real lock commands and their typed parameters without changing execution.</summary>
 internal sealed class OrderingLockProbe : DbCommandInterceptor
 {
-    /// <summary>Gets or sets the shared barrier before each context's first server anchor-lock attempt.</summary>
-    internal OrderingLockBarrier? FirstAnchorBarrier { get; init; }
-
     /// <summary>Whether this observer has already joined its one-shot first-lock barrier.</summary>
     private bool _joinedBarrier;
+
+    /// <summary>Gets or sets the shared barrier before each context's first server anchor-lock attempt.</summary>
+    internal OrderingLockBarrier? FirstAnchorBarrier { get; init; }
 
     /// <summary>Gets commands issued during the measured operation, in connection execution order.</summary>
     internal List<OrderingLockCommand> Commands { get; } = [];
@@ -24,7 +24,9 @@ internal sealed class OrderingLockProbe : DbCommandInterceptor
 
             return start >= 0
                 && end > start
-                && command.Sql[start..end].Contains("Name", StringComparison.OrdinalIgnoreCase);
+                && command
+                    .Sql[start..end]
+                    .Contains("Name", StringComparison.OrdinalIgnoreCase);
         });
 
     /// <inheritdoc />
@@ -77,7 +79,9 @@ internal sealed class OrderingLockProbe : DbCommandInterceptor
             .Parameters
             .Cast<DbParameter>()
             .Select(parameter => new OrderingLockParameter(
-                parameter.Value is byte[] binary ? binary.ToArray() : parameter.Value,
+                parameter.Value is byte[] binary
+                    ? binary.ToArray()
+                    : parameter.Value,
                 parameter.DbType))
             .ToArray();
 

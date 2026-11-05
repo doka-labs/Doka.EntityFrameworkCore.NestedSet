@@ -101,7 +101,9 @@ public sealed partial class ComplexCollectionStorageRecoveryTests
         Assert.False(inner.IsModified);
         Assert.False(outer.IsModified);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 }

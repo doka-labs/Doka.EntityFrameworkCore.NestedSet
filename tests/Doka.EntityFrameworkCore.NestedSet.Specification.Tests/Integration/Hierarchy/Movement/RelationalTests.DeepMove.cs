@@ -19,9 +19,11 @@ public abstract partial class RelationalTests
                     {
                         NodeId = id,
                         Tree = 1,
-                        Parent = id == 1 ? null : id - 1,
+                        Parent = id == 1
+                            ? null
+                            : id - 1,
                         Start = id,
-                        End = (2 * count) - id + 1,
+                        End = 2 * count - id + 1,
                         Depth = id - 1,
                         Position = 0,
                     }),
@@ -60,7 +62,11 @@ public abstract partial class RelationalTests
         Assert.Equal(0, nodes[1].Position);
         Assert.All(nodes.Skip(1), node => Assert.Equal(node.NodeId - 2, node.Depth));
         await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
-        Assert.Equal(beforeOther, await SnapshotAsync(context, 2,
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            beforeOther,
+            await SnapshotAsync(
+                context,
+                2,
+                cancellationToken: TestContext.Current.CancellationToken));
     }
 }

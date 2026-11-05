@@ -13,7 +13,8 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var probe = new SaveBoundaryProbe { FailNextPayload = true };
@@ -39,8 +40,12 @@ public abstract partial class SaveChangesTests
         Assert.Equal(2, probe.PayloadCommands);
         Assert.Equal(0, probe.LockCommands);
         Assert.Equal(
-            acceptChanges ? EntityState.Unchanged : EntityState.Added,
-            context.Entry(marker).State);
+            acceptChanges
+                ? EntityState.Unchanged
+                : EntityState.Added,
+            context.Entry(marker)
+                .State);
+
         Assert.Equal(
             "retry payload",
             await setup
@@ -61,11 +66,15 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var probe = new SaveBoundaryProbe();
-        await using var context = new SaveBoundaryContext(SaveBoundaryTestSupport.Options(setup, probe).Options);
+        await using var context = new SaveBoundaryContext(
+            SaveBoundaryTestSupport.Options(setup, probe)
+                .Options);
+
         await using var transaction = await context.Database.BeginTransactionAsync(isolation, CancellationToken.None);
         await context.AddAsync(
             new OrderingMarker
@@ -78,7 +87,8 @@ public abstract partial class SaveChangesTests
         // Act
         var saved = await context.SaveChangesAsync(CancellationToken.None);
         var current = context.Database.CurrentTransaction;
-        var actualIsolation = transaction.GetDbTransaction().IsolationLevel;
+        var actualIsolation = transaction.GetDbTransaction()
+            .IsolationLevel;
 
         await transaction.RollbackAsync(CancellationToken.None);
 
@@ -100,13 +110,15 @@ public abstract partial class SaveChangesTests
     public async Task FailedUnrelatedSaveKeepsNativePendingCallbackState()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var probe = new SaveBoundaryProbe { FailNextPayload = true };
         var callback = new SaveBoundaryCallback();
         await using var context = new SaveBoundaryContext(
-            SaveBoundaryTestSupport.Options(setup, probe, callback).Options);
+            SaveBoundaryTestSupport.Options(setup, probe, callback)
+                .Options);
 
         var marker = new OrderingMarker
         {
@@ -123,7 +135,11 @@ public abstract partial class SaveChangesTests
         // Assert
         Assert.NotNull(failure);
         Assert.Equal("from callback", marker.Value);
-        Assert.Equal(EntityState.Added, context.Entry(marker).State);
+        Assert.Equal(
+            EntityState.Added,
+            context.Entry(marker)
+                .State);
+
         Assert.Equal(0, probe.LockCommands);
         Assert.Empty(
             await setup

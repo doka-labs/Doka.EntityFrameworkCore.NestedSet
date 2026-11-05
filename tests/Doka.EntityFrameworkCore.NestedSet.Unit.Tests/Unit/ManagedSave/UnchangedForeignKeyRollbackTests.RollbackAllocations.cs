@@ -56,6 +56,7 @@ public sealed partial class UnchangedForeignKeyRollbackTests
         StageUnmarkedRoundTrip();
         warmup.PrepareRestore();
         warmup.RestoreSnapshots();
+
         // WHY: The before-repair profile loses this native member. Reset known fixture state outside the
         // measured interval so both versions start with identical actual membership and original CLR order.
         NestedSetInsertionContract.Instance.AddCollectionSnapshot(ownerUpdate, navigation, node);
@@ -64,6 +65,7 @@ public sealed partial class UnchangedForeignKeyRollbackTests
         var snapshot = CaptureRelationships();
         StageUnmarkedRoundTrip();
         var pendingOrder = owner.Nodes.ToArray();
+
         // WHY: This probe isolates indexed native/collection repair from complete scalar/flag replay.
         // Complete tracker capture and complete selected-entry recovery have their own unchanged budgets.
         snapshot.PrepareRestore();
@@ -78,21 +80,30 @@ public sealed partial class UnchangedForeignKeyRollbackTests
         // WHY: Native FK verification, endpoint comparison and exact-member repair must remain linear
         // instead of rescanning this owner for every dependent in the complete captured set.
         var maximum = 65_536L + nodes * 1536L;
-        _output.WriteLine($"Native snapshot stage: nodes={nodes}; entries={entries.Length}; "
+        _output.WriteLine(
+            $"Native snapshot stage: nodes={nodes}; entries={entries.Length}; "
             + $"allocated={allocated} B; maximum={maximum} B.");
+
         Assert.InRange(allocated, 1, maximum);
         Assert.Equal(nodes + 2, entries.Length);
         Assert.Equal(pendingOrder, owner.Nodes);
-        Assert.True(Members(ownerUpdate, navigation)
-            .ToHashSet(ReferenceEqualityComparer.Instance)
-            .SetEquals(members));
+        Assert.True(
+            Members(ownerUpdate, navigation)
+                .ToHashSet(ReferenceEqualityComparer.Instance)
+                .SetEquals(members));
+
         Assert.Equal(owner.Id, node.OwnerId);
         Assert.Same(owner, node.Owner);
-        Assert.False(entry.Property(value => value.OwnerId).IsModified);
+        Assert.False(
+            entry.Property(value => value.OwnerId)
+                .IsModified);
+
         Assert.Empty(transient.Nodes);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
 
         return;
 
@@ -117,9 +128,14 @@ public sealed partial class UnchangedForeignKeyRollbackTests
         void StageUnmarkedRoundTrip()
         {
             owner.Nodes.Add(node);
-            entry.Property(value => value.OwnerId).CurrentValue = transient.Id;
-            entry.Property(value => value.OwnerId).CurrentValue = owner.Id;
-            entry.Property(value => value.OwnerId).IsModified = false;
+            entry.Property(value => value.OwnerId)
+                .CurrentValue = transient.Id;
+
+            entry.Property(value => value.OwnerId)
+                .CurrentValue = owner.Id;
+
+            entry.Property(value => value.OwnerId)
+                .IsModified = false;
         }
     }
 
@@ -154,11 +170,14 @@ public sealed partial class UnchangedForeignKeyRollbackTests
         var node = members[nodes / 2];
         var entry = context.Entry(node);
         node.Name = "Pending name";
-        entry.Property(value => value.Name).IsModified = true;
+        entry.Property(value => value.Name)
+            .IsModified = true;
+
         var update = Update(context, node);
         var ownerUpdate = Update(context, owner);
         var navigation = entry.Metadata.FindNavigation(nameof(RollbackNode.Owner))!.Inverse!;
         var original = owner.Nodes.ToArray();
+
         // WHY: Warm the actual native move, projection, original restoration and verification on this graph.
         var warmup = NestedSetTrackerSnapshot.Capture(context, [update]);
         StageNativeMove(warmup);
@@ -175,19 +194,29 @@ public sealed partial class UnchangedForeignKeyRollbackTests
         // WHY: Includes the complete exceptional recovery, not just the tuple receipt. A repeated full
         // owner copy for every selected/original occurrence would exceed this fixed linear envelope.
         var maximum = 32_768L + nodes * 384L;
-        _output.WriteLine($"Supplemental recovery: width={nodes}; entries=1; allocated={allocated} B; "
+        _output.WriteLine(
+            $"Supplemental recovery: width={nodes}; entries=1; allocated={allocated} B; "
             + $"maximum={maximum} B.");
+
         Assert.InRange(allocated, 1, maximum);
         Assert.Equal(original, owner.Nodes, ReferenceEqualityComparer.Instance);
         Assert.Empty(transient.Nodes);
         Assert.Equal(owner.Id, node.OwnerId);
         Assert.Same(owner, node.Owner);
-        Assert.False(entry.Property(value => value.OwnerId).IsModified);
-        Assert.True(entry.Property(value => value.Name).IsModified);
+        Assert.False(
+            entry.Property(value => value.OwnerId)
+                .IsModified);
+
+        Assert.True(
+            entry.Property(value => value.Name)
+                .IsModified);
+
         Assert.Contains(node, Members(ownerUpdate, navigation));
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
 
         return;
 
@@ -196,9 +225,13 @@ public sealed partial class UnchangedForeignKeyRollbackTests
             NestedSetTrackerSnapshot target
         )
         {
-            entry.Property(value => value.OwnerId).CurrentValue = transient.Id;
+            entry.Property(value => value.OwnerId)
+                .CurrentValue = transient.Id;
+
             node.OwnerId = owner.Id;
-            entry.Property(value => value.OwnerId).IsModified = true;
+            entry.Property(value => value.OwnerId)
+                .IsModified = true;
+
             owner.Nodes.Add(node);
             target.RecordPersistedAddition(ownerUpdate, navigation, node);
             NestedSetInsertionContract.Instance.AddCollectionSnapshot(ownerUpdate, navigation, node);

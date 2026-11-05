@@ -4,6 +4,7 @@ using Doka.EntityFrameworkCore.NestedSet.Features.Queries;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Checks immutable structural selector reuse without sharing model, query, or request identities.</summary>
+
 // WHY: Concurrent model-cache lookups and resizing can temporarily root weak keys from another suite.
 // Observe lifetime only after those mutators finish; the collection leaves unrelated tests parallel.
 [Collection("Allocation measurements")]
@@ -25,13 +26,15 @@ public sealed partial class CompositionCoordinateProjectionTests
         // Arrange
         var options = CoordinateOptions();
         await using var provider = CoordinateServices(options);
-        await using var first = new CoordinateContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var first = new CoordinateContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
-        await using var second = new CoordinateContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var second = new CoordinateContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         // Act
         var original = Coordinates(first, mapping, includeNonLeaf);
@@ -62,13 +65,15 @@ public sealed partial class CompositionCoordinateProjectionTests
         var options = CoordinateOptions();
         await using var firstProvider = CoordinateServices(options);
         await using var secondProvider = CoordinateServices(options);
-        await using var first = new CoordinateContext(options
-            .UseInternalServiceProvider(firstProvider)
-            .Options);
+        await using var first = new CoordinateContext(
+            options
+                .UseInternalServiceProvider(firstProvider)
+                .Options);
 
-        await using var second = new CoordinateContext(options
-            .UseInternalServiceProvider(secondProvider)
-            .Options);
+        await using var second = new CoordinateContext(
+            options
+                .UseInternalServiceProvider(secondProvider)
+                .Options);
 
         var original = Coordinates(first, CoordinateContext.Scoped, includeNonLeaf: false);
 
@@ -102,9 +107,10 @@ public sealed partial class CompositionCoordinateProjectionTests
         // Arrange
         var options = CoordinateOptions();
         await using var provider = CoordinateServices(options);
-        await using var context = new CoordinateContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new CoordinateContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var scoped = mapping == CoordinateContext.Scoped;
         var names = scoped
@@ -131,9 +137,15 @@ public sealed partial class CompositionCoordinateProjectionTests
             .Select(binding => Assert.IsAssignableFrom<MethodCallExpression>(binding.Expression))
             .ToArray();
 
-        Assert.Equal(includeNonLeaf ? names : names[..^1],
-            calls.Select(call => Assert.IsType<ConstantExpression>(call.Arguments[1]).Value));
-        Assert.All(calls,
+        Assert.Equal(
+            includeNonLeaf
+                ? names
+                : names[..^1],
+            calls.Select(call => Assert.IsType<ConstantExpression>(call.Arguments[1])
+                .Value));
+
+        Assert.All(
+            calls,
             call =>
             {
                 Assert.Equal(typeof(EF), call.Method.DeclaringType);
@@ -187,9 +199,10 @@ public sealed partial class CompositionCoordinateProjectionTests
         // Arrange
         var options = CoordinateOptions();
         await using var provider = CoordinateServices(options);
-        await using var context = new CoordinateContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new CoordinateContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var mapping = context.Model.FindEntityType(CoordinateContext.Scoped)!;
         var roots = Enumerable
@@ -202,9 +215,11 @@ public sealed partial class CompositionCoordinateProjectionTests
             .AsQueryable();
 
         // Act
-        var selectors = await Task.WhenAll(roots.Select(root => Task.Run(
-            () => CoordinateSelection(root, source, includeNonLeaf: true).Selector,
-            CancellationToken.None)));
+        var selectors = await Task.WhenAll(
+            roots.Select(root => Task.Run(
+                () => CoordinateSelection(root, source, includeNonLeaf: true)
+                    .Selector,
+                CancellationToken.None)));
 
         // Assert
         Assert.All(selectors, selector => Assert.Same(selectors[0], selector));
@@ -218,9 +233,10 @@ public sealed partial class CompositionCoordinateProjectionTests
         // Arrange
         var options = CoordinateOptions();
         await using var provider = CoordinateServices(options);
-        await using var context = new CoordinateContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new CoordinateContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var entity = context.Model.FindEntityType(CoordinateContext.Scoped)!;
         var root = new NestedSetQuery<Dictionary<string, object>>(context, entity);
@@ -263,9 +279,10 @@ public sealed partial class CompositionCoordinateProjectionTests
             .AddInterceptors(boundary);
 
         await using var provider = CoordinateServices(options);
-        await using var context = new CoordinateContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new CoordinateContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var entity = context.Model.FindEntityType(typeof(CoordinateNode))!;
         var root = new NestedSetQuery<CoordinateNode>(context, entity);
@@ -281,8 +298,11 @@ public sealed partial class CompositionCoordinateProjectionTests
         Assert.Contains("\"TreeId\"", sql, StringComparison.Ordinal);
         Assert.Contains("\"Left\"", sql, StringComparison.Ordinal);
         Assert.Contains("\"Right\"", sql, StringComparison.Ordinal);
-        Assert.Equal(typeof(string),
-            entity.FindProperty("TreeId")!.GetTypeMapping().Converter!.ProviderClrType);
+        Assert.Equal(
+            typeof(string),
+            entity.FindProperty("TreeId")!.GetTypeMapping()
+                .Converter!.ProviderClrType);
+
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
         Assert.Empty(context.ChangeTracker.Entries());

@@ -20,7 +20,8 @@ public abstract class BulkGeneratedTests : ProviderTest
     public async Task GeneratedParentsAndSortValuesAreResolvedInOneSave()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var saves = 0;
@@ -44,7 +45,7 @@ public abstract class BulkGeneratedTests : ProviderTest
 
         // Act
         await tree.InsertForestAsync(
-            [new NestedSetTreeImport<BulkGeneratedNode, Guid>(Guid.Empty, branch),],
+            [new NestedSetTreeImport<BulkGeneratedNode, Guid>(Guid.Empty, branch)],
             CancellationToken.None);
 
         // Assert
@@ -57,9 +58,10 @@ public abstract class BulkGeneratedTests : ProviderTest
                 generated,
                 zulu,
                 alpha,
-                leaf
+                leaf,
             },
             node => Assert.True(node.Id > 0));
+
         Assert.Equal(root.Id, generated.ParentId);
         Assert.Equal(generated.Id, leaf.ParentId);
         Assert.Equal(
@@ -69,12 +71,13 @@ public abstract class BulkGeneratedTests : ProviderTest
                 alpha.Id,
                 generated.Id,
                 leaf.Id,
-                zulu.Id
+                zulu.Id,
             },
             await tree
                 .TreeContaining(leaf.Id)
                 .Select(node => node.Id)
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Empty(context.ChangeTracker.Entries());
         Assert.Empty(
             (await tree
@@ -90,7 +93,8 @@ public abstract class BulkGeneratedTests : ProviderTest
     {
         // Arrange
         var probe = new BulkRefreshFailure("BulkGeneratedNodes");
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -111,7 +115,7 @@ public abstract class BulkGeneratedTests : ProviderTest
 
         // Act
         var error = await Record.ExceptionAsync(() => tree.InsertForestAsync(
-            [new NestedSetTreeImport<BulkGeneratedNode, Guid>(Guid.Empty, branch),],
+            [new NestedSetTreeImport<BulkGeneratedNode, Guid>(Guid.Empty, branch)],
             CancellationToken.None));
 
         // Assert
@@ -139,7 +143,8 @@ public abstract class BulkGeneratedTests : ProviderTest
     {
         // Arrange
         var probe = new BulkRefreshFailure("BulkGeneratedNodes");
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -163,7 +168,7 @@ public abstract class BulkGeneratedTests : ProviderTest
 
         // Act
         var error = await Record.ExceptionAsync(() => tree.InsertForestAsync(
-            [new NestedSetTreeImport<BulkGeneratedNode, Guid>(Guid.Empty, branch),],
+            [new NestedSetTreeImport<BulkGeneratedNode, Guid>(Guid.Empty, branch)],
             CancellationToken.None));
 
         // Assert

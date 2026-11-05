@@ -54,10 +54,11 @@ public sealed partial class TypedPropertyReadTests
 
         /// <summary>Creates a model-only context with automatic detection disabled for explicit live reads.</summary>
         internal ReadContext()
-            : base(new DbContextOptionsBuilder<ReadContext>()
-                .ConfigureTestWarnings()
-                .UseSqlite("Data Source=:memory:")
-                .Options)
+            : base(
+                new DbContextOptionsBuilder<ReadContext>()
+                    .ConfigureTestWarnings()
+                    .UseSqlite("Data Source=:memory:")
+                    .Options)
         {
             ChangeTracker.AutoDetectChangesEnabled = false;
         }
@@ -71,6 +72,7 @@ public sealed partial class TypedPropertyReadTests
             node
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             node.Property<int?>(ShadowParent);
 
             var valueConverter =
@@ -86,6 +88,7 @@ public sealed partial class TypedPropertyReadTests
             node
                 .Property(value => value.StructParent)
                 .HasConversion(valueConverter);
+
             node
                 .Property(value => value.ConvertedReferenceParent)
                 .HasConversion(referenceConverter);
@@ -103,6 +106,7 @@ public sealed partial class TypedPropertyReadTests
             shared
                 .IndexerProperty<int>(SharedKey)
                 .ValueGeneratedNever();
+
             shared.IndexerProperty<int?>(SharedParent);
             shared.HasKey(SharedKey);
         }
@@ -115,7 +119,9 @@ public sealed partial class TypedPropertyReadTests
         /// <summary>Restores optional provider storage without replacing a missing parent with a default key.</summary>
         private static ReferenceKey? FromProvider(
             string? value
-        ) => value is null ? null : new ReferenceKey(value);
+        ) => value is null
+            ? null
+            : new ReferenceKey(value);
     }
 
     /// <summary>Provides an operator-free converted value key.</summary>
@@ -162,16 +168,22 @@ public sealed partial class TypedPropertyReadTests
         public override int GetHashCode() => StringComparer.Ordinal.GetHashCode(Value);
 
         /// <summary>Deliberately reports every pair equal; presence must not invoke this domain operator.</summary>
-        public static bool operator ==(
+        public static bool operator==(
             ReferenceKey? first,
             ReferenceKey? second
-        ) => true;
+        )
+        {
+            return true;
+        }
 
         /// <summary>Deliberately hides all inequality; parent presence must ignore this domain operator.</summary>
-        public static bool operator !=(
+        public static bool operator!=(
             ReferenceKey? first,
             ReferenceKey? second
-        ) => false;
+        )
+        {
+            return false;
+        }
     }
 
     /// <summary>Exposes ordinary structural values and all supported optional parent shapes.</summary>

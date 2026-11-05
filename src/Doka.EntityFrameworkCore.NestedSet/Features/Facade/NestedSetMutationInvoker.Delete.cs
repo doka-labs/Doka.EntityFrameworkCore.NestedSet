@@ -27,7 +27,9 @@ internal sealed partial class
         CancellationToken cancellationToken
     ) => NestedSetTelemetry.ExecuteAsync(
         binding.Context,
-        subtree ? "delete_subtree" : "delete",
+        subtree
+            ? "delete_subtree"
+            : "delete",
         async token =>
         {
             RequireNoPendingWrites(binding, token);
@@ -44,7 +46,9 @@ internal sealed partial class
             await ExecuteResolvedAsync(
                     binding,
                     [(nodeKey, treeId)],
-                    () => subtree ? delete.DeleteSubtreeAsync(nodeKey, token) : delete.DeleteAsync(nodeKey, token),
+                    () => subtree
+                        ? delete.DeleteSubtreeAsync(nodeKey, token)
+                        : delete.DeleteAsync(nodeKey, token),
                     token)
                 .ConfigureAwait(false);
         },

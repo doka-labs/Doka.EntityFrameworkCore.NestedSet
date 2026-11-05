@@ -23,7 +23,9 @@ public abstract partial class SingleInsertGuardTests
         await context.SaveChangesAsync(CancellationToken.None);
 
         // Act
-        var rejected = await FailSingleTrackingInputAsync(context, owned,
+        var rejected = await FailSingleTrackingInputAsync(
+            context,
+            owned,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // WHY: Async completion can resume this observer inside the producer's exception stack. Yield once
@@ -37,17 +39,23 @@ public abstract partial class SingleInsertGuardTests
         Assert.True(rejected.Restored);
         Assert.False(rejected.Root.IsAlive);
         Assert.False(rejected.Owned.IsAlive);
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
         Assert.Empty(
             await context
                 .Set<SingleIdentityNode>()
                 .AsNoTracking()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal(
             1,
             await context
                 .Set<UnrelatedRow>()
                 .CountAsync(CancellationToken.None));
+
         GC.KeepAlive(context);
     }
 
@@ -68,7 +76,11 @@ public abstract partial class SingleInsertGuardTests
         EventHandler<EntityTrackingEventArgs> callback = (_, args) =>
         {
             if (input is not null
-                && ReferenceEquals(args.Entry.Entity, owned ? input.Details : input))
+                && ReferenceEquals(
+                    args.Entry.Entity,
+                    owned
+                        ? input.Details
+                        : input))
             {
                 throw failure;
             }

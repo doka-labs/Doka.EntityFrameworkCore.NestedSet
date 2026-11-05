@@ -8,27 +8,47 @@ public abstract partial class HierarchyCompositionCapacityTests
     [InlineData(false)]
     [InlineData(true)]
     [Trait("Category", "Capacity")]
-    public async Task DeepSignalProofReuseRetainsResultsAndReportsNativeWork(bool repeatedFacts)
+    public async Task DeepSignalProofReuseRetainsResultsAndReportsNativeWork(
+        bool repeatedFacts
+    )
     {
         // Arrange
         const int nodes = 100_001;
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var setup = database.CreateContext();
-        await CapacitySeed.SeedAsync(setup, nodes, deep: true,
-            cancellationToken: TestContext.Current.CancellationToken);
-        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(setup, Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
-        var data = await CompositionConsumerDataset.CreateAsync(database, Engine, nodes, deep: true,
+        await CapacitySeed.SeedAsync(
+            setup,
+            nodes,
+            deep: true,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var request = repeatedFacts ? data.Report(16, 2, 3, 2, nearest: true)
+        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(
+            setup,
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var data = await CompositionConsumerDataset.CreateAsync(
+            database,
+            Engine,
+            nodes,
+            deep: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var request = repeatedFacts
+            ? data.Report(16, 2, 3, 2, nearest: true)
             : data.Report(1, 1, 1, 1, nearest: false);
 
         // Act
         var observation = await CompositionConsumerCapacityProfiles.MeasureSignalsAsync(
-            database, Engine, data, request, balanced: false, deep: true,
+            database,
+            Engine,
+            data,
+            request,
+            balanced: false,
+            deep: true,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -37,7 +57,8 @@ public abstract partial class HierarchyCompositionCapacityTests
         if (Engine == "MySql")
         {
             var work = CompositionPlanWork.ReadMySqlTree(observation.Plan);
-            _output.WriteLine($"{observation.Profile}; maximumOperatorTuples={work.MaximumOperatorTuples}; "
+            _output.WriteLine(
+                $"{observation.Profile}; maximumOperatorTuples={work.MaximumOperatorTuples}; "
                 + $"maximumMaterializedTuples={work.MaximumMaterializedTuples}; "
                 + $"rootOutputTuples={work.RootOutputTuples}; "
                 + $"sumIteratorOutputTuples={work.SumIteratorOutputTuples}.");
@@ -46,7 +67,10 @@ public abstract partial class HierarchyCompositionCapacityTests
             // default plans emit about 16n/38n tuples across all stages; 18n/40n retain bounded headroom
             // while rejecting the four extra population passes observed with the JSON collection variant.
             // This sum counts intermediate outputs, not disjoint source rows or physical database reads.
-            var maximumOutputSum = checked((repeatedFacts ? 40L : 18L) * nodes);
+            var maximumOutputSum = checked((repeatedFacts
+                    ? 40L
+                    : 18L)
+                * nodes);
 
             Assert.InRange(work.SumIteratorOutputTuples, 0, maximumOutputSum);
 

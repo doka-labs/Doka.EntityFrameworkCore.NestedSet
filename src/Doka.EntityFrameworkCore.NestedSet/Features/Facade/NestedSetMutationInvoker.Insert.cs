@@ -68,7 +68,9 @@ internal sealed partial class
         {
             RequireNoPendingWrites(binding, token);
             var key = SnapshotKey(binding, parent);
-            var treeId = await ResolveTreeIdAsync(binding, key, token).ConfigureAwait(false);
+            var treeId = await ResolveTreeIdAsync(binding, key, token)
+                .ConfigureAwait(false);
+
             var insert = Insert(binding, Store(binding, treeId));
 
             await ExecuteResolvedAsync(

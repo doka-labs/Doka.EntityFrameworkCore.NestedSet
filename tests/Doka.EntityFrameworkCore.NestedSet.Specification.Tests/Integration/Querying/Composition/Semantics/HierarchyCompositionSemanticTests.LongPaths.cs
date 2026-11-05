@@ -31,7 +31,13 @@ public abstract partial class HierarchyCompositionSemanticTests
         var tree = Guid.NewGuid();
         var nodes = LongChain(scope, tree, 1, 6);
         var foreignTree = LongChain(scope, Guid.NewGuid(), 101, 6);
-        var foreignScope = LongChain(Guid.NewGuid(), tree, parentKind == "foreign-scope" ? 1 : 201, 6);
+        var foreignScope = LongChain(
+            Guid.NewGuid(),
+            tree,
+            parentKind == "foreign-scope"
+                ? 1
+                : 201,
+            6);
 
         // WHY: The compound foreign key forbids a link to a key that exists only in another scope.
         // Keep that case reachable: its real local parent remains valid while the equal foreign key
@@ -54,25 +60,53 @@ public abstract partial class HierarchyCompositionSemanticTests
             _ => throw new ArgumentOutOfRangeException(nameof(parentKind)),
         };
 
-        var all = nodes.Concat(foreignTree).Concat(foreignScope).ToArray();
+        var all = nodes
+            .Concat(foreignTree)
+            .Concat(foreignScope)
+            .ToArray();
+
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateLongPathContextAsync(scope, 6, all, probe,
+        await using var context = await CreateLongPathContextAsync(
+            scope,
+            6,
+            all,
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
         var rows = LongRows(context, scope, 1, 1, 6);
-        var expected = ExpectedLongRows(all, scope, tree, 1, 1, 6, filter);
+        var expected = ExpectedLongRows(
+            all,
+            scope,
+            tree,
+            1,
+            1,
+            6,
+            filter);
 
         // Act
         var query = filter switch
         {
-            "independent" => hierarchy.WherePathEdges(rows, row => row.Upper, row => row.Node,
+            "independent" => hierarchy.WherePathEdges(
+                rows,
+                row => row.Upper,
+                row => row.Node,
                 (row, parent, child) => child.EdgeOpen),
-            "correlated" => hierarchy.WherePathEdges(rows, row => row.Upper, row => row.Node,
-                (row, parent, child) => child.EdgeOpen && child.FromDate <= row.Day
+            "correlated" => hierarchy.WherePathEdges(
+                rows,
+                row => row.Upper,
+                row => row.Node,
+                (row, parent, child) => child.EdgeOpen
+                    && child.FromDate <= row.Day
                     && (!child.ToDate.HasValue || row.Day <= child.ToDate.Value)),
-            "nearest" => hierarchy.WhereNearestAncestorOrSelf(rows, row => row.Node,
-                (row, owner) => owner.Candidate, (row, owner) => owner.Matches),
+            "nearest" => hierarchy.WhereNearestAncestorOrSelf(
+                rows,
+                row => row.Node,
+                (row, owner) => owner.Candidate,
+                (row, owner) => owner.Matches),
             _ => throw new ArgumentOutOfRangeException(nameof(filter)),
         };
 
@@ -123,23 +157,48 @@ public abstract partial class HierarchyCompositionSemanticTests
         }
 
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateLongPathContextAsync(scope, 9, nodes, probe,
+        await using var context = await CreateLongPathContextAsync(
+            scope,
+            9,
+            nodes,
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope).InTree(tree);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope)
+            .InTree(tree);
+
         var rows = LongRows(context, scope, 4, 4, 9);
-        var expected = ExpectedLongRows(nodes, scope, tree, 4, 4, 9, filter);
+        var expected = ExpectedLongRows(
+            nodes,
+            scope,
+            tree,
+            4,
+            4,
+            9,
+            filter);
 
         // Act
         var query = filter switch
         {
-            "independent" => hierarchy.WherePathEdges(rows, row => row.Upper, row => row.Node,
+            "independent" => hierarchy.WherePathEdges(
+                rows,
+                row => row.Upper,
+                row => row.Node,
                 (row, parent, child) => child.EdgeOpen),
-            "correlated" => hierarchy.WherePathEdges(rows, row => row.Upper, row => row.Node,
-                (row, parent, child) => child.EdgeOpen && child.FromDate <= row.Day
+            "correlated" => hierarchy.WherePathEdges(
+                rows,
+                row => row.Upper,
+                row => row.Node,
+                (row, parent, child) => child.EdgeOpen
+                    && child.FromDate <= row.Day
                     && (!child.ToDate.HasValue || row.Day <= child.ToDate.Value)),
-            "nearest" => hierarchy.WhereNearestAncestorOrSelf(rows, row => row.Node,
-                (row, owner) => owner.Candidate, (row, owner) => owner.Matches),
+            "nearest" => hierarchy.WhereNearestAncestorOrSelf(
+                rows,
+                row => row.Node,
+                (row, owner) => owner.Candidate,
+                (row, owner) => owner.Matches),
             _ => throw new ArgumentOutOfRangeException(nameof(filter)),
         };
 
@@ -175,31 +234,66 @@ public abstract partial class HierarchyCompositionSemanticTests
 
         var sibling = new CompositionNode
         {
-            Scope = scope, TreeId = tree, Id = 9, ParentId = null,
-            Left = 16, Right = 17, Depth = 1, Position = 1, EdgeOpen = false,
+            Scope = scope,
+            TreeId = tree,
+            Id = 9,
+            ParentId = null,
+            Left = 16,
+            Right = 17,
+            Depth = 1,
+            Position = 1,
+            EdgeOpen = false,
         };
 
         // WHY: Bounds still describe the valid chain plus its sibling. Only the unrelated incoming
         // Parent links are deliberately invalid; completeness below the chosen upper must ignore them.
-        var all = nodes.Append(sibling).ToArray();
+        var all = nodes
+            .Append(sibling)
+            .ToArray();
+
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateLongPathContextAsync(scope, 8, all, probe,
+        await using var context = await CreateLongPathContextAsync(
+            scope,
+            8,
+            all,
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope).InTree(tree);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope)
+            .InTree(tree);
+
         var rows = LongRows(context, scope, 3, 3, 8);
-        var expected = ExpectedLongRows(all, scope, tree, 3, 3, 8, filter);
+        var expected = ExpectedLongRows(
+            all,
+            scope,
+            tree,
+            3,
+            3,
+            8,
+            filter);
 
         // Act
         var query = filter switch
         {
-            "independent" => hierarchy.WherePathEdges(rows, row => row.Upper, row => row.Node,
+            "independent" => hierarchy.WherePathEdges(
+                rows,
+                row => row.Upper,
+                row => row.Node,
                 (row, parent, child) => child.EdgeOpen),
-            "correlated" => hierarchy.WherePathEdges(rows, row => row.Upper, row => row.Node,
-                (row, parent, child) => child.EdgeOpen && child.FromDate <= row.Day
+            "correlated" => hierarchy.WherePathEdges(
+                rows,
+                row => row.Upper,
+                row => row.Node,
+                (row, parent, child) => child.EdgeOpen
+                    && child.FromDate <= row.Day
                     && (!child.ToDate.HasValue || row.Day <= child.ToDate.Value)),
-            "nearest" => hierarchy.WhereNearestAncestorOrSelf(rows, row => row.Node,
-                (row, owner) => owner.Candidate, (row, owner) => owner.Matches),
+            "nearest" => hierarchy.WhereNearestAncestorOrSelf(
+                rows,
+                row => row.Node,
+                (row, owner) => owner.Candidate,
+                (row, owner) => owner.Matches),
             _ => throw new ArgumentOutOfRangeException(nameof(filter)),
         };
 
@@ -230,36 +324,92 @@ public abstract partial class HierarchyCompositionSemanticTests
         var foreignScope = LongChain(otherScope, tree, 1, 6);
         foreignTree[3].ParentId = null;
         foreignScope[3].ParentId = null;
-        var all = nodes.Concat(foreignTree).Concat(foreignScope).ToArray();
+        var all = nodes
+            .Concat(foreignTree)
+            .Concat(foreignScope)
+            .ToArray();
+
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateLongPathContextAsync(scope, 6, all, probe,
+        await using var context = await CreateLongPathContextAsync(
+            scope,
+            6,
+            all,
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope).InTree(tree);
-        var localRows = LongRows(context, scope, 1, 2, 6);
-        var anchors = context.Set<CompositionNode>().Where(node => node.Scope == scope && node.Id <= 2);
-        var foreign = context.Set<CompositionNode>().Where(node =>
-            (node.Scope == scope && node.Id == 106) || (node.Scope == otherScope && node.Id == 6));
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope)
+            .InTree(tree);
 
-        var foreignRows = anchors.Join(foreign, _ => 1, _ => 1, (upper, node) => new { Upper = upper, Node = node })
-            .Join(context.Set<CompositionInputOne>().Where(fact => fact.Scope == scope), _ => 1, _ => 1,
-                (pair, fact) => new LongPathRow { Upper = pair.Upper, Node = pair.Node, Day = fact.Date });
+        var localRows = LongRows(context, scope, 1, 2, 6);
+        var anchors = context
+            .Set<CompositionNode>()
+            .Where(node => node.Scope == scope && node.Id <= 2);
+
+        var foreign = context
+            .Set<CompositionNode>()
+            .Where(node =>
+                (node.Scope == scope && node.Id == 106) || (node.Scope == otherScope && node.Id == 6));
+
+        var foreignRows = anchors
+            .Join(
+                foreign,
+                _ => 1,
+                _ => 1,
+                (upper, node) => new
+                {
+                    Upper = upper,
+                    Node = node,
+                })
+            .Join(
+                context
+                    .Set<CompositionInputOne>()
+                    .Where(fact => fact.Scope == scope),
+                _ => 1,
+                _ => 1,
+                (pair, fact) => new LongPathRow
+                {
+                    Upper = pair.Upper,
+                    Node = pair.Node,
+                    Day = fact.Date,
+                });
 
         var source = localRows.Concat(foreignRows);
         var rows = source.Concat(source);
-        var expected = ExpectedLongRows(all, scope, tree, 1, 2, 6, filter)
-            .SelectMany(row => new[] { row, row }).OrderBy(row => row.Origin).ThenBy(row => row.Day).ToArray();
+        var expected = ExpectedLongRows(
+                all,
+                scope,
+                tree,
+                1,
+                2,
+                6,
+                filter)
+            .SelectMany(row => new[] { row, row })
+            .OrderBy(row => row.Origin)
+            .ThenBy(row => row.Day)
+            .ToArray();
 
         // Act
         var query = filter switch
         {
-            "independent" => hierarchy.WherePathEdges(rows, row => row.Upper, row => row.Node,
+            "independent" => hierarchy.WherePathEdges(
+                rows,
+                row => row.Upper,
+                row => row.Node,
                 (row, parent, child) => child.EdgeOpen),
-            "correlated" => hierarchy.WherePathEdges(rows, row => row.Upper, row => row.Node,
-                (row, parent, child) => child.EdgeOpen && child.FromDate <= row.Day
+            "correlated" => hierarchy.WherePathEdges(
+                rows,
+                row => row.Upper,
+                row => row.Node,
+                (row, parent, child) => child.EdgeOpen
+                    && child.FromDate <= row.Day
                     && (!child.ToDate.HasValue || row.Day <= child.ToDate.Value)),
-            "nearest" => hierarchy.WhereNearestAncestorOrSelf(rows, row => row.Node,
-                (row, owner) => owner.Candidate, (row, owner) => owner.Matches),
+            "nearest" => hierarchy.WhereNearestAncestorOrSelf(
+                rows,
+                row => row.Node,
+                (row, owner) => owner.Candidate,
+                (row, owner) => owner.Matches),
             _ => throw new ArgumentOutOfRangeException(nameof(filter)),
         };
 
@@ -271,14 +421,29 @@ public abstract partial class HierarchyCompositionSemanticTests
     }
 
     /// <summary>Creates canonical chain coordinates while keeping the oracle's Parent links explicit.</summary>
-    private static CompositionNode[] LongChain(Guid scope, Guid tree, int first, int count)
-        => Enumerable.Range(0, count).Select(depth => new CompositionNode
-        {
-            Scope = scope, TreeId = tree, Id = first + depth,
-            ParentId = depth == 0 ? null : first + depth - 1,
-            Left = depth + 1, Right = (2L * count) - depth, Depth = depth,
-            Candidate = depth == 0, Matches = true,
-        }).ToArray();
+    private static CompositionNode[] LongChain(
+        Guid scope,
+        Guid tree,
+        int first,
+        int count
+    )
+        => Enumerable
+            .Range(0, count)
+            .Select(depth => new CompositionNode
+            {
+                Scope = scope,
+                TreeId = tree,
+                Id = first + depth,
+                ParentId = depth == 0
+                    ? null
+                    : first + depth - 1,
+                Left = depth + 1,
+                Right = 2L * count - depth,
+                Depth = depth,
+                Candidate = depth == 0,
+                Matches = true,
+            })
+            .ToArray();
 
     /// <summary>Seeds only small independent scopes and observes the actual scalar query boundary.</summary>
     private async Task<CompositionContext> CreateLongPathContextAsync(
@@ -289,20 +454,28 @@ public abstract partial class HierarchyCompositionSemanticTests
         CancellationToken cancellationToken
     )
     {
-        var context = await _fixture.CreateContextAsync<CompositionContext>(Engine,
+        var context = await _fixture.CreateContextAsync<CompositionContext>(
+            Engine,
             static options => new CompositionContext(options),
             cancellationToken: cancellationToken,
-            probe, TestMaterializationObserver.Instance);
+            probe,
+            TestMaterializationObserver.Instance);
 
         TestMaterializationObserver.Instance.Register(context, probe.RecordMaterialization);
 
         try
         {
             await context.AddRangeAsync(nodes, cancellationToken);
-            await context.AddRangeAsync(LongDays().Select(day => new CompositionInputOne
-            {
-                Scope = scope, NodeId = lower, Date = day, Amount = 1,
-            }), cancellationToken);
+            await context.AddRangeAsync(
+                LongDays()
+                    .Select(day => new CompositionInputOne
+                    {
+                        Scope = scope,
+                        NodeId = lower,
+                        Date = day,
+                        Amount = 1,
+                    }),
+                cancellationToken);
 
             await context.SavePrecomputedHierarchyAsync(cancellationToken);
             context.ChangeTracker.Clear();
@@ -325,20 +498,38 @@ public abstract partial class HierarchyCompositionSemanticTests
         int firstUpper,
         int lastUpper,
         int lower
-    ) => context.NestedSet<CompositionNode>().ForScope(scope)
-        .SelectSubtrees(node => node.Id >= firstUpper && node.Id <= lastUpper,
-            (upper, node, distance) => new { Upper = upper, Node = node })
+    ) => context
+        .NestedSet<CompositionNode>()
+        .ForScope(scope)
+        .SelectSubtrees(
+            node => node.Id >= firstUpper && node.Id <= lastUpper,
+            (upper, node, distance) => new
+            {
+                Upper = upper,
+                Node = node,
+            })
         .Where(row => row.Node.Id == lower)
-        .Join(context.Set<CompositionInputOne>().Where(fact => fact.Scope == scope && fact.NodeId == lower),
-            row => row.Node.Id, fact => fact.NodeId,
-            (pair, fact) => new LongPathRow { Upper = pair.Upper, Node = pair.Node, Day = fact.Date });
+        .Join(
+            context
+                .Set<CompositionInputOne>()
+                .Where(fact => fact.Scope == scope && fact.NodeId == lower),
+            row => row.Node.Id,
+            fact => fact.NodeId,
+            (pair, fact) => new LongPathRow
+            {
+                Upper = pair.Upper,
+                Node = pair.Node,
+                Day = fact.Date,
+            });
 
     /// <summary>Reads a scalar bag without materializing the hierarchy aliases carried by the source.</summary>
     private static Task<LongPathOccurrence[]> ReadLongRowsAsync(
         IQueryable<LongPathRow> rows,
         CancellationToken cancellationToken
     )
-        => rows.OrderBy(row => row.Upper.Id).ThenBy(row => row.Day)
+        => rows
+            .OrderBy(row => row.Upper.Id)
+            .ThenBy(row => row.Day)
             .Select(row => new LongPathOccurrence(row.Upper.Id, row.Node.Id, row.Day))
             .ToArrayAsync(cancellationToken);
 
@@ -361,26 +552,34 @@ public abstract partial class HierarchyCompositionSemanticTests
             foreach (var day in LongDays())
             {
                 var selectedUpper = filter == "nearest"
-                    ? nodes.Single(node => node.Scope == scope && node.TreeId == tree && node.Candidate).Id
+                    ? nodes.Single(node => node.Scope == scope && node.TreeId == tree && node.Candidate)
+                        .Id
                     : upper;
 
                 var current = identities[(scope, lower)];
                 var accepted = current.Visible;
                 var remaining = nodes.Length;
 
-                while (accepted && current.Id != selectedUpper && remaining-- > 0)
+                while (accepted
+                    && current.Id != selectedUpper
+                    && remaining-- > 0)
                 {
                     if (current.ParentId is not { } parentId
                         || !identities.TryGetValue((scope, parentId), out var parent)
-                        || !parent.Visible || parent.TreeId != tree || current.TreeId != tree
+                        || !parent.Visible
+                        || parent.TreeId != tree
+                        || current.TreeId != tree
                         || parent.Depth + 1 != current.Depth)
                     {
                         accepted = false;
                         break;
                     }
 
-                    if (filter != "nearest" && (!current.EdgeOpen || (filter == "correlated"
-                        && (day < current.FromDate || (current.ToDate.HasValue && day > current.ToDate.Value)))))
+                    if (filter != "nearest"
+                        && (!current.EdgeOpen
+                            || (filter == "correlated"
+                                && (day < current.FromDate
+                                    || (current.ToDate.HasValue && day > current.ToDate.Value)))))
                     {
                         accepted = false;
                         break;
@@ -389,21 +588,30 @@ public abstract partial class HierarchyCompositionSemanticTests
                     current = parent;
                 }
 
-                if (accepted && current.Id == selectedUpper && current.Visible && current.TreeId == tree)
+                if (accepted
+                    && current.Id == selectedUpper
+                    && current.Visible
+                    && current.TreeId == tree)
                 {
                     result.Add(new LongPathOccurrence(upper, lower, day));
                 }
             }
         }
 
-        return result.OrderBy(row => row.Origin).ThenBy(row => row.Day).ToArray();
+        return result
+            .OrderBy(row => row.Origin)
+            .ThenBy(row => row.Day)
+            .ToArray();
     }
 
     /// <summary>Supplies two dates that differ across the explicit per-row edge validity boundary.</summary>
     private static DateOnly[] LongDays() => [new(2044, 10, 18), new(2044, 10, 20)];
 
     /// <summary>Checks one real statement and no hierarchy tracking or materialization after the scalar read.</summary>
-    private static void AssertLongReadBoundary(DbContext context, CompositionCommandProbe probe)
+    private static void AssertLongReadBoundary(
+        DbContext context,
+        CompositionCommandProbe probe
+    )
     {
         Assert.Equal(1, probe.CommandCount);
         Assert.Equal(0, probe.MaterializedNodes);
@@ -427,5 +635,9 @@ public abstract partial class HierarchyCompositionSemanticTests
     /// <param name="Origin">The original upper-endpoint identity, even when nearest selects another owner.</param>
     /// <param name="Node">The accepted lower identity.</param>
     /// <param name="Day">The original payload occurrence's date.</param>
-    private readonly record struct LongPathOccurrence(int Origin, int Node, DateOnly Day);
+    private readonly record struct LongPathOccurrence(
+        int Origin,
+        int Node,
+        DateOnly Day
+    );
 }

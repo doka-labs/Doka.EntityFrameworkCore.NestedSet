@@ -12,16 +12,24 @@ public abstract partial class RelationalTests
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
-        var tree = context.NestedSet<TreeNode>().ForScope(1);
+        var tree = context
+            .NestedSet<TreeNode>()
+            .ForScope(1);
+
         await SeedPlacementTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         await tree.MoveBeforeAsync(2, 3, CancellationToken.None);
 
         // Assert
-        await AssertOrderAsync(tree.ChildrenOf(1),
+        await AssertOrderAsync(
+            tree.ChildrenOf(1),
             cancellationToken: TestContext.Current.CancellationToken,
-            2, 3, 4, 5);
+            2,
+            3,
+            4,
+            5);
+
         Assert.Empty(context.ChangeTracker.Entries());
         await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
@@ -44,9 +52,14 @@ public abstract partial class RelationalTests
         await tree.MoveAfterAsync(2, 5, CancellationToken.None);
 
         // Assert
-        await AssertOrderAsync(tree.ChildrenOf(1),
+        await AssertOrderAsync(
+            tree.ChildrenOf(1),
             cancellationToken: TestContext.Current.CancellationToken,
-            3, 4, 5, 2);
+            3,
+            4,
+            5,
+            2);
+
         Assert.Empty(context.ChangeTracker.Entries());
         await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
@@ -127,6 +140,7 @@ public abstract partial class RelationalTests
             cancellationToken: TestContext.Current.CancellationToken,
             1,
             2);
+
         var detached = await tree
             .InTree(detachedTreeId)
             .Nodes
@@ -192,12 +206,23 @@ public abstract partial class RelationalTests
         await tree.MoveToAsync(3, 8, CancellationToken.None);
 
         // Assert
-        await AssertDepthsAsync(context, 1,
+        await AssertDepthsAsync(
+            context,
+            1,
             cancellationToken: TestContext.Current.CancellationToken,
-            (3, 3), (4, 4), (5, 5));
-        await AssertOrderAsync(tree.AncestorsOf(5),
+            (3, 3),
+            (4, 4),
+            (5, 5));
+
+        await AssertOrderAsync(
+            tree.AncestorsOf(5),
             cancellationToken: TestContext.Current.CancellationToken,
-            6, 7, 8, 3, 4);
+            6,
+            7,
+            8,
+            3,
+            4);
+
         await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
 
@@ -220,9 +245,14 @@ public abstract partial class RelationalTests
         await tree.MoveToAsync(3, 1, CancellationToken.None);
 
         // Assert
-        await AssertDepthsAsync(context, 1,
+        await AssertDepthsAsync(
+            context,
+            1,
             cancellationToken: TestContext.Current.CancellationToken,
-            (3, 1), (4, 2), (5, 3));
+            (3, 1),
+            (4, 2),
+            (5, 3));
+
         await AssertOrderAsync(tree.ChildrenOf(1), cancellationToken: TestContext.Current.CancellationToken, 2, 3);
         await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
@@ -246,9 +276,14 @@ public abstract partial class RelationalTests
         await tree.MoveAfterAsync(3, 2, CancellationToken.None);
 
         // Assert
-        await AssertDepthsAsync(context, 1,
+        await AssertDepthsAsync(
+            context,
+            1,
             cancellationToken: TestContext.Current.CancellationToken,
-            (3, 1), (4, 2), (5, 3));
+            (3, 1),
+            (4, 2),
+            (5, 3));
+
         await AssertOrderAsync(tree.ChildrenOf(1), cancellationToken: TestContext.Current.CancellationToken, 2, 3);
         await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
@@ -271,9 +306,14 @@ public abstract partial class RelationalTests
         await tree.MoveToAsync(3, 8, CancellationToken.None);
 
         // Assert
-        await AssertDepthsAsync(context, 1,
+        await AssertDepthsAsync(
+            context,
+            1,
             cancellationToken: TestContext.Current.CancellationToken,
-            (3, 3), (4, 4), (5, 5));
+            (3, 3),
+            (4, 4),
+            (5, 5));
+
         await AssertOrderAsync(tree.ChildrenOf(8), cancellationToken: TestContext.Current.CancellationToken, 3);
         await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
@@ -296,9 +336,14 @@ public abstract partial class RelationalTests
         await tree.DetachAsTreeAsync(3, Guid.NewGuid(), CancellationToken.None);
 
         // Assert
-        await AssertDepthsAsync(context, 1,
+        await AssertDepthsAsync(
+            context,
+            1,
             cancellationToken: TestContext.Current.CancellationToken,
-            (3, 0), (4, 1), (5, 2));
+            (3, 0),
+            (4, 1),
+            (5, 2));
+
         await AssertOrderAsync(
             context
                 .Set<TreeNode>()
@@ -310,6 +355,7 @@ public abstract partial class RelationalTests
             1,
             3,
             6);
+
         await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
 

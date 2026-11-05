@@ -69,7 +69,9 @@ public sealed class UnchangedForeignKeyRollbackAllocationTests
         var entries = allEntries
             ? tracked
             : tracked
-                .Where(entry => ReferenceEquals(entry.ToEntityEntry().Entity,
+                .Where(entry => ReferenceEquals(
+                    entry.ToEntityEntry()
+                        .Entity,
                     entities[0]))
                 .ToArray();
 
@@ -92,24 +94,39 @@ public sealed class UnchangedForeignKeyRollbackAllocationTests
         // WHY: First capture also lets EF initialize its own indexed dependent cache once. Its distinct
         // linear bound does not raise the existing warmed snapshot budget or permit per-owner rescans.
         var maximum = warmNativeMaps
-            ? 8192L + (allEntries ? nodes * 6000L : nodes * 32L)
+            ? 8192L
+            + (allEntries
+                ? nodes * 6000L
+                : nodes * 32L)
             : 8192L + nodes * 512L;
 
-        _output.WriteLine($"Complete FK capture: nodes={nodes}; entries={entries.Length}; all={allEntries}; "
+        _output.WriteLine(
+            $"Complete FK capture: nodes={nodes}; entries={entries.Length}; all={allEntries}; "
             + $"warm={warmNativeMaps}; allocated={allocated} B; maximum={maximum} B.");
+
         Assert.InRange(allocated, 1, maximum);
-        Assert.Equal(allEntries ? nodes + 1 : 1, entries.Length);
+        Assert.Equal(
+            allEntries
+                ? nodes + 1
+                : 1,
+            entries.Length);
+
         Assert.Equal(nodes, owner.ScopeNodes.Count);
         Assert.Equal(0, detections);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
+
         GC.KeepAlive(snapshot);
     }
 
     /// <summary>Warms process/model capture metadata without initializing the measured context's native map.</summary>
     /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
-    private static async Task WarmCaptureMetadataAsync(CancellationToken cancellationToken)
+    private static async Task WarmCaptureMetadataAsync(
+        CancellationToken cancellationToken
+    )
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -117,14 +134,16 @@ public sealed class UnchangedForeignKeyRollbackAllocationTests
         // that infrastructure while every measured context retains its own cold native dependent map.
         await using var context = new HierarchyChangeDetectionTests.SnapshotContext();
         var owner = new HierarchyChangeDetectionTests.ProbeOwner { Id = 7 };
-        var node = HierarchyChangeDetectionTests.CreateNode(1);
+        var node = HierarchyChangeDetectionTests.CreateNode();
         owner.ScopeNodes.Add(node);
         context.Attach(owner);
         var entry = context
             .GetService<IUpdateAdapterFactory>()
             .Create()
             .Entries
-            .Single(candidate => ReferenceEquals(candidate.ToEntityEntry().Entity,
+            .Single(candidate => ReferenceEquals(
+                candidate.ToEntityEntry()
+                    .Entity,
                 node));
 
         GC.KeepAlive(NestedSetTrackerSnapshot.Capture(context, [entry]));

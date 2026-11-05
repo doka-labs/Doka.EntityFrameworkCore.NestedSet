@@ -29,7 +29,11 @@ public sealed class CompositionSelectionTests
     {
         // Arrange
         var values = new[] { 1, 2 };
-        var collection = new List<int> { 1, 2 };
+        var collection = new List<int>
+        {
+            1,
+            2,
+        };
 
         var query = Enumerable
             .Empty<SelectionNode>()
@@ -72,12 +76,12 @@ public sealed class CompositionSelectionTests
         public int Length { get; init; }
 
         /// <summary>Gets a scalar string whose length is a scalar database expression.</summary>
-        public string Name { get; init; } = string.Empty;
+        public string Name { get; } = string.Empty;
 
         /// <summary>Gets a navigation-like collection referencing the current row.</summary>
-        public List<SelectionNode> Children { get; init; } = [];
+        public List<SelectionNode> Children { get; } = [];
 
         /// <summary>Gets an array whose row-dependent length can require collection translation.</summary>
-        public int[] Values { get; init; } = [];
+        public int[] Values { get; } = [];
     }
 }

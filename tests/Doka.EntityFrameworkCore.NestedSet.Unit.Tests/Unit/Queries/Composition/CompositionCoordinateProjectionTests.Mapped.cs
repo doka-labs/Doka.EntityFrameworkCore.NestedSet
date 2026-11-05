@@ -27,11 +27,15 @@ public sealed partial class CompositionCoordinateProjectionTests
             .AddInterceptors(boundary, boundary.Commands);
 
         await using var services = CoordinateServices(options.Options);
-        await using var context = new MappedCoordinateContext(options
-            .UseInternalServiceProvider(services)
-            .Options);
+        await using var context = new MappedCoordinateContext(
+            options
+                .UseInternalServiceProvider(services)
+                .Options);
 
-        var mapping = fields ? MappedCoordinateContext.Fields : MappedCoordinateContext.Properties;
+        var mapping = fields
+            ? MappedCoordinateContext.Fields
+            : MappedCoordinateContext.Properties;
+
         var entity = context.Model.FindEntityType(mapping)!;
         var root = new NestedSetQuery<MappedCoordinateNode>(context, entity);
         var nodes = context
@@ -56,25 +60,39 @@ public sealed partial class CompositionCoordinateProjectionTests
             .ToArray();
 
         Assert.Equal(2, geometry.Length);
-        Assert.All(geometry,
+        Assert.All(
+            geometry,
             binding =>
             {
                 var member = Assert.IsAssignableFrom<MemberExpression>(binding.Expression);
                 Assert.Same(selected.Selector.Parameters[0], member.Expression);
-                Assert.Equal(fields ? MemberTypes.Field : MemberTypes.Property, member.Member.MemberType);
+                Assert.Equal(
+                    fields
+                        ? MemberTypes.Field
+                        : MemberTypes.Property,
+                    member.Member.MemberType);
             });
 
-        Assert.Collection(geometry,
-            binding => Assert.Equal(fields ? "_start" : "Start",
+        Assert.Collection(
+            geometry,
+            binding => Assert.Equal(
+                fields
+                    ? "_start"
+                    : "Start",
                 ((MemberExpression)binding.Expression).Member.Name),
-            binding => Assert.Equal(fields ? "_end" : "End",
+            binding => Assert.Equal(
+                fields
+                    ? "_end"
+                    : "End",
                 ((MemberExpression)binding.Expression).Member.Name));
+
         var identity = bindings
             .Where(binding => binding.Member.Name is "Key" or "Tree" or "Scope")
             .ToArray();
 
         Assert.Equal(3, identity.Length);
-        Assert.All(identity,
+        Assert.All(
+            identity,
             binding =>
             {
                 var marker = Assert.IsAssignableFrom<MethodCallExpression>(binding.Expression);
@@ -83,12 +101,20 @@ public sealed partial class CompositionCoordinateProjectionTests
                 Assert.IsType<ConstantExpression>(marker.Arguments[1]);
             });
 
-        Assert.Equal(includeNonLeaf ? 4 : 3, bindings.Count(binding => binding.Expression is MethodCallExpression));
+        Assert.Equal(
+            includeNonLeaf
+                ? 4
+                : 3,
+            bindings.Count(binding => binding.Expression is MethodCallExpression));
+
         Assert.Contains("\"StoredStart\"", sql, StringComparison.Ordinal);
         Assert.Contains("\"StoredEnd\"", sql, StringComparison.Ordinal);
         Assert.Equal(baselineSql, sql);
-        Assert.Equal(typeof(string),
-            entity.FindProperty("TreeId")!.GetTypeMapping().Converter!.ProviderClrType);
+        Assert.Equal(
+            typeof(string),
+            entity.FindProperty("TreeId")!.GetTypeMapping()
+                .Converter!.ProviderClrType);
+
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
         Assert.Empty(context.ChangeTracker.Entries());
@@ -108,14 +134,27 @@ public sealed partial class CompositionCoordinateProjectionTests
             .Cast<MemberAssignment>()
             .Select(binding => binding.Member.Name switch
             {
-                "Left" => Expression.Bind(binding.Member,
-                    NestedSetExpressions.Property(parameter, entity.FindProperty(fields ? "_start" : "Start")!)),
-                "Right" => Expression.Bind(binding.Member,
-                    NestedSetExpressions.Property(parameter, entity.FindProperty(fields ? "_end" : "End")!)),
+                "Left" => Expression.Bind(
+                    binding.Member,
+                    NestedSetExpressions.Property(
+                        parameter,
+                        entity.FindProperty(
+                            fields
+                                ? "_start"
+                                : "Start")!)),
+                "Right" => Expression.Bind(
+                    binding.Member,
+                    NestedSetExpressions.Property(
+                        parameter,
+                        entity.FindProperty(
+                            fields
+                                ? "_end"
+                                : "End")!)),
                 _ => binding,
             });
 
-        var selector = Expression.Lambda(selected.Selector.Type,
+        var selector = Expression.Lambda(
+            selected.Selector.Type,
             Expression.MemberInit(body.NewExpression, bindings),
             selected.Selector.Parameters);
 
@@ -152,7 +191,8 @@ public sealed partial class CompositionCoordinateProjectionTests
             bool fields
         )
         {
-            modelBuilder.SharedTypeEntity<MappedCoordinateNode>(mapping,
+            modelBuilder.SharedTypeEntity<MappedCoordinateNode>(
+                mapping,
                 node =>
                 {
                     node.ToTable(mapping);
@@ -160,12 +200,19 @@ public sealed partial class CompositionCoordinateProjectionTests
                     node
                         .Property(value => value.Id)
                         .ValueGeneratedNever();
+
                     node
                         .Property(value => value.TreeId)
                         .HasConversion<string>();
+
                     node.Ignore(value => value.Left);
-                    var left = fields ? "_start" : nameof(MappedCoordinateNode.Start);
-                    var right = fields ? "_end" : nameof(MappedCoordinateNode.End);
+                    var left = fields
+                        ? "_start"
+                        : nameof(MappedCoordinateNode.Start);
+
+                    var right = fields
+                        ? "_end"
+                        : nameof(MappedCoordinateNode.End);
 
                     if (fields)
                     {
@@ -178,11 +225,13 @@ public sealed partial class CompositionCoordinateProjectionTests
                         .HasField("_start")
                         .HasColumnName("StoredStart")
                         .UsePropertyAccessMode(PropertyAccessMode.Field);
+
                     node
                         .Property<long>(right)
                         .HasField("_end")
                         .HasColumnName("StoredEnd")
                         .UsePropertyAccessMode(PropertyAccessMode.Field);
+
                     node.Property<int>("Depth");
                     node.Property<long>("Position");
                     node.Property<bool>("HasChildren");
@@ -202,8 +251,8 @@ public sealed partial class CompositionCoordinateProjectionTests
     /// <summary>Rejects accidental evaluation of mapped and conventional geometry getters.</summary>
     private sealed class MappedCoordinateNode
     {
-        private long _start = long.MinValue;
         private long _end = long.MinValue;
+        private long _start = long.MinValue;
 
         /// <summary>Gets or sets the mapped node identity.</summary>
         public int Id { get; set; }

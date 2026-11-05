@@ -113,6 +113,27 @@ public class UserGroupChainBenchmarks : IDatabaseBenchmark, IAsyncDisposable
     internal UserGroupContext Context =>
         _context ?? throw new InvalidOperationException("Initialize the chain benchmark first.");
 
+    /// <summary>Creates the exact routing request without mutating an earlier result or frontier.</summary>
+    internal SupervisorChainRequest Request =>
+        Data.Request with
+        {
+            RoutingOrigin = CurrentSubjectRouting
+                ? RoutingOrigin.CurrentSubject
+                : RoutingOrigin.InitialSubject,
+        };
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        if (_context is not null)
+        {
+            await _context.DisposeAsync();
+            _context = null;
+        }
+
+        GC.SuppressFinalize(this);
+    }
+
     /// <summary>Configures the actual sample after the existing launcher establishes resource ownership.</summary>
     [GlobalSetup]
     public void Initialize()
@@ -128,6 +149,52 @@ public class UserGroupChainBenchmarks : IDatabaseBenchmark, IAsyncDisposable
         _context = new UserGroupContext(ConsumerBenchmarkDatabase.Options(_observation));
     }
 
+    /// <summary>Seeds actual groups, users, memberships, roles, periods, and routing values outside timing.</summary>
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
+    public async Task PrepareAsync(
+        CancellationToken cancellationToken
+    )
+    {
+        await ConsumerBenchmarkDatabase.ResetAsync(Context, cancellationToken);
+        _data = await UserGroupChainBenchmarkData.CreateAsync(Context, Nodes, Shape, Profile, cancellationToken);
+        _result = null;
+        _observation.Reset();
+    }
+
+    /// <summary>Checks every unordered branch and scalar evidence against the independent orchestration.</summary>
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
+    public async Task VerifyAsync(
+        CancellationToken cancellationToken
+    )
+    {
+        var result = Result;
+        var expected = await UserGroupChainReference.FollowAsync(
+            Context,
+            Data.Tenant,
+            Request,
+            !ReExpandMemberships,
+            cancellationToken);
+
+        BenchmarkFixture.Require(
+            Signature(result)
+                .SequenceEqual(Signature(expected)),
+            "Batched and per-path chains differ in status, cursor, routing, or retained provenance.");
+
+        BenchmarkFixture.Require(
+            !Context
+                .ChangeTracker
+                .Entries()
+                .Any(),
+            "Scalar chain execution populated the tracker.");
+    }
+
+    /// <summary>Releases the context while the existing launcher retains database/container ownership.</summary>
+    [GlobalCleanup]
+    public async Task CleanupAsync() => await DisposeAsync();
+
+    /// <inheritdoc />
+    CommandObservation IDatabaseBenchmark.Observation => _observation;
+
     /// <summary>Completes asynchronous preparation before native measurement starts.</summary>
     [IterationSetup]
     public void Prepare() => BenchmarkLifecycle.Complete(PrepareAsync(CancellationToken.None));
@@ -135,16 +202,6 @@ public class UserGroupChainBenchmarks : IDatabaseBenchmark, IAsyncDisposable
     /// <summary>Completes equivalence verification after native measurement stops.</summary>
     [IterationCleanup]
     public void Verify() => BenchmarkLifecycle.Complete(VerifyAsync(CancellationToken.None));
-
-    /// <summary>Seeds actual groups, users, memberships, roles, periods, and routing values outside timing.</summary>
-    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
-    public async Task PrepareAsync(CancellationToken cancellationToken)
-    {
-        await ConsumerBenchmarkDatabase.ResetAsync(Context, cancellationToken);
-        _data = await UserGroupChainBenchmarkData.CreateAsync(Context, Nodes, Shape, Profile, cancellationToken);
-        _result = null;
-        _observation.Reset();
-    }
 
     /// <summary>Runs the actual sample's deduplicated bounded-frontier chain within its qualified snapshot.</summary>
     [Benchmark]
@@ -162,30 +219,6 @@ public class UserGroupChainBenchmarks : IDatabaseBenchmark, IAsyncDisposable
             CancellationToken.None);
     }
 
-    /// <summary>Checks every unordered branch and scalar evidence against the independent orchestration.</summary>
-    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
-    public async Task VerifyAsync(CancellationToken cancellationToken)
-    {
-        var result = Result;
-        var expected = await UserGroupChainReference.FollowAsync(
-            Context,
-            Data.Tenant,
-            Request,
-            !ReExpandMemberships,
-            cancellationToken);
-
-        BenchmarkFixture.Require(
-            Signature(result)
-                .SequenceEqual(Signature(expected)),
-            "Batched and per-path chains differ in status, cursor, routing, or retained provenance.");
-        BenchmarkFixture.Require(
-            !Context
-                .ChangeTracker
-                .Entries()
-                .Any(),
-            "Scalar chain execution populated the tracker.");
-    }
-
     /// <summary>Runs an explicit test request through the unchanged actual sample API.</summary>
     internal Task<SupervisorChainResult> RunApiAsync(
         SupervisorChainRequest request,
@@ -193,32 +226,6 @@ public class UserGroupChainBenchmarks : IDatabaseBenchmark, IAsyncDisposable
     ) => ReExpandMemberships
         ? SupervisorQueries.FollowAllMembershipsAsync(Context, Data.Tenant, request, cancellationToken)
         : SupervisorQueries.FollowOriginalPathAsync(Context, Data.Tenant, request, cancellationToken);
-
-    /// <summary>Creates the exact routing request without mutating an earlier result or frontier.</summary>
-    internal SupervisorChainRequest Request =>
-        Data.Request with
-        {
-            RoutingOrigin = CurrentSubjectRouting ? RoutingOrigin.CurrentSubject : RoutingOrigin.InitialSubject,
-        };
-
-    /// <summary>Releases the context while the existing launcher retains database/container ownership.</summary>
-    [GlobalCleanup]
-    public async Task CleanupAsync() => await DisposeAsync();
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        if (_context is not null)
-        {
-            await _context.DisposeAsync();
-            _context = null;
-        }
-
-        GC.SuppressFinalize(this);
-    }
-
-    /// <inheritdoc />
-    CommandObservation IDatabaseBenchmark.Observation => _observation;
 
     /// <summary>Orders presentation while preserving duplicate paths and every scalar evidence field.</summary>
     internal static string[] Signature(

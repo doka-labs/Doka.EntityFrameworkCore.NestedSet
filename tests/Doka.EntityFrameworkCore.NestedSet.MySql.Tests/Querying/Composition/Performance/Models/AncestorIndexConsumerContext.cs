@@ -26,6 +26,7 @@ internal sealed class AncestorIndexConsumerContext(DbContextOptions<AncestorInde
         var occurrence = modelBuilder.Entity<AncestorIndexConsumerOccurrence>();
         occurrence.ToTable("AncestorIndexConsumerOccurrences");
         occurrence.HasKey(value => value.Id);
+
         // WHY: Independent application facts need not declare an EF relationship to the hierarchy.
         // This scalar-key shape reproduces source-lane miscosting independently of navigation fixtures.
     }

@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore.Query;
 using ExpressionFactory = System.Linq.Expressions.Expression;
 
@@ -14,18 +13,15 @@ internal sealed class ProviderQueryProbe : IAsyncQueryProvider
     /// <summary>Gets an exact construction failure used to detect exception wrapping at the typed boundary.</summary>
     internal Exception? ConstructionError { get; init; }
 
-    /// <summary>Creates an unexecuted root whose expression remains owned by this probe.</summary>
-    internal IQueryable<T> Source<T>() => new Query<T>(this);
-
     /// <inheritdoc />
     public IQueryable CreateQuery(
-        Expression expression
+        ExpressionFactory expression
     )
         => throw new InvalidOperationException("The typed provider contract must retain generic query construction.");
 
     /// <inheritdoc />
     public IQueryable<TElement> CreateQuery<TElement>(
-        Expression expression
+        ExpressionFactory expression
     )
     {
         if (ConstructionError is { } error)
@@ -38,20 +34,23 @@ internal sealed class ProviderQueryProbe : IAsyncQueryProvider
 
     /// <inheritdoc />
     public object? Execute(
-        Expression expression
+        ExpressionFactory expression
     ) => throw Execution();
 
     /// <inheritdoc />
     public TResult Execute<TResult>(
-        Expression expression
+        ExpressionFactory expression
     ) => throw Execution();
 
     /// <inheritdoc />
     public TResult ExecuteAsync<TResult>(
-        Expression expression,
+        ExpressionFactory expression,
         CancellationToken cancellationToken = default
     )
         => throw Execution();
+
+    /// <summary>Creates an unexecuted root whose expression remains owned by this probe.</summary>
+    internal IQueryable<T> Source<T>() => new Query<T>(this);
 
     /// <summary>Records a boundary crossing rather than returning invented provider results.</summary>
     private InvalidOperationException Execution()
@@ -76,7 +75,7 @@ internal sealed class ProviderQueryProbe : IAsyncQueryProvider
         /// <summary>Retains the exact expression produced by a public query operator.</summary>
         internal Query(
             ProviderQueryProbe provider,
-            Expression expression
+            ExpressionFactory expression
         )
         {
             Provider = provider;
@@ -87,7 +86,7 @@ internal sealed class ProviderQueryProbe : IAsyncQueryProvider
         public Type ElementType => typeof(T);
 
         /// <inheritdoc />
-        public Expression Expression { get; }
+        public ExpressionFactory Expression { get; }
 
         /// <inheritdoc />
         public IQueryProvider Provider { get; }

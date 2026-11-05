@@ -63,6 +63,7 @@ public abstract partial class BulkIntervalRefreshTests : ProviderTest
                 .Where(node => node.NodeId == 1)
                 .Select(node => node.End)
                 .SingleAsync(CancellationToken.None));
+
         Assert.Equal(
             2,
             await tree
@@ -71,15 +72,18 @@ public abstract partial class BulkIntervalRefreshTests : ProviderTest
                 .Where(node => node.NodeId == 2)
                 .Select(node => node.Start)
                 .SingleAsync(CancellationToken.None));
+
         Assert.Equal(
             2,
             await context
                 .Set<TreeNode>()
                 .CountAsync(node => node.Tree == 2, CancellationToken.None));
+
         Assert.Empty(
             (await tree
                 .InTree(Guid.Empty)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).Issues);
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -89,7 +93,8 @@ public abstract partial class BulkIntervalRefreshTests : ProviderTest
     {
         // Arrange
         var probe = new BulkIntervalRefreshProbe(nameof(BulkIntervalNode));
-        await using var context = await _generated.ResetAsync(Engine,
+        await using var context = await _generated.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -168,6 +173,7 @@ public abstract partial class BulkIntervalRefreshTests : ProviderTest
                 Assert.Equal(node.ParentId.GetValueOrDefault() + node.Depth + node.Position, node.Version);
                 Assert.Equal(node.Version + 1000, node.Details.Revision);
             });
+
         Assert.All(nodes.Skip(1), node => Assert.Equal(nodes[0].Id, node.ParentId));
         Assert.Equal((4, 265, 1), (nodes[0].Left, nodes[0].Right, nodes[0].Depth));
         Assert.Equal(
@@ -175,10 +181,12 @@ public abstract partial class BulkIntervalRefreshTests : ProviderTest
             await context
                 .Set<BulkIntervalNode>()
                 .CountAsync(node => node.Scope == 2, CancellationToken.None));
+
         Assert.Empty(
             (await tree
                 .InTree(Guid.Empty)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).Issues);
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -188,7 +196,8 @@ public abstract partial class BulkIntervalRefreshTests : ProviderTest
     {
         // Arrange
         var probe = new BulkIntervalRefreshProbe("BulkGeneratedNodes");
-        await using var context = await _ordered.ResetAsync(Engine,
+        await using var context = await _ordered.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -228,16 +237,19 @@ public abstract partial class BulkIntervalRefreshTests : ProviderTest
                 .Reverse()
                 .Select(position => (long)position),
             children.Select(child => child.Entity.Position));
+
         Assert.All(children, child => Assert.Equal(2, child.Entity.Right - child.Entity.Left + 1));
         Assert.Equal(
             3,
             await tree
                 .ChildrenOf(parentId)
                 .CountAsync(CancellationToken.None));
+
         Assert.Empty(
             (await tree
                 .InTree(Guid.Empty)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).Issues);
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 

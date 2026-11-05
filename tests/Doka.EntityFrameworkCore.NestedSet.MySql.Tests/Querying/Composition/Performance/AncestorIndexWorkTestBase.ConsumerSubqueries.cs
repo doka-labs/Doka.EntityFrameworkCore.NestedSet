@@ -39,12 +39,22 @@ public abstract partial class AncestorIndexWorkTestBase
 
         await SeedAsync(context, scope, tree, forest: false, cancellationToken: TestContext.Current.CancellationToken);
         int[] selected = [20, 30];
-        await SeedConsumerFactsAsync(context, scope, selected,
+        await SeedConsumerFactsAsync(
+            context,
+            scope,
+            selected,
             cancellationToken: TestContext.Current.CancellationToken);
-        await SeedUnrelatedConsumerFactsAsync(context, scope, decoyFacts,
+
+        await SeedUnrelatedConsumerFactsAsync(
+            context,
+            scope,
+            decoyFacts,
             cancellationToken: TestContext.Current.CancellationToken);
+
         await context.Database.OpenConnectionAsync(CancellationToken.None);
-        var label = matches ? "owner" : "missing";
+        var label = matches
+            ? "owner"
+            : "missing";
 
         var expected = OrderConsumerPairs(
             ExpectedConsumerPairs(selected, chain: false, inclusive: true)
@@ -80,7 +90,8 @@ public abstract partial class AncestorIndexWorkTestBase
                 Build,
                 expected,
                 profile,
-                factRows: decoyFacts + 12, cancellationToken: TestContext.Current.CancellationToken);
+                factRows: decoyFacts + 12,
+                cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert
             AssertConsumerFacts(observation, selected.Length);
@@ -112,7 +123,7 @@ public abstract partial class AncestorIndexWorkTestBase
                 {
                     Source = innerSource.Id,
                     Owner = owner.Id,
-                    Distance = distance
+                    Distance = distance,
                 });
 
             // WHY: These are three ordinary consumer shapes applied after eligible hierarchy composition.

@@ -35,14 +35,20 @@ public abstract partial class BulkStageGuardTests
     )
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var treeId = Guid.NewGuid();
         var otherTreeId = Guid.NewGuid();
-        await SeedGeometryTreesAsync(context, treeId, otherTreeId,
+        await SeedGeometryTreesAsync(
+            context,
+            treeId,
+            otherTreeId,
             cancellationToken: TestContext.Current.CancellationToken);
-        var persistedBefore = await ReadGeometryStatesAsync(context,
+
+        var persistedBefore = await ReadGeometryStatesAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var inputs = GeometryInputs();
@@ -76,13 +82,22 @@ public abstract partial class BulkStageGuardTests
             NestedSetErrorCode.InvalidImport,
             Assert.IsType<NestedSetException>(failure)
                 .Code);
+
         Assert.Equal(1, callbacks);
         Assert.Equal(inputBefore, inputs.Select(CaptureGeometryState));
-        Assert.Equal(persistedBefore, await ReadGeometryStatesAsync(context,
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            persistedBefore,
+            await ReadGeometryStatesAsync(
+                context,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Empty(context.ChangeTracker.Entries());
-        await AssertGeometryTreesValidAsync(context, treeId, otherTreeId,
+        await AssertGeometryTreesValidAsync(
+            context,
+            treeId,
+            otherTreeId,
             cancellationToken: TestContext.Current.CancellationToken);
+
         Assert.Null(context.Database.CurrentTransaction);
     }
 
@@ -95,14 +110,20 @@ public abstract partial class BulkStageGuardTests
     )
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var treeId = Guid.NewGuid();
         var otherTreeId = Guid.NewGuid();
-        await SeedGeometryTreesAsync(context, treeId, otherTreeId,
+        await SeedGeometryTreesAsync(
+            context,
+            treeId,
+            otherTreeId,
             cancellationToken: TestContext.Current.CancellationToken);
-        var persistedBefore = await ReadGeometryStatesAsync(context,
+
+        var persistedBefore = await ReadGeometryStatesAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var inputs = GeometryInputs();
@@ -143,7 +164,9 @@ public abstract partial class BulkStageGuardTests
         };
 
         var expectedPersisted = persistedBefore
-            .Select(node => node.Id == "A" ? node with { Right = 8 } : node)
+            .Select(node => node.Id == "A"
+                ? node with { Right = 8 }
+                : node)
             .Concat(expectedInputs)
             .OrderBy(node => node.Id, StringComparer.Ordinal)
             .ToArray();
@@ -158,11 +181,19 @@ public abstract partial class BulkStageGuardTests
         // Assert
         Assert.Equal(1, callbacks);
         Assert.Equal(expectedInputs, inputs.Select(CaptureGeometryState));
-        Assert.Equal(expectedPersisted, await ReadGeometryStatesAsync(context,
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            expectedPersisted,
+            await ReadGeometryStatesAsync(
+                context,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Empty(context.ChangeTracker.Entries());
-        await AssertGeometryTreesValidAsync(context, treeId, otherTreeId,
+        await AssertGeometryTreesValidAsync(
+            context,
+            treeId,
+            otherTreeId,
             cancellationToken: TestContext.Current.CancellationToken);
+
         Assert.Null(context.Database.CurrentTransaction);
     }
 

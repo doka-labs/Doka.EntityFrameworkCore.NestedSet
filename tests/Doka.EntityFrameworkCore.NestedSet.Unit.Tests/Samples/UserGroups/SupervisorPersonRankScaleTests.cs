@@ -104,7 +104,9 @@ public sealed class SupervisorPersonRankScaleTests(
             ? SupervisorResolutionStatus.Found
             : SupervisorResolutionStatus.NotFound;
 
-        var expectedContinuation = expectedEvidence.Length == 0 ? null : expectedEvidence[1];
+        var expectedContinuation = expectedEvidence.Length == 0
+            ? null
+            : expectedEvidence[1];
 
         // Act
         var result = SupervisorSelectionRules.Select(7, candidates, SupervisorSelection.NthPerson(slot));
@@ -195,7 +197,9 @@ public sealed class SupervisorPersonRankScaleTests(
             {
                 // WHY: Repeated nearest references are separate evidence occurrences; the earlier farther
                 // occurrence has a better priority but cannot define this person's nearest rank or cursor.
-                result[offset + occurrence] = occurrence == 0 ? farther : nearest;
+                result[offset + occurrence] = occurrence == 0
+                    ? farther
+                    : nearest;
             }
         }
 

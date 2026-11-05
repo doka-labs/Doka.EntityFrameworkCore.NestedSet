@@ -29,9 +29,15 @@ internal static partial class CompositionConsumerCapacityProfiles
         var observations = new List<CompositionConsumerCapacityObservation>(profiles.Length);
         foreach (var profile in profiles)
         {
-            observations.Add(await MeasureGroupRankAsync(
-                database, engine, data, profile.Name, profile.Rule, profile.Found,
-                cancellationToken: cancellationToken));
+            observations.Add(
+                await MeasureGroupRankAsync(
+                    database,
+                    engine,
+                    data,
+                    profile.Name,
+                    profile.Rule,
+                    profile.Found,
+                    cancellationToken: cancellationToken));
         }
 
         // WHY: A structural ordinal may enumerate the deep population once. Fixed linear pass allowances
@@ -47,6 +53,7 @@ internal static partial class CompositionConsumerCapacityProfiles
                     $"{observation.Profile}; exposed iterator tuples={work.MaximumOperatorTuples}; "
                     + $"materialized output={work.MaximumMaterializedTuples}; "
                     + $"budgets={exposedIteratorBudget}/{materializedOutputBudget}.");
+
                 // WHY: One source marker and one combined origin/outcome row remain, even for a missing ordinal.
                 Assert.Equal(2D, work.RootOutputTuples);
                 Assert.InRange(work.MaximumOperatorTuples, 0, exposedIteratorBudget);
@@ -85,9 +92,11 @@ internal static partial class CompositionConsumerCapacityProfiles
         }
 
         var options = new DbContextOptionsBuilder<CompositionCapacityGroupContext>(
-                ModelCompatibilityDatabase.Options<CompositionCapacityGroupContext>(engine,
+                ModelCompatibilityDatabase.Options<CompositionCapacityGroupContext>(
+                    engine,
                     connectionString))
-            .AddInterceptors(planProbe, commands, TestMaterializationObserver.Instance).Options;
+            .AddInterceptors(planProbe, commands, TestMaterializationObserver.Instance)
+            .Options;
 
         await using var context = new CompositionCapacityGroupContext(options);
         var materialized = 0;
@@ -103,21 +112,32 @@ internal static partial class CompositionConsumerCapacityProfiles
         {
             await context.Database.OpenConnectionAsync(cancellationToken);
             instructionBudget = new SqliteInstructionBudget(
-                (SqliteConnection)context.Database.GetDbConnection(), instructionLimit);
+                (SqliteConnection)context.Database.GetDbConnection(),
+                instructionLimit);
         }
 
         var started = Stopwatch.GetTimestamp();
         App.SupervisorResolutionBatch batch;
         try
         {
-            batch = await App.SupervisorQueries.ResolveAsync(context, tenant, request,
-                App.SupervisorSelection.RequireUnique, cancellationToken);
+            batch = await App.SupervisorQueries.ResolveAsync(
+                context,
+                tenant,
+                request,
+                App.SupervisorSelection.RequireUnique,
+                cancellationToken);
         }
         catch (Exception error)
         {
             instructionBudget?.Dispose();
+
             // WHY: Failure evidence completes independently of the canceled workload and preserves its error.
-            await RetainReadFailureAsync(context, engine, profile, planProbe, error,
+            await RetainReadFailureAsync(
+                context,
+                engine,
+                profile,
+                planProbe,
+                error,
                 cancellationToken: CancellationToken.None);
 
             throw;
@@ -135,20 +155,41 @@ internal static partial class CompositionConsumerCapacityProfiles
             TestContext.Current.TestOutputHelper?.WriteLine(
                 $"{profile}; approximate SQLite instruction quanta={instructionBudget.ObservedInstructions}; "
                 + $"quantum={SqliteInstructionBudget.Quantum}; budget={instructionLimit}.");
+
             Assert.False(instructionBudget.Exceeded);
             Assert.InRange(instructionBudget.ObservedInstructions, SqliteInstructionBudget.Quantum, instructionLimit);
         }
 
         var commandCount = commands.CommandCount;
         var maximumParameters = planProbe.ParameterBindings.Max(bindings => bindings.Length);
-        var tracked = context.ChangeTracker.Entries().Count();
+        var tracked = context
+            .ChangeTracker
+            .Entries()
+            .Count();
+
         var actual = GroupRankSignature(batch);
         var expected = ExpectedGroupRank(data.Nodes, found);
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, 0, engine,
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            planProbe,
+            0,
+            engine,
             cancellationToken: cancellationToken);
 
-        var observation = new CompositionConsumerCapacityObservation(profile, actual, expected, commandCount,
-            1, maximumParameters, constructionCommands, materialized, tracked, buildBytes, 256 * 1_024, elapsed, plan);
+        var observation = new CompositionConsumerCapacityObservation(
+            profile,
+            actual,
+            expected,
+            commandCount,
+            1,
+            maximumParameters,
+            constructionCommands,
+            materialized,
+            tracked,
+            buildBytes,
+            256 * 1_024,
+            elapsed,
+            plan);
 
         await WriteAsync(engine, observation, planProbe.Commands[0], cancellationToken: cancellationToken);
 
@@ -156,22 +197,34 @@ internal static partial class CompositionConsumerCapacityProfiles
     }
 
     /// <summary>Retains every status and scalar cursor field instead of reducing success to a winner ID.</summary>
-    private static string[] GroupRankSignature(App.SupervisorResolutionBatch batch)
+    private static string[] GroupRankSignature(
+        App.SupervisorResolutionBatch batch
+    )
     {
         var rows = new List<string> { $"{batch.Status}:{batch.Complete}" };
         foreach (var origin in batch.Origins.OrderBy(origin => origin.StartGroupId))
         {
-            var cursor = origin.Continuation is { } continuation ? GroupRankEvidenceKey(continuation) : "none";
+            var cursor = origin.Continuation is { } continuation
+                ? GroupRankEvidenceKey(continuation)
+                : "none";
+
             rows.Add($"origin:{origin.StartGroupId}:{origin.Status}:{origin.Evidence.Count}:cursor:{cursor}");
-            rows.AddRange(origin.Evidence.OrderBy(row => row.FoundGroupId).ThenBy(row => row.CandidateUserId)
-                .Select(row => "evidence:" + GroupRankEvidenceKey(row)));
+            rows.AddRange(
+                origin
+                    .Evidence
+                    .OrderBy(row => row.FoundGroupId)
+                    .ThenBy(row => row.CandidateUserId)
+                    .Select(row => "evidence:" + GroupRankEvidenceKey(row)));
         }
 
         return rows.ToArray();
     }
 
     /// <summary>Derives the final structural rank and sole eligible root from known direct-parent adjacency.</summary>
-    private static string[] ExpectedGroupRank(int nodes, bool found)
+    private static string[] ExpectedGroupRank(
+        int nodes,
+        bool found
+    )
     {
         if (!found)
         {
@@ -182,8 +235,12 @@ internal static partial class CompositionConsumerCapacityProfiles
         {
             TenantId = CompositionConsumerModel.Tenant,
             SourceUserId = CompositionConsumerDataset.SourceUser(1),
-            StartGroupId = nodes, StartTreeId = CompositionConsumerModel.Tree,
-            FoundGroupId = 1, CandidateUserId = 2, Distance = nodes - 1, LeadershipPriority = 1,
+            StartGroupId = nodes,
+            StartTreeId = CompositionConsumerModel.Tree,
+            FoundGroupId = 1,
+            CandidateUserId = 2,
+            Distance = nodes - 1,
+            LeadershipPriority = 1,
         };
 
         var key = GroupRankEvidenceKey(evidence);
@@ -192,7 +249,9 @@ internal static partial class CompositionConsumerCapacityProfiles
     }
 
     /// <summary>Canonicalizes complete scalar provenance without reading or buffering any hierarchy nodes.</summary>
-    private static string GroupRankEvidenceKey(App.SupervisorCandidate row)
+    private static string GroupRankEvidenceKey(
+        App.SupervisorCandidate row
+    )
         => $"{row.TenantId:N}:{row.SourceUserId}:{row.StartGroupId}:{row.StartTreeId:N}:"
             + $"{row.FoundGroupId}:{row.CandidateUserId}:{row.Distance}:{row.LeadershipPriority}";
 }

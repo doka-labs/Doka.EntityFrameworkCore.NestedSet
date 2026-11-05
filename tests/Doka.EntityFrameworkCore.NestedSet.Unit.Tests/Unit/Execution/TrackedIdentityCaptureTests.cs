@@ -63,8 +63,11 @@ public sealed class TrackedIdentityCaptureTests
                 .ChangeTracker
                 .Entries<CountedNode>()
                 .Count());
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Equivalent binary replacements are accepted through each captured typed property entry.</summary>
@@ -102,10 +105,15 @@ public sealed class TrackedIdentityCaptureTests
         Assert.Null(failure);
         Assert.Same(replacement, Identity(node, role));
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.Same(node,
-            Assert.Single(context.ChangeTracker.Entries<BinaryNode>()).Entity);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Same(
+            node,
+            Assert.Single(context.ChangeTracker.Entries<BinaryNode>())
+                .Entity);
+
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>A shallow model snapshot cannot hide in-place edits to any captured binary identity.</summary>
@@ -139,15 +147,23 @@ public sealed class TrackedIdentityCaptureTests
         var failure = Record.Exception(guard.VerifyUnchanged);
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext,
-            Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Same(identity, Identity(node, role));
         Assert.Equal(9, identity[0]);
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.Same(node,
-            Assert.Single(context.ChangeTracker.Entries<BinaryNode>()).Entity);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Same(
+            node,
+            Assert.Single(context.ChangeTracker.Entries<BinaryNode>())
+                .Entity);
+
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>The guard retains the original entry state even when cached property wrappers remain valid.</summary>
@@ -174,15 +190,20 @@ public sealed class TrackedIdentityCaptureTests
         var failure = Record.Exception(guard.VerifyUnchanged);
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext,
-            Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Equal(EntityState.Detached, entry.State);
         Assert.Empty(context.ChangeTracker.Entries<BinaryNode>());
         Assert.Equal<byte>([1], node.Id);
         Assert.Equal<byte>([2], node.Scope);
         Assert.Equal<byte>([3], node.TreeId);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Equivalent replacements remain visible across candidate block boundaries.</summary>
@@ -218,13 +239,16 @@ public sealed class TrackedIdentityCaptureTests
                 .ChangeTracker
                 .Entries<BinaryNode>()
                 .Count());
+
         Assert.All(
             context.ChangeTracker.Entries<BinaryNode>(),
             entry => Assert.Equal(EntityState.Unchanged, entry.State));
 
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Late mutable identity edits are detected on both sides of a candidate block boundary.</summary>
@@ -248,32 +272,44 @@ public sealed class TrackedIdentityCaptureTests
             .ToArray();
 
         // Act
-        nodes[^1].TreeId[0] = 9;
+        nodes[^1]
+            .TreeId[0] = 9;
+
         var failure = Record.Exception(guard.VerifyUnchanged);
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext,
-            Assert.IsType<NestedSetException>(failure).Code);
-        Assert.Equal(9,
-            nodes[^1].TreeId[0]);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
+        Assert.Equal(
+            9,
+            nodes[^1]
+                .TreeId[0]);
+
         Assert.Equal(
             originalTrees.Take(candidates - 1),
             nodes
                 .Take(candidates - 1)
                 .Select(node => node.TreeId));
+
         Assert.Equal(
             candidates,
             context
                 .ChangeTracker
                 .Entries<BinaryNode>()
                 .Count());
+
         Assert.All(
             context.ChangeTracker.Entries<BinaryNode>(),
             entry => Assert.Equal(EntityState.Unchanged, entry.State));
 
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Creates distinct valid scalar identities without relying on a database or generated keys.</summary>
@@ -374,6 +410,7 @@ public sealed class TrackedIdentityCaptureTests
             node
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             node
                 .Property(value => value.Scope)
                 .HasConversion(value => CountProviderConversion(value), value => new CountedIdentity(value));
@@ -430,14 +467,17 @@ public sealed class TrackedIdentityCaptureTests
                 .HasMaxLength(8)
                 .Metadata
                 .SetValueComparer(comparer);
+
             node
                 .Property(value => value.TreeId)
                 .HasMaxLength(8)
                 .Metadata
                 .SetValueComparer(comparer);
+
             node
                 .Property(value => value.ParentId)
                 .HasMaxLength(8);
+
             node.HasNestedSet(builder => builder
                 .HasScope(value => value.Scope)
                 .HasTreeId(value => value.TreeId)
@@ -448,6 +488,9 @@ public sealed class TrackedIdentityCaptureTests
     /// <summary>Separates counted provider roles from the native integer node key.</summary>
     private sealed class CountedNode : IScopedNestedSetNode<int, CountedIdentity, CountedIdentity>
     {
+        /// <summary>Gets or sets the optional direct parent key.</summary>
+        public int? ParentId { get; set; }
+
         /// <inheritdoc />
         public int Id { get; set; }
 
@@ -456,9 +499,6 @@ public sealed class TrackedIdentityCaptureTests
 
         /// <inheritdoc />
         public CountedIdentity TreeId { get; set; }
-
-        /// <summary>Gets or sets the optional direct parent key.</summary>
-        public int? ParentId { get; set; }
 
         /// <inheritdoc />
         public long Left { get; set; }
@@ -476,6 +516,9 @@ public sealed class TrackedIdentityCaptureTests
     /// <summary>Exposes independently mutable binary roles for late verification.</summary>
     private sealed class BinaryNode : IScopedNestedSetNode<byte[], byte[], byte[]>
     {
+        /// <summary>Gets or sets the optional direct parent key.</summary>
+        public byte[]? ParentId { get; set; }
+
         /// <inheritdoc />
         public byte[] Id { get; set; } = [];
 
@@ -484,9 +527,6 @@ public sealed class TrackedIdentityCaptureTests
 
         /// <inheritdoc />
         public byte[] TreeId { get; set; } = [];
-
-        /// <summary>Gets or sets the optional direct parent key.</summary>
-        public byte[]? ParentId { get; set; }
 
         /// <inheritdoc />
         public long Left { get; set; }

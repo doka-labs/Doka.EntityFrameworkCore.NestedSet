@@ -39,7 +39,7 @@ public sealed class ShadowPropertyTests : ProviderTest, IClassFixture<ProviderFi
             new ShadowNode
             {
                 Id = 2,
-                Name = "Child"
+                Name = "Child",
             },
             1,
             CancellationToken.None);

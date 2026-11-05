@@ -28,7 +28,8 @@ public abstract class BulkWriteBudgetTests : ProviderTest
             nameof(BulkManualNode.Left),
             nameof(BulkManualNode.Right));
 
-        await using var context = await _generated.ResetAsync(Engine,
+        await using var context = await _generated.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -91,7 +92,7 @@ public abstract class BulkWriteBudgetTests : ProviderTest
 
         // Act
         await tree.InsertForestAsync(
-            [new NestedSetTreeImport<ConstrainedNode, Guid>(Guid.Empty, branch),],
+            [new NestedSetTreeImport<ConstrainedNode, Guid>(Guid.Empty, branch)],
             CancellationToken.None);
 
         // Assert
@@ -115,7 +116,8 @@ public abstract class BulkWriteBudgetTests : ProviderTest
             nameof(BulkManualNode.Left),
             nameof(BulkManualNode.Right));
 
-        await using var context = await _generated.ResetAsync(Engine,
+        await using var context = await _generated.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -132,7 +134,9 @@ public abstract class BulkWriteBudgetTests : ProviderTest
 
         var trees = roots
             .Select((branch, index) => new NestedSetTreeImport<BulkManualNode, Guid>(
-                index == 0 ? Guid.Empty : Guid.NewGuid(),
+                index == 0
+                    ? Guid.Empty
+                    : Guid.NewGuid(),
                 branch))
             .ToArray();
 
@@ -150,6 +154,7 @@ public abstract class BulkWriteBudgetTests : ProviderTest
                 Assert.Equal(
                     (1L, 2L, 0, 0L),
                     (branch.Entity.Left, branch.Entity.Right, branch.Entity.Depth, branch.Entity.Position));
+
                 Assert.Null(branch.Entity.ParentId);
             });
 
@@ -160,6 +165,7 @@ public abstract class BulkWriteBudgetTests : ProviderTest
                 .Select(branch => branch.Entity.TreeId)
                 .Distinct()
                 .Count());
+
         Assert.Empty(
             (await tree
                 .InTree(Guid.Empty)
@@ -176,7 +182,8 @@ public abstract class BulkWriteBudgetTests : ProviderTest
             nameof(BulkManualNode.Left),
             nameof(BulkManualNode.Right));
 
-        await using var context = await _generated.ResetAsync(Engine,
+        await using var context = await _generated.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -212,6 +219,7 @@ public abstract class BulkWriteBudgetTests : ProviderTest
             command => command.StartsWith("UPDATE", StringComparison.OrdinalIgnoreCase)
                 && command.Contains("CASE", StringComparison.OrdinalIgnoreCase)
                 && command.Contains(nameof(BulkManualNode.Depth), StringComparison.OrdinalIgnoreCase));
+
         Assert.Empty(
             (await tree
                 .InTree(Guid.Empty)
@@ -228,7 +236,8 @@ public abstract class BulkWriteBudgetTests : ProviderTest
             nameof(BulkGeneratedNode.Left),
             nameof(BulkGeneratedNode.Right));
 
-        await using var context = await _generated.ResetAsync(Engine,
+        await using var context = await _generated.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -245,7 +254,7 @@ public abstract class BulkWriteBudgetTests : ProviderTest
 
         // Act
         await tree.InsertForestAsync(
-            [new NestedSetTreeImport<BulkGeneratedNode, Guid>(Guid.Empty, branch),],
+            [new NestedSetTreeImport<BulkGeneratedNode, Guid>(Guid.Empty, branch)],
             CancellationToken.None);
 
         // Assert
@@ -266,7 +275,8 @@ public abstract class BulkWriteBudgetTests : ProviderTest
     {
         // Arrange
         var failure = new BulkRefreshFailure(nameof(BulkManualNode));
-        await using var context = await _generated.ResetAsync(Engine,
+        await using var context = await _generated.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             failure);
 
@@ -284,7 +294,7 @@ public abstract class BulkWriteBudgetTests : ProviderTest
 
         // Act
         var error = await Record.ExceptionAsync(() => tree.InsertForestAsync(
-            [new NestedSetTreeImport<BulkManualNode, Guid>(Guid.Empty, new NestedSetBranch<BulkManualNode>(root)),],
+            [new NestedSetTreeImport<BulkManualNode, Guid>(Guid.Empty, new NestedSetBranch<BulkManualNode>(root))],
             CancellationToken.None));
 
         // Assert
@@ -305,7 +315,8 @@ public abstract class BulkWriteBudgetTests : ProviderTest
     {
         // Arrange
         var failure = new BulkRefreshFailure(nameof(BulkNavigationNode));
-        await using var context = await _generated.ResetAsync(Engine,
+        await using var context = await _generated.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             failure);
 
@@ -321,12 +332,12 @@ public abstract class BulkWriteBudgetTests : ProviderTest
 
         // Act
         var error = await Record.ExceptionAsync(() => tree.InsertForestAsync(
-            [new NestedSetTreeImport<BulkNavigationNode, Guid>(Guid.Empty, branch),],
+            [new NestedSetTreeImport<BulkNavigationNode, Guid>(Guid.Empty, branch)],
             CancellationToken.None));
 
         var restored = root.Children.Count == 0 && child.Parent is null && child.ParentId is null;
         await tree.InsertForestAsync(
-            [new NestedSetTreeImport<BulkNavigationNode, Guid>(Guid.Empty, branch),],
+            [new NestedSetTreeImport<BulkNavigationNode, Guid>(Guid.Empty, branch)],
             CancellationToken.None);
 
         // Assert

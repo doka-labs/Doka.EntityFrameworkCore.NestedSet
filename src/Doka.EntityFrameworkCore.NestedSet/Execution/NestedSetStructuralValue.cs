@@ -148,12 +148,14 @@ internal static class NestedSetStructuralValue
         IProperty property,
         object? current,
         object? expected
-    ) => Comparer(property).Equals(current, expected);
+    ) => Comparer(property)
+        .Equals(current, expected);
 
     /// <summary>Shares default structural semantics only for the lifetime of the owning model metadata.</summary>
     private static ValueComparer Comparer(
             IProperty property
         )
+
         // WHY: Application comparers can equate database-distinct values. Sentinel checks retain default CLR
         // semantics, while snapshots use configured copy semantics and identity guards use provider equality.
         => s_comparers.GetValue(

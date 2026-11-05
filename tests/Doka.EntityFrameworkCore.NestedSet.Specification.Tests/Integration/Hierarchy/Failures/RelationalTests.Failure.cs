@@ -77,8 +77,13 @@ public abstract partial class RelationalTests
         // Assert
         Assert.IsAssignableFrom<InvalidOperationException>(error);
         Assert.Equal(before, await SnapshotAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken));
-        Assert.Equal(isolatedBefore, await SnapshotAsync(context, 2,
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            isolatedBefore,
+            await SnapshotAsync(
+                context,
+                2,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
         await AssertValidAsync(context, 2, cancellationToken: TestContext.Current.CancellationToken);
     }
@@ -139,7 +144,12 @@ public abstract partial class RelationalTests
         Assert.Equal(
             (17, 20, 88, 9, 7),
             (duplicate.Start, duplicate.End, duplicate.Tree, duplicate.Depth, duplicate.Position));
-        Assert.Equal(EntityState.Detached, context.Entry(duplicate).State);
+
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(duplicate)
+                .State);
+
         Assert.Equal(before, await SnapshotAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken));
         await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }

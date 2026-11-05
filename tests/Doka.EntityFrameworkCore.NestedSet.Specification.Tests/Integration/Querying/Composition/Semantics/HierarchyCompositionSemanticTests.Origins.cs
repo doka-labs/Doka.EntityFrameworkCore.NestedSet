@@ -9,20 +9,37 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe,
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
-        var pairs = hierarchy.SelectAncestors(node => node.Id == 3 || node.Id == 6,
-            (source, pivot, distance) => new { Source = source, Pivot = pivot, Distance = distance });
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
+        var pairs = hierarchy.SelectAncestors(
+            node => node.Id == 3 || node.Id == 6,
+            (source, pivot, distance) => new
+            {
+                Source = source,
+                Pivot = pivot,
+                Distance = distance,
+            });
 
         // Act
-        var actual = await hierarchy.WhereNearestAncestorOrSelf(
+        var actual = await hierarchy
+            .WhereNearestAncestorOrSelf(
                 pairs,
                 row => row.Source,
                 (row, owner) => owner.Candidate,
                 (row, owner) => owner == row.Pivot)
-            .Select(row => new { Source = row.Source.Id, Pivot = row.Pivot.Id, row.Distance })
+            .Select(row => new
+            {
+                Source = row.Source.Id,
+                Pivot = row.Pivot.Id,
+                row.Distance,
+            })
             .OrderBy(row => row.Source)
             .ToArrayAsync(CancellationToken.None);
 
@@ -44,32 +61,57 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe,
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
         IReadOnlyDictionary<int, int?> parents = new Dictionary<int, int?>
         {
-            [1] = null, [2] = 1, [3] = 2, [4] = 2, [5] = 1, [6] = 5,
+            [1] = null,
+            [2] = 1,
+            [3] = 2,
+            [4] = 2,
+            [5] = 1,
+            [6] = 5,
         };
 
         int[] origins = [3, 6];
-        var expected = origins.SelectMany(source => Ancestors(parents, source, includeSelf: false)
-                .Where(owner => owner is 1 or 2)
-                .Skip(rank - 1)
-                .Take(1),
-            (source, owner) => (Source: source, Pivot: owner, Distance: Distance(parents, owner, source)))
+        var expected = origins
+            .SelectMany(
+                source => Ancestors(parents, source, includeSelf: false)
+                    .Where(owner => owner is 1 or 2)
+                    .Skip(rank - 1)
+                    .Take(1),
+                (source, owner) => (Source: source, Pivot: owner, Distance: Distance(parents, owner, source)))
             .ToArray();
 
-        var pairs = hierarchy.SelectAncestors(node => node.Id == 3 || node.Id == 6,
-            (source, pivot, distance) => new { Source = source, Pivot = pivot, Distance = distance });
+        var pairs = hierarchy.SelectAncestors(
+            node => node.Id == 3 || node.Id == 6,
+            (source, pivot, distance) => new
+            {
+                Source = source,
+                Pivot = pivot,
+                Distance = distance,
+            });
 
         var eligible = pairs.Where(row => row.Pivot.Candidate);
 
         // Act
-        var actual = await eligible.Where(row => eligible.Count(other => other.Source == row.Source
-                && other.Distance < row.Distance) == rank - 1)
-            .Select(row => new { Source = row.Source.Id, Pivot = row.Pivot.Id, row.Distance })
+        var actual = await eligible
+            .Where(row => eligible.Count(other => other.Source == row.Source
+                    && other.Distance < row.Distance)
+                == rank - 1)
+            .Select(row => new
+            {
+                Source = row.Source.Id,
+                Pivot = row.Pivot.Id,
+                row.Distance,
+            })
             .OrderBy(row => row.Source)
             .ToArrayAsync(CancellationToken.None);
 
@@ -91,37 +133,78 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe,
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
-        var node = context.Set<CompositionNode>().Where(entity => entity.Scope == scope && entity.Id == 3);
-        var payloads = node.Select(entity => new { Node = entity, CandidateId = 1, AcceptedId = 1, Payload = 11 })
-            .Concat(node.Select(entity => new
-            {
-                Node = entity, CandidateId = 2, AcceptedId = secondAccepted ? 2 : 1, Payload = 22,
-            }));
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
 
-        var pairs = hierarchy.SelectAncestors(source => payloads.Any(row => row.Node == source),
-            (source, pivot, distance) => new { Source = source, Pivot = pivot });
+        var node = context
+            .Set<CompositionNode>()
+            .Where(entity => entity.Scope == scope && entity.Id == 3);
+
+        var payloads = node
+            .Select(entity => new
+            {
+                Node = entity,
+                CandidateId = 1,
+                AcceptedId = 1,
+                Payload = 11,
+            })
+            .Concat(
+                node.Select(entity => new
+                {
+                    Node = entity,
+                    CandidateId = 2,
+                    AcceptedId = secondAccepted
+                        ? 2
+                        : 1,
+                    Payload = 22,
+                }));
+
+        var pairs = hierarchy.SelectAncestors(
+            source => payloads.Any(row => row.Node == source),
+            (source, pivot, distance) => new
+            {
+                Source = source,
+                Pivot = pivot,
+            });
 
         // Act
-        var restored = pairs.Join(payloads, pair => pair.Source, input => input.Node, (pair, input) => new
-        {
-            pair.Source, pair.Pivot, input.CandidateId, input.AcceptedId, input.Payload,
-        });
+        var restored = pairs.Join(
+            payloads,
+            pair => pair.Source,
+            input => input.Node,
+            (pair, input) => new
+            {
+                pair.Source,
+                pair.Pivot,
+                input.CandidateId,
+                input.AcceptedId,
+                input.Payload,
+            });
 
-        var actual = await hierarchy.WhereNearestAncestorOrSelf(
+        var actual = await hierarchy
+            .WhereNearestAncestorOrSelf(
                 restored,
                 row => row.Source,
                 (row, owner) => owner.Id == row.CandidateId,
                 (row, owner) => owner == row.Pivot && owner.Id == row.AcceptedId)
-            .Select(row => new { row.Payload, Pivot = row.Pivot.Id })
+            .Select(row => new
+            {
+                row.Payload,
+                Pivot = row.Pivot.Id,
+            })
             .OrderBy(row => row.Payload)
             .ToArrayAsync(CancellationToken.None);
 
         // Assert
-        (int Payload, int Pivot)[] expected = secondAccepted ? [(11, 1), (22, 2)] : [(11, 1)];
+        (int Payload, int Pivot)[] expected = secondAccepted
+            ? [(11, 1), (22, 2)]
+            : [(11, 1)];
 
         Assert.Equal(expected, actual.Select(row => (row.Payload, row.Pivot)));
         Assert.Equal(1, probe.CommandCount);

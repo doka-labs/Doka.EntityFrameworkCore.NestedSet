@@ -58,9 +58,15 @@ internal sealed class CompositionShadowContext : DbContext
         node.Ignore(entity => entity.Left);
         node.Ignore(entity => entity.Right);
         node.Ignore(entity => entity.Depth);
-        node.Property(entity => entity.Label).HasMaxLength(32);
+        node
+            .Property(entity => entity.Label)
+            .HasMaxLength(32);
+
         node.Property<Guid>(Scope);
-        node.Property<int>(Key).ValueGeneratedNever();
+        node
+            .Property<int>(Key)
+            .ValueGeneratedNever();
+
         node.Property<Guid>(Tree);
         node.Property<int?>(Parent);
         node.Property<long>(Start);

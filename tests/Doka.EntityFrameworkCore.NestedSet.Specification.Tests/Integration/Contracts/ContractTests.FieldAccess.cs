@@ -8,7 +8,8 @@ public abstract partial class ContractTests
     public async Task RootInsertionRespectsConfiguredFieldAccess()
     {
         // Arrange
-        await using var context = await _fixture.CreateFieldContextAsync(Engine,
+        await using var context = await _fixture.CreateFieldContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = context
@@ -42,7 +43,8 @@ public abstract partial class ContractTests
     public async Task ChildInsertionRespectsConfiguredFieldAccess()
     {
         // Arrange
-        await using var context = await _fixture.CreateFieldContextAsync(Engine,
+        await using var context = await _fixture.CreateFieldContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = context
@@ -79,7 +81,8 @@ public abstract partial class ContractTests
     public async Task ValidationRespectsConfiguredFieldAccess()
     {
         // Arrange
-        await using var context = await _fixture.CreateFieldContextAsync(Engine,
+        await using var context = await _fixture.CreateFieldContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedFieldHierarchyAsync(context, cancellationToken: TestContext.Current.CancellationToken);
@@ -102,7 +105,8 @@ public abstract partial class ContractTests
     public async Task MoveRespectsConfiguredFieldAccess()
     {
         // Arrange
-        await using var context = await _fixture.CreateFieldContextAsync(Engine,
+        await using var context = await _fixture.CreateFieldContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedFieldHierarchyAsync(context, cancellationToken: TestContext.Current.CancellationToken);
@@ -144,7 +148,8 @@ public abstract partial class ContractTests
     )
     {
         // Arrange
-        await using var context = await _fixture.CreateFieldContextAsync(Engine,
+        await using var context = await _fixture.CreateFieldContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedFieldHierarchyAsync(context, cancellationToken: TestContext.Current.CancellationToken);
@@ -196,8 +201,15 @@ public abstract partial class ContractTests
 
         // Assert
         Assert.Equal(
-            separateRoots ? s_twoRoots : s_parentAndChild,
+            separateRoots
+                ? s_twoRoots
+                : s_parentAndChild,
             stored.Select(x => (x.Left, x.Right, x.Depth, x.Position)));
-        Assert.Equal(separateRoots ? null : 1, stored[1].ParentId);
+
+        Assert.Equal(
+            separateRoots
+                ? null
+                : 1,
+            stored[1].ParentId);
     }
 }

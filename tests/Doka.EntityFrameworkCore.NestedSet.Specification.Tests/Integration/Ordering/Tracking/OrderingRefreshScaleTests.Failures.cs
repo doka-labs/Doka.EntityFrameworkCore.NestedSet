@@ -13,13 +13,20 @@ public abstract partial class OrderingRefreshScaleTests
     )
     {
         // Arrange
-        await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, 3,
+        await OrderingRefreshTestSupport.SeedAsync(
+            _fixture,
+            Engine,
+            3,
             cancellationToken: TestContext.Current.CancellationToken);
+
         using var probe = new ScaleProbe();
         var rollback = new RefreshRollbackProbe(probe);
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict", probe, rollback);
+            "Strict",
+            probe,
+            rollback);
 
         var tracked = await context
             .Set<OrderingNode>()
@@ -57,6 +64,7 @@ public abstract partial class OrderingRefreshScaleTests
                 }
             }
         };
+
         probe.Reset();
 
         // Act
@@ -84,6 +92,7 @@ public abstract partial class OrderingRefreshScaleTests
                 .Entry(tracked[0])
                 .Property(node => node.Name)
                 .IsModified);
+
         Assert.Equal("zzzz", tracked[0].Name);
         Assert.Equal(
             "node-00000001",
@@ -91,8 +100,10 @@ public abstract partial class OrderingRefreshScaleTests
                 .Entry(tracked[0])
                 .Property(node => node.Name)
                 .OriginalValue);
+
         Assert.Null(context.Database.CurrentTransaction);
-        await using var verification = await _fixture.CreateContextAsync(Engine,
+        await using var verification = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var persisted = await verification

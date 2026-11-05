@@ -204,8 +204,10 @@ public sealed class SampleDatabaseLifecycleTests
         var invalid = Assert.IsType<InvalidOperationException>(error);
 
         Assert.Contains("owned server database", invalid.Message, StringComparison.Ordinal);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>An already canceled reset leaves the owned data and schema intact.</summary>

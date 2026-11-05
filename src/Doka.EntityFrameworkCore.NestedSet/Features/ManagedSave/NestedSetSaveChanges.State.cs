@@ -42,14 +42,14 @@ internal static partial class NestedSetSaveChanges
     /// <summary>Owns one library-owned insertion save and restores the internal-save bypass even on failure.</summary>
     internal sealed class ManagedSaveScope : IDisposable
     {
+        private readonly bool _autoDetectChanges;
+        private readonly NestedSetTrackerSnapshot? _previousCallbackWrites;
+        private readonly HashSet<object>? _previousEntities;
+        private readonly Action? _previousPersistenceCompleted;
+        private readonly HashSet<IUpdateEntry>? _previousPersistenceEntries;
+        private readonly Action? _previousValidation;
         private readonly SaveState _state;
         private readonly ChangeTracker _tracker;
-        private readonly bool _autoDetectChanges;
-        private readonly HashSet<object>? _previousEntities;
-        private readonly Action? _previousValidation;
-        private readonly Action? _previousPersistenceCompleted;
-        private readonly NestedSetTrackerSnapshot? _previousCallbackWrites;
-        private readonly HashSet<IUpdateEntry>? _previousPersistenceEntries;
         private bool _disposed;
 
         /// <summary>Captures the outer context-local state before a nested plan replaces it.</summary>
@@ -111,22 +111,6 @@ internal static partial class NestedSetSaveChanges
             }
         }
 
-        /// <summary>Requires that EF passed this validated plan to its persistence step.</summary>
-        /// <exception cref="NestedSetException">
-        /// A save callback suppressed or emptied the planned insertion.
-        /// </exception>
-        internal void RequirePersisted()
-        {
-            ObjectDisposedException.ThrowIf(_disposed, this);
-
-            if (_state.ManagedPersistenceEntries is null)
-            {
-                throw new NestedSetException(
-                    NestedSetErrorCode.InvalidContext,
-                    "Save callbacks must not suppress or empty a planned hierarchy insertion.");
-            }
-        }
-
         /// <inheritdoc />
         public void Dispose()
         {
@@ -143,6 +127,22 @@ internal static partial class NestedSetSaveChanges
             _state.ManagedCallbackWrites = _previousCallbackWrites;
             _state.ManagedPersistenceEntries = _previousPersistenceEntries;
             _disposed = true;
+        }
+
+        /// <summary>Requires that EF passed this validated plan to its persistence step.</summary>
+        /// <exception cref="NestedSetException">
+        /// A save callback suppressed or emptied the planned insertion.
+        /// </exception>
+        internal void RequirePersisted()
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+
+            if (_state.ManagedPersistenceEntries is null)
+            {
+                throw new NestedSetException(
+                    NestedSetErrorCode.InvalidContext,
+                    "Save callbacks must not suppress or empty a planned hierarchy insertion.");
+            }
         }
     }
 

@@ -31,11 +31,17 @@ public sealed class SaveValidationLifetimeTests
         await using var context = new HierarchyChangeDetectionTests.SnapshotContext();
         using var stop = new CancellationTokenSource();
         var state = StateFor(context);
-        Action? previous = existingGuard ? static () => { } : null;
+        Action? previous = existingGuard
+            ? static () => { }
+            : null;
+
         state.SaveValidation = previous;
 
         // Act
-        var result = await ObserveBoundaryAsync(context, outcome, stop,
+        var result = await ObserveBoundaryAsync(
+            context,
+            outcome,
+            stop,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -69,7 +75,9 @@ public sealed class SaveValidationLifetimeTests
         var factory = services.GetRequiredService<IDbContextFactory<HierarchyChangeDetectionTests.SnapshotContext>>();
 
         // Act
-        var result = await ObservePoolReuseAsync(factory, outcome,
+        var result = await ObservePoolReuseAsync(
+            factory,
+            outcome,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -109,7 +117,10 @@ public sealed class SaveValidationLifetimeTests
         await using var context = new HierarchyChangeDetectionTests.SnapshotContext();
         context.ChangeTracker.AutoDetectChangesEnabled = automatic;
         var state = StateFor(context);
-        Action? previous = existingGuard ? static () => { } : null;
+        Action? previous = existingGuard
+            ? static () => { }
+            : null;
+
         state.SaveValidation = previous;
 
         // Act
@@ -147,7 +158,9 @@ public sealed class SaveValidationLifetimeTests
         var factory = services.GetRequiredService<IDbContextFactory<HierarchyChangeDetectionTests.SnapshotContext>>();
 
         // Act
-        var result = await ObserveSynchronousPoolReuseAsync(factory, outcome,
+        var result = await ObserveSynchronousPoolReuseAsync(
+            factory,
+            outcome,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -174,10 +187,12 @@ public sealed class SaveValidationLifetimeTests
         var automatic = false;
         var calls = 0;
         var cancellationToken = new CancellationToken(canceled: true);
+
         // WHY: This intentionally tests a synchronous application override, including a synchronous OCE.
         var failure = Record.Exception(() =>
         {
-            NestedSetSaveChanges.ExecuteSynchronous(context,
+            NestedSetSaveChanges.ExecuteSynchronous(
+                context,
                 () =>
                 {
                     calls++;
@@ -196,7 +211,8 @@ public sealed class SaveValidationLifetimeTests
                 });
         });
 
-        return new SynchronousObservation(during,
+        return new SynchronousObservation(
+            during,
             state.SaveValidation,
             active,
             automatic,
@@ -230,7 +246,8 @@ public sealed class SaveValidationLifetimeTests
         await using var next = await factory.CreateDbContextAsync(cancellationToken);
         var state = StateFor(next);
 
-        return new SynchronousPoolObservation(ReferenceEquals(initial, next),
+        return new SynchronousPoolObservation(
+            ReferenceEquals(initial, next),
             ReferenceEquals(originalState, state),
             first,
             state.SaveValidation,
@@ -273,7 +290,9 @@ public sealed class SaveValidationLifetimeTests
                     token.ThrowIfCancellationRequested();
                 }
 
-                return outcome == "failure" ? throw new SaveFailureException() : 0;
+                return outcome == "failure"
+                    ? throw new SaveFailureException()
+                    : 0;
             },
             stop.Token));
 
@@ -305,7 +324,8 @@ public sealed class SaveValidationLifetimeTests
         await using var next = await factory.CreateDbContextAsync(cancellationToken);
         var state = StateFor(next);
 
-        return new PoolObservation(ReferenceEquals(initial, next),
+        return new PoolObservation(
+            ReferenceEquals(initial, next),
             ReferenceEquals(originalState, state),
             first,
             state.SaveValidation,
@@ -329,8 +349,11 @@ public sealed class SaveValidationLifetimeTests
                 Assert.IsType<SaveFailureException>(failure);
                 break;
             case "cancellation":
-                Assert.Equal(cancellationToken,
-                    Assert.IsAssignableFrom<OperationCanceledException>(failure).CancellationToken);
+                Assert.Equal(
+                    cancellationToken,
+                    Assert.IsAssignableFrom<OperationCanceledException>(failure)
+                        .CancellationToken);
+
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(outcome));

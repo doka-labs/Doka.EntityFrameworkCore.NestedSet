@@ -13,13 +13,13 @@ public sealed partial class ComplexCollectionStorageRecoveryTests
             var cases = new TheoryData<string, bool, bool>();
 
             foreach (var mutation in new[]
-                     {
-                         "TagsAdd",
-                         "TagsClear",
-                         "TagsReplace",
-                         "BytesEdit",
-                         "BytesReplace",
-                     })
+                {
+                    "TagsAdd",
+                    "TagsClear",
+                    "TagsReplace",
+                    "BytesEdit",
+                    "BytesReplace",
+                })
             {
                 cases.Add(mutation, false, false);
                 cases.Add(mutation, false, true);
@@ -147,9 +147,14 @@ public sealed partial class ComplexCollectionStorageRecoveryTests
         Assert.Equal(bytesModified, bytesProperty.IsModified);
         Assert.Equal(complexModified, complex.IsModified);
         Assert.Equal(entityState, entry.State);
-        Assert.False(entry.Property(value => value.Id).IsModified);
+        Assert.False(
+            entry.Property(value => value.Id)
+                .IsModified);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 }

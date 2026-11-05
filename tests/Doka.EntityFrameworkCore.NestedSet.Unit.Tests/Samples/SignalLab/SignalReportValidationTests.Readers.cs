@@ -13,17 +13,19 @@ public sealed partial class SignalReportValidationTests
         var rows = Catalog(snapshot)
             .Reverse()
             .Concat(Catalog(snapshot))
-            .Append(new SignalCatalogRow
-            {
-                Kind = 99,
-                UnitCode = "ignored",
-            })
+            .Append(
+                new SignalCatalogRow
+                {
+                    Kind = 99,
+                    UnitCode = "ignored",
+                })
             .ToArray();
 
         var probe = new ReaderProbe();
 
         // Act
-        var error = await Record.ExceptionAsync(() => SignalReportValidation.RequireCatalogAsync(snapshot,
+        var error = await Record.ExceptionAsync(() => SignalReportValidation.RequireCatalogAsync(
+            snapshot,
             ReadRows(rows, probe, CancellationToken.None),
             CancellationToken.None));
 
@@ -49,18 +51,22 @@ public sealed partial class SignalReportValidationTests
         var rows = Catalog(snapshot)
             .Where(row => failure != "authorization" || row.Kind != 0)
             .Where(row => failure != "metadata" || row.Kind != 3)
-            .Append(new SignalCatalogRow
-            {
-                Kind = 1,
-                Id = snapshot.ChannelIds[0],
-                UnitCode = failure == "metadata" ? "count" : "COUNT",
-            })
+            .Append(
+                new SignalCatalogRow
+                {
+                    Kind = 1,
+                    Id = snapshot.ChannelIds[0],
+                    UnitCode = failure == "metadata"
+                        ? "count"
+                        : "COUNT",
+                })
             .ToArray();
 
         var probe = new ReaderProbe();
 
         // Act
-        var error = await Record.ExceptionAsync(() => SignalReportValidation.RequireCatalogAsync(snapshot,
+        var error = await Record.ExceptionAsync(() => SignalReportValidation.RequireCatalogAsync(
+            snapshot,
             ReadRows(rows, probe, CancellationToken.None),
             CancellationToken.None));
 
@@ -88,15 +94,22 @@ public sealed partial class SignalReportValidationTests
         var failure = new InvalidOperationException("catalog reader failure");
         var probe = new ReaderProbe
         {
-            ReadFailure = boundary == "read" ? failure : null,
-            DisposeFailure = boundary == "dispose" ? failure : null,
-            CancelAfterRows = boundary == "cancel" ? cancellation : null,
+            ReadFailure = boundary == "read"
+                ? failure
+                : null,
+            DisposeFailure = boundary == "dispose"
+                ? failure
+                : null,
+            CancelAfterRows = boundary == "cancel"
+                ? cancellation
+                : null,
         };
 
         SignalCatalogRow[] rows = [new() { Kind = 99 }];
 
         // Act
-        var error = await Record.ExceptionAsync(() => SignalReportValidation.RequireCatalogAsync(snapshot,
+        var error = await Record.ExceptionAsync(() => SignalReportValidation.RequireCatalogAsync(
+            snapshot,
             ReadRows(rows, probe, cancellation.Token),
             cancellation.Token));
 
@@ -119,12 +132,13 @@ public sealed partial class SignalReportValidationTests
     public async Task GridReaderMatchesTheCompleteSynchronousGrid()
     {
         // Arrange
-        var snapshot = SignalReportValidation.Snapshot(Request() with
-        {
-            AnchorIds = [SignalReportDataset.Id(2), SignalReportDataset.Id(1)],
-            ChannelIds = [SignalReportDataset.SweepChannel, SignalReportDataset.PulseChannel],
-            Sources = [CapturePort.Sweep, CapturePort.Pulse],
-        });
+        var snapshot = SignalReportValidation.Snapshot(
+            Request() with
+            {
+                AnchorIds = [SignalReportDataset.Id(2), SignalReportDataset.Id(1)],
+                ChannelIds = [SignalReportDataset.SweepChannel, SignalReportDataset.PulseChannel],
+                Sources = [CapturePort.Sweep, CapturePort.Pulse],
+            });
 
         SignalReportTotal[] rows =
         [
@@ -138,7 +152,8 @@ public sealed partial class SignalReportValidationTests
         var probe = new ReaderProbe();
 
         // Act
-        var actual = await SignalReportValidation.CreateGridAsync(snapshot,
+        var actual = await SignalReportValidation.CreateGridAsync(
+            snapshot,
             ReadRows(rows, probe, CancellationToken.None),
             CancellationToken.None);
 
@@ -162,11 +177,20 @@ public sealed partial class SignalReportValidationTests
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request());
-        var anchor = foreign ? SignalReportDataset.Id(99) : snapshot.AnchorIds[0];
+        var anchor = foreign
+            ? SignalReportDataset.Id(99)
+            : snapshot.AnchorIds[0];
+
         SignalReportTotal[] rows =
         [
             Total(anchor, snapshot.ChannelIds[0], CapturePort.Pulse, 7),
-            Total(anchor, snapshot.ChannelIds[0], CapturePort.Pulse, sameValue ? 7 : 11),
+            Total(
+                anchor,
+                snapshot.ChannelIds[0],
+                CapturePort.Pulse,
+                sameValue
+                    ? 7
+                    : 11),
             Total(SignalReportDataset.Id(98), snapshot.ChannelIds[0], CapturePort.Pulse, 19),
         ];
 
@@ -202,9 +226,15 @@ public sealed partial class SignalReportValidationTests
         var failure = new InvalidOperationException("aggregate reader failure");
         var probe = new ReaderProbe
         {
-            ReadFailure = boundary == "read" ? failure : null,
-            DisposeFailure = boundary == "dispose" ? failure : null,
-            CancelAfterRows = boundary == "cancel" ? cancellation : null,
+            ReadFailure = boundary == "read"
+                ? failure
+                : null,
+            DisposeFailure = boundary == "dispose"
+                ? failure
+                : null,
+            CancelAfterRows = boundary == "cancel"
+                ? cancellation
+                : null,
         };
 
         SignalReportTotal[] rows =
@@ -262,7 +292,8 @@ public sealed partial class SignalReportValidationTests
         var probe = new ReaderProbe();
 
         // Act
-        var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(snapshot,
+        var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(
+            snapshot,
             ReadRows(rows, probe, CancellationToken.None),
             CancellationToken.None));
 

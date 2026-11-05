@@ -21,12 +21,14 @@ public sealed class TrackerMembershipDeltaTests
         context.ChangeTracker.CascadeDeleteTiming = CascadeTiming.OnSaveChanges;
         context.ChangeTracker.DeleteOrphansTiming = CascadeTiming.OnSaveChanges;
         var owner = new HierarchyChangeDetectionTests.ProbeOwner { Id = 7 };
-        var original = HierarchyChangeDetectionTests.CreateNode(1);
+        var original = HierarchyChangeDetectionTests.CreateNode();
         owner.ScopeNodes.Add(original);
         context.Attach(owner);
         var ownerEntry = context.Entry(owner);
         owner.Payload = "Pending owner payload";
-        ownerEntry.Property(value => value.Payload).IsModified = true;
+        ownerEntry.Property(value => value.Payload)
+            .IsModified = true;
+
         var ownerUpdate = HierarchyChangeDetectionTests.UpdateEntry(context, owner);
         var navigation = ownerUpdate.EntityType.FindNavigation(nameof(owner.ScopeNodes))!;
         var nativeBefore = ownerUpdate.GetRelationshipSnapshotValue(navigation);
@@ -60,22 +62,38 @@ public sealed class TrackerMembershipDeltaTests
         Assert.Same(afterFirst, ownerUpdate.GetRelationshipSnapshotValue(navigation));
         Assert.Same(original, Assert.Single(Assert.IsAssignableFrom<ISet<object>>(afterFirst)));
         Assert.Same(collection, owner.ScopeNodes);
-        Assert.Collection(owner.ScopeNodes,
+        Assert.Collection(
+            owner.ScopeNodes,
             node => Assert.Same(original, node),
             node => Assert.Same(member, node));
+
         Assert.Equal("Pending owner payload", owner.Payload);
         Assert.Equal(EntityState.Modified, ownerEntry.State);
-        Assert.True(ownerEntry.Property(value => value.Payload).IsModified);
-        Assert.False(ownerEntry.Property(value => value.Id).IsModified);
-        Assert.Equal(EntityState.Unchanged,
-            context.Entry(original).State);
-        Assert.Equal(EntityState.Unchanged,
-            context.Entry(member).State);
+        Assert.True(
+            ownerEntry.Property(value => value.Payload)
+                .IsModified);
+
+        Assert.False(
+            ownerEntry.Property(value => value.Id)
+                .IsModified);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(original)
+                .State);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(member)
+                .State);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
         Assert.Equal(CascadeTiming.OnSaveChanges, context.ChangeTracker.CascadeDeleteTiming);
         Assert.Equal(CascadeTiming.OnSaveChanges, context.ChangeTracker.DeleteOrphansTiming);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>An absent native collection slot remains absent when an already-cleared addition is undone.</summary>
@@ -103,6 +121,7 @@ public sealed class TrackerMembershipDeltaTests
         var collection = new List<NullSlotMember> { member };
         owner.Members = collection;
         context.Attach(member);
+
         // WHY: The owner was tracked with a null collection. Preparing CLR membership before child fixup
         // leaves its actual native slot null; an owner tracked with an empty list already has an empty set.
         var nativeBefore = ownerUpdate.GetRelationshipSnapshotValue(navigation);
@@ -121,18 +140,26 @@ public sealed class TrackerMembershipDeltaTests
         Assert.Same(member, Assert.Single(owner.Members!));
         Assert.Same(owner, member.Owner);
         Assert.Equal(EntityState.Unchanged, ownerUpdate.EntityState);
-        Assert.Equal(EntityState.Unchanged,
-            context.Entry(member).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(member)
+                .State);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Tracks an initially null collection without fabricating EF's native snapshot storage.</summary>
     private sealed class NullSlotContext : DbContext
     {
         /// <summary>Keeps all graph changes explicit throughout this model-only rollback control.</summary>
-        internal NullSlotContext() => ChangeTracker.AutoDetectChangesEnabled = false;
+        internal NullSlotContext()
+        {
+            ChangeTracker.AutoDetectChangesEnabled = false;
+        }
 
         /// <inheritdoc />
         protected override void OnConfiguring(
@@ -149,10 +176,12 @@ public sealed class TrackerMembershipDeltaTests
                 .Entity<NullSlotOwner>()
                 .Property(owner => owner.Id)
                 .ValueGeneratedNever();
+
             modelBuilder
                 .Entity<NullSlotMember>()
                 .Property(member => member.Id)
                 .ValueGeneratedNever();
+
             modelBuilder
                 .Entity<NullSlotMember>()
                 .HasOne(member => member.Owner)

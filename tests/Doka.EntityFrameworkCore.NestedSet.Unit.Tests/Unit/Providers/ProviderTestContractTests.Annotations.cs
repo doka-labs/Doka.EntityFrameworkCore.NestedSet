@@ -102,7 +102,9 @@ public sealed partial class ProviderTestContractTests
         var error = Assert.Single(errors);
         Assert.Contains("bypasses fixture-owned coverage", error, StringComparison.Ordinal);
         Assert.Contains(
-            data ? nameof(UnsupportedDataAttribute) : nameof(UnsupportedFactAttribute),
+            data
+                ? nameof(UnsupportedDataAttribute)
+                : nameof(UnsupportedFactAttribute),
             error,
             StringComparison.Ordinal);
     }
@@ -125,17 +127,26 @@ public sealed partial class ProviderTestContractTests
             ? new[] { NeutralTheory(), NeutralInline(["PostgreSql"]), UnsupportedData() }
             : new[] { UnsupportedFact() };
 
-        var suite = CreateNeutralProbe(attributes, parameterName: data ? "payload" : null, inherited: inherited);
+        var suite = CreateNeutralProbe(
+            attributes,
+            parameterName: data
+                ? "payload"
+                : null,
+            inherited: inherited);
 
         // Act
-        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, AssemblyName("Sqlite"),
+        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(
+            suite,
+            AssemblyName("Sqlite"),
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var error = Assert.Single(errors);
         Assert.Contains("bypasses fixture-owned coverage", error, StringComparison.Ordinal);
         Assert.Contains(
-            data ? nameof(UnsupportedDataAttribute) : nameof(UnsupportedFactAttribute),
+            data
+                ? nameof(UnsupportedDataAttribute)
+                : nameof(UnsupportedFactAttribute),
             error,
             StringComparison.Ordinal);
     }
@@ -189,7 +200,8 @@ public sealed partial class ProviderTestContractTests
             .GetMethod("Probe0")!;
 
         // Act
-        var errors = await ProviderTestContract.FindSharedDataErrorsAsync(method,
+        var errors = await ProviderTestContract.FindSharedDataErrorsAsync(
+            method,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert

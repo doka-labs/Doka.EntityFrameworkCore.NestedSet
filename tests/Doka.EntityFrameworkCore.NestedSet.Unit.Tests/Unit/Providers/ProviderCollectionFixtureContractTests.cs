@@ -59,9 +59,10 @@ public sealed class ProviderCollectionFixtureContractTests
     {
         // Arrange
         var expected = ExpectedRegistrations("MySql");
-        var definition = CreateDefinition(expected
-            .Where((_, index) => index != omitted)
-            .ToArray());
+        var definition = CreateDefinition(
+            expected
+                .Where((_, index) => index != omitted)
+                .ToArray());
 
         var assemblyName = AssemblyName("MySql");
 
@@ -72,7 +73,8 @@ public sealed class ProviderCollectionFixtureContractTests
         var error = Assert.Single(errors);
         Assert.Contains("missing collection fixture", error, StringComparison.Ordinal);
         Assert.Contains(
-            expected[omitted].ToString(),
+            expected[omitted]
+                .ToString(),
             error,
             StringComparison.Ordinal);
     }
@@ -90,7 +92,9 @@ public sealed class ProviderCollectionFixtureContractTests
         // Arrange
         var registrations = ExpectedRegistrations("Sqlite");
         var parent = CreateDefinition(
-            unexpected ? [.. registrations, typeof(ModelCompatibilityDatabase)] : registrations);
+            unexpected
+                ? [.. registrations, typeof(ModelCompatibilityDatabase)]
+                : registrations);
 
         var definition = CreateDefinition([], parent);
         var assemblyName = AssemblyName("Sqlite");
@@ -99,7 +103,12 @@ public sealed class ProviderCollectionFixtureContractTests
         var errors = ProviderCollectionFixtureContract.FindErrors(definition, assemblyName);
 
         // Assert
-        Assert.Equal(unexpected ? 1 : 0, errors.Count);
+        Assert.Equal(
+            unexpected
+                ? 1
+                : 0,
+            errors.Count);
+
         Assert.All(errors, error => Assert.Contains("unexpected collection fixture", error, StringComparison.Ordinal));
     }
 

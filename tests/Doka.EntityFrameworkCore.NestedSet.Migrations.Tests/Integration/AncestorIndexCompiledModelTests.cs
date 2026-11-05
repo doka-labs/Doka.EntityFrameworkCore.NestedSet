@@ -31,7 +31,9 @@ public sealed class AncestorIndexCompiledModelTests
     )
     {
         // Arrange
-        await using var database = await AncestorIndexDatabase.CreateAsync(_fixture, engine,
+        await using var database = await AncestorIndexDatabase.CreateAsync(
+            _fixture,
+            engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var chain = database.Scaffold(true, "AncestorCompiledInitial");
@@ -59,7 +61,7 @@ public sealed class AncestorIndexCompiledModelTests
             (node, owner, distance) => new
             {
                 owner.NodeId,
-                Distance = distance
+                Distance = distance,
             });
 
         var inclusiveQuery = hierarchy.SelectAncestorsOrSelf(
@@ -67,7 +69,7 @@ public sealed class AncestorIndexCompiledModelTests
             (node, owner, distance) => new
             {
                 owner.NodeId,
-                Distance = distance
+                Distance = distance,
             });
 
         var capturedHierarchy = context
@@ -79,7 +81,7 @@ public sealed class AncestorIndexCompiledModelTests
             (node, owner, distance) => new
             {
                 owner.NodeId,
-                Distance = distance
+                Distance = distance,
             });
 
         var strictSql = strictQuery.ToQueryString();
@@ -114,10 +116,15 @@ public sealed class AncestorIndexCompiledModelTests
         Assert.Equal([1, 2], inclusive.Select(x => x.NodeId));
         Assert.Equal([1, 0], inclusive.Select(x => x.Distance));
         Assert.Equal(inclusive, deferred);
+
         // WHY: Captured hierarchy roots remain decorrelatable even with a generated runtime model.
         // Normalization must preserve the fallback instead of mistaking that root for independent facts.
         Assert.DoesNotContain("WITH RECURSIVE", deferredSql, StringComparison.OrdinalIgnoreCase);
-        Assert.True(context.Entry(tracked).Property<bool>(AncestorIndexContext.FlagProperty).CurrentValue);
+        Assert.True(
+            context
+                .Entry(tracked)
+                .Property<bool>(AncestorIndexContext.FlagProperty)
+                .CurrentValue);
 
         if (engine is "MySql" or "MariaDb")
         {
@@ -131,13 +138,21 @@ public sealed class AncestorIndexCompiledModelTests
             Assert.Equal(inclusiveEnabled, UsesCapability(inclusiveQuery.Expression, sourceBinding));
             Assert.False(UsesCapability(strictQuery.Expression, straightJoin));
             Assert.Equal(inclusiveEnabled, UsesCapability(inclusiveQuery.Expression, straightJoin));
-            Assert.Equal(0, strictSql.Split("STRAIGHT_JOIN").Length - 1);
+            Assert.Equal(
+                0,
+                strictSql.Split("STRAIGHT_JOIN")
+                    .Length
+                - 1);
 
             // WHY: Inclusive queries direct the candidate edge and final owner hydration separately;
             // source hydration stays ordinary, and strict queries require neither directed edge.
             Assert.Equal(
-                inclusiveEnabled ? 2 : 0,
-                inclusiveSql.Split("STRAIGHT_JOIN").Length - 1);
+                inclusiveEnabled
+                    ? 2
+                    : 0,
+                inclusiveSql.Split("STRAIGHT_JOIN")
+                    .Length
+                - 1);
 
             if (sourceBinding is not null)
             {
@@ -162,11 +177,16 @@ public sealed class AncestorIndexCompiledModelTests
             .GetService<IDbContextOptions>()
             .Extensions
             .Where(extension => extension.Info.IsDatabaseProvider)
-            .Select(extension => extension.GetType().Assembly)
+            .Select(extension => extension.GetType()
+                .Assembly)
             .Distinct()
             .Single();
 
-        Assert.Equal(context.Database.ProviderName, assembly.GetName().Name);
+        Assert.Equal(
+            context.Database.ProviderName,
+            assembly.GetName()
+                .Name);
+
         var extension = assembly.GetType("Doka.EntityFrameworkCore.MySql.MySqlQueryableExtensions");
 
         if (extension is null)
@@ -177,13 +197,20 @@ public sealed class AncestorIndexCompiledModelTests
         Assert.True(extension.IsVisible);
         Assert.False(extension.ContainsGenericParameters);
         Assert.Same(assembly, extension.Assembly);
-        var named = extension.GetMethods(BindingFlags.Public | BindingFlags.Static
-                | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-            .Where(method => method.Name == name).ToArray();
+        var named = extension
+            .GetMethods(
+                BindingFlags.Public
+                | BindingFlags.Static
+                | BindingFlags.Instance
+                | BindingFlags.DeclaredOnly)
+            .Where(method => method.Name == name)
+            .ToArray();
 
         // WHY: An unrelated overload is not this capability. Existing malformed or ambiguous public
         // contracts fail the test instead of being guessed as available or silently treated as absent.
-        return named.Length == 0 ? null : Assert.Single(named, matchesSignature);
+        return named.Length == 0
+            ? null
+            : Assert.Single(named, matchesSignature);
     }
 
     /// <summary>Recognizes the exact public source-binding contract, including its generic type identities.</summary>
@@ -248,7 +275,9 @@ public sealed class AncestorIndexCompiledModelTests
         return method is { IsPublic: true, IsStatic: true, IsAbstract: false, IsGenericMethodDefinition: true }
             && generic.Length == arity
             && generic.All(parameter => parameter.GenericParameterAttributes == GenericParameterAttributes.None
-                && parameter.GetGenericParameterConstraints().Length == 0);
+                && parameter.GetGenericParameterConstraints()
+                    .Length
+                == 0);
     }
 
     /// <summary>
@@ -281,7 +310,8 @@ public sealed class AncestorIndexCompiledModelTests
             MethodCallExpression node
         )
         {
-            if (node.Method.IsGenericMethod && node.Method.GetGenericMethodDefinition() == method)
+            if (node.Method.IsGenericMethod
+                && node.Method.GetGenericMethodDefinition() == method)
             {
                 Found = true;
             }

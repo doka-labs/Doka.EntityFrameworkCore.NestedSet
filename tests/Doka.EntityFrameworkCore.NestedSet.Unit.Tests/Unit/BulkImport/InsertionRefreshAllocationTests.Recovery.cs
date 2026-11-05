@@ -37,6 +37,7 @@ public sealed partial class InsertionRefreshAllocationTests
         var identity = NestedSetInsertionTracking.Capture(entry);
         node.Remove("Id");
         var update = NestedSetInsertionTracking.EntryIdentity(entry);
+
         // WHY: EF's object getter cannot unbox a missing int member with a non-null custom sentinel.
         // Preserve that framework boundary rather than inventing a default identity for the callback.
         var frameworkError = Record.Exception(() => update.GetCurrentValue(property));
@@ -76,8 +77,11 @@ public sealed partial class InsertionRefreshAllocationTests
 
         // Assert
         Assert.False(matches);
-        Assert.Equal(37,
-            entry.Property(property).CurrentValue);
+        Assert.Equal(
+            37,
+            entry.Property(property)
+                .CurrentValue);
+
         Assert.Equal(replacement, entry.Entity.Id);
     }
 

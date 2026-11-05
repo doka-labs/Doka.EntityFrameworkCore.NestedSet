@@ -162,7 +162,9 @@ internal static class ManagedHeapProbe
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < held.Length; index++)
         {
-            held[index] = arrays ? new byte[17] : new object();
+            held[index] = arrays
+                ? new byte[17]
+                : new object();
         }
 
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;

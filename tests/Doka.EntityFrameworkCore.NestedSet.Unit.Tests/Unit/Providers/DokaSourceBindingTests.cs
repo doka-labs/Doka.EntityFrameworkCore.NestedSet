@@ -28,8 +28,11 @@ public sealed partial class DokaSourceBindingTests
         Assert.Equal(adapter.CompletedSourceMethod, call.Method.GetGenericMethodDefinition());
         Assert.Equal(typeof(MySqlQueryableExtensions).Assembly, call.Method.DeclaringType!.Assembly);
         Assert.Same(source.Expression, call.Arguments[0]);
-        Assert.Same(compose,
-            Assert.IsType<UnaryExpression>(call.Arguments[1], exactMatch: false).Operand);
+        Assert.Same(
+            compose,
+            Assert.IsType<UnaryExpression>(call.Arguments[1], exactMatch: false)
+                .Operand);
+
         Assert.Equal(0, probe.Executions);
     }
 
@@ -84,7 +87,10 @@ public sealed partial class DokaSourceBindingTests
         var source = root
             .Concat(root)
             .OrderBy(value => value)
-            .Take(empty ? 0 : 4);
+            .Take(
+                empty
+                    ? 0
+                    : 4);
 
         var adapter = NestedSetTestAdapters.ForEngine("MySql");
 
@@ -177,13 +183,22 @@ public sealed partial class DokaSourceBindingTests
 
         // Act
         var error = Record.Exception(() => adapter.TryBindSource(
-            sourceMissing ? null! : source,
-            sourceMissing ? compose : null!,
+            sourceMissing
+                ? null!
+                : source,
+            sourceMissing
+                ? compose
+                : null!,
             out _));
 
         // Assert
-        Assert.Equal(sourceMissing ? "source" : "compose",
-            Assert.IsType<ArgumentNullException>(error).ParamName);
+        Assert.Equal(
+            sourceMissing
+                ? "source"
+                : "compose",
+            Assert.IsType<ArgumentNullException>(error)
+                .ParamName);
+
         Assert.Equal(0, probe.Executions);
     }
 

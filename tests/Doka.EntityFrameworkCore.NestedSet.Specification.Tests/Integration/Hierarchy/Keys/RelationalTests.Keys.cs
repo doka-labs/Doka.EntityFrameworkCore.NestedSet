@@ -25,7 +25,11 @@ public abstract partial class RelationalTests
             .ToArrayAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(child, Assert.Single(children).Id);
+        Assert.Equal(
+            child,
+            Assert.Single(children)
+                .Id);
+
         Assert.True(
             (await tree
                 .InTree(Guid.Empty)
@@ -67,6 +71,7 @@ public abstract partial class RelationalTests
             (await tree
                 .InTree(moved.TreeId)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+
         Assert.True(
             (await tree
                 .InTree(Guid.Empty)
@@ -102,6 +107,7 @@ public abstract partial class RelationalTests
             (await tree
                 .ParentOf(child)
                 .SingleAsync(CancellationToken.None)).Id);
+
         Assert.True(
             (await tree
                 .InTree(Guid.Empty)
@@ -134,6 +140,7 @@ public abstract partial class RelationalTests
                 .AsNoTracking()
                 .Where(node => node.Tree == "tenant")
                 .SingleAsync(x => x.Id == "Child", CancellationToken.None)).ParentId);
+
         Assert.True(
             (await tree
                 .InTree(Guid.Empty)
@@ -172,6 +179,7 @@ public abstract partial class RelationalTests
             (await tree
                 .InTree(Guid.Empty)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+
         Assert.Equal(
             "Child",
             (await tree
@@ -207,7 +215,10 @@ public abstract partial class RelationalTests
             .ToArrayAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal("Child", Assert.Single(children).Id);
+        Assert.Equal(
+            "Child",
+            Assert.Single(children)
+                .Id);
     }
 
     /// <summary>Moving a string-keyed subtree to the forest clears its parent.</summary>
@@ -250,6 +261,7 @@ public abstract partial class RelationalTests
             (await tree
                 .InTree(moved.TreeId)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+
         Assert.True(
             (await tree
                 .InTree(Guid.Empty)
@@ -283,6 +295,7 @@ public abstract partial class RelationalTests
             (await tree
                 .ParentOf("Child")
                 .SingleAsync(CancellationToken.None)).Id);
+
         Assert.True(
             (await tree
                 .InTree(Guid.Empty)
@@ -293,6 +306,9 @@ public abstract partial class RelationalTests
     private static string ParentLookup(
         string engine
     ) =>
+
         // WHY: PostgreSQL keys are case-sensitive; the other fixture collations deliberately accept aliases.
-        engine == "PostgreSql" ? "Parent" : "PARENT";
+        engine == "PostgreSql"
+            ? "Parent"
+            : "PARENT";
 }

@@ -20,36 +20,46 @@ public sealed partial class ComplexRecoveryCompositionTests
         var payload = new CallbackOnlyPayload
         {
             Id = 61,
-            Rows = capturedNull ? null : [],
+            Rows = capturedNull
+                ? null
+                : [],
         };
 
         var entry = context.Attach(payload);
         _ = context.Model.GetRelationalModel();
         payload.Marker = "Pending deep-root marker";
-        entry.Property(value => value.Marker).IsModified = true;
+        entry.Property(value => value.Marker)
+            .IsModified = true;
+
         var beforeRows = payload.Rows;
         var before = ObserveDeep(entry);
         var snapshot = NestedSetTrackerSnapshot.Capture(context, [Write(context, payload)]);
         var captured = ObserveDeep(entry);
         payload.Rows ??= [];
-        payload.Rows.Add(new CallbackOnlyLevel
-        {
-            Branches =
-            [
-                new CallbackOnlyMiddle
-                {
-                    Segments = [new CallbackOnlyTip { Leaves = [new CallbackOnlyLeaf()] }],
-                },
-            ],
-        });
+        payload.Rows.Add(
+            new CallbackOnlyLevel
+            {
+                Branches =
+                [
+                    new CallbackOnlyMiddle
+                    {
+                        Segments = [new CallbackOnlyTip { Leaves = [new CallbackOnlyLeaf()] }],
+                    },
+                ],
+            });
+
         context.ChangeTracker.DetectChanges();
-        var outer = entry.ComplexCollection(nameof(CallbackOnlyPayload.Rows))[0];
+        var outer = entry
+            .ComplexCollection(nameof(CallbackOnlyPayload.Rows))[0];
 
-        var middle = outer.ComplexCollection(nameof(CallbackOnlyLevel.Branches))[0];
+        var middle = outer
+            .ComplexCollection(nameof(CallbackOnlyLevel.Branches))[0];
 
-        var tip = middle.ComplexCollection(nameof(CallbackOnlyMiddle.Segments))[0];
+        var tip = middle
+            .ComplexCollection(nameof(CallbackOnlyMiddle.Segments))[0];
 
-        var leaf = tip.ComplexCollection(nameof(CallbackOnlyTip.Leaves))[0];
+        var leaf = tip
+            .ComplexCollection(nameof(CallbackOnlyTip.Leaves))[0];
 
         ComplexElementEntry[] callbackEntries = [outer, middle, tip, leaf];
         var callbackStates = callbackEntries
@@ -89,13 +99,24 @@ public sealed partial class ComplexRecoveryCompositionTests
         }
 
         Assert.Equal("Pending deep-root marker", payload.Marker);
-        Assert.Equal("Stored deep-root marker",
-            entry.Property(value => value.Marker).OriginalValue);
-        Assert.True(entry.Property(value => value.Marker).IsModified);
-        Assert.False(entry.ComplexCollection(nameof(CallbackOnlyPayload.Rows)).IsModified);
+        Assert.Equal(
+            "Stored deep-root marker",
+            entry.Property(value => value.Marker)
+                .OriginalValue);
+
+        Assert.True(
+            entry.Property(value => value.Marker)
+                .IsModified);
+
+        Assert.False(
+            entry.ComplexCollection(nameof(CallbackOnlyPayload.Rows))
+                .IsModified);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Persists the restored write without resurrecting four callback-only complex levels.</summary>
@@ -118,36 +139,46 @@ public sealed partial class ComplexRecoveryCompositionTests
         var payload = new CallbackOnlyPayload
         {
             Id = 67,
-            Rows = capturedNull ? null : [],
+            Rows = capturedNull
+                ? null
+                : [],
         };
 
         var entry = context.Add(payload);
         await context.SaveChangesAsync(CancellationToken.None);
         payload.Marker = "Pending deep-root marker";
-        entry.Property(value => value.Marker).IsModified = true;
+        entry.Property(value => value.Marker)
+            .IsModified = true;
+
         var beforeRows = payload.Rows;
         var before = ObserveDeep(entry);
         var snapshot = NestedSetTrackerSnapshot.Capture(context, [Write(context, payload)]);
         var captured = ObserveDeep(entry);
         payload.Rows ??= [];
-        payload.Rows.Add(new CallbackOnlyLevel
-        {
-            Branches =
-            [
-                new CallbackOnlyMiddle
-                {
-                    Segments = [new CallbackOnlyTip { Leaves = [new CallbackOnlyLeaf()] }],
-                },
-            ],
-        });
+        payload.Rows.Add(
+            new CallbackOnlyLevel
+            {
+                Branches =
+                [
+                    new CallbackOnlyMiddle
+                    {
+                        Segments = [new CallbackOnlyTip { Leaves = [new CallbackOnlyLeaf()] }],
+                    },
+                ],
+            });
+
         context.ChangeTracker.DetectChanges();
-        var outer = entry.ComplexCollection(nameof(CallbackOnlyPayload.Rows))[0];
+        var outer = entry
+            .ComplexCollection(nameof(CallbackOnlyPayload.Rows))[0];
 
-        var middle = outer.ComplexCollection(nameof(CallbackOnlyLevel.Branches))[0];
+        var middle = outer
+            .ComplexCollection(nameof(CallbackOnlyLevel.Branches))[0];
 
-        var tip = middle.ComplexCollection(nameof(CallbackOnlyMiddle.Segments))[0];
+        var tip = middle
+            .ComplexCollection(nameof(CallbackOnlyMiddle.Segments))[0];
 
-        var leaf = tip.ComplexCollection(nameof(CallbackOnlyTip.Leaves))[0];
+        var leaf = tip
+            .ComplexCollection(nameof(CallbackOnlyTip.Leaves))[0];
 
         ComplexElementEntry[] callbackEntries = [outer, middle, tip, leaf];
         var callbackStates = callbackEntries
@@ -203,9 +234,12 @@ public sealed partial class ComplexRecoveryCompositionTests
 
         Assert.Equal(EntityState.Unchanged, entry.State);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
+
         // WHY: This fixture deliberately holds its in-memory database connection open across retry and readback.
-        Assert.Equal(ConnectionState.Open,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Open,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Observes the deeper mapped fixture without creating or modifying native entries.</summary>
@@ -215,7 +249,8 @@ public sealed partial class ComplexRecoveryCompositionTests
     {
         var native = new List<NativeObservation>();
         var root = s_memberOwner.GetValue(entry.Property(value => value.Id))!;
-        ReadNative(root,
+        ReadNative(
+            root,
             entry.Metadata,
             "deepPayload",
             native,
@@ -229,7 +264,10 @@ public sealed partial class ComplexRecoveryCompositionTests
     private sealed class CallbackOnlyContext : DbContext
     {
         /// <summary>Leaves callback detection explicit and observable.</summary>
-        internal CallbackOnlyContext() => ChangeTracker.AutoDetectChangesEnabled = false;
+        internal CallbackOnlyContext()
+        {
+            ChangeTracker.AutoDetectChangesEnabled = false;
+        }
 
         /// <inheritdoc />
         protected override void OnConfiguring(
@@ -246,13 +284,17 @@ public sealed partial class ComplexRecoveryCompositionTests
             payload
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
-            payload.ComplexCollection(value => value.Rows,
+
+            payload.ComplexCollection(
+                value => value.Rows,
                 rows =>
                 {
                     rows.ToJson("Rows");
-                    rows.ComplexCollection(value => value.Branches,
+                    rows.ComplexCollection(
+                        value => value.Branches,
                         branches =>
-                            branches.ComplexCollection(value => value.Segments,
+                            branches.ComplexCollection(
+                                value => value.Segments,
                                 segments =>
                                     segments.ComplexCollection(value => value.Leaves)));
                 });

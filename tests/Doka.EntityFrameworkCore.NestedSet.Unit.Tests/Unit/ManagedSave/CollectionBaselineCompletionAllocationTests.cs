@@ -64,9 +64,8 @@ public sealed class CollectionBaselineCompletionAllocationTests
             .Select(identity => identity.UpdateEntry)
             .ToHashSet<IUpdateEntry>(ReferenceEqualityComparer.Instance);
 
-        var entities = nodes
-            .Cast<object>()
-            .ToHashSet(ReferenceEqualityComparer.Instance);
+        // WHY: Pin non-null object keys; comparer inference would otherwise select object?.
+        var entities = nodes.ToHashSet<object>(ReferenceEqualityComparer.Instance);
 
         var writes = new NestedSetCallbackWrites();
         const int warmups = 32;
@@ -97,7 +96,10 @@ public sealed class CollectionBaselineCompletionAllocationTests
         // Assert
         // WHY: Arrays and lists permit allocation-free indexed visits. Other producers retain their existing
         // enumerator cost; none should acquire an additional batch buffer, set or candidate list.
-        var maximum = shape is "array" or "list" ? 4_096 : enumeration.Allocated + 4_096;
+        var maximum = shape is "array" or "list"
+            ? 4_096
+            : enumeration.Allocated + 4_096;
+
         _output.WriteLine(
             $"Saved relationship completion: shape={shape}; rows={rows}; calls={repetitions}; "
             + $"allocated={allocated} B; source enumeration={enumeration.Allocated} B; maximum={maximum} B.");
@@ -105,14 +107,18 @@ public sealed class CollectionBaselineCompletionAllocationTests
         Assert.All(identities, identity => Assert.False(identity.HasCollectionRelationships));
         Assert.Equal(rows * repetitions, enumeration.Visits);
         Assert.InRange(allocated, 0, maximum);
-        Assert.Equal(rows,
+        Assert.Equal(
+            rows,
             context
                 .ChangeTracker
                 .Entries()
                 .Count());
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Builds source iterators before the interval, as the production callers do.</summary>

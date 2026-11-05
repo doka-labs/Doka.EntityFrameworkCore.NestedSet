@@ -134,6 +134,10 @@ public abstract partial class NestedSetMutationFacadeTests
 
         // Assert
         Assert.Equal(NestedSetErrorCode.InvalidStructure, error.Code);
-        Assert.Equal(1, await context.Set<TreeNode>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            1,
+            await context
+                .Set<TreeNode>()
+                .CountAsync(CancellationToken.None));
     }
 }

@@ -19,12 +19,6 @@ public sealed class Folder : INestedSetNode<int, Guid>
         Category = category;
     }
 
-    /// <summary>Gets the database-generated identity used by anchor queries.</summary>
-    public int Id { get; private set; }
-
-    /// <summary>Gets the stable identity that isolates this folder's tree.</summary>
-    public Guid TreeId { get; private set; }
-
     /// <summary>Gets or sets the name; a tracked rename is reordered by SaveChangesAsync.</summary>
     public string Name { get; set; }
 
@@ -33,6 +27,12 @@ public sealed class Folder : INestedSetNode<int, Guid>
 
     /// <summary>Gets the direct parent identity, or null for this tree's root.</summary>
     public int? ParentId { get; private set; }
+
+    /// <summary>Gets the database-generated identity used by anchor queries.</summary>
+    public int Id { get; private set; }
+
+    /// <summary>Gets the stable identity that isolates this folder's tree.</summary>
+    public Guid TreeId { get; private set; }
 
     /// <summary>Gets the inclusive left boundary within this tree.</summary>
     public long Left { get; private set; }

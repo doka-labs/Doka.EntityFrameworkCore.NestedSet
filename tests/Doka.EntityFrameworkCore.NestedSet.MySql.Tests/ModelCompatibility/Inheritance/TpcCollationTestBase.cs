@@ -49,7 +49,8 @@ public abstract class TpcCollationTestBase : ProviderTest
     public async Task BinaryConcreteTableCanReserveIndependentScopes()
     {
         // Arrange
-        await using var context = await CreateContextAsync(Engine,
+        await using var context = await CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var suffix = Guid
@@ -106,6 +107,7 @@ public abstract class TpcCollationTestBase : ProviderTest
             (lower, treeId, 1L, 2L, 0),
             (persistedSecond.Scope, persistedSecond.TreeId, persistedSecond.Left, persistedSecond.Right,
                 persistedSecond.Depth));
+
         Assert.Null(persistedSecond.ParentId);
         Assert.Equal(0L, persistedSecond.Position);
         Assert.Equal(second.Id, persistedSecond.Id);
@@ -117,7 +119,8 @@ public abstract class TpcCollationTestBase : ProviderTest
     public async Task CaseInsensitiveConcreteTableRejectsScopeAliasReservation()
     {
         // Arrange
-        await using var context = await CreateContextAsync(Engine,
+        await using var context = await CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var suffix = Guid
@@ -159,11 +162,13 @@ public abstract class TpcCollationTestBase : ProviderTest
             NestedSetErrorCode.TreeIdUnavailable,
             Assert.IsType<NestedSetException>(failure)
                 .Code);
+
         Assert.Equal(inputBefore, Snapshot(rejected));
         Assert.Equal(
             EntityState.Detached,
             context.Entry(rejected)
                 .State);
+
         var persisted = await context
             .NestedSet<CaseInsensitiveTpcNode>()
             .ForScope(scope)
@@ -180,7 +185,8 @@ public abstract class TpcCollationTestBase : ProviderTest
     public async Task CaseInsensitiveConcreteParentAcceptsKeyAlias()
     {
         // Arrange
-        await using var context = await CreateContextAsync(Engine,
+        await using var context = await CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var suffix = Guid
@@ -219,6 +225,7 @@ public abstract class TpcCollationTestBase : ProviderTest
         Assert.Equal(
             (scope, treeId, 2L, 3L, 1, 0L),
             (child.Scope, child.TreeId, child.Left, child.Right, child.Depth, child.Position));
+
         Assert.Equal(root.Id, child.ParentId);
         Assert.Equal((1L, 4L), (parent.Left, parent.Right));
     }
@@ -228,7 +235,8 @@ public abstract class TpcCollationTestBase : ProviderTest
     public async Task BinaryConcreteParentRejectsKeyAlias()
     {
         // Arrange
-        await using var context = await CreateContextAsync(Engine,
+        await using var context = await CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var suffix = Guid
@@ -268,11 +276,13 @@ public abstract class TpcCollationTestBase : ProviderTest
             NestedSetErrorCode.NodeNotFound,
             Assert.IsType<NestedSetException>(failure)
                 .Code);
+
         Assert.Equal(inputBefore, Snapshot(child));
         Assert.Equal(
             EntityState.Detached,
             context.Entry(child)
                 .State);
+
         var persisted = await hierarchy
             .InTree(treeId)
             .Nodes
@@ -288,7 +298,9 @@ public abstract class TpcCollationTestBase : ProviderTest
     private Task<CollatedTpcContext> CreateContextAsync(
         string engine,
         CancellationToken cancellationToken
-    ) => _fixture.CreateContextAsync<CollatedTpcContext>(engine, static options => new CollatedTpcContext(options),
+    ) => _fixture.CreateContextAsync<CollatedTpcContext>(
+        engine,
+        static options => new CollatedTpcContext(options),
         cancellationToken: cancellationToken);
 
     /// <summary>Captures every hierarchy field and payload for exact preservation assertions.</summary>

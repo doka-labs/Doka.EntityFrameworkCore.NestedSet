@@ -7,11 +7,11 @@ namespace Doka.EntityFrameworkCore.NestedSet.Features.BulkImport;
 /// </summary>
 internal sealed class NestedSetCallbackWrites
 {
-    private List<NestedSetTrackerSnapshot>? _snapshots;
-    private NestedSetCollectionBaseline? _relationships;
-    private NestedSetInputNavigations? _inputNavigations;
     private DbContext? _importContext;
+    private NestedSetInputNavigations? _inputNavigations;
     private NestedSetImportInputs? _inputs;
+    private NestedSetCollectionBaseline? _relationships;
+    private List<NestedSetTrackerSnapshot>? _snapshots;
 
     /// <summary>Preserves only potential external owners already containing a validated operation input.</summary>
     internal void CaptureInputOwners(
@@ -163,7 +163,8 @@ internal sealed class NestedSetCallbackWrites
         {
             try
             {
-                _snapshots![index].Restore();
+                _snapshots![index]
+                    .Restore();
             }
             catch (Exception error)
             {

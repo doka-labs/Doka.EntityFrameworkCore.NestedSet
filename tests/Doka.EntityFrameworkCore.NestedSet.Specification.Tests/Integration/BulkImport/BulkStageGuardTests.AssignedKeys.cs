@@ -12,7 +12,8 @@ public abstract partial class BulkStageGuardTests
     )
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = context
@@ -48,15 +49,18 @@ public abstract partial class BulkStageGuardTests
             NestedSetErrorCode.InvalidImport,
             Assert.IsType<NestedSetException>(error)
                 .Code);
+
         Assert.Equal(
             (3, originalTreeId, 9, 71L, 72L, 5, 7L),
             (input.Id, input.TreeId, input.ParentId, input.Left, input.Right, input.Depth, input.Position));
+
         Assert.Equal<byte>([8], input.Scope);
         Assert.Empty(
             await context
                 .Set<BulkStageBinaryScope>()
                 .AsNoTracking()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -70,7 +74,8 @@ public abstract partial class BulkStageGuardTests
     )
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var tree = context
@@ -107,16 +112,19 @@ public abstract partial class BulkStageGuardTests
             NestedSetErrorCode.InvalidImport,
             Assert.IsType<NestedSetException>(error)
                 .Code);
+
         Assert.Equal<byte>([3], input.Id);
         Assert.Equal<byte>([9], input.ParentId!);
         Assert.Equal(
             (8, originalTreeId, 71L, 72L, 5, 7L),
             (input.Scope, input.TreeId, input.Left, input.Right, input.Depth, input.Position));
+
         Assert.Empty(
             await context
                 .Set<BulkStageBinaryParent>()
                 .AsNoTracking()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 

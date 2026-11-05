@@ -11,15 +11,29 @@ public sealed class DerivedRowVersionContext(DbContextOptions<DerivedRowVersionC
     {
         var node = modelBuilder.Entity<DerivedVersionBaseNode>();
         node.ToTable("DerivedVersionNodes", "generated");
-        node.Property(value => value.Id).ValueGeneratedNever();
-        node.Property(value => value.Name).HasMaxLength(100);
-        node.Property(value => value.Payload).HasMaxLength(100);
+        node
+            .Property(value => value.Id)
+            .ValueGeneratedNever();
+
+        node
+            .Property(value => value.Name)
+            .HasMaxLength(100);
+
+        node
+            .Property(value => value.Payload)
+            .HasMaxLength(100);
+
         node.HasNestedSet(builder => builder
             .HasScope(value => value.Scope)
             .HasTreeId(value => value.TreeId)
             .HasParent(value => value.ParentId)
             .OrderBy(value => value.Name));
-        modelBuilder.Entity<DerivedVersionTokenNode>().Property(value => value.Version).IsRowVersion();
+
+        modelBuilder
+            .Entity<DerivedVersionTokenNode>()
+            .Property(value => value.Version)
+            .IsRowVersion();
+
         modelBuilder.Entity<DerivedVersionPlainNode>();
     }
 }
@@ -28,6 +42,15 @@ public sealed class DerivedRowVersionContext(DbContextOptions<DerivedRowVersionC
 public class DerivedVersionBaseNode : IScopedNestedSetNode<int, Guid, int>
 {
     /// <inheritdoc />
+    public int? ParentId { get; set; }
+
+    /// <summary>Gets or sets the sibling ordering value.</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets ordinary payload excluded from structural refresh projections.</summary>
+    public string Payload { get; set; } = "Unchanged payload";
+
+    /// <inheritdoc />
     public int Id { get; set; }
 
     /// <inheritdoc />
@@ -35,9 +58,6 @@ public class DerivedVersionBaseNode : IScopedNestedSetNode<int, Guid, int>
 
     /// <inheritdoc />
     public int Scope { get; set; } = 1;
-
-    /// <inheritdoc />
-    public int? ParentId { get; set; }
 
     /// <inheritdoc />
     public long Left { get; set; }
@@ -50,12 +70,6 @@ public class DerivedVersionBaseNode : IScopedNestedSetNode<int, Guid, int>
 
     /// <inheritdoc />
     public long Position { get; set; }
-
-    /// <summary>Gets or sets the sibling ordering value.</summary>
-    public string Name { get; set; } = string.Empty;
-
-    /// <summary>Gets or sets ordinary payload excluded from structural refresh projections.</summary>
-    public string Payload { get; set; } = "Unchanged payload";
 }
 
 /// <summary>Owns a native SQL Server rowversion absent from the configured base owner.</summary>

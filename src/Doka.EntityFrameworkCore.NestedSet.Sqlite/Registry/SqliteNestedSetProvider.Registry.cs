@@ -15,6 +15,9 @@ internal sealed partial class SqliteNestedSetProvider
     internal override bool MeasureTransactionBeginLockWait => true;
 
     /// <inheritdoc />
+    internal override IsolationLevel ReadSnapshotIsolation => IsolationLevel.Serializable;
+
+    /// <inheritdoc />
     internal override bool IsSafeReadSnapshot(
         IsolationLevel? isolation
     ) => isolation is IsolationLevel.Serializable or IsolationLevel.Snapshot;
@@ -25,15 +28,15 @@ internal sealed partial class SqliteNestedSetProvider
     ) => isolation is null;
 
     /// <inheritdoc />
-    internal override IsolationLevel ReadSnapshotIsolation => IsolationLevel.Serializable;
-
-    /// <inheritdoc />
     internal override async Task<bool> ReserveTreeAsync(
         NestedSetTreeLock treeLock,
         CancellationToken cancellationToken
     )
     {
-        var conflict = treeLock.Scope is null ? treeLock.TreeId : $"{treeLock.Scope}, {treeLock.TreeId}";
+        var conflict = treeLock.Scope is null
+            ? treeLock.TreeId
+            : $"{treeLock.Scope}, {treeLock.TreeId}";
+
         var statement = treeLock.DirectInsertSql() + $" ON CONFLICT ({conflict}) DO NOTHING";
 
         return await treeLock
@@ -79,6 +82,7 @@ internal sealed partial class SqliteNestedSetProvider
             var providerType = property.GetTypeMapping()
                     .Converter?.ProviderClrType
                 ?? property.ClrType;
+
             providerType = Nullable.GetUnderlyingType(providerType) ?? providerType;
 
             // WHY: EF orders decimals with EF_DECIMAL while mapped command windows do not inject it.

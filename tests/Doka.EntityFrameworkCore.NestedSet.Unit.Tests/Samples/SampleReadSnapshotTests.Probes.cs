@@ -31,7 +31,9 @@ public sealed partial class SampleReadSnapshotTests
             .Options;
 
         var context = new SampleLifecycleContext(options);
-        var connection = new SqliteConnectionStringBuilder(context.Database.GetDbConnection().ConnectionString)
+        var connection = new SqliteConnectionStringBuilder(
+            context.Database.GetDbConnection()
+                .ConnectionString)
         {
             Pooling = false,
         };

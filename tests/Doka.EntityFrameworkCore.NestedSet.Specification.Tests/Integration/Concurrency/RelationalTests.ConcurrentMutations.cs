@@ -56,7 +56,12 @@ public abstract partial class RelationalTests
 
         // Assert
         Assert.Equal(2, arrivals);
-        Assert.Equal(Engine == "Sqlite" ? 0 : 2, lockBarrier.Arrivals);
+        Assert.Equal(
+            Engine == "Sqlite"
+                ? 0
+                : 2,
+            lockBarrier.Arrivals);
+
         await AssertValidAsync(setup, 1, cancellationToken: TestContext.Current.CancellationToken);
         var nodes = await setup
             .Set<TreeNode>()
@@ -76,14 +81,24 @@ public abstract partial class RelationalTests
 
         if (operation is "Move" or "MoveDelete" or "MoveRebuild")
         {
-            Assert.Equal(7, nodes.Single(node => node.NodeId == 2).Parent);
-            Assert.Equal(2, nodes.Single(node => node.NodeId == 6).Parent);
+            Assert.Equal(
+                7,
+                nodes.Single(node => node.NodeId == 2)
+                    .Parent);
+
+            Assert.Equal(
+                2,
+                nodes.Single(node => node.NodeId == 6)
+                    .Parent);
         }
 
         if (operation is "Delete" or "DeleteRebuild")
         {
             Assert.DoesNotContain(nodes, node => node.NodeId == 2);
-            Assert.Equal(1, nodes.Single(node => node.NodeId == 6).Parent);
+            Assert.Equal(
+                1,
+                nodes.Single(node => node.NodeId == 6)
+                    .Parent);
         }
 
         if (operation is "Delete" or "MoveDelete")
@@ -92,17 +107,36 @@ public abstract partial class RelationalTests
         }
         else
         {
-            Assert.Equal(operation == "Move" ? 7 : 1, nodes.Single(node => node.NodeId == 3).Parent);
+            Assert.Equal(
+                operation == "Move"
+                    ? 7
+                    : 1,
+                nodes.Single(node => node.NodeId == 3)
+                    .Parent);
         }
 
         if (operation == "Rebuild")
         {
-            Assert.Equal(1, nodes.Single(node => node.NodeId == 2).Parent);
-            Assert.Equal(2, nodes.Single(node => node.NodeId == 6).Parent);
+            Assert.Equal(
+                1,
+                nodes.Single(node => node.NodeId == 2)
+                    .Parent);
+
+            Assert.Equal(
+                2,
+                nodes.Single(node => node.NodeId == 6)
+                    .Parent);
         }
 
-        Assert.Null(nodes.Single(node => node.NodeId == 1).Parent);
-        Assert.Equal(1, nodes.Single(node => node.NodeId == 7).Parent);
+        Assert.Null(
+            nodes.Single(node => node.NodeId == 1)
+                .Parent);
+
+        Assert.Equal(
+            1,
+            nodes.Single(node => node.NodeId == 7)
+                .Parent);
+
         Assert.All(nodes.Where(node => node.NodeId is 4 or 5), node => Assert.Equal(1, node.Parent));
 
         return;
@@ -131,9 +165,15 @@ public abstract partial class RelationalTests
 
             var selected = operation switch
             {
-                "MoveDelete" => key == 2 ? "Move" : "Delete",
-                "MoveRebuild" => key == 2 ? "Move" : "Rebuild",
-                "DeleteRebuild" => key == 2 ? "Delete" : "Rebuild",
+                "MoveDelete" => key == 2
+                    ? "Move"
+                    : "Delete",
+                "MoveRebuild" => key == 2
+                    ? "Move"
+                    : "Rebuild",
+                "DeleteRebuild" => key == 2
+                    ? "Delete"
+                    : "Rebuild",
                 _ => operation,
             };
 
@@ -149,6 +189,7 @@ public abstract partial class RelationalTests
                     await scoped
                         .InTree(Guid.Empty)
                         .RebuildAsync(cancellationToken);
+
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(operation));

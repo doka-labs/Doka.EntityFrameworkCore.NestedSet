@@ -14,20 +14,32 @@ public sealed partial class OptionsExtensionTests
         // Arrange
         using var foreign = ForeignAdapter.Load();
         var selected = NestedSetTestAdapters.ForEngine("MySql");
-        var first = ((IDbContextOptionsExtension)new NestedSetOptionsExtension(selected)).Info;
-        var second = ((IDbContextOptionsExtension)new NestedSetOptionsExtension(foreign.Provider)).Info;
+        var first = new NestedSetOptionsExtension(selected).Info;
+        var second = new NestedSetOptionsExtension(foreign.Provider).Info;
 
         // Act
         var same = first.ShouldUseSameServiceProvider(second);
         var reverseSame = second.ShouldUseSameServiceProvider(first);
 
         // Assert
-        Assert.Equal(selected.GetType().FullName,
-            foreign.Provider.GetType().FullName);
-        Assert.Equal(selected.GetType().Assembly.FullName,
-            foreign.Provider.GetType().Assembly.FullName);
-        Assert.NotSame(selected.GetType().Assembly,
-            foreign.Provider.GetType().Assembly);
+        Assert.Equal(
+            selected.GetType()
+                .FullName,
+            foreign.Provider.GetType()
+                .FullName);
+
+        Assert.Equal(
+            selected.GetType()
+                .Assembly.FullName,
+            foreign.Provider.GetType()
+                .Assembly.FullName);
+
+        Assert.NotSame(
+            selected.GetType()
+                .Assembly,
+            foreign.Provider.GetType()
+                .Assembly);
+
         Assert.False(same);
         Assert.False(reverseSame);
     }
@@ -51,8 +63,12 @@ public sealed partial class OptionsExtensionTests
 
         using var modelServices = OwnedModelTestServices<InitializationProbeContext>.Create(options);
         using var modelContext = new InitializationProbeContext(modelServices.Options);
-        var model = suppliedModel ? modelContext.Model : null;
-        using var provider = NestedSetTestAdapters.BuildServices(options,
+        var model = suppliedModel
+            ? modelContext.Model
+            : null;
+
+        using var provider = NestedSetTestAdapters.BuildServices(
+            options,
             services =>
             {
                 services.RemoveAll<NestedSetProviderCapabilities>();
@@ -85,6 +101,7 @@ public sealed partial class OptionsExtensionTests
     }
 
     /// <summary>The immutable registration does not globally retain a collectible adapter or its options.</summary>
+
     // WHY: Coverage 18.11.0 prevents collectible-module unloading even in an independent control.
     // The required uninstrumented measurement partition observes the application's actual GC lifetime.
     [Trait("Category", "Allocation")]
@@ -132,7 +149,8 @@ public sealed partial class OptionsExtensionTests
             .Extensions
             .Single(extension => extension.Info.IsDatabaseProvider);
 
-        var loadContext = new AssemblyLoadContext(nameof(EqualNativeAssemblyNamesCannotSatisfyAdapterValidation),
+        var loadContext = new AssemblyLoadContext(
+            nameof(EqualNativeAssemblyNamesCannotSatisfyAdapterValidation),
             isCollectible: true);
 
         loadContext.Resolving += ResolveSharedDependency;
@@ -140,7 +158,9 @@ public sealed partial class OptionsExtensionTests
         try
         {
             var assembly = loadContext.LoadFromAssemblyPath(selected.ProviderAssembly.Location);
-            var extensionType = assembly.GetType(actual.GetType().FullName!,
+            var extensionType = assembly.GetType(
+                actual.GetType()
+                    .FullName!,
                 throwOnError: true)!;
 
             var foreign = (IDbContextOptionsExtension)Activator.CreateInstance(extensionType, nonPublic: true)!;
@@ -183,10 +203,14 @@ public sealed partial class OptionsExtensionTests
         var builder = new DbContextOptionsBuilder();
         NestedSetProviderRegistration.Register(builder, foreign.Provider);
         var extension = builder.Options.FindExtension<NestedSetOptionsExtension>()!;
-        var information = ((IDbContextOptionsExtension)extension).Info;
+        var information = extension.Info;
         _ = information.GetServiceProviderHashCode();
 
-        references = [new(foreign.Provider), new(foreign.Context), new(builder), new(extension)];
+        references =
+        [
+            new WeakReference(foreign.Provider), new WeakReference(foreign.Context), new WeakReference(builder),
+            new WeakReference(extension),
+        ];
 
         return builder;
     }
@@ -204,12 +228,6 @@ public sealed partial class OptionsExtensionTests
     /// <summary>Owns one genuine adapter assembly loaded separately from the default runtime identity.</summary>
     private sealed class ForeignAdapter : IDisposable
     {
-        /// <summary>Gets the collectible assembly owner.</summary>
-        internal AssemblyLoadContext Context { get; }
-
-        /// <summary>Gets the actual stateless adapter from the isolated module.</summary>
-        internal NestedSetProviderCapabilities Provider { get; }
-
         /// <summary>Captures the loaded module without installing it into a process-global EF service cache.</summary>
         private ForeignAdapter(
             AssemblyLoadContext context,
@@ -220,29 +238,40 @@ public sealed partial class OptionsExtensionTests
             Provider = provider;
         }
 
+        /// <summary>Gets the collectible assembly owner.</summary>
+        internal AssemblyLoadContext Context { get; }
+
+        /// <summary>Gets the actual stateless adapter from the isolated module.</summary>
+        internal NestedSetProviderCapabilities Provider { get; }
+
+        /// <inheritdoc />
+        public void Dispose() => Context.Unload();
+
         /// <summary>Loads the shipping MySql adapter while sharing its common/native declared dependencies.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static ForeignAdapter Load()
         {
             var selected = NestedSetTestAdapters.ForEngine("MySql");
-            var context = new AssemblyLoadContext("NestedSet.AdapterOwnership."
+            var context = new AssemblyLoadContext(
+                "NestedSet.AdapterOwnership."
                 + Guid
                     .NewGuid()
                     .ToString("N"),
                 isCollectible: true);
 
             context.Resolving += ResolveSharedDependency;
-            var assembly = context.LoadFromAssemblyPath(selected.GetType().Assembly.Location);
+            var assembly = context.LoadFromAssemblyPath(
+                selected.GetType()
+                    .Assembly.Location);
 
-            var type = assembly.GetType(selected.GetType().FullName!,
+            var type = assembly.GetType(
+                selected.GetType()
+                    .FullName!,
                 throwOnError: true)!;
 
             var instance = type.GetField("Instance", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!;
 
             return new ForeignAdapter(context, (NestedSetProviderCapabilities)instance);
         }
-
-        /// <inheritdoc />
-        public void Dispose() => Context.Unload();
     }
 }

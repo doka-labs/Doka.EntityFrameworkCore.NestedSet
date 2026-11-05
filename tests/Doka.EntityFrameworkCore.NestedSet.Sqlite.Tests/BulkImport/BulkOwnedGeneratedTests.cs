@@ -27,7 +27,8 @@ public sealed class BulkOwnedGeneratedTests : ProviderTest,
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var source = database.CreateContext();
@@ -50,14 +51,18 @@ public sealed class BulkOwnedGeneratedTests : ProviderTest,
                 Id = key,
                 Payload = new OwnedGeneratedPayload
                 {
-                    OwnerId = prefilledOwnership ? key + 700 : 0,
+                    OwnerId = prefilledOwnership
+                        ? key + 700
+                        : 0,
                     Label = "original",
                 },
                 Rows =
                 [
                     new OwnedGeneratedRow
                     {
-                        OwnerId = prefilledOwnership ? key + 800 : 0,
+                        OwnerId = prefilledOwnership
+                            ? key + 800
+                            : 0,
                         Label = "row",
                     },
                 ],
@@ -110,20 +115,48 @@ public sealed class BulkOwnedGeneratedTests : ProviderTest,
             node =>
             {
                 Assert.Equal(0, node.Revision);
-                Assert.Equal(prefilledOwnership ? node.Id + 700 : 0, node.Payload.OwnerId);
+                Assert.Equal(
+                    prefilledOwnership
+                        ? node.Id + 700
+                        : 0,
+                    node.Payload.OwnerId);
+
                 Assert.Equal(0, node.Payload.Revision);
-                Assert.Equal(callbackPayload ? "callback" : "original", node.Payload.Label);
-                Assert.Equal(callbackPayload ? 123 : (int?)null, node.Payload.ReferenceId);
+                Assert.Equal(
+                    callbackPayload
+                        ? "callback"
+                        : "original",
+                    node.Payload.Label);
+
+                Assert.Equal(
+                    callbackPayload
+                        ? 123
+                        : null,
+                    node.Payload.ReferenceId);
+
                 var row = Assert.Single(node.Rows);
 
                 Assert.Equal(0, row.Id);
-                Assert.Equal(prefilledOwnership ? node.Id + 800 : 0, row.OwnerId);
+                Assert.Equal(
+                    prefilledOwnership
+                        ? node.Id + 800
+                        : 0,
+                    row.OwnerId);
+
                 Assert.Equal(0, row.Revision);
-                Assert.Equal(callbackPayload ? "callback" : "row", row.Label);
+                Assert.Equal(
+                    callbackPayload
+                        ? "callback"
+                        : "row",
+                    row.Label);
             });
 
         Assert.Empty(context.ChangeTracker.Entries());
-        Assert.Equal(0, await context.Set<OwnedGeneratedNode>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            0,
+            await context
+                .Set<OwnedGeneratedNode>()
+                .CountAsync(CancellationToken.None));
     }
 
     /// <summary>A successful import keeps returned owned defaults and collection identities observable.</summary>
@@ -131,7 +164,8 @@ public sealed class BulkOwnedGeneratedTests : ProviderTest,
     public async Task SuccessfulImportReturnsOwnedDefaultsAndCollectionIdentities()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var source = database.CreateContext();
@@ -173,7 +207,11 @@ public sealed class BulkOwnedGeneratedTests : ProviderTest,
         Assert.Equal(node.Id, row.OwnerId);
         Assert.Equal(43, row.Revision);
         Assert.Empty(context.ChangeTracker.Entries());
-        Assert.Equal(1, await context.Set<OwnedGeneratedNode>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            1,
+            await context
+                .Set<OwnedGeneratedNode>()
+                .CountAsync(CancellationToken.None));
     }
 
     /// <summary>A rolled-back aggregate with restored ownership identities can be imported again.</summary>
@@ -181,7 +219,8 @@ public sealed class BulkOwnedGeneratedTests : ProviderTest,
     public async Task RestoredOwnedIdentitiesAllowImportRetryAcrossPayloadWaves()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var source = database.CreateContext();
@@ -213,7 +252,7 @@ public sealed class BulkOwnedGeneratedTests : ProviderTest,
                     {
                         OwnerId = key + 800,
                         Label = "row",
-                    }
+                    },
                 ],
             })
             .ToArray();
@@ -254,7 +293,11 @@ public sealed class BulkOwnedGeneratedTests : ProviderTest,
             });
 
         Assert.Empty(context.ChangeTracker.Entries());
-        Assert.Equal(65, await context.Set<OwnedGeneratedNode>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            65,
+            await context
+                .Set<OwnedGeneratedNode>()
+                .CountAsync(CancellationToken.None));
     }
 
     /// <summary>Maps separate generated owned rows together with a table-sharing generated owned payload.</summary>
@@ -271,9 +314,11 @@ public sealed class BulkOwnedGeneratedTests : ProviderTest,
             node
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             node
                 .Property(value => value.Revision)
                 .HasDefaultValue(42);
+
             node.HasNestedSet(set => set
                 .HasTreeId(value => value.TreeId)
                 .HasParent(value => value.ParentId)
@@ -288,12 +333,15 @@ public sealed class BulkOwnedGeneratedTests : ProviderTest,
                     payload
                         .WithOwner()
                         .HasForeignKey(value => value.OwnerId);
+
                     payload
                         .Property(value => value.OwnerId)
                         .ValueGeneratedNever();
+
                     payload
                         .Property(value => value.Revision)
                         .HasDefaultValue(43);
+
                     payload
                         .HasOne<OwnedReference>()
                         .WithMany()
@@ -308,13 +356,16 @@ public sealed class BulkOwnedGeneratedTests : ProviderTest,
                     rows
                         .WithOwner()
                         .HasForeignKey(value => value.OwnerId);
+
                     rows
                         .Property(value => value.OwnerId)
                         .ValueGeneratedNever();
+
                     rows.HasKey(value => value.Id);
                     rows
                         .Property(value => value.Id)
                         .ValueGeneratedOnAdd();
+
                     rows
                         .Property(value => value.Revision)
                         .HasDefaultValue(43);

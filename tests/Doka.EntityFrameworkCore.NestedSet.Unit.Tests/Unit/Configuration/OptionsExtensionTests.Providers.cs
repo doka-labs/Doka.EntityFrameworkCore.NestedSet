@@ -30,11 +30,13 @@ public sealed partial class OptionsExtensionTests
         // Assert
         Assert.NotNull(extension);
         Assert.Same(NestedSetTestAdapters.ForEngine(engine), extension.Provider);
-        Assert.Same(extension.Provider.ProviderAssembly,
+        Assert.Same(
+            extension.Provider.ProviderAssembly,
             Assert
                 .Single(options.Extensions, candidate => candidate.Info.IsDatabaseProvider)
                 .GetType()
                 .Assembly);
+
         Assert.Single(options.Extensions.OfType<NestedSetOptionsExtension>());
     }
 
@@ -72,7 +74,8 @@ public sealed partial class OptionsExtensionTests
 
         // Assert
         Assert.Same(native, returned);
-        Assert.Same(NestedSetTestAdapters.ForEngine(engine),
+        Assert.Same(
+            NestedSetTestAdapters.ForEngine(engine),
             core.Options.FindExtension<NestedSetOptionsExtension>()!.Provider);
     }
 
@@ -115,7 +118,8 @@ public sealed partial class OptionsExtensionTests
         var selected = builder.Options.FindExtension<NestedSetOptionsExtension>();
 
         // Act
-        var error = Record.Exception(() => builder.UseSqlServer(Connection("SqlServer"),
+        var error = Record.Exception(() => builder.UseSqlServer(
+            Connection("SqlServer"),
             sqlServer => sqlServer.UseNestedSets()));
 
         // Assert
@@ -132,9 +136,9 @@ public sealed partial class OptionsExtensionTests
         var sqlite = new NestedSetOptionsExtension(NestedSetTestAdapters.ForEngine("Sqlite"));
         var mysql = new NestedSetOptionsExtension(NestedSetTestAdapters.ForEngine("MySql"));
         var repeated = new NestedSetOptionsExtension(NestedSetTestAdapters.ForEngine("Sqlite"));
-        var sqliteInfo = ((IDbContextOptionsExtension)sqlite).Info;
-        var mysqlInfo = ((IDbContextOptionsExtension)mysql).Info;
-        var repeatedInfo = ((IDbContextOptionsExtension)repeated).Info;
+        var sqliteInfo = sqlite.Info;
+        var mysqlInfo = mysql.Info;
+        var repeatedInfo = repeated.Info;
 
         // Act
         var foreignSame = sqliteInfo.ShouldUseSameServiceProvider(mysqlInfo);
@@ -221,8 +225,10 @@ public sealed partial class OptionsExtensionTests
         // Assert
         Assert.Same(NestedSetTestAdapters.ForEngine("Sqlite"), actual);
         Assert.IsType<NestedSetRelationalDatabase>(persistence);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Applying an adapter cannot preserve a conflicting or opaque preexisting service descriptor.</summary>
@@ -282,8 +288,12 @@ public sealed partial class OptionsExtensionTests
         var options = ProbeOptions(boundary);
         using var modelServices = OwnedModelTestServices<InitializationProbeContext>.Create(options);
         using var modelContext = new InitializationProbeContext(modelServices.Options);
-        var model = suppliedModel ? modelContext.Model : null;
-        using var provider = NestedSetTestAdapters.BuildServices(options,
+        var model = suppliedModel
+            ? modelContext.Model
+            : null;
+
+        using var provider = NestedSetTestAdapters.BuildServices(
+            options,
             services =>
             {
                 services.RemoveAll<NestedSetProviderCapabilities>();
@@ -347,7 +357,8 @@ public sealed partial class OptionsExtensionTests
         {
             var translator = Assert.Single(translators);
 
-            Assert.Equal(typeof(MySqlNestedSetOptionsBuilderExtensions).Assembly,
+            Assert.Equal(
+                typeof(MySqlNestedSetOptionsBuilderExtensions).Assembly,
                 translator.ImplementationType!.Assembly);
         }
         else
@@ -383,12 +394,12 @@ public sealed partial class OptionsExtensionTests
     /// <summary>Counts convention-based model creation independently of supplied-model initialization.</summary>
     private sealed class InitializationProbeContext : DbContext
     {
+        private static readonly AsyncLocal<ModelBuildObservation?> s_observation = new();
+
         /// <summary>Creates a context whose service identity is validated before its model is requested.</summary>
         internal InitializationProbeContext(
             DbContextOptions<InitializationProbeContext> options
         ) : base(options) { }
-
-        private static readonly AsyncLocal<ModelBuildObservation?> s_observation = new();
 
         /// <summary>Observes model callbacks even if native validation rejects the base context constructor.</summary>
         internal static ModelBuildObservation ObserveModelCreation() => new();
@@ -415,11 +426,11 @@ public sealed partial class OptionsExtensionTests
             /// <summary>Gets callbacks made after this observation started.</summary>
             internal int Count { get; private set; }
 
-            /// <summary>Records an actual application model callback.</summary>
-            internal void Record() => Count++;
-
             /// <inheritdoc />
             public void Dispose() => s_observation.Value = _previous;
+
+            /// <summary>Records an actual application model callback.</summary>
+            internal void Record() => Count++;
         }
     }
 }

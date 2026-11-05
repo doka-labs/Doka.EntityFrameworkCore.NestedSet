@@ -31,8 +31,14 @@ public abstract partial class AncestorIndexWorkTestBase
             commands,
             capture);
 
-        await SeedAsync(context, scope, tree, forest: false, balanced: true,
+        await SeedAsync(
+            context,
+            scope,
+            tree,
+            forest: false,
+            balanced: true,
             cancellationToken: TestContext.Current.CancellationToken);
+
         var selected = Enumerable
             .Range(0, sources)
             .Select(index => 50_001 + (int)((long)index * 50_000 / (sources - 1)))
@@ -119,10 +125,13 @@ public abstract partial class AncestorIndexWorkTestBase
         var hasBinding = NestedSetProviderCapabilities.Resolve(context)
             .CompletedSourceMethod is not null;
 
-        var traversalsBefore = await NativeTraversalCounterAsync(context,
+        var traversalsBefore = await NativeTraversalCounterAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var indexAttemptsBefore = await MariaSessionCounterAsync(context, "Handler_icp_attempts",
+        var indexAttemptsBefore = await MariaSessionCounterAsync(
+            context,
+            "Handler_icp_attempts",
             cancellationToken: TestContext.Current.CancellationToken);
 
         commands.Reset();
@@ -136,8 +145,8 @@ public abstract partial class AncestorIndexWorkTestBase
         try
         {
             await foreach (var pair in query
-                               .AsAsyncEnumerable()
-                               .WithCancellation(CancellationToken.None))
+                .AsAsyncEnumerable()
+                .WithCancellation(CancellationToken.None))
             {
                 var source = pair.Occurrence - 1;
                 var distance = pair.Distance - 1;
@@ -163,22 +172,30 @@ public abstract partial class AncestorIndexWorkTestBase
                 Engine + $"-ancestor-index-balanced-strict-tree-{treeBound}-read-failure",
                 [
                     $"RowsBeforeFailure={count}; expected={expected}; sourceBinding={hasBinding}",
-                    exception.GetType().FullName
-                    ?? exception.GetType().Name,
+                    exception.GetType()
+                        .FullName
+                    ?? exception.GetType()
+                        .Name,
                     .. capture.Commands,
-                    await FailurePlanAsync(context, capture, cancellationToken: TestContext.Current.CancellationToken)
-                ], cancellationToken: TestContext.Current.CancellationToken);
+                    await FailurePlanAsync(context, capture, cancellationToken: TestContext.Current.CancellationToken),
+                ],
+                cancellationToken: TestContext.Current.CancellationToken);
 
             throw;
         }
 
         var commandCount = commands.CommandCount;
         var sql = capture.Commands.Single();
-        var indexAttempts = await MariaSessionCounterAsync(context, "Handler_icp_attempts",
-            cancellationToken: TestContext.Current.CancellationToken) - indexAttemptsBefore;
+        var indexAttempts = await MariaSessionCounterAsync(
+                context,
+                "Handler_icp_attempts",
+                cancellationToken: TestContext.Current.CancellationToken)
+            - indexAttemptsBefore;
 
-        var traversals = await NativeTraversalCounterAsync(context,
-            cancellationToken: TestContext.Current.CancellationToken) - traversalsBefore;
+        var traversals = await NativeTraversalCounterAsync(
+                context,
+                cancellationToken: TestContext.Current.CancellationToken)
+            - traversalsBefore;
 
         var completed = $"CompletedRows={count}; expected={expected}; commands={commandCount}; "
             + $"sourceBinding={hasBinding}; indexAttempts={indexAttempts}; traversals={traversals}.";
@@ -188,12 +205,20 @@ public abstract partial class AncestorIndexWorkTestBase
         _output.WriteLine(completed);
         await QueryPlanTestSupport.WriteEvidenceAsync(
             Engine + $"-ancestor-index-balanced-strict-tree-{treeBound}-completed-read",
-            [completed, sql], cancellationToken: TestContext.Current.CancellationToken);
-
-        var plan = await Specifications.QueryPlanTestSupport.ExplainAsync(context, capture, 0, Engine,
+            [completed, sql],
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var work = Engine == "MySql" ? DensePathNativeWork.MySql(plan) : DensePathNativeWork.MariaDb(plan);
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            capture,
+            0,
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var work = Engine == "MySql"
+            ? DensePathNativeWork.MySql(plan)
+            : DensePathNativeWork.MariaDb(plan);
+
         var baseTable = AncestorIndexBaseTableWork.Read(sql, plan, Engine);
         const long baseBudget = 64L * (sources + expected + 1);
         const long operatorBudget = 4L * nodes * sources;
@@ -209,11 +234,14 @@ public abstract partial class AncestorIndexWorkTestBase
                 + $"unexposedPreIndexAccesses={baseTable.UnexposedPreIndexAccesses}.",
                 sql,
                 plan,
-            ], cancellationToken: TestContext.Current.CancellationToken);
+            ],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        _output.WriteLine($"BaseTableTuples={baseTable.ObservedTuples}; baseBudget={baseBudget}; "
+        _output.WriteLine(
+            $"BaseTableTuples={baseTable.ObservedTuples}; baseBudget={baseBudget}; "
             + $"operatorTuples={work.OperatorTuples}; operatorBudget={operatorBudget}.");
+
         Assert.True(hasBinding);
         Assert.Equal(expected, owners.Sum(ancestors => (long)ancestors.Length));
         Assert.Equal(expected, count);
@@ -224,7 +252,7 @@ public abstract partial class AncestorIndexWorkTestBase
 
         if (Engine == "MySql")
         {
-            Assert.Equal((double?)count, work.RootRows);
+            Assert.Equal(count, work.RootRows);
         }
 
         Assert.InRange(baseTable.ObservedTuples, 0, baseBudget);
@@ -255,7 +283,7 @@ public abstract partial class AncestorIndexWorkTestBase
             left[item.Id] = ++coordinate;
             depth[item.Id] = item.Depth;
             stack.Push((item.Id, true, item.Depth));
-            var second = (2 * item.Id) + 1;
+            var second = 2 * item.Id + 1;
 
             if (second <= nodes)
             {

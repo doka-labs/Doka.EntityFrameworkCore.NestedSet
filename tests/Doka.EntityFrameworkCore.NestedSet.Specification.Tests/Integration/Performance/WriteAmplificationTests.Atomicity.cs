@@ -17,15 +17,19 @@ public abstract partial class WriteAmplificationTests
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        await WriteAmplificationTestSupport.SeedAsync(database,
+        await WriteAmplificationTestSupport.SeedAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
+
         using var cancellation = new CancellationTokenSource();
         var probe = new StructuralWriteProbe { CancelAfterBounds = cancellation };
         await using var context = database.CreateContext(probe);
         var before = await SnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         await using var transaction = callerTransaction
             ? await context.Database.BeginTransactionAsync(
-                Engine == "Sqlite" ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+                Engine == "Sqlite"
+                    ? IsolationLevel.Serializable
+                    : IsolationLevel.ReadCommitted,
                 CancellationToken.None)
             : null;
 
@@ -60,13 +64,17 @@ public abstract partial class WriteAmplificationTests
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        await WriteAmplificationTestSupport.SeedAsync(database,
+        await WriteAmplificationTestSupport.SeedAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
+
         var observer = new InsertSavepointProbe();
         await using var context = database.CreateContext(observer);
         await using var transaction = callerTransaction
             ? await context.Database.BeginTransactionAsync(
-                Engine == "Sqlite" ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+                Engine == "Sqlite"
+                    ? IsolationLevel.Serializable
+                    : IsolationLevel.ReadCommitted,
                 CancellationToken.None)
             : null;
 
@@ -78,7 +86,12 @@ public abstract partial class WriteAmplificationTests
         await service.InsertRootAsync(new TreeNode { NodeId = 108 }, Guid.NewGuid(), CancellationToken.None);
 
         // Assert
-        Assert.Equal(callerTransaction ? 1 : 0, observer.Created);
+        Assert.Equal(
+            callerTransaction
+                ? 1
+                : 0,
+            observer.Created);
+
         Assert.True(context.Database.AutoSavepointsEnabled);
     }
 
@@ -90,8 +103,10 @@ public abstract partial class WriteAmplificationTests
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        await WriteAmplificationTestSupport.SeedAsync(database,
+        await WriteAmplificationTestSupport.SeedAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
+
         await using var context = database.CreateContext();
         var before = await SnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var service = context

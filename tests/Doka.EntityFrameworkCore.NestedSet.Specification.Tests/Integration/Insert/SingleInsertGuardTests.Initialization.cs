@@ -25,7 +25,9 @@ public abstract partial class SingleInsertGuardTests
         await context.SaveChangesAsync(CancellationToken.None);
 
         // Act
-        var rejected = await FailSingleInitializationAsync(context, fault,
+        var rejected = await FailSingleInitializationAsync(
+            context,
+            fault,
             cancellationToken: TestContext.Current.CancellationToken);
 
         GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
@@ -36,17 +38,23 @@ public abstract partial class SingleInsertGuardTests
         // Assert
         Assert.True(rejected.Restored);
         Assert.Equal((false, false, false), retained);
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
         Assert.Empty(
             await context
                 .Set<SingleIdentityNode>()
                 .AsNoTracking()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal(
             1,
             await context
                 .Set<UnrelatedRow>()
                 .CountAsync(CancellationToken.None));
+
         GC.KeepAlive(context);
     }
 
@@ -67,7 +75,10 @@ public abstract partial class SingleInsertGuardTests
         var rootReference = new WeakReference(input);
         var ownedReference = new WeakReference(input.Details);
         var foreign = input.Foreign ?? input.Details.Foreign;
-        var foreignReference = foreign is null ? null : new WeakReference(foreign);
+        var foreignReference = foreign is null
+            ? null
+            : new WeakReference(foreign);
+
         var error = await Record.ExceptionAsync(() => context
             .NestedSet<SingleIdentityNode>()
             .InsertRootAsync(input, Guid.Empty, cancellationToken));

@@ -104,8 +104,11 @@ public abstract class CompositeTextKeyTests : ProviderTest
             .ToArrayAsync(CancellationToken.None);
 
         // WHY: The two tenants reorder differently, so a key matched in the wrong tenant yields other bounds.
-        Node(21, "alpha").Name = "Z";
-        Node(22, "charlie").Name = "0";
+        Node(21, "alpha")
+            .Name = "Z";
+
+        Node(22, "charlie")
+            .Name = "0";
 
         // Act
         await context.SaveNestedSetChangesAsync(
@@ -154,7 +157,7 @@ public abstract class CompositeTextKeyTests : ProviderTest
                     TreeId = trees[tree],
                     Name = "Root",
                     Left = 1,
-                    Right = 2 + (2 * Children),
+                    Right = 2 + 2 * Children,
                 });
 
             for (var index = 0; index < Children; index++)
@@ -167,8 +170,8 @@ public abstract class CompositeTextKeyTests : ProviderTest
                         TreeId = trees[tree],
                         ParentNodeKey = root,
                         Name = $"c{index:D2}",
-                        Left = 2 + (2 * index),
-                        Right = 3 + (2 * index),
+                        Left = 2 + 2 * index,
+                        Right = 3 + 2 * index,
                         Depth = 1,
                         Position = index,
                     });
@@ -186,7 +189,8 @@ public abstract class CompositeTextKeyTests : ProviderTest
         // for more tracked keys than one rowset batch holds.
         for (var tree = 0; tree < trees.Length; tree++)
         {
-            Node($"t{tree}-c00").Name = "zz";
+            Node($"t{tree}-c00")
+                .Name = "zz";
         }
 
         var moved = Node("t0-c05");
@@ -200,10 +204,13 @@ public abstract class CompositeTextKeyTests : ProviderTest
             CancellationToken.None);
 
         // Assert
-        var unions = probe.Commands.Max(command => command.Split("UNION ALL").Length - 1);
+        var unions = probe.Commands.Max(command => command.Split("UNION ALL")
+                .Length
+            - 1);
+
         Assert.InRange(unions, 0, NestedSetBatch.MaximumRows - 1);
         Assert.Equal(("t0-c06", 2), (moved.ParentNodeKey, moved.Depth));
-        Assert.Equal((2L * Children, (2L * Children) + 1, Children - 1L), Bounds(Node("t1-c00")));
+        Assert.Equal((2L * Children, 2L * Children + 1, Children - 1L), Bounds(Node("t1-c00")));
 
         foreach (var treeId in trees)
         {

@@ -133,11 +133,16 @@ public sealed partial class CompositionAncestorIndexTests
                 .ForScope(Guid.Empty);
 
         IQueryable<SelectionFact> facts = context.Set<SelectionFact>();
-        var explicitFacts = ignoreFilters ? facts.IgnoreQueryFilters() : facts;
-        var selected = FactSelection(explicitFacts,
+        var explicitFacts = ignoreFilters
+            ? facts.IgnoreQueryFilters()
+            : facts;
+
+        var selected = FactSelection(
+            explicitFacts,
             (node, fact) => fact.NodeId == node.Id);
 
-        var ordinary = hierarchy.SelectAncestorsOrSelf(node => facts.Any(fact => fact.NodeId == node.Id),
+        var ordinary = hierarchy.SelectAncestorsOrSelf(
+            node => facts.Any(fact => fact.NodeId == node.Id),
             (node, owner, distance) => new
             {
                 Node = node,
@@ -147,7 +152,8 @@ public sealed partial class CompositionAncestorIndexTests
 
         // WHY: The control deliberately composes before EF extraction, as an already explicit source
         // did before deferral. Routing both sides through markers could hide identical extra membership.
-        var explicitRoot = hierarchy.SelectNormalizedAncestors(selected,
+        var explicitRoot = hierarchy.SelectNormalizedAncestors(
+            selected,
             (node, owner, distance) => new
             {
                 Node = node,
@@ -159,16 +165,19 @@ public sealed partial class CompositionAncestorIndexTests
         var queries = new[] { ordinary, explicitRoot }
             .Select((source, index) => operation switch
             {
-                "path" => hierarchy.WherePathEdges(source,
+                "path" => hierarchy.WherePathEdges(
+                    source,
                     row => row.Owner,
                     row => row.Node,
                     (row, parent, child) => child.Id > 0,
                     normalized: index == 1),
-                "any" => hierarchy.WhereAnyAncestorOrSelf(source,
+                "any" => hierarchy.WhereAnyAncestorOrSelf(
+                    source,
                     row => row.Node,
                     (row, owner) => owner.Id > 0,
                     normalized: index == 1),
-                "nearest" => hierarchy.WhereNearestAncestorOrSelf(source,
+                "nearest" => hierarchy.WhereNearestAncestorOrSelf(
+                    source,
                     row => row.Node,
                     (row, owner) => owner.Id > 0,
                     (row, owner) => owner.Visible,
@@ -183,9 +192,11 @@ public sealed partial class CompositionAncestorIndexTests
             facts = facts.IgnoreQueryFilters();
         }
 
-        var actual = queries[0].ToQueryString();
+        var actual = queries[0]
+            .ToQueryString();
 
-        var expected = queries[1].ToQueryString();
+        var expected = queries[1]
+            .ToQueryString();
 
         // WHY: The control composes before EF parameter extraction, so EF parameterizes a top-level
         // completion offset that the deferred path adds after extraction. Only that offset spelling differs.
@@ -219,9 +230,11 @@ public sealed partial class CompositionAncestorIndexTests
                 entity.Scope,
                 entity.Id,
             });
+
             node
                 .Property(entity => entity.Id)
                 .ValueGeneratedNever();
+
             node.Property(entity => entity.Visible);
             node.HasQueryFilter(entity => entity.Visible);
             node.HasNestedSet(mapping => mapping

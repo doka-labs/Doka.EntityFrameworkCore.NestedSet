@@ -59,10 +59,29 @@ public sealed class BenchmarkProvenanceDriftTests
         // Assert
         using var completed = JsonDocument.Parse(await File.ReadAllTextAsync(path, CancellationToken.None));
         var metadata = completed.RootElement;
-        Assert.Equal(initialSource, metadata.GetProperty("source").GetRawText());
-        Assert.Equal(JsonValueKind.Null, initial.RootElement.GetProperty("endSource").ValueKind);
-        Assert.False(initial.RootElement.GetProperty("sourcesChangedDuringRun").GetBoolean());
-        Assert.Equal(changeSource, metadata.GetProperty("sourcesChangedDuringRun").GetBoolean());
+        Assert.Equal(
+            initialSource,
+            metadata
+                .GetProperty("source")
+                .GetRawText());
+
+        Assert.Equal(
+            JsonValueKind.Null,
+            initial.RootElement.GetProperty("endSource")
+                .ValueKind);
+
+        Assert.False(
+            initial
+                .RootElement
+                .GetProperty("sourcesChangedDuringRun")
+                .GetBoolean());
+
+        Assert.Equal(
+            changeSource,
+            metadata
+                .GetProperty("sourcesChangedDuringRun")
+                .GetBoolean());
+
         Assert.Equal(
             changeSource,
             metadata
@@ -73,6 +92,7 @@ public sealed class BenchmarkProvenanceDriftTests
                 .GetProperty("endSource")
                 .GetProperty("fingerprint")
                 .GetString());
+
         Assert.Equal(
             initial
                 .RootElement
@@ -83,12 +103,14 @@ public sealed class BenchmarkProvenanceDriftTests
                 .GetProperty("endSource")
                 .GetProperty("commit")
                 .GetString());
+
         Assert.False(
             initial
                 .RootElement
                 .GetProperty("source")
                 .GetProperty("dirty")
                 .GetBoolean());
+
         Assert.Equal(
             changeSource,
             metadata
@@ -102,9 +124,9 @@ public sealed class BenchmarkProvenanceDriftTests
     {
         private const string OptionsVariable = "NESTEDSET_BENCHMARK_OPTIONS";
         private const string ConnectionVariable = "NESTEDSET_BENCHMARK_CONNECTION_STRING";
+        private readonly string? _connection = Environment.GetEnvironmentVariable(ConnectionVariable);
         private readonly string _directory = Directory.GetCurrentDirectory();
         private readonly string? _options = Environment.GetEnvironmentVariable(OptionsVariable);
-        private readonly string? _connection = Environment.GetEnvironmentVariable(ConnectionVariable);
 
         internal ProcessState(
             string directory
@@ -138,13 +160,26 @@ public sealed class BenchmarkProvenanceDriftTests
 
         internal string SourceFile => Path.Combine(Directory, "source.cs");
 
+        /// <inheritdoc />
+        public ValueTask DisposeAsync()
+        {
+            FileDirectory.Delete(Directory, true);
+
+            return ValueTask.CompletedTask;
+        }
+
         /// <summary>Creates an independently owned benchmark fixture.</summary>
         /// <param name="cancellationToken">The caller's cancellation token for the operation.</param>
-        internal static async Task<TemporaryRepository> CreateAsync(CancellationToken cancellationToken)
+        internal static async Task<TemporaryRepository> CreateAsync(
+            CancellationToken cancellationToken
+        )
         {
             var directory = Path.Combine(
                 Path.GetTempPath(),
-                "nestedset-source-" + Guid.NewGuid().ToString("N"));
+                "nestedset-source-"
+                + Guid
+                    .NewGuid()
+                    .ToString("N"));
 
             FileDirectory.CreateDirectory(directory);
             var repository = new TemporaryRepository(directory);
@@ -157,19 +192,13 @@ public sealed class BenchmarkProvenanceDriftTests
                         repository.SourceFile,
                         "class OriginalSource { }\n",
                         token);
+
                     await RunGitAsync(directory, ["add", "source.cs"], token);
                     await RunGitAsync(directory, ["commit", "--quiet", "--message", "source fixture"], token);
-                }, cancellationToken);
+                },
+                cancellationToken);
 
             return repository;
-        }
-
-        /// <inheritdoc />
-        public ValueTask DisposeAsync()
-        {
-            FileDirectory.Delete(Directory, true);
-
-            return ValueTask.CompletedTask;
         }
 
         /// <summary>Runs Git only against the owned fixture with hooks, signing and global identity disabled.</summary>

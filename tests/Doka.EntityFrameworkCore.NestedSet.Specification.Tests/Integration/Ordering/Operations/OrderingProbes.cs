@@ -159,7 +159,9 @@ public sealed class OrderingSaveProbe : DbCommandInterceptor
             return "";
         }
 
-        return end < 0 ? sql[start..] : sql[start..end];
+        return end < 0
+            ? sql[start..]
+            : sql[start..end];
     }
 
     /// <summary>Recognizes hierarchy writes without counting lock-table or ordinary domain updates.</summary>

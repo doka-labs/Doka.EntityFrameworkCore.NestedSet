@@ -17,11 +17,18 @@ public abstract partial class GroupSupervisorTests
         probe.Enabled = true;
 
         // Act
-        var rows = await App.SupervisorQueries.Candidates(context, data.TenantId, request)
+        var rows = await App
+            .SupervisorQueries
+            .Candidates(context, data.TenantId, request)
             .ToArrayAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(new[] { data.Users[1], data.Users[2] }.Order(), rows.Select(row => row.CandidateUserId).Order());
+        Assert.Equal(
+            new[] { data.Users[1], data.Users[2] }.Order(),
+            rows
+                .Select(row => row.CandidateUserId)
+                .Order());
+
         Assert.Single(probe.Commands);
         Assert.Equal(0, probe.Entities);
     }

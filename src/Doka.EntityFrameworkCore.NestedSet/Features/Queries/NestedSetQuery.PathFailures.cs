@@ -7,8 +7,7 @@ internal sealed partial class NestedSetQuery<TEntity>
     // no context, model, request, caller row or compiled delegate is held in static state.
     private static readonly
         Expression<Func<IQueryable<TEntity>, IQueryable<TEntity>, long, long, long, string, string, string, string,
-            IQueryable<long?>>> s_scopedInteriorFailureRights = (
-            endpoints,
+            IQueryable<long?>>> s_scopedInteriorFailureRights = (endpoints,
             failures,
             width,
             upperBlock,
@@ -16,8 +15,7 @@ internal sealed partial class NestedSetQuery<TEntity>
             scope,
             tree,
             left,
-            right
-        ) => endpoints
+            right) => endpoints
             .Join(
                 failures
                     .GroupBy(child => new
@@ -44,20 +42,20 @@ internal sealed partial class NestedSetQuery<TEntity>
                     block.Tree,
                 },
                 (endpoint, block) => block)
-            .Select(block => block.Block > upperBlock && block.Block < lowerBlock ? (long?)block.Right : null);
+            .Select(block => block.Block > upperBlock && block.Block < lowerBlock
+                ? (long?)block.Right
+                : null);
 
     private static readonly
         Expression<Func<IQueryable<TEntity>, IQueryable<TEntity>, long, long, long, string, string, string,
-            IQueryable<long?>>> s_unscopedInteriorFailureRights = (
-            endpoints,
+            IQueryable<long?>>> s_unscopedInteriorFailureRights = (endpoints,
             failures,
             width,
             upperBlock,
             lowerBlock,
             tree,
             left,
-            right
-        ) => endpoints
+            right) => endpoints
             .Join(
                 failures
                     .GroupBy(child => new
@@ -74,12 +72,13 @@ internal sealed partial class NestedSetQuery<TEntity>
                 endpoint => EF.Property<object>(endpoint, tree),
                 block => block.Tree,
                 (endpoint, block) => block)
-            .Select(block => block.Block > upperBlock && block.Block < lowerBlock ? (long?)block.Right : null);
+            .Select(block => block.Block > upperBlock && block.Block < lowerBlock
+                ? (long?)block.Right
+                : null);
 
     private static readonly
         Expression<Func<IQueryable<TEntity>, IQueryable<TEntity>, long, long, long, string, string, string, string,
-            IQueryable<long?>>> s_scopedFringeFailureRights = (
-            endpoints,
+            IQueryable<long?>>> s_scopedFringeFailureRights = (endpoints,
             failures,
             width,
             upperLeft,
@@ -87,8 +86,7 @@ internal sealed partial class NestedSetQuery<TEntity>
             scope,
             tree,
             left,
-            right
-        ) => endpoints
+            right) => endpoints
             .Join(
                 failures
                     .GroupBy(child => new
@@ -113,20 +111,20 @@ internal sealed partial class NestedSetQuery<TEntity>
                     point.Block,
                 },
                 (endpoint, point) => point)
-            .Select(point => point.Left > upperLeft && point.Left <= lowerLeft ? (long?)point.Right : null);
+            .Select(point => point.Left > upperLeft && point.Left <= lowerLeft
+                ? (long?)point.Right
+                : null);
 
     private static readonly
         Expression<Func<IQueryable<TEntity>, IQueryable<TEntity>, long, long, long, string, string, string,
-            IQueryable<long?>>> s_unscopedFringeFailureRights = (
-            endpoints,
+            IQueryable<long?>>> s_unscopedFringeFailureRights = (endpoints,
             failures,
             width,
             upperLeft,
             lowerLeft,
             tree,
             left,
-            right
-        ) => endpoints
+            right) => endpoints
             .Join(
                 failures
                     .GroupBy(child => new
@@ -148,7 +146,9 @@ internal sealed partial class NestedSetQuery<TEntity>
                     point.Block,
                 },
                 (endpoint, point) => point)
-            .Select(point => point.Left > upperLeft && point.Left <= lowerLeft ? (long?)point.Right : null);
+            .Select(point => point.Left > upperLeft && point.Left <= lowerLeft
+                ? (long?)point.Right
+                : null);
 
     private static readonly MethodInfo s_firstPathFailure = MethodOf(
         (Expression<Func<IQueryable<long?>, long?>>)(failures => failures.FirstOrDefault()));
@@ -325,26 +325,35 @@ internal sealed partial class NestedSetQuery<TEntity>
             : (Expression)Expression.Constant(null, typeof(object));
 
         var selector = Expression.Lambda<Func<TEntity, PathFailurePoint>>(
-            Expression.MemberInit(Expression.New(typeof(PathFailurePoint)),
+            Expression.MemberInit(
+                Expression.New(typeof(PathFailurePoint)),
                 Field(nameof(PathFailurePoint.Scope), scope),
-                Field(nameof(PathFailurePoint.Tree),
+                Field(
+                    nameof(PathFailurePoint.Tree),
                     NestedSetExpressions.Property(child, _descriptor.TreeId.Resolve(_entityType), typeof(object))),
                 Field(nameof(PathFailurePoint.Left), Bound(child, _descriptor.Left)),
-                Field(nameof(PathFailurePoint.Right), Bound(child, _descriptor.Right))), child);
+                Field(nameof(PathFailurePoint.Right), Bound(child, _descriptor.Right))),
+            child);
 
         // WHY: SQL Server reran grouped failure summaries for every path row: the scalar MAX stayed
         // correlated, so neither its hash joins nor its population scans were reused. These points do not
         // reference outer path bounds; behind OFFSET 0 the measured plans completed them once.
-        var points = failures.Select(selector).OrderBy(point => point.Left).Skip(0);
+        var points = failures
+            .Select(selector)
+            .OrderBy(point => point.Left)
+            .Skip(0);
 
         var point = Expression.Parameter(typeof(PathFailurePoint), "point");
-        Expression identity = Expression.Equal(Expression.Property(point, nameof(PathFailurePoint.Tree)),
+        Expression identity = Expression.Equal(
+            Expression.Property(point, nameof(PathFailurePoint.Tree)),
             NestedSetExpressions.Property(upper, _descriptor.TreeId.Resolve(_entityType), typeof(object)));
 
         if (_descriptor.Scope is { } scopeRole)
         {
-            identity = Expression.AndAlso(identity,
-                Expression.Equal(Expression.Property(point, nameof(PathFailurePoint.Scope)),
+            identity = Expression.AndAlso(
+                identity,
+                Expression.Equal(
+                    Expression.Property(point, nameof(PathFailurePoint.Scope)),
                     NestedSetExpressions.Property(upper, scopeRole.Resolve(_entityType), typeof(object))));
         }
 
@@ -352,24 +361,32 @@ internal sealed partial class NestedSetQuery<TEntity>
         // exactly when its Right >= lower.Right. Existence is the complete proof; no caller row, payload
         // value or occurrence is deduplicated, and an empty point relation proves no violation.
         var left = Expression.Property(point, nameof(PathFailurePoint.Left));
-        var onPath = Expression.AndAlso(identity,
+        var onPath = Expression.AndAlso(
+            identity,
             Expression.AndAlso(
                 Expression.AndAlso(
                     Expression.GreaterThan(left, Bound(upper, _descriptor.Left)),
                     Expression.LessThanOrEqual(left, Bound(lower, _descriptor.Left))),
                 Expression.GreaterThanOrEqual(
-                    Expression.Property(point, nameof(PathFailurePoint.Right)), Bound(lower, _descriptor.Right))));
+                    Expression.Property(point, nameof(PathFailurePoint.Right)),
+                    Bound(lower, _descriptor.Right))));
 
         // WHY: EXISTS let SQL Server turn this proof into an eager probe join beside nearest candidates,
         // rebuilding the completed points for every row. In the measured plans a scalar TOP(1) remained a
         // lazy correlated lookup that short paths skipped and long paths answered from the completed points.
-        var found = Expression.Call(s_firstPathFailure,
-            points.Where(Expression.Lambda<Func<PathFailurePoint, bool>>(onPath, point))
-                .Select(failure => (long?)1L).Expression);
+        var found = Expression.Call(
+            s_firstPathFailure,
+            points
+                .Where(Expression.Lambda<Func<PathFailurePoint, bool>>(onPath, point))
+                .Select(failure => (long?)1L)
+                .Expression);
 
         return Expression.Equal(found, Expression.Constant(1L, typeof(long?)));
 
-        static MemberAssignment Field(string member, Expression value)
+        static MemberAssignment Field(
+            string member,
+            Expression value
+        )
             => Expression.Bind(typeof(PathFailurePoint).GetProperty(member)!, value);
     }
 

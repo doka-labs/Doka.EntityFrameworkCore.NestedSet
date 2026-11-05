@@ -11,8 +11,6 @@ internal sealed partial class NestedSetStore<TEntity, TKey, TTreeId, TScope>
     where TTreeId : notnull
     where TScope : notnull
 {
-    private readonly TScope _scope;
-    private readonly TTreeId _treeId;
     private IQueryable<TEntity>? _nodes;
 
     /// <summary>Binds structural operations to one resolved mapping and stable tree identity.</summary>
@@ -56,8 +54,8 @@ internal sealed partial class NestedSetStore<TEntity, TKey, TTreeId, TScope>
 
         // WHY: Caller-owned mutable identities must not change the selected tree while asynchronous work runs.
         // The shared typed helper confines EF metadata erasure to its actual framework read/snapshot boundary.
-        _treeId = NestedSetTypedValue<TTreeId>.Snapshot(Map.TreeIdProperty, treeId);
-        _scope = Map.ScopeProperty is { } scopeProperty
+        TreeId = NestedSetTypedValue<TTreeId>.Snapshot(Map.TreeIdProperty, treeId);
+        Scope = Map.ScopeProperty is { } scopeProperty
             ? NestedSetTypedValue<TScope>.Snapshot(scopeProperty, scope)
             : scope;
     }
@@ -71,6 +69,12 @@ internal sealed partial class NestedSetStore<TEntity, TKey, TTreeId, TScope>
     /// <summary>Gets the correctly named EF set for this exact hierarchy mapping.</summary>
     internal DbSet<TEntity> Set => NestedSetEntityAccess<TEntity>.Set(Context, Map.EntityType);
 
+    /// <summary>Gets the snapshotted scope assigned to inserted entities.</summary>
+    internal TScope Scope { get; }
+
+    /// <summary>Gets the snapshotted mandatory tree identity.</summary>
+    internal TTreeId TreeId { get; }
+
     /// <summary>Returns an unambiguous entry for a detached or tracked hierarchy entity.</summary>
     /// <param name="entity">The hierarchy entity using this store's exact mapping.</param>
     /// <returns>The corresponding EF entry.</returns>
@@ -78,18 +82,12 @@ internal sealed partial class NestedSetStore<TEntity, TKey, TTreeId, TScope>
         TEntity entity
     ) => NestedSetEntityAccess<TEntity>.Entry(Context, Map.EntityType, entity);
 
-    /// <summary>Gets the snapshotted scope assigned to inserted entities.</summary>
-    internal TScope Scope => _scope;
-
-    /// <summary>Gets the snapshotted mandatory tree identity.</summary>
-    internal TTreeId TreeId => _treeId;
-
     /// <summary>Builds the registry request for this exact tree.</summary>
     /// <param name="mode">The required lifecycle transition.</param>
     /// <returns>The complete optional scope and mandatory tree identity.</returns>
     internal NestedSetTreeLockRequest<TTreeId, TScope> LockRequest(
         NestedSetTreeLockMode mode
-    ) => new(Map.EntityType, _scope, _treeId, mode);
+    ) => new(Map.EntityType, Scope, TreeId, mode);
 
     /// <summary>Executes a mutation under this exact tree's registry lock and rollback boundary.</summary>
     /// <param name="executor">The transaction coordinator.</param>

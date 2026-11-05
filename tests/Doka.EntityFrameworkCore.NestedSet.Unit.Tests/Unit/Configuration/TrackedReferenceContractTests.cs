@@ -45,8 +45,10 @@ public sealed class TrackedReferenceContractTests
         Assert.Single(updates.Entries);
         Assert.Equal(0, detections);
         Assert.Equal(automaticDetection, context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Identity is based on the exact reference and retains EF's real lifecycle state.</summary>

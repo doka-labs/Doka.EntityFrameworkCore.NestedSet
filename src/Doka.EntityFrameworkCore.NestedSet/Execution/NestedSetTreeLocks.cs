@@ -98,7 +98,10 @@ internal static class NestedSetTreeLocks
         var createAlias = sql.DelimitIdentifier("Create");
         var valueAlias = sql.DelimitIdentifier("Value");
         var sourceAlias = sql.DelimitIdentifier("RequestedTrees");
-        var scopeExpression = mapping.Scope is null ? null : "r." + scopeAlias;
+        var scopeExpression = mapping.Scope is null
+            ? null
+            : "r." + scopeAlias;
+
         var treeExpression = "r." + treeAlias;
 
         if (mapping.SourceScope is { } scope
@@ -123,10 +126,14 @@ internal static class NestedSetTreeLocks
             .GetDbConnection()
             .CreateCommand();
 
-        var parameters = new List<object>(provider.TreeRowsetParameterCount(requests.Length, mapping.Scope is not null));
+        var parameters =
+            new List<object>(provider.TreeRowsetParameterCount(requests.Length, mapping.Scope is not null));
+
         var aliases = new NestedSetTreeRowsetAliases(sourceAlias, scopeAlias, treeAlias, ordinalAlias, createAlias);
         var sourceStatement = provider.BuildTreeRowsetSource(command, parameters, aliases, mapping, requests);
-        var identity = scopeExpression is null ? treeExpression : scopeExpression + ", " + treeExpression;
+        var identity = scopeExpression is null
+            ? treeExpression
+            : scopeExpression + ", " + treeExpression;
 
         // WHY: Create participates in grouping so a mixed create/existing request never loses its stricter
         // reservation contract. Descending order tries that reservation before an existing-row lock.
@@ -161,11 +168,16 @@ internal static class NestedSetTreeLocks
     {
         var collation = NestedSetCollations.Resolve(context, source, hierarchy);
 
-        return collation is null ? expression : expression + " COLLATE " + provider.CollationSql(sql, collation);
+        return collation is null
+            ? expression
+            : expression + " COLLATE " + provider.CollationSql(sql, collation);
     }
 
     /// <summary>Checks the finalized provider type used by a registry identity column.</summary>
     private static bool HasStringStore(
         IProperty property
-    ) => (property.GetRelationalTypeMapping().Converter?.ProviderClrType ?? property.ClrType) == typeof(string);
+    ) => (property.GetRelationalTypeMapping()
+                .Converter?.ProviderClrType
+            ?? property.ClrType)
+        == typeof(string);
 }

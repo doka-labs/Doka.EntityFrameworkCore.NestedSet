@@ -53,27 +53,45 @@ public sealed class BenchmarkProvenanceTests
 
         using var document = JsonDocument.Parse(content);
         var metadata = document.RootElement;
-        Assert.Equal(1, metadata.GetProperty("schemaVersion").GetInt32());
-        Assert.Equal("benchmark", metadata.GetProperty("mode").GetString());
-        Assert.Equal("completed", metadata.GetProperty("outcome").GetString());
+        Assert.Equal(
+            1,
+            metadata
+                .GetProperty("schemaVersion")
+                .GetInt32());
+
+        Assert.Equal(
+            "benchmark",
+            metadata
+                .GetProperty("mode")
+                .GetString());
+
+        Assert.Equal(
+            "completed",
+            metadata
+                .GetProperty("outcome")
+                .GetString());
+
         Assert.Equal(
             40,
             metadata
                 .GetProperty("source")
                 .GetProperty("commit")
                 .GetString()!.Length);
+
         Assert.Equal(
             64,
             metadata
                 .GetProperty("source")
                 .GetProperty("fingerprint")
                 .GetString()!.Length);
+
         Assert.Equal(
             "SqliteMemory",
             metadata
                 .GetProperty("settings")
                 .GetProperty("engine")
                 .GetString());
+
         Assert.Equal(
             [100, 1000],
             metadata
@@ -81,6 +99,7 @@ public sealed class BenchmarkProvenanceTests
                 .GetProperty("nodeCounts")
                 .EnumerateArray()
                 .Select(value => value.GetInt32()));
+
         Assert.Equal(
             ["Deep", "Balanced"],
             metadata
@@ -88,36 +107,46 @@ public sealed class BenchmarkProvenanceTests
                 .GetProperty("shapes")
                 .EnumerateArray()
                 .Select(value => value.GetString()));
+
         Assert.Equal(
             environment.ServerVersion,
             metadata
                 .GetProperty("database")
                 .GetProperty("serverVersion")
                 .GetString());
+
         Assert.False(
             metadata
                 .GetProperty("database")
                 .GetProperty("connectionPooling")
                 .GetBoolean());
+
         Assert.False(
             string.IsNullOrWhiteSpace(
                 metadata
                     .GetProperty("host")
                     .GetProperty("sdk")
                     .GetString()));
+
         Assert.False(
             string.IsNullOrWhiteSpace(
                 metadata
                     .GetProperty("host")
                     .GetProperty("cpu")
                     .GetString()));
+
         Assert.Equal(
             "0.15.8",
             metadata
                 .GetProperty("packages")
                 .GetProperty("BenchmarkDotNet")
                 .GetString());
-        Assert.Empty(metadata.GetProperty("jobs").EnumerateArray());
+
+        Assert.Empty(
+            metadata
+                .GetProperty("jobs")
+                .EnumerateArray());
+
         Assert.DoesNotContain("connectionString", content, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Data Source=", content, StringComparison.OrdinalIgnoreCase);
     }
@@ -137,7 +166,14 @@ public sealed class BenchmarkProvenanceTests
             ArtifactsPath = directory.Path,
         };
 
-        var started = new DateTimeOffset(2026, 9, 29, 1, 2, 3, TimeSpan.Zero);
+        var started = new DateTimeOffset(
+            2026,
+            9,
+            29,
+            1,
+            2,
+            3,
+            TimeSpan.Zero);
 
         // Act
         await BenchmarkProvenance.WriteAsync(options, null, started, [], "completed", CancellationToken.None);
@@ -150,10 +186,30 @@ public sealed class BenchmarkProvenanceTests
         using var document = JsonDocument.Parse(content);
         var metadata = document.RootElement;
 
-        Assert.Equal(JsonValueKind.Null, metadata.GetProperty("database").ValueKind);
-        Assert.Equal(started, metadata.GetProperty("createdAtUtc").GetDateTimeOffset());
-        Assert.Equal("completed", metadata.GetProperty("outcome").GetString());
-        Assert.Equal("MySql", metadata.GetProperty("settings").GetProperty("engine").GetString());
+        Assert.Equal(
+            JsonValueKind.Null,
+            metadata.GetProperty("database")
+                .ValueKind);
+
+        Assert.Equal(
+            started,
+            metadata
+                .GetProperty("createdAtUtc")
+                .GetDateTimeOffset());
+
+        Assert.Equal(
+            "completed",
+            metadata
+                .GetProperty("outcome")
+                .GetString());
+
+        Assert.Equal(
+            "MySql",
+            metadata
+                .GetProperty("settings")
+                .GetProperty("engine")
+                .GetString());
+
         Assert.Equal(previous, Environment.GetEnvironmentVariable(ConnectionVariable));
         Assert.DoesNotContain(previous, content, StringComparison.Ordinal);
         Assert.Single(Directory.EnumerateFiles(directory.Path));
@@ -185,6 +241,7 @@ public sealed class BenchmarkProvenanceTests
         var configuration = ManualConfig
             .Create(DefaultConfig.Instance)
             .AddJob(job);
+
         using var native = BenchmarkConverter.TypeToBenchmarks(
             typeof(CompositionConstructionBenchmarks),
             configuration);
@@ -231,13 +288,39 @@ public sealed class BenchmarkProvenanceTests
             .GetProperty("job")
             .GetProperty("toolchain");
 
-        Assert.Equal("invalid", metadata.GetProperty("outcome").GetString());
-        Assert.False(metadata.GetProperty("sourcesChangedDuringRun").GetBoolean());
-        Assert.Equal(typeof(CompositionConstructionBenchmarks).FullName,
-            nativeJob.GetProperty("benchmark").GetString());
-        Assert.Equal(benchmark.Descriptor.WorkloadMethod.Name, nativeJob.GetProperty("method").GetString());
-        Assert.Equal(benchmark.Parameters.PrintInfo, nativeJob.GetProperty("parameters").GetString());
-        Assert.False(nativeJob.GetProperty("success").GetBoolean());
+        Assert.Equal(
+            "invalid",
+            metadata
+                .GetProperty("outcome")
+                .GetString());
+
+        Assert.False(
+            metadata
+                .GetProperty("sourcesChangedDuringRun")
+                .GetBoolean());
+
+        Assert.Equal(
+            typeof(CompositionConstructionBenchmarks).FullName,
+            nativeJob
+                .GetProperty("benchmark")
+                .GetString());
+
+        Assert.Equal(
+            benchmark.Descriptor.WorkloadMethod.Name,
+            nativeJob
+                .GetProperty("method")
+                .GetString());
+
+        Assert.Equal(
+            benchmark.Parameters.PrintInfo,
+            nativeJob
+                .GetProperty("parameters")
+                .GetString());
+
+        Assert.False(
+            nativeJob
+                .GetProperty("success")
+                .GetBoolean());
 
         if (explicitToolchain)
         {
@@ -327,8 +410,8 @@ public sealed class BenchmarkProvenanceTests
     /// <summary>Restores process-wide settings even when a provenance or resource assertion fails.</summary>
     private sealed class InheritedSettings : IDisposable
     {
-        private readonly string? _options = Environment.GetEnvironmentVariable(OptionsVariable);
         private readonly string? _connection = Environment.GetEnvironmentVariable(ConnectionVariable);
+        private readonly string? _options = Environment.GetEnvironmentVariable(OptionsVariable);
 
         /// <inheritdoc />
         public void Dispose()
@@ -345,7 +428,10 @@ public sealed class BenchmarkProvenanceTests
         {
             Path = FilePath.Combine(
                 FilePath.GetTempPath(),
-                "nestedset-benchmark-tests-" + Guid.NewGuid().ToString("N"));
+                "nestedset-benchmark-tests-"
+                + Guid
+                    .NewGuid()
+                    .ToString("N"));
 
             Directory.CreateDirectory(Path);
         }

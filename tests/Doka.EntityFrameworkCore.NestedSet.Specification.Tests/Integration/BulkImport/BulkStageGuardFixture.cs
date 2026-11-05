@@ -8,6 +8,15 @@ public sealed class BulkStageGuardFixture : IAsyncLifetime
     /// <inheritdoc />
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var database in _databases.Values)
+        {
+            await database.DisposeAsync();
+        }
+    }
+
     /// <summary>Resets guard tables without restarting a shared fixture-owned database engine.</summary>
     /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     public async Task<BulkStageGuardContext> ResetAsync(
@@ -68,15 +77,6 @@ public sealed class BulkStageGuardFixture : IAsyncLifetime
 
         return context;
     }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        foreach (var database in _databases.Values)
-        {
-            await database.DisposeAsync();
-        }
-    }
 }
 
 /// <summary>Allows application comparers broader than native string equality without adding relationships.</summary>
@@ -125,7 +125,9 @@ public sealed class BulkStageGuardContext : DbContext
 
         var comparer = new ValueComparer<string?>(
             (left, right) => string.Equals(left, right, StringComparison.OrdinalIgnoreCase),
-            value => value == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode(value),
+            value => value == null
+                ? 0
+                : StringComparer.OrdinalIgnoreCase.GetHashCode(value),
             value => value);
 
         // WHY: Only guard properties use broader CLR equality; the principal primary key stays ordinal.
@@ -141,9 +143,11 @@ public sealed class BulkStageGuardContext : DbContext
             .Property(node => node.Id)
             .HasMaxLength(64)
             .ValueGeneratedNever();
+
         binaryParent
             .Property(node => node.ParentId)
             .HasMaxLength(64);
+
         binaryParent.HasNestedSet(builder => builder
             .HasTreeId(node => node.TreeId)
             .HasScope(node => node.Scope)
@@ -153,6 +157,7 @@ public sealed class BulkStageGuardContext : DbContext
         binaryScope
             .Property(node => node.Id)
             .ValueGeneratedNever();
+
         binaryScope
             .Property(node => node.Scope)
             .HasMaxLength(64)
@@ -160,6 +165,7 @@ public sealed class BulkStageGuardContext : DbContext
             .SetValueComparer(
                 ValueComparer.CreateDefault<byte[]>(
                     favorStructuralComparisons: true));
+
         binaryScope.HasNestedSet(builder => builder
             .HasTreeId(node => node.TreeId)
             .HasScope(node => node.Scope)

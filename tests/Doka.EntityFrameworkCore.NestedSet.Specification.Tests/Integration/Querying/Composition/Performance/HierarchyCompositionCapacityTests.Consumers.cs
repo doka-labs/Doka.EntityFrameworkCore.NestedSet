@@ -9,40 +9,69 @@ public abstract partial class HierarchyCompositionCapacityTests
     [InlineData(false)]
     [InlineData(true)]
     [Trait("Category", "Capacity")]
-    public async Task LargeConsumerCompositionRetainsItsResultsAndAllocationBudgets(bool deep)
+    public async Task LargeConsumerCompositionRetainsItsResultsAndAllocationBudgets(
+        bool deep
+    )
     {
         // Arrange
         const int nodes = 100_001;
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var context = database.CreateContext();
-        await CapacitySeed.SeedAsync(context, nodes, deep: deep,
+        await CapacitySeed.SeedAsync(
+            context,
+            nodes,
+            deep: deep,
             cancellationToken: TestContext.Current.CancellationToken);
+
         // WHY: The shared generic profiles prepare these physical statistics before their consumer
         // reads. This independent entry point must do the same; fresh-row estimates otherwise hide
         // the actual hundred-thousand-node population behind a one-row view estimate.
-        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(context, Engine,
+        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(
+            context,
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
+
         var observations = new List<CompositionConsumerCapacityObservation>();
 
         // Act
         // WHY: Consumer evidence uses the actual sample builders. An unrelated generic access-path
         // failure must remain visible in its own test without preventing these operations from running.
-        observations.AddRange(await CompositionConsumerCapacityProfiles.MeasureAsync(
-            database, Engine, nodes, TestContext.Current.CancellationToken, deep: deep));
+        observations.AddRange(
+            await CompositionConsumerCapacityProfiles.MeasureAsync(
+                database,
+                Engine,
+                nodes,
+                TestContext.Current.CancellationToken,
+                deep: deep));
 
         if (!deep)
         {
-            await CompositionCapacityProfiles.BalanceAsync(context, nodes,
+            await CompositionCapacityProfiles.BalanceAsync(
+                context,
+                nodes,
                 cancellationToken: TestContext.Current.CancellationToken);
-            await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(context, Engine,
+
+            await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(
+                context,
+                Engine,
                 cancellationToken: TestContext.Current.CancellationToken);
-            observations.AddRange(await CompositionConsumerCapacityProfiles.MeasureAsync(
-                database, Engine, nodes, TestContext.Current.CancellationToken, balanced: true));
+
+            observations.AddRange(
+                await CompositionConsumerCapacityProfiles.MeasureAsync(
+                    database,
+                    Engine,
+                    nodes,
+                    TestContext.Current.CancellationToken,
+                    balanced: true));
         }
 
-        var validation = await context.NestedSet<TreeNode>().ForScope(1).InTree(Guid.Empty)
+        var validation = await context
+            .NestedSet<TreeNode>()
+            .ForScope(1)
+            .InTree(Guid.Empty)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
 
         // Assert
@@ -50,22 +79,26 @@ public abstract partial class HierarchyCompositionCapacityTests
         Assert.Equal(nodes, validation.NodeCount);
         CompositionConsumerCapacityProfiles.AssertAll(observations, _output);
 
-        if (Engine == "MySql" && !deep)
+        if (Engine == "MySql"
+            && !deep)
         {
             // WHY: Template reuse must not multiply the wide or balanced report's iterator work.
             // These fixed consumers permit a bounded number of linear population passes, while both
             // the largest iterator and their sum reject repeated payload scans hidden by correct results.
             var maximumOperatorTuples = checked(4L * nodes);
             var maximumOutputSum = checked(8L * nodes);
-            var signals = observations.Where(observation =>
-                observation.Profile.StartsWith("signal-", StringComparison.Ordinal)).ToArray();
+            var signals = observations
+                .Where(observation =>
+                    observation.Profile.StartsWith("signal-", StringComparison.Ordinal))
+                .ToArray();
 
             Assert.NotEmpty(signals);
 
             foreach (var observation in signals)
             {
                 var work = CompositionPlanWork.ReadMySqlTree(observation.Plan);
-                _output.WriteLine($"{observation.Profile}; maximumOperatorTuples={work.MaximumOperatorTuples}; "
+                _output.WriteLine(
+                    $"{observation.Profile}; maximumOperatorTuples={work.MaximumOperatorTuples}; "
                     + $"sumIteratorOutputTuples={work.SumIteratorOutputTuples}.");
 
                 Assert.InRange(work.MaximumOperatorTuples, 0, maximumOperatorTuples);

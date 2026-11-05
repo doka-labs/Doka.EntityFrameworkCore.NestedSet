@@ -35,7 +35,8 @@ public sealed class SampleDatabaseConfigurationTests
                 .Options);
 
         var connection = new MySqlConnectionStringBuilder(
-            context.Database.GetDbConnection().ConnectionString);
+            context.Database.GetDbConnection()
+                .ConnectionString);
 
         // Assert
         Assert.Equal(database, configuration.DatabaseName);
@@ -121,7 +122,8 @@ public sealed class SampleDatabaseConfigurationTests
                 .Options);
 
         var connection = new SqliteConnectionStringBuilder(
-            context.Database.GetDbConnection().ConnectionString);
+            context.Database.GetDbConnection()
+                .ConnectionString);
 
         // Assert
         Assert.Equal(database, configuration.DatabaseName);
@@ -153,7 +155,8 @@ public sealed class SampleDatabaseConfigurationTests
                 .Options);
 
         var connection = new SqliteConnectionStringBuilder(
-            context.Database.GetDbConnection().ConnectionString);
+            context.Database.GetDbConnection()
+                .ConnectionString);
 
         // Assert
         Assert.Equal(SqliteOpenMode.ReadOnly, connection.Mode);

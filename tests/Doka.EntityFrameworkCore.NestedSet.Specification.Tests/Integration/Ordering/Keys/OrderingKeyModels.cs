@@ -9,6 +9,15 @@ public sealed class OrderingKeyFixture : IAsyncLifetime
     /// <inheritdoc />
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var database in _databases.Values)
+        {
+            await database.DisposeAsync();
+        }
+    }
+
     /// <summary>Clears the fixture's key-specific tables and returns a context owned by the caller.</summary>
     /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="engine">The requested relational engine.</param>
@@ -90,6 +99,7 @@ public sealed class OrderingKeyFixture : IAsyncLifetime
                 .ExecuteUpdateAsync(
                     setters => setters.SetProperty(node => node.ParentId, (int?)null),
                     cancellationToken);
+
             await context
                 .Set<OrderingKeyNode<int, int?>>()
                 .ExecuteDeleteAsync(cancellationToken);
@@ -154,15 +164,6 @@ public sealed class OrderingKeyFixture : IAsyncLifetime
 
         return new OrderingKeyContext(options.Options);
     }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        foreach (var database in _databases.Values)
-        {
-            await database.DisposeAsync();
-        }
-    }
 }
 
 /// <summary>Maps native and converted ordered identities through ordinary asynchronous save integration.</summary>
@@ -190,6 +191,7 @@ public sealed class OrderingKeyContext : NestedSetDbContext
             .Property(node => node.Id)
             .HasConversion<string>()
             .HasMaxLength(64);
+
         converted
             .Property(node => node.ParentId)
             .HasConversion<string>()
@@ -243,9 +245,11 @@ public sealed class OrderingKeyContext : NestedSetDbContext
         node
             .Property(value => value.Id)
             .ValueGeneratedNever();
+
         node
             .Property(value => value.ParentId)
             .IsRequired(false);
+
         node
             .Property(value => value.Name)
             .HasMaxLength(128);
@@ -256,6 +260,7 @@ public sealed class OrderingKeyContext : NestedSetDbContext
             node
                 .Property(value => value.Id)
                 .HasMaxLength(64);
+
             node
                 .Property(value => value.ParentId)
                 .HasMaxLength(64);
@@ -277,9 +282,6 @@ public sealed class OrderingKeyContext : NestedSetDbContext
 public sealed class OrderingKeyNode<TKey, TParent> : IScopedNestedSetNode<TKey, Guid, int>
     where TKey : notnull
 {
-    /// <summary>Gets or sets the stable tree identity.</summary>
-    public Guid TreeId { get; set; }
-
     /// <summary>Creates a node whose coordinates and scope will be assigned by the hierarchy service.</summary>
     /// <param name="id">The application-assigned identity.</param>
     /// <param name="name">The domain value used for sibling ordering.</param>
@@ -292,17 +294,20 @@ public sealed class OrderingKeyNode<TKey, TParent> : IScopedNestedSetNode<TKey, 
         Name = name;
     }
 
-    /// <inheritdoc />
-    public TKey Id { get; set; }
-
-    /// <summary>Gets or sets the independent hierarchy scope.</summary>
-    public int Scope { get; set; }
-
     /// <summary>Gets or sets the nullable direct-parent identity.</summary>
     public TParent? ParentId { get; set; }
 
     /// <summary>Gets or sets the ascending domain criterion.</summary>
     public string Name { get; set; }
+
+    /// <summary>Gets or sets the stable tree identity.</summary>
+    public Guid TreeId { get; set; }
+
+    /// <inheritdoc />
+    public TKey Id { get; set; }
+
+    /// <summary>Gets or sets the independent hierarchy scope.</summary>
+    public int Scope { get; set; }
 
     /// <inheritdoc />
     public long Left { get; set; }

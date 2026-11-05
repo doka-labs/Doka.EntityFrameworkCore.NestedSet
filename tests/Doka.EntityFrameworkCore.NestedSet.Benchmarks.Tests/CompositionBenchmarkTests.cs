@@ -69,7 +69,14 @@ public sealed class CompositionBenchmarkTests
         Assert.NotEmpty(benchmark.Result);
         Assert.All(benchmark.Result, total => Assert.InRange(total.Anchor, 1, 16));
         Assert.Empty(benchmark.Fixture.Context.ChangeTracker.Entries<BenchmarkNode>());
-        Assert.Equal(3, benchmark.Fixture.Context.ChangeTracker.Entries<BenchmarkTrackedEntity>().Count());
+        Assert.Equal(
+            3,
+            benchmark
+                .Fixture
+                .Context
+                .ChangeTracker
+                .Entries<BenchmarkTrackedEntity>()
+                .Count());
     }
 
     /// <summary>Both complete queries reject a blocked nearest-self payload without falling back to root.</summary>

@@ -21,7 +21,11 @@ internal static partial class CompositionCapacityProfiles
         int commandIndex = 0
     )
     {
-        var evidence = new List<string> { profile, failure.ToString() };
+        var evidence = new List<string>
+        {
+            profile,
+            failure.ToString(),
+        };
 
         if (probe.Commands.Count > commandIndex)
         {
@@ -30,11 +34,18 @@ internal static partial class CompositionCapacityProfiles
 
         try
         {
-            if ((engine is "PostgreSql" or "MySql" or "MariaDb") && probe.Commands.Count > commandIndex)
+            if (engine is "PostgreSql" or "MySql" or "MariaDb"
+                && probe.Commands.Count > commandIndex)
             {
                 await context.Database.OpenConnectionAsync(cancellationToken);
-                await using var command = context.Database.GetDbConnection().CreateCommand();
-                command.CommandText = (engine == "PostgreSql" ? "EXPLAIN (FORMAT JSON) " : "EXPLAIN FORMAT=JSON ")
+                await using var command = context
+                    .Database
+                    .GetDbConnection()
+                    .CreateCommand();
+
+                command.CommandText = (engine == "PostgreSql"
+                        ? "EXPLAIN (FORMAT JSON) "
+                        : "EXPLAIN FORMAT=JSON ")
                     + probe.Commands[commandIndex];
 
                 // WHY: A failed actual-plan replay may still own its bindings; independent native clones
@@ -43,13 +54,13 @@ internal static partial class CompositionCapacityProfiles
                 {
                     command.Parameters.Add(((ICloneable)parameter).Clone());
                 }
+
                 await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
                 while (await reader.ReadAsync(cancellationToken))
                 {
                     evidence.Add(reader.GetString(0));
                 }
-
             }
         }
         catch (Exception diagnosticFailure)
@@ -59,6 +70,8 @@ internal static partial class CompositionCapacityProfiles
         }
 
         await QueryPlanTestSupport.WriteEvidenceAsync(
-            engine + "-composition-capacity-failed-" + profile, evidence, cancellationToken: cancellationToken);
+            engine + "-composition-capacity-failed-" + profile,
+            evidence,
+            cancellationToken: cancellationToken);
     }
 }

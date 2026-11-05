@@ -8,7 +8,10 @@ public sealed partial class TableSharingRollbackTests
     private class SharingContext : DbContext
     {
         /// <summary>Keeps raw current payload independent of original values and modification flags.</summary>
-        internal SharingContext() => ChangeTracker.AutoDetectChangesEnabled = false;
+        internal SharingContext()
+        {
+            ChangeTracker.AutoDetectChangesEnabled = false;
+        }
 
         /// <summary>Gets whether the sharing detail is an owned dependent.</summary>
         protected virtual bool OwnedDetail => true;
@@ -29,6 +32,7 @@ public sealed partial class TableSharingRollbackTests
             root
                 .Property(value => value.Id)
                 .ValueGeneratedOnAdd();
+
             root
                 .Property<byte[]>(VersionProperty)
                 .HasColumnName(VersionProperty)
@@ -37,18 +41,21 @@ public sealed partial class TableSharingRollbackTests
 
             if (OwnedDetail)
             {
-                root.OwnsOne(value => value.Detail,
+                root.OwnsOne(
+                    value => value.Detail,
                     detail =>
                     {
                         detail.ToTable("SharingRows");
                         detail
                             .WithOwner(value => value.Root)
                             .HasForeignKey(value => value.Id);
+
                         detail.HasKey(value => value.Id);
                         detail
                             .Property(value => value.Id)
                             .HasColumnName(nameof(SharingRoot.Id))
                             .ValueGeneratedNever();
+
                         detail
                             .Property<byte[]>(VersionProperty)
                             .HasColumnName(VersionProperty)
@@ -64,11 +71,13 @@ public sealed partial class TableSharingRollbackTests
                     .Property(value => value.Id)
                     .HasColumnName(nameof(SharingRoot.Id))
                     .ValueGeneratedNever();
+
                 detail
                     .HasOne(value => value.Root)
                     .WithOne(value => value.Detail)
                     .HasForeignKey<SharingDetail>(value => value.Id)
                     .OnDelete(DeleteBehavior.Cascade);
+
                 detail
                     .Property<byte[]>(VersionProperty)
                     .HasColumnName(VersionProperty)

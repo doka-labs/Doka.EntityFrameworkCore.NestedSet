@@ -54,7 +54,8 @@ public sealed class CompositionConsumerAdapterTests
 
         var expected = value == 0
             ? Guid.Empty
-            : new Guid(value,
+            : new Guid(
+                value,
                 0x51ab,
                 0x4000,
                 0x80,
@@ -108,7 +109,9 @@ public sealed class CompositionConsumerAdapterTests
             .Model
             .GetEntityTypes()
             .Where(entity => entity.ClrType.Assembly
-                == (signal ? typeof(SignalLabContext).Assembly : typeof(GroupContext).Assembly))
+                == (signal
+                    ? typeof(SignalLabContext).Assembly
+                    : typeof(GroupContext).Assembly))
             .ToArray();
 
         var trees = entities
@@ -157,7 +160,8 @@ public sealed class CompositionConsumerAdapterTests
         // Assert
         Assert.NotEmpty(trees);
         Assert.NotEmpty(observations);
-        Assert.All(observations,
+        Assert.All(
+            observations,
             observed =>
             {
                 Assert.Equal(observed.values.Cast<object>(), observed.decoded);
@@ -165,7 +169,8 @@ public sealed class CompositionConsumerAdapterTests
                 if (observed.tree)
                 {
                     Assert.Equal(typeof(Guid), observed.ProviderClrType);
-                    Assert.Equal(new object[] { CompositionConsumerModel.Tree, Guid.Empty, otherTree },
+                    Assert.Equal(
+                        new object[] { CompositionConsumerModel.Tree, Guid.Empty, otherTree },
                         observed.encoded);
                 }
                 else
@@ -200,13 +205,18 @@ public sealed class CompositionConsumerAdapterTests
             : new CompositionCapacityGroupContext(
                 ModelCompatibilityDatabase.Options<CompositionCapacityGroupContext>(engine));
 
-        var entity = context.Model.FindEntityType(signal ? typeof(SignalNode) : typeof(UserGroup))!;
+        var entity = context.Model.FindEntityType(
+            signal
+                ? typeof(SignalNode)
+                : typeof(UserGroup))!;
 
         var descriptor = NestedSetModelMapping
             .For(context.Model)
             .Descriptor(entity);
 
-        var property = (signal ? descriptor.NodeKey : descriptor.TreeId)
+        var property = (signal
+                ? descriptor.NodeKey
+                : descriptor.TreeId)
             .Resolve(entity)
             .GetTypeMapping();
 
@@ -215,7 +225,7 @@ public sealed class CompositionConsumerAdapterTests
             {
                 Guid.Empty, CompositionConsumerModel.Identity(1), CompositionConsumerModel.Identity(int.MaxValue),
             }
-            : new[] { Guid.Empty, CompositionConsumerModel.Tree, Guid.Parse("55555555-1111-2222-3333-444444444444"), };
+            : new[] { Guid.Empty, CompositionConsumerModel.Tree, Guid.Parse("55555555-1111-2222-3333-444444444444") };
 
         // Act
         // WHY: A property-only mapping check misses unbound literals in catalog/status UNION branches.

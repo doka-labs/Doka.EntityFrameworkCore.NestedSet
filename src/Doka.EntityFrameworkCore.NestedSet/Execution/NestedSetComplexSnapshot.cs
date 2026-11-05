@@ -3,10 +3,10 @@ namespace Doka.EntityFrameworkCore.NestedSet.Execution;
 /// <summary>Journals caller-owned complex containers separately from EF's current and original element lanes.</summary>
 internal sealed partial class NestedSetComplexSnapshot
 {
-    private readonly EntityEntry _entry;
-    private readonly object _owner;
-    private readonly List<MemberSnapshot> _members = [];
     private readonly List<CollectionSnapshot> _collections = [];
+    private readonly EntityEntry _entry;
+    private readonly List<MemberSnapshot> _members = [];
+    private readonly object _owner;
 
     /// <summary>Captures complex topology without detecting raw changes or replacing caller instances.</summary>
     /// <param name="entry">The entity whose complex graph shares the coordinated write.</param>
@@ -197,7 +197,8 @@ internal sealed partial class NestedSetComplexSnapshot
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = _collections.Count - 1; index >= 0; index--)
         {
-            released |= _collections[index].ReleaseHeldOwners();
+            released |= _collections[index]
+                .ReleaseHeldOwners();
         }
 
         if (holdsEntity)
@@ -253,7 +254,8 @@ internal sealed partial class NestedSetComplexSnapshot
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = _collections.Count - 1; index >= 0; index--)
         {
-            _collections[index].UndoStage(_entry.Entity);
+            _collections[index]
+                .UndoStage(_entry.Entity);
         }
     }
 
@@ -284,7 +286,8 @@ internal sealed partial class NestedSetComplexSnapshot
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = _collections.Count - 1; index >= 0; index--)
         {
-            _collections[index].RestoreFlag();
+            _collections[index]
+                .RestoreFlag();
         }
     }
 
@@ -381,9 +384,9 @@ internal sealed partial class NestedSetComplexSnapshot
             _collections.Add(snapshot);
 
             if (!property
-                    .ComplexType
-                    .GetFlattenedComplexProperties()
-                    .Any(nested => nested.IsCollection))
+                .ComplexType
+                .GetFlattenedComplexProperties()
+                .Any(nested => nested.IsCollection))
             {
                 continue;
             }
@@ -464,9 +467,13 @@ internal sealed partial class NestedSetComplexSnapshot
             return value;
         }
 
-        var ordinal = depth < path.Length ? path[depth++] : -1;
+        var ordinal = depth < path.Length
+            ? path[depth++]
+            : -1;
 
-        return value is IList list && (uint)ordinal < (uint)list.Count ? list[ordinal] : null;
+        return value is IList list && (uint)ordinal < (uint)list.Count
+            ? list[ordinal]
+            : null;
     }
 
     /// <summary>Removes live native registrations child-first without detecting or changing CLR membership.</summary>
@@ -500,8 +507,11 @@ internal sealed partial class NestedSetComplexSnapshot
 
         // WHY: Removed entries can retain ordinals beyond a callback-shortened lane. EF's Detached
         // transition clears those slots directly, so its own capacity operation must make them addressable.
-        var currentCount = NestedSetComplexEntryAccess.Entries(owner, property, false).Count;
-        var originalCount = NestedSetComplexEntryAccess.Entries(owner, property, true).Count;
+        var currentCount = NestedSetComplexEntryAccess.Entries(owner, property, false)
+            .Count;
+
+        var originalCount = NestedSetComplexEntryAccess.Entries(owner, property, true)
+            .Count;
 
         foreach (var element in elements)
         {
@@ -607,19 +617,18 @@ internal sealed partial class NestedSetComplexSnapshot
     /// <summary>Retains one native collection's current/original positional authorities and aggregate flag.</summary>
     private sealed class CollectionSnapshot
     {
-        private readonly object _owner;
-        private readonly IComplexProperty _property;
-        private readonly object? _original;
         private readonly int _currentCount;
-        private readonly int _originalCount;
-        private readonly bool _modified;
         private readonly int _currentElements;
-        private readonly int _originalElements;
         private readonly List<HiddenPropertySnapshot>? _hiddenProperties;
-        private readonly List<RawScalarSnapshot>? _rawScalars;
         private readonly object?[]? _items;
-        private readonly int[] _path;
+        private readonly bool _modified;
+        private readonly object? _original;
+        private readonly int _originalCount;
+        private readonly int _originalElements;
         private readonly List<(IComplexProperty Property, object Instance)>? _originalReferences;
+        private readonly int[] _path;
+        private readonly IComplexProperty _property;
+        private readonly List<RawScalarSnapshot>? _rawScalars;
         private List<(IComplexProperty Property, object Instance)>? _liveReferences;
         private StagingSnapshot? _staging;
 
@@ -631,14 +640,14 @@ internal sealed partial class NestedSetComplexSnapshot
             int[] path
         )
         {
-            _owner = owner;
+            Owner = owner;
             _property = property;
             _path = path;
 
             var type = property.DeclaringType;
 
             while (currentValues is null
-                   && type is IComplexType { ComplexProperty.IsCollection: false } complex)
+                && type is IComplexType { ComplexProperty.IsCollection: false } complex)
             {
                 if (complex.ComplexProperty.IsNullable
                     && NestedSetComplexEntryAccess.Original(owner, complex.ComplexProperty) is { } reference)
@@ -658,9 +667,15 @@ internal sealed partial class NestedSetComplexSnapshot
             }
 
             _original = NestedSetComplexEntryAccess.Original(owner, property);
-            _currentCount = NestedSetComplexEntryAccess.Entries(owner, property, false).Count;
-            _originalCount = NestedSetComplexEntryAccess.Entries(owner, property, true).Count;
-            _modified = NestedSetComplexEntryAccess.Collection(owner, property).IsModified;
+            _currentCount = NestedSetComplexEntryAccess.Entries(owner, property, false)
+                .Count;
+
+            _originalCount = NestedSetComplexEntryAccess.Entries(owner, property, true)
+                .Count;
+
+            _modified = NestedSetComplexEntryAccess.Collection(owner, property)
+                .IsModified;
+
             var current = NestedSetComplexEntryAccess.Entries(owner, property, false);
             var original = NestedSetComplexEntryAccess.Entries(owner, property, true);
 
@@ -744,7 +759,7 @@ internal sealed partial class NestedSetComplexSnapshot
         internal ElementSnapshot[] Elements { get; }
 
         /// <summary>The native entry whose lanes this frame restores.</summary>
-        internal object Owner => _owner;
+        internal object Owner { get; }
 
         /// <summary>Whether a captured Deleted element also occupies a current slot.</summary>
         internal bool RetainsDeletedElement => Elements.Any(element => element.RetainsDeletedSlot);
@@ -844,8 +859,8 @@ internal sealed partial class NestedSetComplexSnapshot
         /// <summary>Checks actual lane identities and states before native rebinding.</summary>
         internal bool MatchesLanes()
         {
-            var current = NestedSetComplexEntryAccess.Entries(_owner, _property, false);
-            var original = NestedSetComplexEntryAccess.Entries(_owner, _property, true);
+            var current = NestedSetComplexEntryAccess.Entries(Owner, _property, false);
+            var original = NestedSetComplexEntryAccess.Entries(Owner, _property, true);
 
             if (current.Count != _currentCount
                 || original.Count != _originalCount
@@ -861,7 +876,8 @@ internal sealed partial class NestedSetComplexSnapshot
             // ReSharper disable once LoopCanBeConvertedToQuery
             for (var index = 0; index < Elements.Length; index++)
             {
-                if (!Elements[index].MatchesLanes(current, original))
+                if (!Elements[index]
+                    .MatchesLanes(current, original))
                 {
                     return false;
                 }
@@ -893,7 +909,7 @@ internal sealed partial class NestedSetComplexSnapshot
         }
 
         /// <summary>Replays an original buffer without changing current CLR membership.</summary>
-        internal void RestoreOriginal() => NestedSetComplexEntryAccess.RestoreOriginal(_owner, _property, _original);
+        internal void RestoreOriginal() => NestedSetComplexEntryAccess.RestoreOriginal(Owner, _property, _original);
 
         /// <summary>Restores captured access paths before the original buffers and states are replayed.</summary>
         internal void RestoreOrdinals()
@@ -906,7 +922,7 @@ internal sealed partial class NestedSetComplexSnapshot
 
         /// <summary>Removes temporary staging capacity after the actual CLR containers are reachable again.</summary>
         internal void RestoreCapacity() =>
-            NestedSetComplexEntryAccess.Capacity(_owner, _property, _currentCount, _originalCount);
+            NestedSetComplexEntryAccess.Capacity(Owner, _property, _currentCount, _originalCount);
 
         /// <summary>Restores hidden scalar intent while its temporary containers are accessible.</summary>
         internal void RestoreHiddenProperties()
@@ -939,7 +955,9 @@ internal sealed partial class NestedSetComplexSnapshot
         /// <summary>Reads a captured current item without indexing a raw-shortened or null list.</summary>
         internal object? CurrentItem(
             int slot
-        ) => _items is not null && (uint)slot < (uint)_items.Length ? _items[slot] : null;
+        ) => _items is not null && (uint)slot < (uint)_items.Length
+            ? _items[slot]
+            : null;
 
         /// <summary>Retains callback reference containers before restored members can hide native entries.</summary>
         internal void CaptureLiveReferences(
@@ -955,14 +973,16 @@ internal sealed partial class NestedSetComplexSnapshot
                 ReadContaining(
                     _property.DeclaringType,
                     root,
-                    live.Any(ordinal => ordinal < 0) ? _path : live,
+                    live.Any(ordinal => ordinal < 0)
+                        ? _path
+                        : live,
                     ref depth,
                     _liveReferences);
             }
         }
 
         /// <summary>Reads the owner's current native ordinals, which callbacks can have shifted.</summary>
-        private int[] LivePath() => NestedSetComplexEntryAccess.Ordinals(_owner);
+        private int[] LivePath() => NestedSetComplexEntryAccess.Ordinals(Owner);
 
         /// <summary>Builds an access graph for the ordinals EF will walk during the coming transitions.</summary>
         /// <param name="root">The containing entity whose CLR graph supplies the staged paths.</param>
@@ -1004,8 +1024,15 @@ internal sealed partial class NestedSetComplexSnapshot
             var count = Math.Max(_currentCount, _originalCount);
             count = Math.Max(count, _items?.Length ?? 0);
             count = Math.Max(count, previous?.Count ?? 0);
-            count = Math.Max(count, NestedSetComplexEntryAccess.Entries(_owner, _property, false).Count);
-            count = Math.Max(count, NestedSetComplexEntryAccess.Entries(_owner, _property, true).Count);
+            count = Math.Max(
+                count,
+                NestedSetComplexEntryAccess.Entries(Owner, _property, false)
+                    .Count);
+
+            count = Math.Max(
+                count,
+                NestedSetComplexEntryAccess.Entries(Owner, _property, true)
+                    .Count);
 
             var addressed = Elements
                 .Where(element => !retiring
@@ -1104,7 +1131,9 @@ internal sealed partial class NestedSetComplexSnapshot
                 int index
             ) => items[index]
                 ?? CurrentItem(index)
-                ?? (_original is IList original && index < original.Count ? original[index] : null);
+                ?? (_original is IList original && index < original.Count
+                    ? original[index]
+                    : null);
         }
 
         /// <summary>Resolves a retained element's CLR instance from its current or original position.</summary>
@@ -1250,28 +1279,10 @@ internal sealed partial class NestedSetComplexSnapshot
                     NestedSetComplexEntryAccess
                         .Setter(property)
                         .SetClrValueUsingContainingEntity(root, path, instance);
+
                     (_staging.References ??= []).Add(property);
                 }
             }
-        }
-
-        /// <summary>Allocates temporary access receipts only on the native-rebind failure path.</summary>
-        private sealed class StagingSnapshot
-        {
-            /// <summary>The ordinal path this phase addressed, which later collection changes must not move.</summary>
-            internal required int[] Path { get; init; }
-
-            /// <summary>The CLR collection reference replaced by the temporary access list.</summary>
-            internal object? Previous { get; set; }
-
-            /// <summary>Whether the temporary collection setter needs to be reversed.</summary>
-            internal bool Installed { get; set; }
-
-            /// <summary>Original membership when temporary access grows the existing mapped list in place.</summary>
-            internal object?[]? PreviousItems { get; set; }
-
-            /// <summary>Optional references temporarily initialized above the staged collection.</summary>
-            internal List<IComplexProperty>? References { get; set; }
         }
 
         /// <summary>Reinstalls registered identities through EF's own state and positional callbacks.</summary>
@@ -1281,13 +1292,13 @@ internal sealed partial class NestedSetComplexSnapshot
         {
             // WHY: Restoring a containing element can initialize new nested entries. Remove these local
             // registrations before reinstalling the captured children; never replace private native lists.
-            DetachCollection(_owner, _property, new HashSet<object>(ReferenceEqualityComparer.Instance), captured);
+            DetachCollection(Owner, _property, new HashSet<object>(ReferenceEqualityComparer.Instance), captured);
             DetachRetained(captured);
 
             // WHY: Deleted/Added parents can retain opposite-lane pointers after detachment. EF's own
             // capacity method clears both lanes before rebuilding them, including their captured null holes.
-            NestedSetComplexEntryAccess.Capacity(_owner, _property, 0, 0);
-            NestedSetComplexEntryAccess.RestoreOriginal(_owner, _property, _original);
+            NestedSetComplexEntryAccess.Capacity(Owner, _property, 0, 0);
+            NestedSetComplexEntryAccess.RestoreOriginal(Owner, _property, _original);
 
             // WHY: A wrapper-created element can keep an original ordinal without any original lane slot, while
             // EF validates that ordinal on every transition. RestoreCapacity trims this temporary length again.
@@ -1300,7 +1311,7 @@ internal sealed partial class NestedSetComplexSnapshot
                 original = Math.Max(original, element.CapturedOriginalOrdinal + 1);
             }
 
-            NestedSetComplexEntryAccess.Capacity(_owner, _property, current, original);
+            NestedSetComplexEntryAccess.Capacity(Owner, _property, current, original);
 
             foreach (var element in Elements)
             {
@@ -1311,7 +1322,7 @@ internal sealed partial class NestedSetComplexSnapshot
         }
 
         /// <summary>Hides this frame's original so a containing transition creates no original-lane entries.</summary>
-        internal void HideOriginal() => NestedSetComplexEntryAccess.RestoreOriginal(_owner, _property, null);
+        internal void HideOriginal() => NestedSetComplexEntryAccess.RestoreOriginal(Owner, _property, null);
 
         /// <summary>Returns elements held as Deleted to their captured state.</summary>
         /// <returns>Whether any element was held.</returns>
@@ -1368,8 +1379,15 @@ internal sealed partial class NestedSetComplexSnapshot
             HashSet<object> captured
         )
         {
-            var current = Math.Max(_currentCount, NestedSetComplexEntryAccess.Entries(_owner, _property, false).Count);
-            var original = Math.Max(_originalCount, NestedSetComplexEntryAccess.Entries(_owner, _property, true).Count);
+            var current = Math.Max(
+                _currentCount,
+                NestedSetComplexEntryAccess.Entries(Owner, _property, false)
+                    .Count);
+
+            var original = Math.Max(
+                _originalCount,
+                NestedSetComplexEntryAccess.Entries(Owner, _property, true)
+                    .Count);
 
             foreach (var element in Elements)
             {
@@ -1377,7 +1395,7 @@ internal sealed partial class NestedSetComplexSnapshot
                 original = Math.Max(original, NestedSetComplexEntryAccess.Ordinal(element.Native, true) + 1);
             }
 
-            NestedSetComplexEntryAccess.Capacity(_owner, _property, current, original);
+            NestedSetComplexEntryAccess.Capacity(Owner, _property, current, original);
 
             foreach (var element in Elements)
             {
@@ -1394,13 +1412,13 @@ internal sealed partial class NestedSetComplexSnapshot
         }
 
         /// <summary>Restores only this collection's independent aggregate modification intent.</summary>
-        internal void RestoreFlag() => NestedSetComplexEntryAccess.SetModified(_owner, _property, _modified);
+        internal void RestoreFlag() => NestedSetComplexEntryAccess.SetModified(Owner, _property, _modified);
 
         /// <summary>Checks registered identity, both native ordinals, states and the aggregate flag.</summary>
         internal void Verify()
         {
-            var current = NestedSetComplexEntryAccess.Entries(_owner, _property, false);
-            var original = NestedSetComplexEntryAccess.Entries(_owner, _property, true);
+            var current = NestedSetComplexEntryAccess.Entries(Owner, _property, false);
+            var original = NestedSetComplexEntryAccess.Entries(Owner, _property, true);
 
             if (current.Count != _currentCount
                 || original.Count != _originalCount
@@ -1411,7 +1429,9 @@ internal sealed partial class NestedSetComplexSnapshot
                     "The coordinated save could not restore complex collection lane lengths and null slots.");
             }
 
-            if (NestedSetComplexEntryAccess.Collection(_owner, _property).IsModified != _modified)
+            if (NestedSetComplexEntryAccess.Collection(Owner, _property)
+                    .IsModified
+                != _modified)
             {
                 throw new InvalidOperationException(
                     "The coordinated save could not restore a complex collection flag.");
@@ -1419,7 +1439,7 @@ internal sealed partial class NestedSetComplexSnapshot
 
             foreach (var element in Elements)
             {
-                element.Verify(_owner, _property);
+                element.Verify(Owner, _property);
             }
 
             if (_hiddenProperties is not null)
@@ -1435,14 +1455,30 @@ internal sealed partial class NestedSetComplexSnapshot
                 scalar.Verify();
             }
         }
+
+        /// <summary>Allocates temporary access receipts only on the native-rebind failure path.</summary>
+        private sealed class StagingSnapshot
+        {
+            /// <summary>The ordinal path this phase addressed, which later collection changes must not move.</summary>
+            internal required int[] Path { get; init; }
+
+            /// <summary>The CLR collection reference replaced by the temporary access list.</summary>
+            internal object? Previous { get; set; }
+
+            /// <summary>Whether the temporary collection setter needs to be reversed.</summary>
+            internal bool Installed { get; set; }
+
+            /// <summary>Original membership when temporary access grows the existing mapped list in place.</summary>
+            internal object?[]? PreviousItems { get; set; }
+
+            /// <summary>Optional references temporarily initialized above the staged collection.</summary>
+            internal List<IComplexProperty>? References { get; set; }
+        }
     }
 
     /// <summary>Retains registered elements, including original-only deletions and current additions.</summary>
     private sealed class ElementSnapshot
     {
-        private readonly int _ordinal;
-        private readonly int _originalOrdinal;
-        private readonly int _currentSlot;
         private readonly bool _hasCurrent;
         private readonly EntityState _state;
         private int _borrowedSlot = -1;
@@ -1456,10 +1492,10 @@ internal sealed partial class NestedSetComplexSnapshot
         )
         {
             Native = native;
-            _currentSlot = currentSlot;
+            CurrentSlot = currentSlot;
             _hasCurrent = hasCurrent;
-            _ordinal = NestedSetComplexEntryAccess.Ordinal(native, false);
-            _originalOrdinal = NestedSetComplexEntryAccess.Ordinal(native, true);
+            CapturedOrdinal = NestedSetComplexEntryAccess.Ordinal(native, false);
+            CapturedOriginalOrdinal = NestedSetComplexEntryAccess.Ordinal(native, true);
             _state = NestedSetComplexEntryAccess.State(native);
         }
 
@@ -1467,16 +1503,19 @@ internal sealed partial class NestedSetComplexSnapshot
         internal object Native { get; }
 
         /// <summary>The captured current ordinal, including EF's absent-lane sentinel.</summary>
-        internal int CapturedOrdinal => _ordinal;
+        internal int CapturedOrdinal { get; }
 
         /// <summary>The captured original ordinal, including EF's absent-lane sentinel.</summary>
-        internal int CapturedOriginalOrdinal => _originalOrdinal;
+        internal int CapturedOriginalOrdinal { get; }
 
         /// <summary>The captured current lane position, independent of a Deleted ordinal sentinel.</summary>
-        internal int CurrentSlot => _currentSlot;
+        internal int CurrentSlot { get; }
 
         /// <summary>The original lane position, which can coexist with EF's minus-one Added sentinel.</summary>
         internal int OriginalSlot { get; set; } = -1;
+
+        /// <summary>Whether this Deleted element also occupies a current slot.</summary>
+        internal bool RetainsDeletedSlot => _state == EntityState.Deleted && CurrentSlot >= 0;
 
         /// <summary>Addresses a Deleted or Detached element whose ordinal sentinel has no list position.</summary>
         /// <param name="slot">A free staged slot; EF does not validate ordinals in these two states.</param>
@@ -1500,9 +1539,6 @@ internal sealed partial class NestedSetComplexSnapshot
             }
         }
 
-        /// <summary>Whether this Deleted element also occupies a current slot.</summary>
-        internal bool RetainsDeletedSlot => _state == EntityState.Deleted && _currentSlot >= 0;
-
         /// <summary>Requests a temporary Deleted state while this owner's children reinstall.</summary>
         internal void HoldAsDeleted() => _heldAsDeleted = _state is EntityState.Unchanged or EntityState.Modified;
 
@@ -1517,7 +1553,7 @@ internal sealed partial class NestedSetComplexSnapshot
 
             _heldAsDeleted = false;
             _borrowedSlot = -1;
-            NestedSetComplexEntryAccess.SetOrdinal(Native, _ordinal, false);
+            NestedSetComplexEntryAccess.SetOrdinal(Native, CapturedOrdinal, false);
             NestedSetComplexEntryAccess.SetState(Native, _state);
 
             return true;
@@ -1548,7 +1584,7 @@ internal sealed partial class NestedSetComplexSnapshot
             if (_borrowedSlot >= 0)
             {
                 _borrowedSlot = -1;
-                NestedSetComplexEntryAccess.SetOrdinal(Native, _ordinal, false);
+                NestedSetComplexEntryAccess.SetOrdinal(Native, CapturedOrdinal, false);
             }
         }
 
@@ -1565,10 +1601,10 @@ internal sealed partial class NestedSetComplexSnapshot
                     && _state is EntityState.Modified or EntityState.Unchanged);
 
             return compatibleState
-                && NestedSetComplexEntryAccess.Ordinal(Native, false) == _ordinal
-                && NestedSetComplexEntryAccess.Ordinal(Native, true) == _originalOrdinal
-                && (_currentSlot < 0
-                    || (_currentSlot < current.Count && ReferenceEquals(current[_currentSlot], Native)))
+                && NestedSetComplexEntryAccess.Ordinal(Native, false) == CapturedOrdinal
+                && NestedSetComplexEntryAccess.Ordinal(Native, true) == CapturedOriginalOrdinal
+                && (CurrentSlot < 0
+                    || (CurrentSlot < current.Count && ReferenceEquals(current[CurrentSlot], Native)))
                 && (OriginalSlot < 0
                     || (OriginalSlot < original.Count && ReferenceEquals(original[OriginalSlot], Native)));
         }
@@ -1585,19 +1621,34 @@ internal sealed partial class NestedSetComplexSnapshot
                 NestedSetComplexEntryAccess.SetState(Native, EntityState.Unchanged);
             }
 
-            NestedSetComplexEntryAccess.SetState(Native, _heldAsDeleted ? EntityState.Deleted : _state);
+            NestedSetComplexEntryAccess.SetState(
+                Native,
+                _heldAsDeleted
+                    ? EntityState.Deleted
+                    : _state);
         }
 
         /// <summary>Provides captured access paths while the same native identity remains detached.</summary>
         private void RestoreOrdinals()
         {
             var dualLane = HasBothLanes();
-            NestedSetComplexEntryAccess.SetOrdinal(Native, dualLane ? _currentSlot : _ordinal, false);
-            NestedSetComplexEntryAccess.SetOrdinal(Native, dualLane ? OriginalSlot : _originalOrdinal, true);
+            NestedSetComplexEntryAccess.SetOrdinal(
+                Native,
+                dualLane
+                    ? CurrentSlot
+                    : CapturedOrdinal,
+                false);
+
+            NestedSetComplexEntryAccess.SetOrdinal(
+                Native,
+                dualLane
+                    ? OriginalSlot
+                    : CapturedOriginalOrdinal,
+                true);
         }
 
         /// <summary>Recognizes the opposite-lane pointers retained beneath Added and Deleted containers.</summary>
-        private bool HasBothLanes() => (_state == EntityState.Deleted && _currentSlot >= 0)
+        private bool HasBothLanes() => (_state == EntityState.Deleted && CurrentSlot >= 0)
             || (_state == EntityState.Added && OriginalSlot >= 0);
 
         /// <summary>Checks lifecycle and both positional identities after all scalar flag changes.</summary>
@@ -1610,19 +1661,19 @@ internal sealed partial class NestedSetComplexSnapshot
             var original = NestedSetComplexEntryAccess.Entries(owner, property, true);
 
             if (NestedSetComplexEntryAccess.State(Native) != _state
-                || NestedSetComplexEntryAccess.Ordinal(Native, false) != _ordinal
-                || NestedSetComplexEntryAccess.Ordinal(Native, true) != _originalOrdinal
-                || (_currentSlot >= 0
-                    && (_currentSlot >= current.Count || !ReferenceEquals(current[_currentSlot], Native)))
+                || NestedSetComplexEntryAccess.Ordinal(Native, false) != CapturedOrdinal
+                || NestedSetComplexEntryAccess.Ordinal(Native, true) != CapturedOriginalOrdinal
+                || (CurrentSlot >= 0
+                    && (CurrentSlot >= current.Count || !ReferenceEquals(current[CurrentSlot], Native)))
                 || (OriginalSlot >= 0
                     && (OriginalSlot >= original.Count || !ReferenceEquals(original[OriginalSlot], Native))))
             {
                 throw new InvalidOperationException(
                     "The coordinated save could not restore a complex element state: "
                     + $"{property.Name}; state={NestedSetComplexEntryAccess.State(Native)}/{_state}; "
-                    + $"ordinal={NestedSetComplexEntryAccess.Ordinal(Native, false)}/{_ordinal}; "
-                    + $"originalOrdinal={NestedSetComplexEntryAccess.Ordinal(Native, true)}/{_originalOrdinal}; "
-                    + $"current={_currentSlot}/{current.Count}; original={OriginalSlot}/{original.Count}.");
+                    + $"ordinal={NestedSetComplexEntryAccess.Ordinal(Native, false)}/{CapturedOrdinal}; "
+                    + $"originalOrdinal={NestedSetComplexEntryAccess.Ordinal(Native, true)}/{CapturedOriginalOrdinal}; "
+                    + $"current={CurrentSlot}/{current.Count}; original={OriginalSlot}/{original.Count}.");
             }
         }
     }

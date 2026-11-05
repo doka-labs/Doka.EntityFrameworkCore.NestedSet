@@ -1,5 +1,3 @@
-using App = Doka.EntityFrameworkCore.NestedSet.Samples.UserGroups;
-
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples.UserGroups;
 
 /// <summary>
@@ -40,44 +38,47 @@ public sealed class SupervisorTranslationTests
     )
     {
         // Arrange
-        var options = ModelCompatibilityDatabase.Options<App.UserGroupContext>("SqlServer");
-        await using var context = new App.UserGroupContext(options);
-        var request = new App.SupervisorRequest
+        var options = ModelCompatibilityDatabase.Options<UserGroupContext>("SqlServer");
+        await using var context = new UserGroupContext(options);
+        var request = new SupervisorRequest
         {
             SourceUserId = 1,
-            SearchStart = App.SearchStart.ParentsOnly,
-            Roles = new App.EitherRole(Guid.NewGuid()),
+            SearchStart = SearchStart.ParentsOnly,
+            Roles = new EitherRole(Guid.NewGuid()),
             Groups = groupMode switch
             {
-                "all" => new App.AllEligibleGroups(),
-                "type" => new App.NthTypeGroupThenValidate(1, 1),
-                "type-later" => new App.NthTypeGroupThenValidate(1, 2),
-                "eligible-later" => new App.NthEligibleGroup([], 2),
-                _ => new App.NthEligibleGroup([], 1),
+                "all" => new AllEligibleGroups(),
+                "type" => new NthTypeGroupThenValidate(1, 1),
+                "type-later" => new NthTypeGroupThenValidate(1, 2),
+                "eligible-later" => new NthEligibleGroup([], 2),
+                _ => new NthEligibleGroup([], 1),
             },
-            Matches = [new(App.MetadataOwner.SourceUser, "Route", App.MetadataOwner.CandidateMembership, "Route")],
+            Matches =
+                [new MetadataMatch(MetadataOwner.SourceUser, "Route", MetadataOwner.CandidateMembership, "Route")],
             OnDay = new DateOnly(2026, 10, 16),
         };
 
         var selection = mode switch
         {
-            "all" => App.SupervisorSelection.All,
-            "priority" => App.SupervisorSelection.HighestBusinessPriority,
-            "person" => App.SupervisorSelection.NthPerson(2),
-            _ => App.SupervisorSelection.RequireUnique,
+            "all" => SupervisorSelection.All,
+            "priority" => SupervisorSelection.HighestBusinessPriority,
+            "person" => SupervisorSelection.NthPerson(2),
+            _ => SupervisorSelection.RequireUnique,
         };
 
         // Act
-        var sql = App
-            .SupervisorQueries
+        var sql = SupervisorQueries
             .ResolutionRows(context, Guid.NewGuid(), request, selection)
             .ToQueryString();
 
         // Assert
         Assert.Contains("UNION ALL", sql, StringComparison.Ordinal);
         Assert.Contains("COUNT_BIG", sql, StringComparison.Ordinal);
-        Assert.NotEqual(ConnectionState.Open,
-            context.Database.GetDbConnection().State);
+        Assert.NotEqual(
+            ConnectionState.Open,
+            context.Database.GetDbConnection()
+                .State);
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 }

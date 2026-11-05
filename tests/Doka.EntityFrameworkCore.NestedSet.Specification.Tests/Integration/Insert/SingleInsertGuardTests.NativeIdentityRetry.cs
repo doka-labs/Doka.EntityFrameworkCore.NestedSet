@@ -35,7 +35,10 @@ public abstract partial class SingleInsertGuardTests
         await tree.InsertRootAsync(input, Guid.Empty, CancellationToken.None);
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidStructure, Assert.IsType<NestedSetException>(rejection).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidStructure,
+            Assert.IsType<NestedSetException>(rejection)
+                .Code);
 
         var saved = Assert.Single(
             await context
@@ -48,13 +51,19 @@ public abstract partial class SingleInsertGuardTests
         Assert.Equal(
             (3, Guid.Empty, 1L, 2L, 0, 0L),
             (input.Id.Value, input.TreeId, input.Left, input.Right, input.Depth, input.Position));
+
         Assert.Null(input.ParentId);
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
         Assert.Equal(
             1,
             await context
                 .Set<UnrelatedRow>()
                 .CountAsync(CancellationToken.None));
+
         Assert.NotSame(
             input,
             await context.FindAsync<SingleIdentityNode>([new SingleIdentityKey(3)], CancellationToken.None));
@@ -106,11 +115,13 @@ public abstract partial class SingleInsertGuardTests
         Assert.Equal(
             (3, Guid.Empty, 1L, 2L, 0, 0L),
             (input.Id.Value, input.TreeId, input.Left, input.Right, input.Depth, input.Position));
+
         Assert.Null(input.ParentId);
         Assert.Same(
             marker,
             Assert.Single(context.ChangeTracker.Entries())
                 .Entity);
+
         Assert.Equal(
             1,
             await context
@@ -170,12 +181,17 @@ public abstract partial class SingleInsertGuardTests
         Assert.Equal<byte>([1], input.Scope);
         Assert.Null(input.ParentId);
         Assert.Equal((Guid.Empty, 1L, 2L, 0, 0L), (input.TreeId, input.Left, input.Right, input.Depth, input.Position));
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
         Assert.Equal(
             1,
             await context
                 .Set<UnrelatedRow>()
                 .CountAsync(CancellationToken.None));
+
         Assert.NotSame(input, await context.FindAsync<BulkStageBinaryScope>([input.Id], CancellationToken.None));
     }
 
@@ -190,7 +206,12 @@ public abstract partial class SingleInsertGuardTests
         var throwOnce = true;
         context.ChangeTracker.Tracking += (_, args) =>
         {
-            if (throwOnce && ReferenceEquals(args.Entry.Entity, owned ? input.Details : input))
+            if (throwOnce
+                && ReferenceEquals(
+                    args.Entry.Entity,
+                    owned
+                        ? input.Details
+                        : input))
             {
                 throwOnce = false;
 

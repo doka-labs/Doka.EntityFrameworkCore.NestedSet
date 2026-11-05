@@ -19,7 +19,8 @@ public abstract class MutableTreeIdentityTests : ProviderTest
     {
         // Arrange
         var barrier = new SourceResolutionBarrier();
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             barrier);
 
@@ -77,6 +78,7 @@ public abstract class MutableTreeIdentityTests : ProviderTest
             child => Assert.Equal(
                 (3, (int?)2, 2L, 3L, 1),
                 (child.Id, child.ParentId, child.Left, child.Right, child.Depth)));
+
         Assert.All(detached, node => Assert.Equal(expectedTarget, node.TreeId));
         Assert.False(redirectedRows);
         Assert.Equal(2, registryIds.Length);
@@ -89,7 +91,8 @@ public abstract class MutableTreeIdentityTests : ProviderTest
     public async Task BinaryStoresIsolateOverlappingTreeBounds()
     {
         // Arrange
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context
@@ -143,6 +146,7 @@ public abstract class MutableTreeIdentityTests : ProviderTest
             otherTree,
             root => Assert.Equal((10, 1L, 4L, 0), (root.Id, root.Left, root.Right, root.Depth)),
             child => Assert.Equal((20, 2L, 3L, 1), (child.Id, child.Left, child.Right, child.Depth)));
+
         Assert.Equal((100, 1L, 2L, 0), (otherScope.Id, otherScope.Left, otherScope.Right, otherScope.Depth));
     }
 
@@ -153,9 +157,11 @@ public abstract class MutableTreeIdentityTests : ProviderTest
         // Arrange
         var barrier = new SourceResolutionBarrier();
         var commands = new CommandProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            barrier, commands);
+            barrier,
+            commands);
 
         var hierarchy = context
             .NestedSet<BinaryTreeNode>()
@@ -201,11 +207,19 @@ public abstract class MutableTreeIdentityTests : ProviderTest
             .ToArrayAsync(timeout.Token);
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Equal(1, commandCount);
         Assert.Equal(0, updates);
         Assert.Null(context.Database.CurrentTransaction);
-        Assert.Equal(EntityState.Modified, context.Entry(tracked).State);
+        Assert.Equal(
+            EntityState.Modified,
+            context.Entry(tracked)
+                .State);
+
         Assert.Equal("changed during lookup", tracked.Payload);
         Assert.Collection(
             rows,
@@ -221,7 +235,8 @@ public abstract class MutableTreeIdentityTests : ProviderTest
     {
         // Arrange
         var barrier = new BinaryKeyResolutionBarrier();
-        await using var context = await _fixture.CreateKeyContextAsync(Engine,
+        await using var context = await _fixture.CreateKeyContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             barrier);
 
@@ -275,7 +290,8 @@ public abstract class MutableTreeIdentityTests : ProviderTest
     {
         // Arrange
         var barrier = new BinaryKeyResolutionBarrier();
-        await using var context = await _fixture.CreateKeyContextAsync(Engine,
+        await using var context = await _fixture.CreateKeyContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             barrier);
 
@@ -323,7 +339,8 @@ public abstract class MutableTreeIdentityTests : ProviderTest
     {
         // Arrange
         var barrier = new BinaryKeyResolutionBarrier();
-        await using var context = await _fixture.CreateKeyContextAsync(Engine,
+        await using var context = await _fixture.CreateKeyContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             barrier);
 
@@ -380,11 +397,22 @@ public abstract class MutableTreeIdentityTests : ProviderTest
     public sealed class BinaryIdentityFixture : IAsyncLifetime
     {
         private readonly Dictionary<string, TestDatabase> _databases = new(StringComparer.Ordinal);
-        private readonly Dictionary<string, DbContextOptions> _options = new(StringComparer.Ordinal);
         private readonly RelationalFixture _keyFixture = new();
+        private readonly Dictionary<string, DbContextOptions> _options = new(StringComparer.Ordinal);
 
         /// <inheritdoc />
         public ValueTask InitializeAsync() => ValueTask.CompletedTask;
+
+        /// <inheritdoc />
+        public async ValueTask DisposeAsync()
+        {
+            foreach (var database in _databases.Values)
+            {
+                await database.DisposeAsync();
+            }
+
+            await _keyFixture.DisposeAsync();
+        }
 
         /// <summary>Uses the existing binary-node model in a separate fixture-owned database.</summary>
         /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
@@ -427,7 +455,8 @@ public abstract class MutableTreeIdentityTests : ProviderTest
                         _options[engine] = options;
                         await using var schema = new BinaryIdentityContext(options);
                         await schema.Database.EnsureCreatedAsync(token);
-                    }, cancellationToken: cancellationToken);
+                    },
+                    cancellationToken: cancellationToken);
 
                 _databases.Add(engine, database);
             }
@@ -471,17 +500,6 @@ public abstract class MutableTreeIdentityTests : ProviderTest
                 throw;
             }
         }
-
-        /// <inheritdoc />
-        public async ValueTask DisposeAsync()
-        {
-            foreach (var database in _databases.Values)
-            {
-                await database.DisposeAsync();
-            }
-
-            await _keyFixture.DisposeAsync();
-        }
     }
 
     /// <summary>Maps a bounded native binary TreeId without an additional application parent entity.</summary>
@@ -502,12 +520,15 @@ public abstract class MutableTreeIdentityTests : ProviderTest
             node
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             node
                 .Property(value => value.TreeId)
                 .HasMaxLength(8);
+
             node
                 .Property(value => value.Payload)
                 .HasMaxLength(80);
+
             node.HasNestedSet(builder => builder
                 .HasTreeId(value => value.TreeId)
                 .HasScope(value => value.Scope)
@@ -518,6 +539,12 @@ public abstract class MutableTreeIdentityTests : ProviderTest
     /// <summary>Uses a mutable binary tree identity with an ordinary integer node key and optional scope.</summary>
     private sealed class BinaryTreeNode : IScopedNestedSetNode<int, byte[], int>
     {
+        /// <summary>Gets or sets the optional direct parent identity.</summary>
+        public int? ParentId { get; set; }
+
+        /// <summary>Gets or sets application payload independent of structural coordinates.</summary>
+        public string Payload { get; set; } = "original";
+
         /// <inheritdoc />
         public int Id { get; set; }
 
@@ -526,12 +553,6 @@ public abstract class MutableTreeIdentityTests : ProviderTest
 
         /// <inheritdoc />
         public int Scope { get; set; }
-
-        /// <summary>Gets or sets the optional direct parent identity.</summary>
-        public int? ParentId { get; set; }
-
-        /// <summary>Gets or sets application payload independent of structural coordinates.</summary>
-        public string Payload { get; set; } = "original";
 
         /// <inheritdoc />
         public long Left { get; set; }
@@ -665,9 +686,9 @@ public abstract class MutableTreeIdentityTests : ProviderTest
         )
         {
             if (!command
-                    .CommandText
-                    .TrimStart()
-                    .StartsWith("SELECT", StringComparison.OrdinalIgnoreCase))
+                .CommandText
+                .TrimStart()
+                .StartsWith("SELECT", StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }

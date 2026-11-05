@@ -72,7 +72,9 @@ public sealed class CompositionPathPartitionTests
         var start = s_start(left, width);
         var first = s_start(start, width);
         var last = s_start(checked(start + Math.Min(width - 1, long.MaxValue - start)), width);
-        var preceding = start == 0 ? (long?)null : s_start(start - 1, width);
+        var preceding = start == 0
+            ? (long?)null
+            : s_start(start - 1, width);
 
         // Assert
         Assert.InRange(start, 0, left);

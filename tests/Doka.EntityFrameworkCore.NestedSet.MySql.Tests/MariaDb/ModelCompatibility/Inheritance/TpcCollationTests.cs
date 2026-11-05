@@ -1,8 +1,10 @@
+using Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.MariaDb;
 
 /// <summary>Runs the Doka family's concrete TPC native-identity collation regressions on MariaDB.</summary>
 [Collection("Model compatibility")]
-public sealed class TpcCollationTests : MySql.TpcCollationTestBase
+public sealed class TpcCollationTests : TpcCollationTestBase
 {
     /// <summary>Uses the exact engine fixture registered for this provider suite.</summary>
     /// <param name="fixture">The isolated provider resource from the suite or its collection.</param>

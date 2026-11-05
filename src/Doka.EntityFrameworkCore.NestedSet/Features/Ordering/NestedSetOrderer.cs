@@ -52,7 +52,9 @@ internal sealed class NestedSetOrderer<TEntity, TKey, TTreeId, TScope>
 
         NestedSetGuards.RequireBounds(source);
 
-        var destination = await ResolveAsync(key, source.Parent, cancellationToken).ConfigureAwait(false);
+        var destination = await ResolveAsync(key, source.Parent, cancellationToken)
+            .ConfigureAwait(false);
+
         var changed = await new NestedSetSubtreeMover<TEntity, TKey, TTreeId, TScope>(_store)
             .MoveAsync(source, destination, cancellationToken)
             .ConfigureAwait(false);
@@ -64,7 +66,7 @@ internal sealed class NestedSetOrderer<TEntity, TKey, TTreeId, TScope>
             [
                 new NestedSetChangedInterval(
                     Math.Min(source.Left, destination.Boundary),
-                    Math.Max(source.Right, checked(destination.Boundary - 1)))
+                    Math.Max(source.Right, checked(destination.Boundary - 1))),
             ]
             : [];
     }
@@ -134,27 +136,37 @@ internal sealed class NestedSetOrderer<TEntity, TKey, TTreeId, TScope>
         for (var index = 0; index < order.Properties.Count; index++)
         {
             var column = sql.DelimitIdentifier(
-                _store.Map.PropertyMapping(order.Properties[index].Name).ColumnName);
+                _store.Map.PropertyMapping(order.Properties[index].Name)
+                    .ColumnName);
 
             if (order.NullSortOrders[index] is { } nullSortOrder)
             {
                 // WHY: Native provider defaults disagree about null placement. This rank mirrors the LINQ
                 // expression used for sibling queries and keeps window-based mutation placement deterministic.
-                var nullRank = nullSortOrder == NullSortOrder.First ? 0 : 1;
+                var nullRank = nullSortOrder == NullSortOrder.First
+                    ? 0
+                    : 1;
+
                 var nonNullRank = 1 - nullRank;
 
                 terms.Add($"CASE WHEN {column} IS NULL THEN {nullRank} ELSE {nonNullRank} END ASC");
             }
 
-            terms.Add(column + (order.Descending[index] ? " DESC" : " ASC"));
+            terms.Add(
+                column
+                + (order.Descending[index]
+                    ? " DESC"
+                    : " ASC"));
         }
 
         var ordering = string.Join(", ", terms);
         var rightColumn = sql.DelimitIdentifier(
-            _store.Map.PropertyMapping(_store.Map.Right).ColumnName);
+            _store.Map.PropertyMapping(_store.Map.Right)
+                .ColumnName);
 
         var positionColumn = sql.DelimitIdentifier(
-            _store.Map.PropertyMapping(_store.Map.Position).ColumnName);
+            _store.Map.PropertyMapping(_store.Map.Position)
+                .ColumnName);
 
         var nodeAlias = sql.DelimitIdentifier("NodeKey");
         var rightAlias = sql.DelimitIdentifier(nameof(NestedSetPredecessor.Right));
@@ -184,7 +196,10 @@ internal sealed class NestedSetOrderer<TEntity, TKey, TTreeId, TScope>
         parameters.Add(parentMapping.TypeMapping.CreateParameter(command, "parent", parent.BoxedValue, nullable: true));
         var keyIndex = parameters.Count;
         parameters.Add(keyMapping.TypeMapping.CreateParameter(command, "key", key, nullable: false));
-        var siblings = !parent.HasValue ? parentColumn + " IS NULL" : parentColumn + $" = {{{parentIndex}}}";
+        var siblings = !parent.HasValue
+            ? parentColumn + " IS NULL"
+            : parentColumn + $" = {{{parentIndex}}}";
+
         var identityPredicate = string.Join(" AND ", identity) + " AND ";
 
         // WHY: The window sees the complete destination group plus the source, even for a cross-parent move.
@@ -207,10 +222,14 @@ internal sealed class NestedSetOrderer<TEntity, TKey, TTreeId, TScope>
                 .ConfigureAwait(false);
 
             return new NestedSetPlacementResolver<TEntity, TKey, TTreeId, TScope>.Destination(
-                previous.Right is { } right ? checked(right + 1) : firstBoundary,
+                previous.Right is { } right
+                    ? checked(right + 1)
+                    : firstBoundary,
                 parent,
                 depth,
-                previous.Position is { } position ? checked(position + 1) : 0);
+                previous.Position is { } position
+                    ? checked(position + 1)
+                    : 0);
         }
     }
 }

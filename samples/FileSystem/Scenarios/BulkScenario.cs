@@ -34,7 +34,7 @@ internal static class BulkScenario
                         ])),
                 new NestedSetTreeImport<Folder, Guid>(
                     archiveTreeId,
-                    new NestedSetBranch<Folder>(archive, [new NestedSetBranch<Folder>(new Folder("Snapshot")),])),
+                    new NestedSetBranch<Folder>(archive, [new NestedSetBranch<Folder>(new Folder("Snapshot"))])),
             ],
             cancellationToken);
 
@@ -45,7 +45,7 @@ internal static class BulkScenario
         var attachments = new Folder("Attachments");
 
         await folders.InsertSubtreeAsync(
-            new NestedSetBranch<Folder>(report, [new NestedSetBranch<Folder>(attachments),]),
+            new NestedSetBranch<Folder>(report, [new NestedSetBranch<Folder>(attachments)]),
             projects.Id,
             cancellationToken);
 
@@ -72,7 +72,10 @@ internal static class BulkScenario
         SampleConsole.Require(root.Id != 0, "Forest import did not return the generated root identity.");
         SampleConsole.Require(projects.ParentId == root.Id, "Forest import did not return the generated parent link.");
         SampleConsole.Require(report.ParentId == projects.Id, "Subtree import did not attach to the generated parent.");
-        SampleConsole.Require(attachments.ParentId == report.Id, "Subtree import did not return the child parent link.");
+        SampleConsole.Require(
+            attachments.ParentId == report.Id,
+            "Subtree import did not return the child parent link.");
+
         SampleConsole.Require(report.Depth == 2 && attachments.Depth == 3, "Imported depths are incorrect.");
     }
 }

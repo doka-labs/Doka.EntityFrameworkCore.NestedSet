@@ -23,7 +23,8 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
     {
         // Arrange
         var barrier = new IdentityResolutionBarrier();
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             barrier);
 
@@ -94,6 +95,7 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
             ("child", "scope", "target", 1L, 2L, 0),
             (detached.Id.Value, detached.Scope.Value, detached.TreeId.Value, detached.Left, detached.Right,
                 detached.Depth));
+
         Assert.Null(detached.ParentId);
         Assert.Collection(
             retained,
@@ -101,6 +103,7 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
             child => Assert.Equal(
                 ("other", "root", 2L, 3L, 1),
                 (child.Id.Value, child.ParentId!.Value, child.Left, child.Right, child.Depth)));
+
         Assert.All(retained, node => Assert.Equal(("scope", "source"), (node.Scope.Value, node.TreeId.Value)));
         Assert.False(redirectedTreeExists);
         Assert.False(redirectedScopeExists);
@@ -127,7 +130,8 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
     )
     {
         // Arrange
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context
@@ -159,19 +163,34 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
             });
 
         // Act
-        var error = await Record.ExceptionAsync(() => InsertAsync(hierarchy, input, bulk,
+        var error = await Record.ExceptionAsync(() => InsertAsync(
+            hierarchy,
+            input,
+            bulk,
             cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         Assert.Equal(
-            bulk ? NestedSetErrorCode.InvalidImport : NestedSetErrorCode.InvalidStructure,
-            Assert.IsType<NestedSetException>(error).Code);
+            bulk
+                ? NestedSetErrorCode.InvalidImport
+                : NestedSetErrorCode.InvalidStructure,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Equal(1, callbacks);
         Assert.Equal(original, Snapshot(input));
         Assert.Equal(rowsBefore, await RowsAsync(context, cancellationToken: TestContext.Current.CancellationToken));
-        Assert.Equal(registriesBefore, await RegistriesAsync(context,
-            cancellationToken: TestContext.Current.CancellationToken));
-        Assert.Equal(EntityState.Detached, context.Entry(input).State);
+        Assert.Equal(
+            registriesBefore,
+            await RegistriesAsync(
+                context,
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(input)
+                .State);
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -187,7 +206,8 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
     )
     {
         // Arrange
-        await using var context = await _fixture.CreateContextAsync(Engine,
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context
@@ -223,15 +243,18 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
             ("input", "scope", "source", "root", 2L, 3L, 1, 0L),
             (input.Id.Value, input.Scope.Value, input.TreeId.Value, input.ParentId!.Value, input.Left, input.Right,
                 input.Depth, input.Position));
+
         Assert.Equal(
             "root",
             (await hierarchy
                 .ParentOf(new MutableIdentity("input"))
                 .SingleAsync(CancellationToken.None)).Id.Value);
+
         Assert.True(
             (await hierarchy
                 .InTree(new MutableIdentity("source"))
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -318,7 +341,9 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
     )
     {
         var entityType = context.Model.FindEntityType(typeof(ConfiguredIdentityNode))!;
-        var registry = NestedSetTreeRegistryMapping.For(entityType).Registry;
+        var registry = NestedSetTreeRegistryMapping.For(entityType)
+            .Registry;
+
         var rows = await context
             .Set<NestedSetTreeRegistry>(registry.Name)
             .AsNoTracking()
@@ -364,6 +389,15 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
         /// <inheritdoc />
         public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
+        /// <inheritdoc />
+        public async ValueTask DisposeAsync()
+        {
+            foreach (var database in _databases.Values)
+            {
+                await database.DisposeAsync();
+            }
+        }
+
         /// <summary>Returns this fixture's model with the requested asynchronous database barrier.</summary>
         /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
         internal async Task<DbContext> CreateContextAsync(
@@ -392,7 +426,8 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
                         _options[engine] = options;
                         await using var schema = new ConfiguredIdentityContext(options);
                         await schema.Database.EnsureCreatedAsync(token);
-                    }, cancellationToken: cancellationToken);
+                    },
+                    cancellationToken: cancellationToken);
 
                 _databases.Add(engine, database);
             }
@@ -418,15 +453,6 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
 
             return context;
         }
-
-        /// <inheritdoc />
-        public async ValueTask DisposeAsync()
-        {
-            foreach (var database in _databases.Values)
-            {
-                await database.DisposeAsync();
-            }
-        }
     }
 
     /// <summary>
@@ -444,12 +470,12 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
             node.HasKey(value => value.Id);
 
             foreach (var propertyName in new[]
-                     {
-                         nameof(ConfiguredIdentityNode.Id),
-                         nameof(ConfiguredIdentityNode.Scope),
-                         nameof(ConfiguredIdentityNode.TreeId),
-                         nameof(ConfiguredIdentityNode.ParentId),
-                     })
+                {
+                    nameof(ConfiguredIdentityNode.Id),
+                    nameof(ConfiguredIdentityNode.Scope),
+                    nameof(ConfiguredIdentityNode.TreeId),
+                    nameof(ConfiguredIdentityNode.ParentId),
+                })
             {
                 var property = node.Property<MutableIdentity>(propertyName);
                 property.HasMaxLength(40);
@@ -464,12 +490,15 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
             node
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             node
                 .Property(value => value.Scope)
                 .IsRequired();
+
             node
                 .Property(value => value.TreeId)
                 .IsRequired();
+
             node.HasNestedSet(builder => builder
                 .HasTreeId(value => value.TreeId)
                 .HasScope(value => value.Scope)
@@ -483,6 +512,9 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
     private sealed class
         ConfiguredIdentityNode : IScopedNestedSetNode<MutableIdentity, MutableIdentity, MutableIdentity>
     {
+        /// <summary>Gets or sets the nullable direct parent key.</summary>
+        public MutableIdentity? ParentId { get; set; }
+
         /// <inheritdoc />
         public MutableIdentity Id { get; set; } = new(string.Empty);
 
@@ -491,9 +523,6 @@ public abstract partial class ConfiguredMutableIdentityTests : ProviderTest
 
         /// <inheritdoc />
         public MutableIdentity TreeId { get; set; } = new(string.Empty);
-
-        /// <summary>Gets or sets the nullable direct parent key.</summary>
-        public MutableIdentity? ParentId { get; set; }
 
         /// <inheritdoc />
         public long Left { get; set; }

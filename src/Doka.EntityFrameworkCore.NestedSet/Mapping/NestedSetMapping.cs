@@ -13,17 +13,9 @@ internal sealed class NestedSetMapping<TEntity, TKey, TScope>
     private static readonly ConditionalWeakTable<IEntityType, NestedSetMapping<TEntity, TKey, TScope>> s_entities =
         new();
 
-    private readonly Dictionary<string, LambdaExpression> _selectors = new(StringComparer.Ordinal);
     private readonly Dictionary<string, NestedSetPropertyMapping> _properties = new(StringComparer.Ordinal);
 
-    /// <summary>Returns immutable metadata for one exact ordinary or named shared entity type.</summary>
-    /// <param name="context">The context whose finalized model contains the mapping.</param>
-    /// <param name="entityType">The exact hierarchy entity type.</param>
-    /// <returns>The validated mapping, cached for the entity-type metadata lifetime.</returns>
-    internal static NestedSetMapping<TEntity, TKey, TScope> For(
-        DbContext context,
-        IEntityType entityType
-    ) => s_entities.GetValue(entityType, _ => new NestedSetMapping<TEntity, TKey, TScope>(context, entityType));
+    private readonly Dictionary<string, LambdaExpression> _selectors = new(StringComparer.Ordinal);
 
     /// <summary>Resolves a supported mapping before any nested-set query or mutation can run.</summary>
     /// <param name="context">The context whose finalized model contains the hierarchy and its tree registry.</param>
@@ -76,7 +68,10 @@ internal sealed class NestedSetMapping<TEntity, TKey, TScope>
         }
 
         KeyProperty = RequiredProperty(Key);
-        ScopeProperty = Scope is null ? null : RequiredProperty(Scope);
+        ScopeProperty = Scope is null
+            ? null
+            : RequiredProperty(Scope);
+
         TreeIdProperty = RequiredProperty(TreeId);
         ParentProperty = RequiredProperty(Parent);
         LeftProperty = RequiredProperty(Left);
@@ -101,7 +96,7 @@ internal sealed class NestedSetMapping<TEntity, TKey, TScope>
             }
         }
         else if (scopeProperty.ClrType != typeof(TScope)
-                 || scopeProperty.IsNullable)
+            || scopeProperty.IsNullable)
         {
             throw new InvalidOperationException("The nested-set scope must be required and match TScope.");
         }
@@ -144,7 +139,8 @@ internal sealed class NestedSetMapping<TEntity, TKey, TScope>
             var access = NestedSetExpressions.Property(
                 parameter,
                 name,
-                RequiredProperty(name).ClrType);
+                RequiredProperty(name)
+                    .ClrType);
 
             _selectors.Add(name, Expression.Lambda(access, parameter));
         }
@@ -239,21 +235,6 @@ internal sealed class NestedSetMapping<TEntity, TKey, TScope>
     /// <summary>Gets the validated sibling position metadata.</summary>
     internal IProperty PositionProperty { get; }
 
-    /// <summary>
-    /// Returns cached column and parameter metadata for a structural or configured ordering property.
-    /// </summary>
-    internal NestedSetPropertyMapping PropertyMapping(
-        string? name
-    ) => _properties[name ?? throw new InvalidOperationException("The requested nested-set property is not configured.")];
-
-    /// <summary>Returns the cached selector for a mapped property's exact CLR type.</summary>
-    /// <typeparam name="TValue">The mapped property type, including nullable parent keys.</typeparam>
-    /// <param name="name">The property name of one structural role.</param>
-    /// <returns>An immutable selector that contains no runtime scope or key values.</returns>
-    internal Expression<Func<TEntity, TValue>> Property<TValue>(
-        string name
-    ) => (Expression<Func<TEntity, TValue>>)_selectors[name];
-
     /// <summary>Gets the entity's single primary key property name.</summary>
     internal string Key { get; }
 
@@ -283,6 +264,31 @@ internal sealed class NestedSetMapping<TEntity, TKey, TScope>
 
     /// <summary>Gets the finalized entity metadata used by expression builders and CLR accessors.</summary>
     internal IEntityType EntityType { get; }
+
+    /// <summary>Returns immutable metadata for one exact ordinary or named shared entity type.</summary>
+    /// <param name="context">The context whose finalized model contains the mapping.</param>
+    /// <param name="entityType">The exact hierarchy entity type.</param>
+    /// <returns>The validated mapping, cached for the entity-type metadata lifetime.</returns>
+    internal static NestedSetMapping<TEntity, TKey, TScope> For(
+        DbContext context,
+        IEntityType entityType
+    ) => s_entities.GetValue(entityType, _ => new NestedSetMapping<TEntity, TKey, TScope>(context, entityType));
+
+    /// <summary>
+    /// Returns cached column and parameter metadata for a structural or configured ordering property.
+    /// </summary>
+    internal NestedSetPropertyMapping PropertyMapping(
+        string? name
+    ) => _properties[
+        name ?? throw new InvalidOperationException("The requested nested-set property is not configured.")];
+
+    /// <summary>Returns the cached selector for a mapped property's exact CLR type.</summary>
+    /// <typeparam name="TValue">The mapped property type, including nullable parent keys.</typeparam>
+    /// <param name="name">The property name of one structural role.</param>
+    /// <returns>An immutable selector that contains no runtime scope or key values.</returns>
+    internal Expression<Func<TEntity, TValue>> Property<TValue>(
+        string name
+    ) => (Expression<Func<TEntity, TValue>>)_selectors[name];
 
     /// <summary>Rejects entity shapes whose table or query semantics could hide rows from structural updates.</summary>
     /// <exception cref="InvalidOperationException">The entity does not map to one independent table.</exception>
@@ -338,7 +344,8 @@ internal sealed class NestedSetMapping<TEntity, TKey, TScope>
                 .Converter is null
             && ReferenceEquals(
                 property.GetKeyValueComparer(),
-                property.GetTypeMapping().KeyComparer);
+                property.GetTypeMapping()
+                    .KeyComparer);
     }
 
     /// <summary>Identifies properties whose intermediate values cannot participate in unique indexes or keys.</summary>

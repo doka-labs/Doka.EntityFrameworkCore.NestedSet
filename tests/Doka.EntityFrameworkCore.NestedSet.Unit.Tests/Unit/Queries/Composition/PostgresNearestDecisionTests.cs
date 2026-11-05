@@ -22,9 +22,10 @@ public sealed class PostgresNearestDecisionTests
             .AddInterceptors(boundary);
 
         await using var services = NestedSetTestAdapters.BuildServices(options.Options);
-        await using var context = new CompositionContext(options
-            .UseInternalServiceProvider(services)
-            .Options);
+        await using var context = new CompositionContext(
+            options
+                .UseInternalServiceProvider(services)
+                .Options);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -34,15 +35,18 @@ public sealed class PostgresNearestDecisionTests
         var rows = hierarchy.Nodes.Select(node => new { Node = node });
         var nearest = shape switch
         {
-            "independent" => hierarchy.WhereNearestAncestorOrSelf(rows,
+            "independent" => hierarchy.WhereNearestAncestorOrSelf(
+                rows,
                 row => row.Node,
                 (row, owner) => owner.Candidate,
                 (row, owner) => owner.Matches),
-            "row-aware" => hierarchy.WhereNearestAncestorOrSelf(rows,
+            "row-aware" => hierarchy.WhereNearestAncestorOrSelf(
+                rows,
                 row => row.Node,
                 (row, owner) => owner.Candidate && owner.Id < row.Node.Id + 100,
                 (row, owner) => owner.Matches),
-            "query-bearing" => hierarchy.WhereNearestAncestorOrSelf(rows,
+            "query-bearing" => hierarchy.WhereNearestAncestorOrSelf(
+                rows,
                 row => row.Node,
                 (row, owner) => owner.Candidate
                     && context
@@ -76,9 +80,9 @@ public sealed class PostgresNearestDecisionTests
         // Arrange
         const int nodes = 100_000;
         const string plan = """
-            [{"Plan":{"Node Type":"Aggregate","Actual Rows":1,"Actual Loops":1,
-                "Plans":[{"Node Type":"Materialize","Actual Rows":50000,"Actual Loops":100000}]}}]
-            """;
+                            [{"Plan":{"Node Type":"Aggregate","Actual Rows":1,"Actual Loops":1,
+                                "Plans":[{"Node Type":"Materialize","Actual Rows":50000,"Actual Loops":100000}]}}]
+                            """;
 
         var budget = CompositionPlanWorkBudget.ForPairs(nodes, anchors: 1, facts: nodes, contributions: nodes);
 

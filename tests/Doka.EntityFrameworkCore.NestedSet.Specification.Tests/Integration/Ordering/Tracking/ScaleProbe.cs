@@ -4,8 +4,8 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 internal sealed class ScaleProbe : DbCommandInterceptor, IObserver<DiagnosticListener>,
     IObserver<KeyValuePair<string, object?>>, IDisposable
 {
-    private readonly List<IDisposable> _subscriptions = [];
     private readonly Dictionary<Guid, ScaleCommand> _readers = [];
+    private readonly List<IDisposable> _subscriptions = [];
     private DbContext? _context;
 
     /// <summary>Gets commands observed within the explicitly reset measurement window.</summary>
@@ -20,8 +20,54 @@ internal sealed class ScaleProbe : DbCommandInterceptor, IObserver<DiagnosticLis
     /// <summary>Gets readers currently open on the observed context's provider connection.</summary>
     internal int ActiveReaders { get; private set; }
 
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        foreach (var subscription in _subscriptions)
+        {
+            subscription.Dispose();
+        }
+    }
+
+    /// <inheritdoc />
+    public void OnNext(
+        DiagnosticListener listener
+    )
+    {
+        if (listener.Name == DbLoggerCategory.Name)
+        {
+            _subscriptions.Add(
+                listener.Subscribe(
+                    this,
+                    name => name == CoreEventId.QueryCompilationStarting.Name));
+        }
+    }
+
+    /// <inheritdoc />
+    public void OnCompleted() { }
+
+    /// <inheritdoc />
+    public void OnError(
+        Exception error
+    ) => throw error;
+
+    /// <inheritdoc />
+    public void OnNext(
+        KeyValuePair<string, object?> value
+    )
+    {
+        if (value.Value is DbContextEventData data
+            && ReferenceEquals(data.Context, _context))
+        {
+            Compilations++;
+            CompilationCommandOffsets.Add(Commands.Count);
+        }
+    }
+
     /// <summary>Starts context-filtered diagnostics after setup has completed.</summary>
-    internal void Observe(DbContext context)
+    internal void Observe(
+        DbContext context
+    )
     {
         _context = context;
         _subscriptions.Add(DiagnosticListener.AllListeners.Subscribe(this));
@@ -92,43 +138,10 @@ internal sealed class ScaleProbe : DbCommandInterceptor, IObserver<DiagnosticLis
         return result;
     }
 
-    /// <inheritdoc />
-    public void OnNext(DiagnosticListener listener)
-    {
-        if (listener.Name == DbLoggerCategory.Name)
-        {
-            _subscriptions.Add(listener.Subscribe(this,
-                name => name == CoreEventId.QueryCompilationStarting.Name));
-        }
-    }
-
-    /// <inheritdoc />
-    public void OnNext(KeyValuePair<string, object?> value)
-    {
-        if (value.Value is DbContextEventData data && ReferenceEquals(data.Context, _context))
-        {
-            Compilations++;
-            CompilationCommandOffsets.Add(Commands.Count);
-        }
-    }
-
-    /// <inheritdoc />
-    public void OnCompleted() { }
-
-    /// <inheritdoc />
-    public void OnError(Exception error) => throw error;
-
-    /// <inheritdoc />
-    public void Dispose()
-    {
-        foreach (var subscription in _subscriptions)
-        {
-            subscription.Dispose();
-        }
-    }
-
     /// <summary>Retains SQL shape and physical parameter count without retaining provider objects.</summary>
-    private ScaleCommand Record(DbCommand command)
+    private ScaleCommand Record(
+        DbCommand command
+    )
     {
         var observed = new ScaleCommand(command.CommandText, command.Parameters.Count);
         Commands.Add(observed);

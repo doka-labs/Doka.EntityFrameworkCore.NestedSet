@@ -104,9 +104,9 @@ internal static class NestedSetQueryExpressions
     )
     {
         while (expression is UnaryExpression
-               {
-                   NodeType: ExpressionType.Quote or ExpressionType.Convert or ExpressionType.ConvertChecked,
-               } unary)
+            {
+                NodeType: ExpressionType.Quote or ExpressionType.Convert or ExpressionType.ConvertChecked,
+            } unary)
         {
             expression = unary.Operand;
         }
@@ -148,7 +148,9 @@ internal static class NestedSetQueryExpressions
         Expression? target
     )
     {
-        var unwrapped = target is null ? null : Unwrap(target);
+        var unwrapped = target is null
+            ? null
+            : Unwrap(target);
 
         if (unwrapped is NewExpression { Members: { } members } created)
         {
@@ -188,7 +190,11 @@ internal static class NestedSetQueryExpressions
         /// <inheritdoc />
         protected override Expression VisitMember(
             MemberExpression node
-        ) => ReduceMember(node, node.Expression is null ? null : Visit(node.Expression));
+        ) => ReduceMember(
+            node,
+            node.Expression is null
+                ? null
+                : Visit(node.Expression));
     }
 
     /// <summary>Retains the general binding-list behavior for larger and mismatched argument counts.</summary>
@@ -227,7 +233,9 @@ internal static class NestedSetQueryExpressions
         /// <inheritdoc />
         protected override Expression VisitParameter(
             ParameterExpression node
-        ) => ReferenceEquals(node, parameter) ? argument : node;
+        ) => ReferenceEquals(node, parameter)
+            ? argument
+            : node;
     }
 
     /// <summary>Stores two supplied expressions directly while retaining exact parameter identity.</summary>
@@ -270,7 +278,9 @@ internal static class NestedSetQueryExpressions
                 return second;
             }
 
-            return ReferenceEquals(node, parameters[2]) ? third : node;
+            return ReferenceEquals(node, parameters[2])
+                ? third
+                : node;
         }
     }
 
@@ -283,7 +293,9 @@ internal static class NestedSetQueryExpressions
         /// <inheritdoc />
         public override Expression? Visit(
             Expression? node
-        ) => Found ? node : base.Visit(node);
+        ) => Found
+            ? node
+            : base.Visit(node);
 
         /// <inheritdoc />
         protected override Expression VisitParameter(

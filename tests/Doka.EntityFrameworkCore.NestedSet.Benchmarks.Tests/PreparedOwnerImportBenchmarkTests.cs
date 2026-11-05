@@ -32,7 +32,11 @@ public sealed class PreparedOwnerImportBenchmarkTests
     /// <param name="mode">The pre-import owner tracking and inverse collection state.</param>
     [Theory]
     [MemberData(nameof(ImportCases))]
-    public async Task ImportRetainsExactTopologyAndReusableOwner(int nodes, bool forest, PreparedOwnerMode mode)
+    public async Task ImportRetainsExactTopologyAndReusableOwner(
+        int nodes,
+        bool forest,
+        PreparedOwnerMode mode
+    )
     {
         // Arrange
         var benchmark = Create(nodes, mode);
@@ -41,7 +45,9 @@ public sealed class PreparedOwnerImportBenchmarkTests
         {
             benchmark.Initialize();
             await benchmark.PrepareAsync(cancellationToken: TestContext.Current.CancellationToken);
-            Func<Task> import = forest ? benchmark.Forest : benchmark.Subtree;
+            Func<Task> import = forest
+                ? benchmark.Forest
+                : benchmark.Subtree;
 
             // Act
             await import();
@@ -92,7 +98,11 @@ public sealed class PreparedOwnerImportBenchmarkTests
             benchmark.Initialize();
             await benchmark.PrepareAsync(cancellationToken: TestContext.Current.CancellationToken);
             await benchmark.Subtree();
-            await benchmark.Context.Nodes.Where(node => node.Id == 66).ExecuteDeleteAsync(CancellationToken.None);
+            await benchmark
+                .Context
+                .Nodes
+                .Where(node => node.Id == 66)
+                .ExecuteDeleteAsync(CancellationToken.None);
 
             // Act
             var error = await Record.ExceptionAsync(() => benchmark.VerifyAsync(TestContext.Current.CancellationToken));
@@ -113,7 +123,9 @@ public sealed class PreparedOwnerImportBenchmarkTests
     [InlineData(2_000)]
     [InlineData(4_000)]
     [InlineData(8_000)]
-    public async Task ExplicitScalingSizeInitializesTheExistingFixture(int nodes)
+    public async Task ExplicitScalingSizeInitializesTheExistingFixture(
+        int nodes
+    )
     {
         // Arrange
         var benchmark = Create(nodes, PreparedOwnerMode.Prepared);
@@ -140,53 +152,78 @@ public sealed class PreparedOwnerImportBenchmarkTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void NativeScalingSelectorExcludesUnrequestedOwnerModes(bool forest)
+    public void NativeScalingSelectorExcludesUnrequestedOwnerModes(
+        bool forest
+    )
     {
         // Arrange
         const string variable = "NESTEDSET_BENCHMARK_OPTIONS";
         var previous = Environment.GetEnvironmentVariable(variable);
         var options = new BenchmarkRunOptions
         {
-            NodeCounts = forest ? [8_000] : [1_000, 2_000, 4_000, 8_000],
+            NodeCounts = forest
+                ? [8_000]
+                : [1_000, 2_000, 4_000, 8_000],
             Shapes = [BenchmarkShape.Wide],
         };
 
         string[] filters = forest
             ? ["*PreparedOwnerImportBenchmarks.Forest*OwnerMode: Prepared*"]
-            : ["*PreparedOwnerImportBenchmarks.Subtree*OwnerMode: Untracked*",
-                "*PreparedOwnerImportBenchmarks.Subtree*OwnerMode: Prepared*"];
+            :
+            [
+                "*PreparedOwnerImportBenchmarks.Subtree*OwnerMode: Untracked*",
+                "*PreparedOwnerImportBenchmarks.Subtree*OwnerMode: Prepared*",
+            ];
 
         try
         {
             // WHY: ParamsSource reads the same inherited launcher environment as an actual native BDN child.
             options.ApplyEnvironment();
-            var configuration = ManualConfig.Create(BenchmarkConfiguration.Create(options))
+            var configuration = ManualConfig
+                .Create(BenchmarkConfiguration.Create(options))
                 .AddFilter(new GlobFilter(filters));
 
             // Act
             using var selection = BenchmarkSelection.Discover(configuration, diagnostics: true);
 
             // Assert
-            Assert.Equal(forest ? 1 : 8, selection.DatabaseCases.Count);
-            Assert.All(selection.DatabaseCases, value =>
-            {
-                Assert.Equal(typeof(PreparedOwnerImportBenchmarks), value.Descriptor.Type);
-                Assert.Equal(forest ? nameof(PreparedOwnerImportBenchmarks.Forest)
-                    : nameof(PreparedOwnerImportBenchmarks.Subtree), value.Descriptor.WorkloadMethod.Name);
+            Assert.Equal(
+                forest
+                    ? 1
+                    : 8,
+                selection.DatabaseCases.Count);
 
-                Assert.NotEqual(PreparedOwnerMode.LoadedEmpty,
-                    (PreparedOwnerMode)value.Parameters[nameof(PreparedOwnerImportBenchmarks.OwnerMode)]);
-
-                if (forest)
+            Assert.All(
+                selection.DatabaseCases,
+                value =>
                 {
-                    Assert.Equal(PreparedOwnerMode.Prepared,
-                        (PreparedOwnerMode)value.Parameters[nameof(PreparedOwnerImportBenchmarks.OwnerMode)]);
-                }
-            });
+                    Assert.Equal(typeof(PreparedOwnerImportBenchmarks), value.Descriptor.Type);
+                    Assert.Equal(
+                        forest
+                            ? nameof(PreparedOwnerImportBenchmarks.Forest)
+                            : nameof(PreparedOwnerImportBenchmarks.Subtree),
+                        value.Descriptor.WorkloadMethod.Name);
 
-            Assert.Equal(options.NodeCounts, selection.DatabaseCases
-                .Select(value => (int)value.Parameters[nameof(PreparedOwnerImportBenchmarks.Nodes)])
-                .Distinct().Order().ToArray());
+                    Assert.NotEqual(
+                        PreparedOwnerMode.LoadedEmpty,
+                        (PreparedOwnerMode)value.Parameters[nameof(PreparedOwnerImportBenchmarks.OwnerMode)]);
+
+                    if (forest)
+                    {
+                        Assert.Equal(
+                            PreparedOwnerMode.Prepared,
+                            (PreparedOwnerMode)value.Parameters[nameof(PreparedOwnerImportBenchmarks.OwnerMode)]);
+                    }
+                });
+
+            Assert.Equal(
+                options.NodeCounts,
+                selection
+                    .DatabaseCases
+                    .Select(value => (int)value.Parameters[nameof(PreparedOwnerImportBenchmarks.Nodes)])
+                    .Distinct()
+                    .Order()
+                    .ToArray());
         }
         finally
         {
@@ -199,7 +236,9 @@ public sealed class PreparedOwnerImportBenchmarkTests
     [Theory]
     [InlineData(0)]
     [InlineData(9)]
-    public void InvalidInputSizeRejectsBeforeContextAcquisition(int nodes)
+    public void InvalidInputSizeRejectsBeforeContextAcquisition(
+        int nodes
+    )
     {
         // Arrange
         var benchmark = Create(nodes, PreparedOwnerMode.Prepared);
@@ -213,7 +252,10 @@ public sealed class PreparedOwnerImportBenchmarkTests
     }
 
     /// <summary>Builds the declared native fixture without changing the process-wide benchmark environment.</summary>
-    private static PreparedOwnerImportBenchmarks Create(int nodes, PreparedOwnerMode mode) => new()
+    private static PreparedOwnerImportBenchmarks Create(
+        int nodes,
+        PreparedOwnerMode mode
+    ) => new()
     {
         Nodes = nodes,
         Shape = BenchmarkShape.Wide,

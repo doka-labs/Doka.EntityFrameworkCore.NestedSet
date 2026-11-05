@@ -28,7 +28,8 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
     )
     {
         // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync(engine,
+        await using var database = await _fixture.CreateDatabaseAsync(
+            engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var chain = database.Scaffold(MigrationStage.Current, "Initial");
@@ -42,11 +43,14 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
         // Assert
         AssertCurrentIndexes(engine, indexes);
         Assert.Equal(
-            engine == "PostgreSql" ? 7 : 6,
+            engine == "PostgreSql"
+                ? 7
+                : 6,
             migration
                 .UpOperations
                 .OfType<CreateIndexOperation>()
                 .Count());
+
         Assert.DoesNotContain("SafeMigrations", chain.LatestMigrationCode, StringComparison.Ordinal);
         Assert.All(indexes, x => Assert.True(x.Name.Length <= context.Model.GetMaxIdentifierLength()));
         Assert.Contains(indexes, x => x.Name == "application_payload_lookup");
@@ -65,7 +69,8 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
     )
     {
         // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync(engine,
+        await using var database = await _fixture.CreateDatabaseAsync(
+            engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var baseline = database.Scaffold(MigrationStage.Baseline, "Baseline");
@@ -99,9 +104,11 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
         Assert.Contains(
             operations.OfType<CreateIndexOperation>(),
             operation => operation.Columns.SequenceEqual(["tree_scope", "tree_id", "left_bound"]));
+
         Assert.DoesNotContain(
             operations,
             operation => operation is DropTableOperation { Name: MigrationContext.TableName });
+
         AssertCurrentIndexes(engine, indexes);
     }
 
@@ -118,7 +125,8 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
     )
     {
         // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync(engine,
+        await using var database = await _fixture.CreateDatabaseAsync(
+            engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var baseline = database.Scaffold(MigrationStage.Baseline, "Baseline");
@@ -133,9 +141,11 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
         await database.MigrateAsync(upgrade, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        await database.MigrateAsync(upgrade,
+        await database.MigrateAsync(
+            upgrade,
             cancellationToken: TestContext.Current.CancellationToken,
             baseline.MigrationIds[0]);
+
         var indexes = await database.ReadIndexesAsync(cancellationToken: TestContext.Current.CancellationToken);
         var after = await database.ReadNodesAsync(
             cancellationToken: TestContext.Current.CancellationToken,
@@ -160,7 +170,8 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
     )
     {
         // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync(engine,
+        await using var database = await _fixture.CreateDatabaseAsync(
+            engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var baseline = database.Scaffold(MigrationStage.Baseline, "Baseline");
@@ -169,7 +180,8 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
         await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken, MigrationStage.Baseline);
         await database.MigrateAsync(upgrade, cancellationToken: TestContext.Current.CancellationToken);
         var before = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
-        await database.MigrateAsync(upgrade,
+        await database.MigrateAsync(
+            upgrade,
             cancellationToken: TestContext.Current.CancellationToken,
             baseline.MigrationIds[0]);
 
@@ -196,7 +208,8 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
     )
     {
         // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync(engine,
+        await using var database = await _fixture.CreateDatabaseAsync(
+            engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var initial = database.Scaffold(MigrationStage.Current, "Initial");
@@ -227,7 +240,8 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
     )
     {
         // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync(engine,
+        await using var database = await _fixture.CreateDatabaseAsync(
+            engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var initial = database.Scaffold(MigrationStage.Specialized, "Specialized");
@@ -249,7 +263,12 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
             index => index.Name != specialized.Name && index.Columns.SequenceEqual(specialized.Columns));
 
         Assert.Equal(engine != "PostgreSql", fallback.IsOrdinary);
-        Assert.Equal(engine == "PostgreSql" ? 9 : 8, indexes.Length);
+        Assert.Equal(
+            engine == "PostgreSql"
+                ? 9
+                : 8,
+            indexes.Length);
+
         Assert.Empty(migration.UpOperations);
         Assert.Empty(migration.DownOperations);
         Assert.False(
@@ -271,7 +290,8 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
     )
     {
         // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync(engine,
+        await using var database = await _fixture.CreateDatabaseAsync(
+            engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var chain = database.Scaffold(MigrationStage.Current, "Initial");
@@ -349,7 +369,8 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
     )
     {
         // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync(engine,
+        await using var database = await _fixture.CreateDatabaseAsync(
+            engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var baseline = database.Scaffold(MigrationStage.Baseline, "Baseline");
@@ -379,7 +400,8 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
         await context.Database.ExecuteSqlRawAsync(conflicting, CancellationToken.None);
 
         // Act
-        var exception = await Record.ExceptionAsync(() => database.MigrateAsync(upgrade,
+        var exception = await Record.ExceptionAsync(() => database.MigrateAsync(
+            upgrade,
             cancellationToken: TestContext.Current.CancellationToken));
 
         var after = await database.ReadNodesAsync(
@@ -407,7 +429,8 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
     )
     {
         // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync(engine,
+        await using var database = await _fixture.CreateDatabaseAsync(
+            engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var chain = database.Scaffold(MigrationStage.Current, "PhysicalContract");
@@ -452,7 +475,8 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
     )
     {
         // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync(engine,
+        await using var database = await _fixture.CreateDatabaseAsync(
+            engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var chain = database.Scaffold(MigrationStage.Current, "CheckEnforcement");
@@ -468,7 +492,8 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
         };
 
         // Act
-        var exception = await Record.ExceptionAsync(() => database.InsertNodeDirectlyAsync(invalid,
+        var exception = await Record.ExceptionAsync(() => database.InsertNodeDirectlyAsync(
+            invalid,
             cancellationToken: TestContext.Current.CancellationToken));
 
         var nodes = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
@@ -501,11 +526,18 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
         MigrationIndex[] indexes
     )
     {
-        Assert.Equal(engine == "PostgreSql" ? 8 : 7, indexes.Length);
+        Assert.Equal(
+            engine == "PostgreSql"
+                ? 8
+                : 7,
+            indexes.Length);
+
         Assert.Single(indexes, x => x.IsUnique && x.Columns.SequenceEqual(["tree_scope", "entry_id"]));
-        Assert.All(indexes, index => Assert.Equal(
-            engine != "PostgreSql" || index.IsUnique || index.Name == "application_payload_lookup",
-            index.IsOrdinary));
+        Assert.All(
+            indexes,
+            index => Assert.Equal(
+                engine != "PostgreSql" || index.IsUnique || index.Name == "application_payload_lookup",
+                index.IsOrdinary));
 
         var columns = indexes
             .Select(x => string.Join(",", x.Columns))
@@ -513,19 +545,23 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
             .ToArray();
 
         string[] expected =
-            [
-                "entry_payload",
-                "tree_scope,entry_id",
-                "tree_scope,parent_entry",
-                "tree_scope,tree_id,left_bound",
-                "tree_scope,tree_id,parent_entry,entry_payload,entry_category,entry_id",
-                "tree_scope,tree_id,parent_entry,sibling_position",
-                "tree_scope,tree_id,right_bound",
-            ];
+        [
+            "entry_payload",
+            "tree_scope,entry_id",
+            "tree_scope,parent_entry",
+            "tree_scope,tree_id,left_bound",
+            "tree_scope,tree_id,parent_entry,entry_payload,entry_category,entry_id",
+            "tree_scope,tree_id,parent_entry,sibling_position",
+            "tree_scope,tree_id,right_bound",
+        ];
 
-        Assert.Equal(engine == "PostgreSql"
-            ? expected.Append("tree_scope,entry_id,parent_entry").Order(StringComparer.Ordinal)
-            : expected, columns);
+        Assert.Equal(
+            engine == "PostgreSql"
+                ? expected
+                    .Append("tree_scope,entry_id,parent_entry")
+                    .Order(StringComparer.Ordinal)
+                : expected,
+            columns);
     }
 
     /// <summary>Checks the real provider catalog against the complete physical hierarchy contract.</summary>
@@ -560,22 +596,26 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
                 false,
             ],
             order.Descending);
+
         Assert.Equal(4, checks.Length);
         Assert.Contains(
             checks,
             check => check.Name.Contains("LeftMin", StringComparison.Ordinal)
                 && NormalizeSql(check.Expression)
                     .Contains("left_bound>=1", StringComparison.Ordinal));
+
         Assert.Contains(
             checks,
             check => check.Name.Contains("RightAfterLeft", StringComparison.Ordinal)
                 && NormalizeSql(check.Expression)
                     .Contains("right_bound>left_bound", StringComparison.Ordinal));
+
         Assert.Contains(
             checks,
             check => check.Name.Contains("DepthMin", StringComparison.Ordinal)
                 && NormalizeSql(check.Expression)
                     .Contains("entry_depth>=0", StringComparison.Ordinal));
+
         Assert.Contains(
             checks,
             check => check.Name.Contains("PositionMin", StringComparison.Ordinal)
@@ -591,7 +631,10 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
                 .Replace('_', ' ')
                 .ToUpperInvariant() is "NO ACTION" or "RESTRICT");
 
-        var expectedInteger = engine == "Sqlite" ? "integer" : "bigint";
+        var expectedInteger = engine == "Sqlite"
+            ? "integer"
+            : "bigint";
+
         Assert.Equal(expectedInteger, columnTypes["left_bound"], ignoreCase: true);
         Assert.Equal(expectedInteger, columnTypes["right_bound"], ignoreCase: true);
         Assert.Equal(expectedInteger, columnTypes["sibling_position"], ignoreCase: true);

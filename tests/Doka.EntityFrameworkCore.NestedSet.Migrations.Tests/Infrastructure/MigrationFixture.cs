@@ -71,7 +71,11 @@ public sealed class MigrationFixture : IAsyncLifetime
             ["Database"] = name,
         };
 
-        var schema = qualifySchema ? engine is "PostgreSql" or "SqlServer" ? "custom_hierarchy_schema" : name : null;
+        var schema = qualifySchema
+            ? engine is "PostgreSql" or "SqlServer"
+                ? "custom_hierarchy_schema"
+                : name
+            : null;
 
         return new MigrationDatabase(
             engine,
@@ -164,7 +168,10 @@ public sealed class MigrationFixture : IAsyncLifetime
             }
             catch (Exception cleanupFailure)
             {
-                throw new AggregateException("Migration server startup and cleanup both failed.", failure, cleanupFailure);
+                throw new AggregateException(
+                    "Migration server startup and cleanup both failed.",
+                    failure,
+                    cleanupFailure);
             }
 
             throw;

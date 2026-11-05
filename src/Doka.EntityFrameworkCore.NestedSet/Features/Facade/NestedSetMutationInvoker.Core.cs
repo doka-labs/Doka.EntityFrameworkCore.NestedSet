@@ -174,9 +174,9 @@ internal sealed partial class
     )
     {
         if (NestedSetTypedValue<TTreeId>.Matches(
-                binding.Descriptor.TreeId.Resolve(binding.EntityType),
-                sourceTreeId,
-                targetTreeId))
+            binding.Descriptor.TreeId.Resolve(binding.EntityType),
+            sourceTreeId,
+            targetTreeId))
         {
             return Task.FromResult(true);
         }
@@ -200,8 +200,8 @@ internal sealed partial class
                 .ConfigureAwait(false);
         }
         catch (NestedSetException failure) when (failure.Code is NestedSetErrorCode.NodeNotFound
-                                                     or NestedSetErrorCode.TreeNotFound
-                                                     or NestedSetErrorCode.TreeIdUnavailable)
+            or NestedSetErrorCode.TreeNotFound
+            or NestedSetErrorCode.TreeIdUnavailable)
         {
             // WHY: Facade anchors are resolved before the lock. A concurrent cross-tree move can make the
             // exact-tree operation report NodeNotFound or TreeIdUnavailable even while the node still exists.
@@ -210,7 +210,7 @@ internal sealed partial class
             foreach (var (key, treeId) in anchors)
             {
                 if (await BelongsToTreeAsync(binding, key, treeId, cancellationToken)
-                        .ConfigureAwait(false))
+                    .ConfigureAwait(false))
                 {
                     continue;
                 }

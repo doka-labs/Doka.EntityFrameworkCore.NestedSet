@@ -91,6 +91,7 @@ internal static partial class SupervisorQueries
         if (request.Groups is NthTypeGroupThenValidate typed)
         {
             var typedPaths = paths;
+
             // WHY: A type winner precedes membership, routing and edge validation, so rejection cannot admit
             // a farther group. Structural pairs are unique per origin/group; retain their mapped endpoints in
             // the partitioned selection instead of copying the whole path query to rejoin selected keys.
@@ -154,10 +155,8 @@ internal static partial class SupervisorQueries
                     groups,
                     row => row.Choice.FoundGroupId,
                     group => group.Id,
-                    (
-                        row,
-                        found
-                    ) => new SupervisorGroupPath
+                    (row,
+                        found) => new SupervisorGroupPath
                     {
                         StartGroup = row.Start,
                         FoundGroup = found,
@@ -216,7 +215,7 @@ internal static partial class SupervisorQueries
             .GroupBy(group => new
             {
                 group.StartGroupId,
-                group.FoundGroupId
+                group.FoundGroupId,
             })
             .Select(group => new SupervisorGroupPosition
             {
@@ -370,9 +369,11 @@ internal static partial class SupervisorQueries
             MetadataOwner.SourceUser or MetadataOwner.CandidateUser => context
                 .UserMetadatas
                 .Where(value => context.UserMetadataDefinitions.Any(definition => definition.TenantId == value.TenantId
+
                     // WHY: The text inliner replaces this marker with string comparisons before EF translation.
                     // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                     && SupervisorExactText.FieldEquals(definition.FieldCode, value.FieldCode)
+
                     // WHY: The text inliner replaces this marker with string comparisons before EF translation.
                     // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                     && SupervisorExactText.FieldEquals(definition.ValueKind, "Text")))
@@ -393,9 +394,11 @@ internal static partial class SupervisorQueries
                         && group.TypeId == value.GroupTypeId)
                     && context.MembershipMetadataDefinitions.Any(definition => definition.TenantId == value.TenantId
                         && definition.GroupTypeId == value.GroupTypeId
+
                         // WHY: The text inliner replaces this marker with string comparisons before EF translation.
                         // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                         && SupervisorExactText.FieldEquals(definition.FieldCode, value.FieldCode)
+
                         // WHY: The text inliner replaces this marker with string comparisons before EF translation.
                         // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                         && SupervisorExactText.FieldEquals(definition.ValueKind, "Text")))
@@ -416,9 +419,11 @@ internal static partial class SupervisorQueries
                         && group.TypeId == value.GroupTypeId)
                     && context.GroupMetadataDefinitions.Any(definition => definition.TenantId == value.TenantId
                         && definition.GroupTypeId == value.GroupTypeId
+
                         // WHY: The text inliner replaces this marker with string comparisons before EF translation.
                         // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                         && SupervisorExactText.FieldEquals(definition.FieldCode, value.FieldCode)
+
                         // WHY: The text inliner replaces this marker with string comparisons before EF translation.
                         // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                         && SupervisorExactText.FieldEquals(definition.ValueKind, "Text")))

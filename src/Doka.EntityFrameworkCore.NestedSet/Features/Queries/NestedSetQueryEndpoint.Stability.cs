@@ -53,7 +53,9 @@ internal static partial class NestedSetQueryEndpoint
                 return node;
             }
 
-            if (node.GetType().Assembly != typeof(Expression).Assembly
+            if (node.GetType()
+                    .Assembly
+                != typeof(Expression).Assembly
                 && node.GetType() != typeof(EntityQueryRootExpression))
             {
                 _stable = false;
@@ -64,10 +66,14 @@ internal static partial class NestedSetQueryEndpoint
             // inputs retain individual inspection; only runtime-owned stable syntax is memoized.
             if (node is ConstantExpression { Value: IQueryable }
                 || (node is MemberExpression member
-                    && (member.Member.GetType().Assembly != typeof(MemberInfo).Assembly
+                    && (member.Member.GetType()
+                            .Assembly
+                        != typeof(MemberInfo).Assembly
                         || CapturesQuery(member)))
                 || (node is MethodCallExpression call
-                    && call.Method.GetType().Assembly != typeof(MethodInfo).Assembly))
+                    && call.Method.GetType()
+                        .Assembly
+                    != typeof(MethodInfo).Assembly))
             {
                 _stable = false;
             }

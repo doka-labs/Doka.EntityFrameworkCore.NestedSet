@@ -8,7 +8,8 @@ public abstract partial class BulkIntervalRefreshTests
     {
         // Arrange
         var probe = new BulkIntervalRefreshProbe(nameof(BulkStageTextNode));
-        await using var context = await _generated.ResetAsync(Engine,
+        await using var context = await _generated.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -48,6 +49,7 @@ public abstract partial class BulkIntervalRefreshTests
                 .InTree(Guid.Empty)
                 .Nodes
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -57,7 +59,8 @@ public abstract partial class BulkIntervalRefreshTests
     {
         // Arrange
         var probe = new BulkIntervalRefreshProbe(nameof(BulkStageBinaryParent));
-        await using var context = await _generated.ResetAsync(Engine,
+        await using var context = await _generated.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -105,6 +108,7 @@ public abstract partial class BulkIntervalRefreshTests
                 .InTree(Guid.Empty)
                 .Nodes
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -114,7 +118,8 @@ public abstract partial class BulkIntervalRefreshTests
     {
         // Arrange
         var probe = new BulkIntervalRefreshProbe(nameof(BulkStageBinaryParent));
-        await using var context = await _generated.ResetAsync(Engine,
+        await using var context = await _generated.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -161,6 +166,7 @@ public abstract partial class BulkIntervalRefreshTests
                 .InTree(Guid.Empty)
                 .Nodes
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 

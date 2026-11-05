@@ -10,16 +10,23 @@ public abstract partial class SaveChangesTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task UnmarkedHierarchyChangesAreRejectedInManualMode(bool parent, bool markedPayload)
+    public async Task UnmarkedHierarchyChangesAreRejectedInManualMode(
+        bool parent,
+        bool markedPayload
+    )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new SaveBoundaryProbe();
         await using var context = CreateManualDetectionContext(setup, wrapped: true, probe);
-        var node = await context.Set<OrderingNode>().SingleAsync(value => value.Id == 1, CancellationToken.None);
+        var node = await context
+            .Set<OrderingNode>()
+            .SingleAsync(value => value.Id == 1, CancellationToken.None);
+
         context.ChangeTracker.AutoDetectChangesEnabled = false;
 
         if (parent)
@@ -33,7 +40,10 @@ public abstract partial class SaveChangesTests
 
         if (markedPayload)
         {
-            context.Entry(node).Property(value => value.Payload).CurrentValue = "explicit payload";
+            context
+                .Entry(node)
+                .Property(value => value.Payload)
+                .CurrentValue = "explicit payload";
         }
 
         await context.AddAsync(new OrderingMarker { Id = 1 }, CancellationToken.None);
@@ -42,20 +52,42 @@ public abstract partial class SaveChangesTests
 
         // Act
         var failure = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
-        var stored = await setup.Set<OrderingNode>().Where(value => value.Id == 1)
-            .Select(value => new { value.ParentId, value.Name, value.Payload }).SingleAsync(CancellationToken.None);
+        var stored = await setup
+            .Set<OrderingNode>()
+            .Where(value => value.Id == 1)
+            .Select(value => new
+            {
+                value.ParentId,
+                value.Name,
+                value.Payload,
+            })
+            .SingleAsync(CancellationToken.None);
 
-        var markers = await setup.Set<OrderingMarker>().CountAsync(CancellationToken.None);
+        var markers = await setup
+            .Set<OrderingMarker>()
+            .CountAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Equal(0, detections);
         Assert.Equal(0, probe.PayloadCommands);
         Assert.Equal(0, markers);
         Assert.Equal(10, stored.ParentId);
         Assert.Equal("Alpha", stored.Name);
         Assert.Equal("original", stored.Payload);
-        Assert.False(context.Entry(node).Property(parent ? nameof(node.ParentId) : nameof(node.Name)).IsModified);
+        Assert.False(
+            context
+                .Entry(node)
+                .Property(
+                    parent
+                        ? nameof(node.ParentId)
+                        : nameof(node.Name))
+                .IsModified);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
     }
 
@@ -71,44 +103,97 @@ public abstract partial class SaveChangesTests
     [InlineData(true, false, true)]
     [InlineData(true, true, false)]
     [InlineData(true, true, true)]
-    public async Task MarkedHierarchySavesOnlyExplicitWrites(bool parent, bool currentValue, bool acceptChanges)
+    public async Task MarkedHierarchySavesOnlyExplicitWrites(
+        bool parent,
+        bool currentValue,
+        bool acceptChanges
+    )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await SeedManualMarkersAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = CreateManualDetectionContext(setup, wrapped: true);
-        var node = await context.Set<OrderingNode>().SingleAsync(value => value.Id == 1, CancellationToken.None);
-        var rows = await context.Set<OrderingMarker>().OrderBy(value => value.Id).ToArrayAsync(CancellationToken.None);
+        var node = await context
+            .Set<OrderingNode>()
+            .SingleAsync(value => value.Id == 1, CancellationToken.None);
+
+        var rows = await context
+            .Set<OrderingMarker>()
+            .OrderBy(value => value.Id)
+            .ToArrayAsync(CancellationToken.None);
+
         context.ChangeTracker.AutoDetectChangesEnabled = false;
         node.Payload = "unmarked node payload";
         rows[0].Value = "unmarked foreign payload";
         MarkManualHierarchyChange(context, node, parent, currentValue);
-        context.Entry(node).Property(value => value.Category).CurrentValue = OrderingCategory.Beta;
-        context.Entry(rows[1]).Property(value => value.Value).CurrentValue = "explicit update";
+        context
+            .Entry(node)
+            .Property(value => value.Category)
+            .CurrentValue = OrderingCategory.Beta;
+
+        context
+            .Entry(rows[1])
+            .Property(value => value.Value)
+            .CurrentValue = "explicit update";
+
         context.Remove(rows[2]);
-        var addition = new OrderingMarker { Id = 4, Value = "explicit addition" };
+        var addition = new OrderingMarker
+        {
+            Id = 4,
+            Value = "explicit addition",
+        };
+
         await context.AddAsync(addition, CancellationToken.None);
         var detections = 0;
         context.ChangeTracker.DetectedAllChanges += (_, _) => detections++;
 
         // Act
         await context.SaveChangesAsync(acceptChanges, CancellationToken.None);
-        var storedNode = await setup.Set<OrderingNode>().Where(value => value.Id == 1)
-            .Select(value => new { value.ParentId, value.Name, value.Payload, value.Category })
+        var storedNode = await setup
+            .Set<OrderingNode>()
+            .Where(value => value.Id == 1)
+            .Select(value => new
+            {
+                value.ParentId,
+                value.Name,
+                value.Payload,
+                value.Category,
+            })
             .SingleAsync(CancellationToken.None);
 
-        var storedRows = await setup.Set<OrderingMarker>().OrderBy(value => value.Id)
-            .Select(value => new { value.Id, value.Value }).ToArrayAsync(CancellationToken.None);
+        var storedRows = await setup
+            .Set<OrderingMarker>()
+            .OrderBy(value => value.Id)
+            .Select(value => new
+            {
+                value.Id,
+                value.Value,
+            })
+            .ToArrayAsync(CancellationToken.None);
 
-        var order = await setup.Set<OrderingNode>().OrderBy(value => value.Left)
-            .Select(value => value.Id).ToArrayAsync(CancellationToken.None);
+        var order = await setup
+            .Set<OrderingNode>()
+            .OrderBy(value => value.Left)
+            .Select(value => value.Id)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(parent ? 2 : 10, storedNode.ParentId);
-        Assert.Equal(parent ? "Alpha" : "Zulu", storedNode.Name);
+        Assert.Equal(
+            parent
+                ? 2
+                : 10,
+            storedNode.ParentId);
+
+        Assert.Equal(
+            parent
+                ? "Alpha"
+                : "Zulu",
+            storedNode.Name);
+
         Assert.Equal("original", storedNode.Payload);
         Assert.Equal(OrderingCategory.Beta, storedNode.Category);
         Assert.Equal([1, 2, 4], storedRows.Select(value => value.Id));
@@ -116,11 +201,38 @@ public abstract partial class SaveChangesTests
         Assert.Equal([10, 2, 1], order);
         Assert.Equal("unmarked node payload", node.Payload);
         Assert.Equal("unmarked foreign payload", rows[0].Value);
-        Assert.Equal(acceptChanges ? EntityState.Unchanged : EntityState.Modified, context.Entry(rows[1]).State);
-        Assert.Equal(acceptChanges ? EntityState.Detached : EntityState.Deleted, context.Entry(rows[2]).State);
-        Assert.Equal(acceptChanges ? EntityState.Unchanged : EntityState.Added, context.Entry(addition).State);
-        Assert.Equal(EntityState.Unchanged, context.Entry(rows[0]).State);
-        Assert.False(context.Entry(node).Property(value => value.Payload).IsModified);
+        Assert.Equal(
+            acceptChanges
+                ? EntityState.Unchanged
+                : EntityState.Modified,
+            context.Entry(rows[1])
+                .State);
+
+        Assert.Equal(
+            acceptChanges
+                ? EntityState.Detached
+                : EntityState.Deleted,
+            context.Entry(rows[2])
+                .State);
+
+        Assert.Equal(
+            acceptChanges
+                ? EntityState.Unchanged
+                : EntityState.Added,
+            context.Entry(addition)
+                .State);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(rows[0])
+                .State);
+
+        Assert.False(
+            context
+                .Entry(node)
+                .Property(value => value.Payload)
+                .IsModified);
+
         Assert.Equal(0, detections);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
     }
@@ -133,30 +245,55 @@ public abstract partial class SaveChangesTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task ManualCoordinatedCallbacksSaveOnlyExplicitWrites(bool parent, bool interceptor)
+    public async Task ManualCoordinatedCallbacksSaveOnlyExplicitWrites(
+        bool parent,
+        bool interceptor
+    )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await SeedManualMarkersAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();
         await using var context = CreateManualDetectionContext(setup, wrapped: true, callback);
-        var node = await context.Set<OrderingNode>().SingleAsync(value => value.Id == 1, CancellationToken.None);
-        var rows = await context.Set<OrderingMarker>().OrderBy(value => value.Id).ToArrayAsync(CancellationToken.None);
+        var node = await context
+            .Set<OrderingNode>()
+            .SingleAsync(value => value.Id == 1, CancellationToken.None);
+
+        var rows = await context
+            .Set<OrderingMarker>()
+            .OrderBy(value => value.Id)
+            .ToArrayAsync(CancellationToken.None);
+
         context.ChangeTracker.AutoDetectChangesEnabled = false;
         MarkManualHierarchyChange(context, node, parent, currentValue: true);
-        var addition = new OrderingMarker { Id = 4, Value = "callback addition" };
+        var addition = new OrderingMarker
+        {
+            Id = 4,
+            Value = "callback addition",
+        };
+
         bool? callbackPolicy = null;
         Action<DbContext> stageWrites = current =>
         {
             callbackPolicy = current.ChangeTracker.AutoDetectChangesEnabled;
             rows[0].Value = "raw callback foreign";
             node.Payload = "raw callback node";
-            current.Entry(rows[1]).Property(value => value.Value).CurrentValue = "callback update";
-            current.Entry(node).Property(value => value.Category).CurrentValue = OrderingCategory.Beta;
+            current
+                .Entry(rows[1])
+                .Property(value => value.Value)
+                .CurrentValue = "callback update";
+
+            current
+                .Entry(node)
+                .Property(value => value.Category)
+                .CurrentValue = OrderingCategory.Beta;
+
             current.Remove(rows[2]);
+
             // WHY: This synchronous callback attaches an explicitly added row before the native save builds SQL.
             // ReSharper disable once MethodHasAsyncOverload
             current.Add(addition);
@@ -176,16 +313,41 @@ public abstract partial class SaveChangesTests
 
         // Act
         await context.SaveChangesAsync(CancellationToken.None);
-        var storedNode = await setup.Set<OrderingNode>().Where(value => value.Id == 1)
-            .Select(value => new { value.ParentId, value.Name, value.Payload, value.Category })
+        var storedNode = await setup
+            .Set<OrderingNode>()
+            .Where(value => value.Id == 1)
+            .Select(value => new
+            {
+                value.ParentId,
+                value.Name,
+                value.Payload,
+                value.Category,
+            })
             .SingleAsync(CancellationToken.None);
 
-        var storedRows = await setup.Set<OrderingMarker>().OrderBy(value => value.Id)
-            .Select(value => new { value.Id, value.Value }).ToArrayAsync(CancellationToken.None);
+        var storedRows = await setup
+            .Set<OrderingMarker>()
+            .OrderBy(value => value.Id)
+            .Select(value => new
+            {
+                value.Id,
+                value.Value,
+            })
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(parent ? 2 : 10, storedNode.ParentId);
-        Assert.Equal(parent ? "Alpha" : "Zulu", storedNode.Name);
+        Assert.Equal(
+            parent
+                ? 2
+                : 10,
+            storedNode.ParentId);
+
+        Assert.Equal(
+            parent
+                ? "Alpha"
+                : "Zulu",
+            storedNode.Name);
+
         Assert.Equal("original", storedNode.Payload);
         Assert.Equal(OrderingCategory.Beta, storedNode.Category);
         Assert.Equal([1, 2, 4], storedRows.Select(value => value.Id));
@@ -201,36 +363,66 @@ public abstract partial class SaveChangesTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ManualHierarchyFailureRestoresExplicitPendingWrites(bool parent)
+    public async Task ManualHierarchyFailureRestoresExplicitPendingWrites(
+        bool parent
+    )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await SeedManualMarkersAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var failure = new ManualSaveFailure();
         await using var context = CreateManualDetectionContext(setup, wrapped: true, failure);
-        var node = await context.Set<OrderingNode>().SingleAsync(value => value.Id == 1, CancellationToken.None);
-        var rows = await context.Set<OrderingMarker>().OrderBy(value => value.Id).ToArrayAsync(CancellationToken.None);
+        var node = await context
+            .Set<OrderingNode>()
+            .SingleAsync(value => value.Id == 1, CancellationToken.None);
+
+        var rows = await context
+            .Set<OrderingMarker>()
+            .OrderBy(value => value.Id)
+            .ToArrayAsync(CancellationToken.None);
+
         context.ChangeTracker.AutoDetectChangesEnabled = false;
         rows[0].Value = "unmarked foreign";
         node.Payload = "unmarked same node";
         MarkManualHierarchyChange(context, node, parent, currentValue: true);
-        context.Entry(rows[1]).Property(value => value.Value).CurrentValue = "explicit update";
+        context
+            .Entry(rows[1])
+            .Property(value => value.Value)
+            .CurrentValue = "explicit update";
+
         context.Remove(rows[2]);
-        var addition = new OrderingMarker { Id = 4, Value = "explicit addition" };
+        var addition = new OrderingMarker
+        {
+            Id = 4,
+            Value = "explicit addition",
+        };
+
         await context.AddAsync(addition, CancellationToken.None);
         var detections = 0;
         context.ChangeTracker.DetectedAllChanges += (_, _) => detections++;
 
         // Act
         var error = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
-        var storedNode = await setup.Set<OrderingNode>().Where(value => value.Id == 1)
-            .Select(value => new { value.ParentId, value.Name, value.Payload }).SingleAsync(CancellationToken.None);
+        var storedNode = await setup
+            .Set<OrderingNode>()
+            .Where(value => value.Id == 1)
+            .Select(value => new
+            {
+                value.ParentId,
+                value.Name,
+                value.Payload,
+            })
+            .SingleAsync(CancellationToken.None);
 
-        var storedRows = await setup.Set<OrderingMarker>().OrderBy(value => value.Id)
-            .Select(value => value.Value).ToArrayAsync(CancellationToken.None);
+        var storedRows = await setup
+            .Set<OrderingMarker>()
+            .OrderBy(value => value.Id)
+            .Select(value => value.Value)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         Assert.Same(failure.Error, error);
@@ -238,34 +430,78 @@ public abstract partial class SaveChangesTests
         Assert.Equal("Alpha", storedNode.Name);
         Assert.Equal("original", storedNode.Payload);
         Assert.Equal(["original", "original", "original"], storedRows);
-        Assert.Equal(EntityState.Modified, context.Entry(rows[1]).State);
-        Assert.Equal(EntityState.Deleted, context.Entry(rows[2]).State);
-        Assert.Equal(EntityState.Added, context.Entry(addition).State);
-        Assert.Equal(EntityState.Unchanged, context.Entry(rows[0]).State);
-        Assert.False(context.Entry(node).Property(value => value.Payload).IsModified);
+        Assert.Equal(
+            EntityState.Modified,
+            context.Entry(rows[1])
+                .State);
+
+        Assert.Equal(
+            EntityState.Deleted,
+            context.Entry(rows[2])
+                .State);
+
+        Assert.Equal(
+            EntityState.Added,
+            context.Entry(addition)
+                .State);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(rows[0])
+                .State);
+
+        Assert.False(
+            context
+                .Entry(node)
+                .Property(value => value.Payload)
+                .IsModified);
+
         Assert.Equal(0, detections);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
     }
 
     /// <summary>Seeds foreign payload and explicit update/delete targets before a manual save starts.</summary>
-    private static async Task SeedManualMarkersAsync(DbContext context, CancellationToken cancellationToken)
+    private static async Task SeedManualMarkersAsync(
+        DbContext context,
+        CancellationToken cancellationToken
+    )
     {
         await context.AddRangeAsync(
             [
-                new OrderingMarker { Id = 1, Value = "original" },
-                new OrderingMarker { Id = 2, Value = "original" },
-                new OrderingMarker { Id = 3, Value = "original" },
-            ], cancellationToken);
+                new OrderingMarker
+                {
+                    Id = 1,
+                    Value = "original",
+                },
+                new OrderingMarker
+                {
+                    Id = 2,
+                    Value = "original",
+                },
+                new OrderingMarker
+                {
+                    Id = 3,
+                    Value = "original",
+                },
+            ],
+            cancellationToken);
 
         await context.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>Marks one hierarchy role using either supported public manual-tracking mechanism.</summary>
-    private static void MarkManualHierarchyChange(DbContext context, OrderingNode node, bool parent, bool currentValue)
+    private static void MarkManualHierarchyChange(
+        DbContext context,
+        OrderingNode node,
+        bool parent,
+        bool currentValue
+    )
     {
         if (parent)
         {
-            var property = context.Entry(node).Property(value => value.ParentId);
+            var property = context
+                .Entry(node)
+                .Property(value => value.ParentId);
 
             if (currentValue)
             {
@@ -279,7 +515,9 @@ public abstract partial class SaveChangesTests
         }
         else
         {
-            var property = context.Entry(node).Property(value => value.Name);
+            var property = context
+                .Entry(node)
+                .Property(value => value.Name);
 
             if (currentValue)
             {

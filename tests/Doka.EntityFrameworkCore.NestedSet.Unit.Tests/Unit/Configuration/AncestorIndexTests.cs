@@ -20,7 +20,8 @@ public sealed partial class AncestorIndexTests
     )
     {
         // Arrange
-        using var context = new AncestorContext(engine,
+        using var context = new AncestorContext(
+            engine,
             model =>
             {
                 var entity = Configure(model, scoped);
@@ -28,6 +29,7 @@ public sealed partial class AncestorIndexTests
                 entity
                     .Property(node => node.Left)
                     .HasColumnName("left coordinate");
+
                 entity
                     .Property(node => node.Right)
                     .HasColumnName("right coordinate");
@@ -72,8 +74,14 @@ public sealed partial class AncestorIndexTests
         var index = Assert.Single(entity.GetIndexes(), index => index.Properties.Any(property => property == flag));
         Assert.Equal(expected, index.Properties.Select(property => property.Name));
         Assert.False(index.IsUnique);
-        Assert.Equal(engine == "PostgreSql" ? "\"TreeId\" IS NOT NULL" : null, index.GetFilter());
-        Assert.Equal(3,
+        Assert.Equal(
+            engine == "PostgreSql"
+                ? "\"TreeId\" IS NOT NULL"
+                : null,
+            index.GetFilter());
+
+        Assert.Equal(
+            3,
             entity
                 .GetIndexes()
                 .Count(index => index.Properties.Any(property => property.Name == "TreeId")
@@ -92,7 +100,9 @@ public sealed partial class AncestorIndexTests
 
         // Assert
         Assert.Null(entity.FindProperty("NestedSetIsNonLeaf"));
-        Assert.Null(NestedSetModelDescriptor.FromFinalized(entity).AncestorIndexProperty);
+        Assert.Null(
+            NestedSetModelDescriptor.FromFinalized(entity)
+                .AncestorIndexProperty);
     }
 
     /// <summary>Repeated opt-in and renamed library flags retain one current generated access path.</summary>
@@ -100,7 +110,8 @@ public sealed partial class AncestorIndexTests
     public void RenamingOwnedFlagRemovesObsoletePropertyAndIndex()
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite",
+        using var context = new AncestorContext(
+            "Sqlite",
             model =>
             {
                 var entity = Configure(model);
@@ -142,7 +153,8 @@ public sealed partial class AncestorIndexTests
         // Assert
         Assert.NotNull(entity.Metadata.FindProperty("OldFlag"));
         Assert.Contains(userIndex, entity.Metadata.GetIndexes());
-        Assert.Equal(4,
+        Assert.Equal(
+            4,
             entity
                 .Metadata
                 .GetIndexes()
@@ -154,7 +166,8 @@ public sealed partial class AncestorIndexTests
     public void ExistingRequiredBooleanIsAdoptedWithoutReplacement()
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite",
+        using var context = new AncestorContext(
+            "Sqlite",
             model =>
             {
                 var entity = Configure(model);
@@ -171,8 +184,10 @@ public sealed partial class AncestorIndexTests
 
         // Assert
         Assert.False(flag.IsShadowProperty());
-        Assert.Equal("\"Right\" > CASE WHEN \"Left\" = 9223372036854775807 THEN \"Left\" ELSE \"Left\" + 1 END",
+        Assert.Equal(
+            "\"Right\" > CASE WHEN \"Left\" = 9223372036854775807 THEN \"Left\" ELSE \"Left\" + 1 END",
             flag.GetComputedColumnSql());
+
         Assert.Equal(ValueGenerated.OnAddOrUpdate, flag.ValueGenerated);
     }
 
@@ -198,8 +213,12 @@ public sealed partial class AncestorIndexTests
     )
     {
         // Arrange
-        var flagName = facet == "order" ? nameof(AncestorNode.NonLeaf) : "Flag";
-        using var context = new AncestorContext("Sqlite",
+        var flagName = facet == "order"
+            ? nameof(AncestorNode.NonLeaf)
+            : "Flag";
+
+        using var context = new AncestorContext(
+            "Sqlite",
             model =>
             {
                 var entity = Configure(model);
@@ -230,6 +249,7 @@ public sealed partial class AncestorIndexTests
                                 "\"Right\" > CASE WHEN \"Left\" = 9223372036854775807 THEN \"Left\""
                                 + " ELSE \"Left\" + 1 END",
                                 true);
+
                             break;
                         case "default":
                             property.HasDefaultValue(false);
@@ -254,6 +274,7 @@ public sealed partial class AncestorIndexTests
                                 .HasOne<BooleanPrincipal>()
                                 .WithMany()
                                 .HasForeignKey("Flag");
+
                             break;
                         case "order":
                             entity.HasNestedSet(builder => builder.OrderBy(node => node.NonLeaf));
@@ -306,7 +327,8 @@ public sealed partial class AncestorIndexTests
     public void RemovedFlagIsRejectedAtFinalization()
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite",
+        using var context = new AncestorContext(
+            "Sqlite",
             model =>
             {
                 var entity = Configure(model);
@@ -330,13 +352,15 @@ public sealed partial class AncestorIndexTests
     public void ProviderSelectedBooleanConversionIsRejected()
     {
         // Arrange
-        using var context = new AncestorContext("SqlServer",
+        using var context = new AncestorContext(
+            "SqlServer",
             model =>
             {
                 var entity = Configure(model);
                 entity
                     .Property<bool>("Branch")
                     .HasColumnType("varchar(1)");
+
                 entity.HasNestedSet(builder => builder.HasAncestorIndex("Branch"));
             });
 
@@ -400,7 +424,8 @@ public sealed partial class AncestorIndexTests
         Assert.Equal(annotations, metadata.GetAnnotations());
         Assert.Equal(descending, metadata.IsDescending);
         Assert.Equal(unique, metadata.IsUnique);
-        Assert.Equal("NewFlag",
+        Assert.Equal(
+            "NewFlag",
             entity.Metadata.FindAnnotation(NestedSetAnnotationNames.AncestorIndexProperty)
                 ?.Value);
     }
@@ -416,7 +441,8 @@ public sealed partial class AncestorIndexTests
     )
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite",
+        using var context = new AncestorContext(
+            "Sqlite",
             model =>
                 Configure(model)
                     .Metadata

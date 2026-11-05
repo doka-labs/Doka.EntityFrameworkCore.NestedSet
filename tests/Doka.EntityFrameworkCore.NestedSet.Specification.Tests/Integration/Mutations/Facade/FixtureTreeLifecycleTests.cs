@@ -20,7 +20,8 @@ public abstract class FixtureTreeLifecycleTests : ProviderTest
     public async Task FieldModelResetRemovesTombstonedIdentity()
     {
         // Arrange
-        await using (var previous = await _fixture.CreateFieldContextAsync(Engine,
+        await using (var previous = await _fixture.CreateFieldContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken))
         {
             var hierarchy = previous
@@ -32,7 +33,8 @@ public abstract class FixtureTreeLifecycleTests : ProviderTest
         }
 
         // Act
-        await using var context = await _fixture.CreateFieldContextAsync(Engine,
+        await using var context = await _fixture.CreateFieldContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var replacement = context
@@ -48,6 +50,7 @@ public abstract class FixtureTreeLifecycleTests : ProviderTest
                 .InTree(Guid.Empty)
                 .Nodes
                 .CountAsync(CancellationToken.None));
+
         Assert.True(
             (await replacement
                 .InTree(Guid.Empty)
@@ -60,7 +63,8 @@ public abstract class FixtureTreeLifecycleTests : ProviderTest
     public async Task GeneratedModelResetRemovesTombstonedIdentity()
     {
         // Arrange
-        await using (var previous = await _fixture.CreateGeneratedContextAsync(Engine,
+        await using (var previous = await _fixture.CreateGeneratedContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken))
         {
             var hierarchy = previous
@@ -73,7 +77,8 @@ public abstract class FixtureTreeLifecycleTests : ProviderTest
         }
 
         // Act
-        await using var context = await _fixture.CreateGeneratedContextAsync(Engine,
+        await using var context = await _fixture.CreateGeneratedContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var replacement = context

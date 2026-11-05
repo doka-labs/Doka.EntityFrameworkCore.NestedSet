@@ -23,16 +23,20 @@ public sealed partial class SqliteQueryPlanTests : ProviderTest,
     public async Task RepairBatchQueryPlanUsesScopeAndNodeKeyConstraint()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine,
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var setup = database.CreateContext();
 
         // WHY: Fresh databases have no ANALYZE statistics. Repair must still seek its 64 keys instead of
         // traversing the entire tree for every batch, as it would during a large first-time rebuild.
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(4097),
+        await EnterpriseForestTestSupport.SeedForestAsync(
+            setup,
+            EnterpriseForestTestSupport.CreateForest(4097),
             cancellationToken: TestContext.Current.CancellationToken,
             true);
+
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
         var tree = context
@@ -49,15 +53,27 @@ public sealed partial class SqliteQueryPlanTests : ProviderTest,
             && command.Contains(nameof(TreeNode), StringComparison.Ordinal));
 
         Assert.InRange(commandIndex, 0, probe.Commands.Count - 1);
-        var plan = await ExplainAsync(setup, probe, commandIndex,
+        var plan = await ExplainAsync(
+            setup,
+            probe,
+            commandIndex,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        await QueryPlanTestSupport.WriteEvidenceAsync("Sqlite-typed-repair-plan", plan,
+        await QueryPlanTestSupport.WriteEvidenceAsync(
+            "Sqlite-typed-repair-plan",
+            plan,
             cancellationToken: TestContext.Current.CancellationToken);
-        await QueryPlanTestSupport.WriteEvidenceAsync("Sqlite-typed-repair-update", [probe.Commands[commandIndex]],
+
+        await QueryPlanTestSupport.WriteEvidenceAsync(
+            "Sqlite-typed-repair-update",
+            [probe.Commands[commandIndex]],
             cancellationToken: TestContext.Current.CancellationToken);
-        AssertPointKeyPlan(plan, setup.Model.FindEntityType(typeof(TreeNode))!,
-            nameof(TreeNode.NodeId), nameof(TreeNode.Tree));
+
+        AssertPointKeyPlan(
+            plan,
+            setup.Model.FindEntityType(typeof(TreeNode))!,
+            nameof(TreeNode.NodeId),
+            nameof(TreeNode.Tree));
     }
 
     /// <summary>SQLite resolves the parent by its primary key and descendants through a bounded left index.</summary>
@@ -70,15 +86,19 @@ public sealed partial class SqliteQueryPlanTests : ProviderTest,
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        await WriteAmplificationTestSupport.SeedAsync(database,
+        await WriteAmplificationTestSupport.SeedAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext(probe);
         var service = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        var query = parentQuery ? service.ParentOf(3) : service.DescendantsOf(1);
+        var query = parentQuery
+            ? service.ParentOf(3)
+            : service.DescendantsOf(1);
 
         // Act
         await query.ToArrayAsync(CancellationToken.None);
@@ -93,8 +113,12 @@ public sealed partial class SqliteQueryPlanTests : ProviderTest,
         for (var index = 0; index < probe.ParameterNames[0].Length; index++)
         {
             var parameter = command.CreateParameter();
-            parameter.ParameterName = probe.ParameterNames[0][index];
-            parameter.Value = probe.ParameterValues[0][index];
+            parameter.ParameterName = probe
+                .ParameterNames[0][index];
+
+            parameter.Value = probe
+                .ParameterValues[0][index];
+
             command.Parameters.Add(parameter);
         }
 

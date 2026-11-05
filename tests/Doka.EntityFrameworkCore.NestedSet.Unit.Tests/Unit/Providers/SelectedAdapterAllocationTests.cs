@@ -60,8 +60,11 @@ public sealed class SelectedAdapterAllocationTests
         // Assert
         Assert.Equal(0, allocated);
         Assert.Same(NestedSetTestAdapters.ForEngine(engine), expected);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
+
         Assert.Null(context.Database.CurrentTransaction);
     }
 

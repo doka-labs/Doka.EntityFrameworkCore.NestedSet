@@ -46,9 +46,11 @@ internal sealed class AncestorIndexReadbackContext : NestedSetDbContext
         node
             .Property(row => row.Id)
             .ValueGeneratedNever();
+
         node
             .Property(row => row.Stamp)
             .HasComputedColumnSql("`Input` * 17 + 3", stored: true);
+
         node.HasNestedSet(builder => builder
             .HasNodeKey(row => row.Id)
             .HasScope(row => row.Scope)

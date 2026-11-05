@@ -22,7 +22,8 @@ public sealed partial class DokaStraightJoinTests
             .Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping)
             .AsQueryable();
 
-        var method = NestedSetTestAdapters.ForEngine("MySql").OrderedJoinMethod!;
+        var method = NestedSetTestAdapters.ForEngine("MySql")
+            .OrderedJoinMethod!;
 
         var query = PublicJoinExpression(nodes, nodes, method);
         Expression<Func<StraightEndpointRow, CompositionGuardNode>> endpoint = selectInner
@@ -32,7 +33,8 @@ public sealed partial class DokaStraightJoinTests
         var mapping = context.Model.FindEntityType(CompositionGuardContext.FirstMapping)!;
 
         // Act
-        var resolution = NestedSetQueryEndpoint.Require(query,
+        var resolution = NestedSetQueryEndpoint.Require(
+            query,
             endpoint,
             mapping,
             nodes.Expression,
@@ -63,10 +65,17 @@ public sealed partial class DokaStraightJoinTests
             .Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping)
             .AsQueryable();
 
-        var method = NestedSetTestAdapters.ForEngine("MySql").OrderedJoinMethod!;
+        var method = NestedSetTestAdapters.ForEngine("MySql")
+            .OrderedJoinMethod!;
 
-        var outer = modifiedInner ? nodes : nodes.IgnoreQueryFilters();
-        var inner = modifiedInner ? nodes.IgnoreQueryFilters() : nodes;
+        var outer = modifiedInner
+            ? nodes
+            : nodes.IgnoreQueryFilters();
+
+        var inner = modifiedInner
+            ? nodes.IgnoreQueryFilters()
+            : nodes;
+
         var query = PublicJoinExpression(outer, inner, method);
         Expression<Func<StraightEndpointRow, CompositionGuardNode>> endpoint = selectInner
             ? row => row.Related
@@ -75,7 +84,8 @@ public sealed partial class DokaStraightJoinTests
         var mapping = context.Model.FindEntityType(CompositionGuardContext.FirstMapping)!;
 
         // Act
-        var resolution = NestedSetQueryEndpoint.Require(query,
+        var resolution = NestedSetQueryEndpoint.Require(
+            query,
             endpoint,
             mapping,
             nodes.Expression,
@@ -103,7 +113,8 @@ public sealed partial class DokaStraightJoinTests
             .Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping)
             .AsQueryable();
 
-        var method = NestedSetTestAdapters.ForEngine("MySql").OrderedJoinMethod!;
+        var method = NestedSetTestAdapters.ForEngine("MySql")
+            .OrderedJoinMethod!;
 
         var holder = new OpaqueQueryCarrier { Query = nodes.IgnoreQueryFilters() };
         s_opaqueQuery = nodes.IgnoreQueryFilters();
@@ -119,7 +130,8 @@ public sealed partial class DokaStraightJoinTests
         var mapping = context.Model.FindEntityType(CompositionGuardContext.FirstMapping)!;
 
         // Act
-        var resolution = NestedSetQueryEndpoint.Require(query,
+        var resolution = NestedSetQueryEndpoint.Require(
+            query,
             row => row.Source,
             mapping,
             nodes.Expression,
@@ -151,17 +163,20 @@ public sealed partial class DokaStraightJoinTests
 
         var declared = provideTrustedMethod
             ? ForeignOrderedJoinIdentity()
-            : NestedSetTestAdapters.ForEngine("MySql").OrderedJoinMethod!;
+            : NestedSetTestAdapters.ForEngine("MySql")
+                .OrderedJoinMethod!;
 
         var trusted = provideTrustedMethod
-            ? NestedSetTestAdapters.ForEngine("MySql").OrderedJoinMethod
+            ? NestedSetTestAdapters.ForEngine("MySql")
+                .OrderedJoinMethod
             : null;
 
         var query = PublicJoinExpression(nodes, nodes, declared);
         var mapping = context.Model.FindEntityType(CompositionGuardContext.FirstMapping)!;
 
         // Act
-        var error = Record.Exception(() => NestedSetQueryEndpoint.Require(query,
+        var error = Record.Exception(() => NestedSetQueryEndpoint.Require(
+            query,
             row => row.Source,
             mapping,
             nodes.Expression,
@@ -183,13 +198,15 @@ public sealed partial class DokaStraightJoinTests
             .AsQueryable();
 
         var other = context.Set<CompositionGuardNode>(CompositionGuardContext.SecondMapping);
-        var method = NestedSetTestAdapters.ForEngine("MySql").OrderedJoinMethod!;
+        var method = NestedSetTestAdapters.ForEngine("MySql")
+            .OrderedJoinMethod!;
 
         var query = PublicJoinExpression(nodes, other, method);
         var mapping = context.Model.FindEntityType(CompositionGuardContext.FirstMapping)!;
 
         // Act
-        var error = Record.Exception(() => NestedSetQueryEndpoint.Require(query,
+        var error = Record.Exception(() => NestedSetQueryEndpoint.Require(
+            query,
             row => row.Related,
             mapping,
             nodes.Expression,
@@ -211,13 +228,15 @@ public sealed partial class DokaStraightJoinTests
     {
         Expression<Func<CompositionGuardNode, int>> key = node => node.Id;
         Expression<Func<CompositionGuardNode, CompositionGuardNode, StraightEndpointRow>> projection =
-        (left, right) => new StraightEndpointRow
-        {
-            Source = left,
-            Related = right,
-        };
+            (left, right) => new StraightEndpointRow
+            {
+                Source = left,
+                Related = right,
+            };
 
-        var call = Expression.Call(method.MakeGenericMethod(typeof(CompositionGuardNode),
+        var call = Expression.Call(
+            method.MakeGenericMethod(
+                typeof(CompositionGuardNode),
                 typeof(CompositionGuardNode),
                 typeof(int),
                 typeof(StraightEndpointRow)),

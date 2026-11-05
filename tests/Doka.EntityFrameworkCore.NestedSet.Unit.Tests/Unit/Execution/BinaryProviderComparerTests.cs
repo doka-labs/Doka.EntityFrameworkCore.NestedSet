@@ -90,6 +90,7 @@ public sealed class BinaryProviderComparerTests
         Assert.Equal(
             StructuralComparisons.StructuralEqualityComparer.GetHashCode(firstBytes),
             operations.Hash(first));
+
         Assert.Equal(
             StructuralComparisons.StructuralEqualityComparer.GetHashCode(secondBytes),
             operations.Hash(second));
@@ -241,12 +242,14 @@ public sealed class BinaryProviderComparerTests
         // Arrange
         using var context = new BinaryContext();
         var operations = Operations(context, shape);
-        var first = operations.Model(Enumerable
+        var first = operations.Model(
+            Enumerable
                 .Repeat((byte)7, 32)
                 .ToArray(),
             10)!;
 
-        var second = operations.Model(Enumerable
+        var second = operations.Model(
+            Enumerable
                 .Repeat((byte)7, 32)
                 .ToArray(),
             20)!;
@@ -285,8 +288,10 @@ public sealed class BinaryProviderComparerTests
 
         // WHY: A fixed allowance tolerates runtime setup but excludes even one boxed byte per operation.
         Assert.InRange(allocated, 0, 4096);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Builds delegates once so measurements include the real comparer but no new model wrappers.</summary>
@@ -297,9 +302,15 @@ public sealed class BinaryProviderComparerTests
     {
         var metadata = context.Model.FindEntityType(typeof(BinaryNode))!;
         var converted = shape is "converted" or "converted-erased";
-        var property = metadata.FindProperty(converted ? nameof(BinaryNode.Converted) : nameof(BinaryNode.Native))!;
+        var property = metadata.FindProperty(
+            converted
+                ? nameof(BinaryNode.Converted)
+                : nameof(BinaryNode.Native))!;
+
         Func<byte[]?, int, object?> model = converted
-            ? static (bytes, tag) => bytes is null ? null : new BinaryIdentity(bytes, tag)
+            ? static (bytes, tag) => bytes is null
+                ? null
+                : new BinaryIdentity(bytes, tag)
             : static (bytes, _) => bytes;
 
         if (shape is "erased" or "converted-erased")
@@ -341,10 +352,11 @@ public sealed class BinaryProviderComparerTests
     private sealed class BinaryContext : DbContext
     {
         /// <summary>Creates a model-only comparer context.</summary>
-        internal BinaryContext() : base(new DbContextOptionsBuilder<BinaryContext>()
-            .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:")
-            .Options) { }
+        internal BinaryContext() : base(
+            new DbContextOptionsBuilder<BinaryContext>()
+                .ConfigureTestWarnings()
+                .UseSqlite("Data Source=:memory:")
+                .Options) { }
 
         /// <inheritdoc />
         protected override void OnModelCreating(

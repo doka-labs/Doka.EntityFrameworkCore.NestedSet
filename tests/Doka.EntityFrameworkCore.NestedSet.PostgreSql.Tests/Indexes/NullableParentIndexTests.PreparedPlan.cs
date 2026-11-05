@@ -73,7 +73,8 @@ public sealed partial class NullableParentIndexTests
                 $"generic_plans={generic}\ncustom_plans={custom}\nfrom_sql={fromSql}",
                 $"mode_before={before.Mode}\nmode_after={after.Mode}\nowned_statement_count={after.Count}",
                 "plan\n" + plan,
-            ], cancellationToken: cancellationToken);
+            ],
+            cancellationToken: cancellationToken);
 
         return new GenericPlanResult(plan, generic, custom, fromSql, before.Mode, after);
     }

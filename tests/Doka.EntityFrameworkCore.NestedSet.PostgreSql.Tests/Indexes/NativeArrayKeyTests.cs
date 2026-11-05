@@ -1,3 +1,5 @@
+using Doka.EntityFrameworkCore.NestedSet.Mapping;
+using Doka.EntityFrameworkCore.NestedSet.Storage;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -35,7 +37,7 @@ public sealed class NativeArrayKeyTests : ProviderTest,
             .Options;
 
         await using var context = new NativeArrayContext(options);
-        _ = Mapping.NestedSetMapping<NativeArrayNode, int[], int>.For(
+        _ = NestedSetMapping<NativeArrayNode, int[], int>.For(
             context,
             context.Model.FindEntityType(typeof(NativeArrayNode))!);
 
@@ -72,7 +74,7 @@ public sealed class NativeArrayKeyTests : ProviderTest,
         // Act
         var found = await context
             .Set<NativeArrayNode>()
-            .Where(Storage.NestedSetKeyFilter<NativeArrayNode>.Matches(keyProperty, keys))
+            .Where(NestedSetKeyFilter<NativeArrayNode>.Matches(keyProperty, keys))
             .Select(node => node.Id)
             .ToArrayAsync(CancellationToken.None);
 
@@ -101,6 +103,7 @@ public sealed class NativeArrayKeyTests : ProviderTest,
             node
                 .Property(entity => entity.Id)
                 .ValueGeneratedNever();
+
             node.HasNestedSet(builder => builder
                 .HasTreeId(entity => entity.TreeId)
                 .HasScope(entity => entity.Scope)
@@ -111,6 +114,9 @@ public sealed class NativeArrayKeyTests : ProviderTest,
     /// <summary>Uses PostgreSQL's native integer-array equality for both primary and parent keys.</summary>
     private sealed class NativeArrayNode : IScopedNestedSetNode<int[], Guid, int>
     {
+        /// <summary>Gets or sets an optional native array parent key.</summary>
+        public int[]? ParentId { get; set; }
+
         /// <summary>Gets or sets the stable tree identity.</summary>
         public Guid TreeId { get; set; }
 
@@ -119,9 +125,6 @@ public sealed class NativeArrayKeyTests : ProviderTest,
 
         /// <summary>Gets or sets the scope.</summary>
         public int Scope { get; set; }
-
-        /// <summary>Gets or sets an optional native array parent key.</summary>
-        public int[]? ParentId { get; set; }
 
         /// <inheritdoc />
         public long Left { get; set; }

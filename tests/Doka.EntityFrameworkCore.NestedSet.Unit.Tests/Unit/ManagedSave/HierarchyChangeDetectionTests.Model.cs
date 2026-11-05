@@ -26,17 +26,29 @@ public sealed partial class HierarchyChangeDetectionTests
     {
         switch (propertyName)
         {
-            case nameof(ProbeNode.Id): node.Id++; break;
-            case nameof(ProbeNode.Scope): node.Scope++; break;
-            case nameof(ProbeNode.TreeId): node.TreeId = Guid.NewGuid(); break;
+            case nameof(ProbeNode.Id):       node.Id++; break;
+            case nameof(ProbeNode.Scope):    node.Scope++; break;
+            case nameof(ProbeNode.TreeId):   node.TreeId = Guid.NewGuid(); break;
             case nameof(ProbeNode.ParentId): node.ParentId = 42; break;
-            case nameof(ProbeNode.Left): node.Left++; break;
-            case nameof(ProbeNode.Right): node.Right++; break;
-            case nameof(ProbeNode.Depth): node.Depth++; break;
+            case nameof(ProbeNode.Left):     node.Left++; break;
+            case nameof(ProbeNode.Right):    node.Right++; break;
+            case nameof(ProbeNode.Depth):    node.Depth++; break;
             case nameof(ProbeNode.Position): node.Position++; break;
-            case nameof(ProbeNode.Name): node.Name = "Bravo"; break;
-            default: throw new ArgumentOutOfRangeException(nameof(propertyName));
+            case nameof(ProbeNode.Name):     node.Name = "Bravo"; break;
+            default:                         throw new ArgumentOutOfRangeException(nameof(propertyName));
         }
+    }
+
+    /// <summary>Fails immediately if a typed equality optimization bypasses EF's null guards.</summary>
+    private static bool CompareNonNullText(
+        string? left,
+        string? right
+    )
+    {
+        ArgumentNullException.ThrowIfNull(left);
+        ArgumentNullException.ThrowIfNull(right);
+
+        return string.Equals(left, right, StringComparison.Ordinal);
     }
 
     /// <summary>Provides ordinary snapshot tracking with caller-controlled change detection.</summary>
@@ -100,13 +112,15 @@ public sealed partial class HierarchyChangeDetectionTests
             node
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             node
                 .Property(value => value.Name)
                 .Metadata
-                .SetValueComparer(new ValueComparer<string>(
-                    (left, right) => string.Equals(left, right, StringComparison.OrdinalIgnoreCase),
-                    value => StringComparer.OrdinalIgnoreCase.GetHashCode(value),
-                    value => value));
+                .SetValueComparer(
+                    new ValueComparer<string>(
+                        (left, right) => string.Equals(left, right, StringComparison.OrdinalIgnoreCase),
+                        value => StringComparer.OrdinalIgnoreCase.GetHashCode(value),
+                        value => value));
 
             node.HasNestedSet(builder => builder
                 .HasScope(value => value.Scope)
@@ -145,27 +159,19 @@ public sealed partial class HierarchyChangeDetectionTests
             owner
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             owner.Property<int>("ShadowOrder");
             owner
                 .Property(value => value.StrictText)
                 .Metadata
-                .SetValueComparer(new ValueComparer<string?>(
-                    (left, right) => CompareNonNullText(left, right),
-                    value => value == null ? 0 : StringComparer.Ordinal.GetHashCode(value),
-                    value => value));
+                .SetValueComparer(
+                    new ValueComparer<string?>(
+                        (left, right) => CompareNonNullText(left, right),
+                        value => value == null
+                            ? 0
+                            : StringComparer.Ordinal.GetHashCode(value),
+                        value => value));
         }
-    }
-
-    /// <summary>Fails immediately if a typed equality optimization bypasses EF's null guards.</summary>
-    private static bool CompareNonNullText(
-        string? left,
-        string? right
-    )
-    {
-        ArgumentNullException.ThrowIfNull(left);
-        ArgumentNullException.ThrowIfNull(right);
-
-        return string.Equals(left, right, StringComparison.Ordinal);
     }
 
     /// <summary>Models an unrelated tracked principal whose payload must remain outside hierarchy detection.</summary>
@@ -188,45 +194,24 @@ public sealed partial class HierarchyChangeDetectionTests
     internal sealed class ProbeNode
         : IScopedNestedSetNode<int, Guid, int>, INotifyPropertyChanging, INotifyPropertyChanged
     {
-        private int _id;
-        private int _scope;
-        private Guid _treeId;
-        private int? _parentId;
-        private long _left;
-        private long _right;
-        private int _depth;
-        private long _position;
-        private string _name = string.Empty;
-        private string _payload = string.Empty;
-        private int? _ownerId;
-        private ProbeOwner? _owner;
-        private ProbeOwner? _scopeOwner;
-        private ProbeNode? _parent;
         private ObservableCollection<ProbeNode>? _children = [];
-
-        /// <inheritdoc />
-        public int Id { get => _id; set => Set(ref _id, value, nameof(Id)); }
-
-        /// <inheritdoc />
-        public int Scope { get => _scope; set => Set(ref _scope, value, nameof(Scope)); }
-
-        /// <inheritdoc />
-        public Guid TreeId { get => _treeId; set => Set(ref _treeId, value, nameof(TreeId)); }
+        private int _depth;
+        private int _id;
+        private long _left;
+        private string _name = string.Empty;
+        private ProbeOwner? _owner;
+        private int? _ownerId;
+        private ProbeNode? _parent;
+        private int? _parentId;
+        private string _payload = string.Empty;
+        private long _position;
+        private long _right;
+        private int _scope;
+        private ProbeOwner? _scopeOwner;
+        private Guid _treeId;
 
         /// <summary>Gets or sets the optional direct parent's node key.</summary>
         public int? ParentId { get => _parentId; set => Set(ref _parentId, value, nameof(ParentId)); }
-
-        /// <inheritdoc />
-        public long Left { get => _left; set => Set(ref _left, value, nameof(Left)); }
-
-        /// <inheritdoc />
-        public long Right { get => _right; set => Set(ref _right, value, nameof(Right)); }
-
-        /// <inheritdoc />
-        public int Depth { get => _depth; set => Set(ref _depth, value, nameof(Depth)); }
-
-        /// <inheritdoc />
-        public long Position { get => _position; set => Set(ref _position, value, nameof(Position)); }
 
         /// <summary>Gets or sets the configured domain ordering criterion.</summary>
         public string Name { get => _name; set => Set(ref _name, value, nameof(Name)); }
@@ -254,10 +239,31 @@ public sealed partial class HierarchyChangeDetectionTests
         }
 
         /// <inheritdoc />
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        /// <inheritdoc />
         public event PropertyChangingEventHandler? PropertyChanging;
 
         /// <inheritdoc />
-        public event PropertyChangedEventHandler? PropertyChanged;
+        public int Id { get => _id; set => Set(ref _id, value, nameof(Id)); }
+
+        /// <inheritdoc />
+        public int Scope { get => _scope; set => Set(ref _scope, value, nameof(Scope)); }
+
+        /// <inheritdoc />
+        public Guid TreeId { get => _treeId; set => Set(ref _treeId, value, nameof(TreeId)); }
+
+        /// <inheritdoc />
+        public long Left { get => _left; set => Set(ref _left, value, nameof(Left)); }
+
+        /// <inheritdoc />
+        public long Right { get => _right; set => Set(ref _right, value, nameof(Right)); }
+
+        /// <inheritdoc />
+        public int Depth { get => _depth; set => Set(ref _depth, value, nameof(Depth)); }
+
+        /// <inheritdoc />
+        public long Position { get => _position; set => Set(ref _position, value, nameof(Position)); }
 
         /// <summary>Raises both EF notification stages around an actual CLR value transition.</summary>
         private void Set<TValue>(
@@ -302,6 +308,7 @@ public sealed partial class HierarchyChangeDetectionTests
             root
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             root
                 .HasOne(value => value.ScopeOwner)
                 .WithMany(value => value.Nodes)
@@ -312,6 +319,7 @@ public sealed partial class HierarchyChangeDetectionTests
                 .Entity<InheritedScopeOwner>()
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             var node = modelBuilder.Entity<InheritedScopeNode>();
             node.ToTable("InheritedScopeNodes");
             node.HasNestedSet(builder => builder

@@ -19,7 +19,8 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var extensions = setup
@@ -49,11 +50,20 @@ public abstract partial class SaveChangesTests
 
         // Assert
         Assert.Equal(1, saved);
-        Assert.Equal(automaticDetection ? 1 : 0, detections);
+        Assert.Equal(
+            automaticDetection
+                ? 1
+                : 0,
+            detections);
+
         Assert.Equal(automaticDetection, context.ChangeTracker.AutoDetectChangesEnabled);
         Assert.Equal(
-            acceptChanges ? EntityState.Unchanged : EntityState.Added,
-            context.Entry(marker).State);
+            acceptChanges
+                ? EntityState.Unchanged
+                : EntityState.Added,
+            context.Entry(marker)
+                .State);
+
         Assert.Equal(
             "callback payload",
             await setup
@@ -67,7 +77,8 @@ public abstract partial class SaveChangesTests
     public async Task UnorderedManualDetectionDoesNotPersistUndetectedCallbackChanges()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await setup.AddAsync(
@@ -98,7 +109,11 @@ public abstract partial class SaveChangesTests
         // Assert
         Assert.Equal(0, saved);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(EntityState.Unchanged, context.Entry(marker).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(marker)
+                .State);
+
         Assert.Equal("undetected callback", marker.Value);
         Assert.Equal(
             "original",
@@ -113,7 +128,8 @@ public abstract partial class SaveChangesTests
     public async Task UnorderedFailureRetainsNativeCallbackState()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var extensions = setup
@@ -145,7 +161,11 @@ public abstract partial class SaveChangesTests
         Assert.Contains(nameof(SaveBoundaryTransientException), failure.ToString(), StringComparison.Ordinal);
         Assert.Equal(1, probe.PayloadCommands);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(EntityState.Added, context.Entry(marker).State);
+        Assert.Equal(
+            EntityState.Added,
+            context.Entry(marker)
+                .State);
+
         Assert.Equal("pending callback", marker.Value);
         Assert.Equal(
             0,
@@ -170,6 +190,7 @@ public abstract partial class SaveChangesTests
             modelBuilder
                 .Entity<OrderingMarker>()
                 .ToTable("StrictOrderingMarkers");
+
             modelBuilder
                 .Entity<OrderingMarker>()
                 .Property(value => value.Id)

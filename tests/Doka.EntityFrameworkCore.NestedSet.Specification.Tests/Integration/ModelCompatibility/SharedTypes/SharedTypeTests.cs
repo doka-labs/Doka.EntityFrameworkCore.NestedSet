@@ -7,7 +7,12 @@ public abstract class SharedTypeTests : ProviderTest
     private readonly ModelCompatibilityDatabase _fixture;
 
     /// <summary>Shares one provider database with the other mapping-compatibility tests.</summary>
-    protected SharedTypeTests(IProviderFixture<ModelCompatibilityDatabase> fixture) : base(fixture) => _fixture = fixture.Value;
+    protected SharedTypeTests(
+        IProviderFixture<ModelCompatibilityDatabase> fixture
+    ) : base(fixture)
+    {
+        _fixture = fixture.Value;
+    }
 
     /// <summary>Uses the explicit entity-type name for every insert, structural write, and query.</summary>
     [Fact]
@@ -15,7 +20,8 @@ public abstract class SharedTypeTests : ProviderTest
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<SharedTypeContext>(
-            Engine, static options => new SharedTypeContext(options),
+            Engine,
+            static options => new SharedTypeContext(options),
             cancellationToken: TestContext.Current.CancellationToken);
 
         var treeId = Guid.NewGuid();

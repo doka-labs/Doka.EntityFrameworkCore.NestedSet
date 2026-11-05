@@ -34,21 +34,22 @@ internal static partial class SupervisorQueries
 
         var frontier = new List<ChainPath>();
         var completed = new List<SupervisorChainBranch>();
+
         // ReSharper disable once LoopCanBeConvertedToQuery
         foreach (var origin in initial.Origins)
         {
             if (!AdvanceBranch(
-                    origin,
-                    null,
-                    request.SourceUserId,
-                    request.SourceUserId,
-                    origin.StartGroupId!.Value,
-                    Guid.Empty,
-                    1,
-                    request.Steps[0].Selection,
-                    state,
-                    frontier,
-                    completed))
+                origin,
+                null,
+                request.SourceUserId,
+                request.SourceUserId,
+                origin.StartGroupId!.Value,
+                Guid.Empty,
+                1,
+                request.Steps[0].Selection,
+                state,
+                frontier,
+                completed))
             {
                 return LimitResult(completed, null);
             }
@@ -75,9 +76,18 @@ internal static partial class SupervisorQueries
             for (var index = 0; index < frontier.Count; index++)
             {
                 var path = frontier[index];
-                var routingUser = keepRoutingUser ? request.SourceUserId : (int?)null;
-                var routingGroup = keepRoutingGroup ? path.InitialGroupId : (int?)null;
-                var cursor = originalPath ? path.Hop.Evidence.FoundGroupId : (int?)null;
+                var routingUser = keepRoutingUser
+                    ? request.SourceUserId
+                    : (int?)null;
+
+                var routingGroup = keepRoutingGroup
+                    ? path.InitialGroupId
+                    : (int?)null;
+
+                var cursor = originalPath
+                    ? path.Hop.Evidence.FoundGroupId
+                    : (int?)null;
+
                 var key = new ChainSearchKey(path.Hop.Evidence.CandidateUserId, cursor, routingUser, routingGroup);
 
                 if (!indexes.TryGetValue(key, out var ordinal))
@@ -85,6 +95,7 @@ internal static partial class SupervisorQueries
                     ordinal = searches.Count;
                     searches.Add(
                         (ToRequest(key.User, key.Group, step, key.RoutingUser, key.RoutingGroup), step.Selection));
+
                     indexes.Add(key, ordinal);
                 }
 
@@ -119,17 +130,17 @@ internal static partial class SupervisorQueries
                 foreach (var origin in batch.Origins)
                 {
                     if (!AdvanceBranch(
-                            origin,
-                            path,
-                            request.SourceUserId,
-                            path.Hop.Evidence.CandidateUserId,
-                            path.InitialGroupId,
-                            path.InitialTreeId,
-                            stepIndex + 1,
-                            step.Selection,
-                            state,
-                            next,
-                            completed))
+                        origin,
+                        path,
+                        request.SourceUserId,
+                        path.Hop.Evidence.CandidateUserId,
+                        path.InitialGroupId,
+                        path.InitialTreeId,
+                        stepIndex + 1,
+                        step.Selection,
+                        state,
+                        next,
+                        completed))
                     {
                         return LimitResult(completed, path);
                     }
@@ -148,7 +159,7 @@ internal static partial class SupervisorQueries
             }
         }
 
-        return new(SupervisorBatchStatus.Completed, completed, true);
+        return new SupervisorChainResult(SupervisorBatchStatus.Completed, completed, true);
     }
 
     /// <summary>Builds one exact current-subject search, optionally retaining the initial routing owner.</summary>

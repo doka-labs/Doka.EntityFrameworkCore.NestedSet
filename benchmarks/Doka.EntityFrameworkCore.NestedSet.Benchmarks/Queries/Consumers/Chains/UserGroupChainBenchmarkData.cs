@@ -76,7 +76,9 @@ internal static class UserGroupChainBenchmarkData
             .Select(index => new UserGroup
             {
                 Name = FormattableString.Invariant($"Measured group {index:D9}"),
-                TypeId = index < 9 ? 1 : 2,
+                TypeId = index < 9
+                    ? 1
+                    : 2,
             })
             .ToArray();
 
@@ -92,7 +94,7 @@ internal static class UserGroupChainBenchmarkData
                     {
                         BenchmarkShape.Wide => 9,
                         BenchmarkShape.Deep => index - 1,
-                        BenchmarkShape.Balanced => 9 + ((index - 10) / 2),
+                        BenchmarkShape.Balanced => 9 + (index - 10) / 2,
                         _ => throw new ArgumentOutOfRangeException(nameof(shape)),
                     };
 
@@ -117,7 +119,7 @@ internal static class UserGroupChainBenchmarkData
         await hierarchy.InsertRootAsync(groups[0], Guid.NewGuid(), cancellationToken);
         await hierarchy.InsertSubtreeAsync(branches[1], groups[0].Id, cancellationToken);
         await hierarchy.InsertSubtreeAsync(branches[9], groups[0].Id, cancellationToken);
-        var users = new User[1 + (8 * fanout)];
+        var users = new User[1 + 8 * fanout];
 
         // WHY: Store inserted users in the stable slots used by the membership and routing fixture.
         // ReSharper disable once ForCanBeConvertedToForeach
@@ -138,7 +140,8 @@ internal static class UserGroupChainBenchmarkData
             groups[8],
             role,
             false,
-            "route-a", cancellationToken);
+            "route-a",
+            cancellationToken);
 
         // WHY: Use the same user ordinal when assigning routing-switch fixture metadata.
         // ReSharper disable once ForCanBeConvertedToForeach
@@ -151,7 +154,9 @@ internal static class UserGroupChainBenchmarkData
                     TenantId = tenant,
                     UserId = users[index].Id,
                     FieldCode = "Route",
-                    Value = profile == BenchmarkChainProfile.RoutingSwitch && index > 0 ? "route-b" : "route-a",
+                    Value = profile == BenchmarkChainProfile.RoutingSwitch && index > 0
+                        ? "route-b"
+                        : "route-a",
                 },
                 cancellationToken);
         }
@@ -160,9 +165,12 @@ internal static class UserGroupChainBenchmarkData
         {
             for (var person = 0; person < fanout; person++)
             {
-                var user = users[1 + (level * fanout) + person];
+                var user = users[1 + level * fanout + person];
                 var enabled = !(level == 6 && profile is BenchmarkChainProfile.Missing or BenchmarkChainProfile.Cycle);
-                var route = profile == BenchmarkChainProfile.RoutingSwitch && person == 1 ? "route-b" : "route-a";
+                var route = profile == BenchmarkChainProfile.RoutingSwitch && person == 1
+                    ? "route-b"
+                    : "route-a";
+
                 await AddMembershipAsync(
                     context,
                     tenant,
@@ -170,7 +178,8 @@ internal static class UserGroupChainBenchmarkData
                     groups[level],
                     role,
                     enabled,
-                    route, cancellationToken);
+                    route,
+                    cancellationToken);
             }
         }
 
@@ -183,7 +192,8 @@ internal static class UserGroupChainBenchmarkData
                 groups[6],
                 role,
                 true,
-                "route-a", cancellationToken);
+                "route-a",
+                cancellationToken);
         }
 
         if (profile == BenchmarkChainProfile.ReExpansion)
@@ -191,11 +201,12 @@ internal static class UserGroupChainBenchmarkData
             await AddMembershipAsync(
                 context,
                 tenant,
-                users[1 + (7 * fanout)].Id,
+                users[1 + 7 * fanout].Id,
                 groups[9],
                 role,
                 false,
-                "route-a", cancellationToken);
+                "route-a",
+                cancellationToken);
         }
 
         foreach (var group in groups.Skip(1))
@@ -237,7 +248,9 @@ internal static class UserGroupChainBenchmarkData
                 .Repeat(step, hops)
                 .ToArray(),
             RoutingOrigin = RoutingOrigin.InitialSubject,
-            MaxFrontierStates = profile == BenchmarkChainProfile.FrontierLimit ? 1 : 1_024,
+            MaxFrontierStates = profile == BenchmarkChainProfile.FrontierLimit
+                ? 1
+                : 1_024,
             MaxVisitedStates = 100_000,
             MaxResultRows = 1_000_000,
         };

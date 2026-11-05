@@ -20,10 +20,12 @@ public sealed partial class TrackerSnapshotAllocationTests
                 .Entity<SnapshotScalars>()
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             modelBuilder
                 .Entity<SnapshotPayload>()
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             var values = modelBuilder
                 .Entity<SnapshotPayload>()
                 .Property(value => value.Values);

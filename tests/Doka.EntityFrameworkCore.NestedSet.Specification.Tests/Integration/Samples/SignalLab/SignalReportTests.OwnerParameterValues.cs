@@ -27,28 +27,40 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe,
+        await using var context = await CreateContextAsync(
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var data = await SignalReportDataset.CreateAsync(context, 7, false, CancellationToken.None, Guid.NewGuid());
-        context.TagChoices.Add(new TagChoice
-        {
-            TenantId = data.TenantId,
-            TypeId = SignalReportDataset.ModuleKind,
-            FieldCode = "ModuleClass",
-            Value = selected,
-        });
+        context.TagChoices.Add(
+            new TagChoice
+            {
+                TenantId = data.TenantId,
+                TypeId = SignalReportDataset.ModuleKind,
+                FieldCode = "ModuleClass",
+                Value = selected,
+            });
+
         await context.SaveChangesAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
-        await context.TagValues.Where(value => value.TenantId == data.TenantId
-                && value.NodeId == SignalReportDataset.Id(3) && value.FieldCode == "ModuleClass")
+        await context
+            .TagValues
+            .Where(value => value.TenantId == data.TenantId
+                && value.NodeId == SignalReportDataset.Id(3)
+                && value.FieldCode == "ModuleClass")
             .ExecuteUpdateAsync(setters => setters.SetProperty(value => value.Value, stored), CancellationToken.None);
+
         var request = SingleAnchor(data) with
         {
             Criteria =
             [
-                new TagCriterion(SignalReportDataset.ModuleKind, "ModuleClass", selected,
-                    nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any),
+                new TagCriterion(
+                    SignalReportDataset.ModuleKind,
+                    "ModuleClass",
+                    selected,
+                    nearest
+                        ? TagOwnerMode.Nearest
+                        : TagOwnerMode.Any),
             ],
         };
 
@@ -60,9 +72,15 @@ public abstract partial class SignalReportTests
         // Assert
         var cell = Assert.Single(cells);
         Assert.Equal(expected, cell.HasData);
+
         // WHY: The independent fixture contributes 10 + 20 + 40 daily deployments; the final 50 belongs
         // to an expired direct edge. These counts do not come from the report or comparison implementation.
-        Assert.Equal(expected ? 70d : 0d, cell.Value);
+        Assert.Equal(
+            expected
+                ? 70d
+                : 0d,
+            cell.Value);
+
         AssertReportBoundary(context, probe);
     }
 }

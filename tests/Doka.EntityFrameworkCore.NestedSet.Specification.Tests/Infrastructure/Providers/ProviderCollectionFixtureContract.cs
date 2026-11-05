@@ -25,21 +25,22 @@ internal static class ProviderCollectionFixtureContract
         var registered = definition
             .GetInterfaces()
             .Where(type => type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ICollectionFixture<>))
-            .Select(type => type.GetGenericArguments()[0])
+            .Select(type => type
+                .GetGenericArguments()[0])
             .ToHashSet();
 
         var errors = new List<string>();
 
         foreach (var missing in expected
-                     .Except(registered)
-                     .OrderBy(type => type.FullName, StringComparer.Ordinal))
+            .Except(registered)
+            .OrderBy(type => type.FullName, StringComparer.Ordinal))
         {
             errors.Add($"{definition.FullName}: missing collection fixture '{missing}'.");
         }
 
         foreach (var unexpected in registered
-                     .Except(expected)
-                     .OrderBy(type => type.FullName, StringComparer.Ordinal))
+            .Except(expected)
+            .OrderBy(type => type.FullName, StringComparer.Ordinal))
         {
             errors.Add($"{definition.FullName}: unexpected collection fixture '{unexpected}'.");
         }

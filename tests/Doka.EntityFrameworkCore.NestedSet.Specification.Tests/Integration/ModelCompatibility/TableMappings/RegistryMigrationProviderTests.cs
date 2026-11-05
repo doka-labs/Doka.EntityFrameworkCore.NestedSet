@@ -22,7 +22,8 @@ public abstract class RegistryMigrationProviderTests : ProviderTest
     public async Task LegacyRegistryRenamePreservesLifecycleRows()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.Model.FindEntityType(typeof(OrderingNode))!;
@@ -33,16 +34,17 @@ public abstract class RegistryMigrationProviderTests : ProviderTest
         var schema = registry.GetSchema();
         var legacyIdentity = hierarchy.Name + "\0" + schema + "\0" + hierarchy.GetTableName();
         var oldName = "DokaNestedSetTrees_"
-            + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(legacyIdentity)))[..16];
+            + Convert
+                .ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(legacyIdentity)))[..16];
 
         var activeTree = Guid.NewGuid();
         var retiredTree = Guid.NewGuid();
 
         foreach (var (treeId, lifecycle) in new[]
-                 {
-                     (activeTree, NestedSetTreeRegistryMetadata.Active),
-                     (retiredTree, NestedSetTreeRegistryMetadata.Tombstoned),
-                 })
+            {
+                (activeTree, NestedSetTreeRegistryMetadata.Active),
+                (retiredTree, NestedSetTreeRegistryMetadata.Tombstoned),
+            })
         {
             var row = new NestedSetTreeRegistry();
             context

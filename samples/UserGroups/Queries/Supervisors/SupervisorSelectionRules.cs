@@ -35,7 +35,9 @@ internal static class SupervisorSelectionRules
         if (selection.Kind == SupervisorSelectionKind.All)
         {
             return new SupervisorResolution(
-                candidates.Count == 0 ? SupervisorResolutionStatus.NotFound : SupervisorResolutionStatus.Found,
+                candidates.Count == 0
+                    ? SupervisorResolutionStatus.NotFound
+                    : SupervisorResolutionStatus.Found,
                 origin,
                 candidates,
                 null);
@@ -44,8 +46,10 @@ internal static class SupervisorSelectionRules
         var (winner, ambiguous) = FindWinner(candidates, selection);
         if (winner is null)
         {
-            return new(
-                ambiguous ? SupervisorResolutionStatus.Ambiguous : SupervisorResolutionStatus.NotFound,
+            return new SupervisorResolution(
+                ambiguous
+                    ? SupervisorResolutionStatus.Ambiguous
+                    : SupervisorResolutionStatus.NotFound,
                 origin,
                 [],
                 null);
@@ -91,6 +95,7 @@ internal static class SupervisorSelectionRules
             // snapshot, while the owned reader boundary can retain an already complete winner bag directly.
             var retained = new SupervisorCandidate[evidenceCount];
             var retainedIndex = 0;
+
             // WHY: Fill the exact evidence array in original occurrence order without another filtered collection.
             // ReSharper disable once ForCanBeConvertedToForeach
             // ReSharper disable once LoopCanBeConvertedToQuery
@@ -119,11 +124,14 @@ internal static class SupervisorSelectionRules
         {
             var band = PersonRankBand(candidates, selection.Number!.Value);
 
-            return (band.Length == 1 ? band[0] : null, band.Length > 1);
+            return (band.Length == 1
+                ? band[0]
+                : null, band.Length > 1);
         }
 
         SupervisorCandidate? winner = null;
         var ambiguous = false;
+
         // WHY: Keep winner and tie state in one pass and reject ordinary ambiguity immediately.
         // ReSharper disable once ForCanBeConvertedToForeach
         // ReSharper disable once LoopCanBeConvertedToQuery
@@ -155,7 +163,9 @@ internal static class SupervisorSelectionRules
             }
         }
 
-        return (ambiguous ? null : winner, ambiguous);
+        return (ambiguous
+            ? null
+            : winner, ambiguous);
     }
 
     /// <summary>Applies explicit global person uniqueness or application-provided origin priority.</summary>
@@ -205,7 +215,7 @@ internal static class SupervisorSelectionRules
                 }
             }
 
-            return new(SupervisorResolutionStatus.NoVisibleMemberships, null, [], null);
+            return new SupervisorResolution(SupervisorResolutionStatus.NoVisibleMemberships, null, [], null);
         }
 
         if (batch.Origins.Any(origin => origin.Status == SupervisorResolutionStatus.Ambiguous))
@@ -217,6 +227,7 @@ internal static class SupervisorSelectionRules
             .Origins
             .SelectMany(origin => origin.Evidence)
             .ToArray();
+
         var reduced = Select(0, evidence, SupervisorSelection.RequireUnique);
 
         // WHY: Global person uniqueness does not imply one original path; retain every supporting origin.
@@ -310,7 +321,9 @@ internal static class SupervisorSelectionRules
     {
         var distance = left.Distance.CompareTo(right.Distance);
 
-        return distance != 0 ? distance : left.LeadershipPriority.CompareTo(right.LeadershipPriority);
+        return distance != 0
+            ? distance
+            : left.LeadershipPriority.CompareTo(right.LeadershipPriority);
     }
 
     /// <summary>Identifies the same rank slot group.</summary>

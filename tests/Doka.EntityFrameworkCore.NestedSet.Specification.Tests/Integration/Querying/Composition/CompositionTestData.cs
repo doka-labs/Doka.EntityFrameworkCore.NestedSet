@@ -71,7 +71,9 @@ internal static class CompositionTestData
                 EdgeOpen = id != closed,
                 Candidate = id is 1 or 2,
                 Matches = id == 1,
-                ToDate = id == 2 ? new DateOnly(2044, 10, 31) : null,
+                ToDate = id == 2
+                    ? new DateOnly(2044, 10, 31)
+                    : null,
             };
         }
         catch
@@ -99,9 +101,11 @@ internal static class CompositionTestData
                 Scope = scope,
                 TreeId = treeId,
                 Id = index + 1,
-                ParentId = index == 0 ? null : index,
+                ParentId = index == 0
+                    ? null
+                    : index,
                 Left = index + 1,
-                Right = (2L * count) - index,
+                Right = 2L * count - index,
                 Depth = index,
                 Candidate = ownerMode != ChainOwnerMode.RootOnly || index == 0,
                 Matches = ownerMode == ChainOwnerMode.AllValues || index == 0,
@@ -123,5 +127,4 @@ internal static class CompositionTestData
         /// <summary>Only the root is eligible, so its complete path to the selected leaf is checked.</summary>
         RootOnly,
     }
-
 }

@@ -11,8 +11,8 @@ internal static partial class SignalReportValidation
     {
         var catalog = new CatalogAccumulator();
         await foreach (var row in rows
-                           .WithCancellation(cancellationToken)
-                           .ConfigureAwait(false))
+            .WithCancellation(cancellationToken)
+            .ConfigureAwait(false))
         {
             catalog.Add(row);
         }
@@ -29,8 +29,8 @@ internal static partial class SignalReportValidation
     {
         var totals = new GridAccumulator(request, 0);
         await foreach (var row in rows
-                           .WithCancellation(cancellationToken)
-                           .ConfigureAwait(false))
+            .WithCancellation(cancellationToken)
+            .ConfigureAwait(false))
         {
             totals.Add(row);
         }

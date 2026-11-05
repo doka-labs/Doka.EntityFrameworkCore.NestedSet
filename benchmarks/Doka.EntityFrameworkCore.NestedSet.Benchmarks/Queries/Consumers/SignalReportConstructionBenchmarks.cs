@@ -16,6 +16,26 @@ public class SignalReportConstructionBenchmarks : IAsyncDisposable
     [Params(false, true)]
     public bool NearestMetadata { get; set; }
 
+    /// <summary>Requires completion of ordinary native setup.</summary>
+    private SignalLabContext Context =>
+        _context ?? throw new InvalidOperationException("Initialize report metadata first.");
+
+    /// <summary>Requires an owned validated request before expression measurement.</summary>
+    private ValidatedSignalReport Request =>
+        _request ?? throw new InvalidOperationException("Initialize report criteria first.");
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        if (_context is not null)
+        {
+            await _context.DisposeAsync();
+            _context = null;
+        }
+
+        GC.SuppressFinalize(this);
+    }
+
     /// <summary>Finalizes the actual sample metadata and four scalar criteria without opening a database.</summary>
     [GlobalSetup]
     public void Initialize()
@@ -37,7 +57,10 @@ public class SignalReportConstructionBenchmarks : IAsyncDisposable
             false);
 
         _request = SignalReportValidation.Snapshot(
-            data.Request(NearestMetadata ? TagOwnerMode.Nearest : TagOwnerMode.Any));
+            data.Request(
+                NearestMetadata
+                    ? TagOwnerMode.Nearest
+                    : TagOwnerMode.Any));
 
         GC.KeepAlive(Api());
         GC.KeepAlive(Reference());
@@ -56,23 +79,4 @@ public class SignalReportConstructionBenchmarks : IAsyncDisposable
     /// <summary>Releases the unopened metadata context after the isolated benchmark child completes.</summary>
     [GlobalCleanup]
     public async Task CleanupAsync() => await DisposeAsync();
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        if (_context is not null)
-        {
-            await _context.DisposeAsync();
-            _context = null;
-        }
-
-        GC.SuppressFinalize(this);
-    }
-
-    /// <summary>Requires completion of ordinary native setup.</summary>
-    private SignalLabContext Context => _context ?? throw new InvalidOperationException("Initialize report metadata first.");
-
-    /// <summary>Requires an owned validated request before expression measurement.</summary>
-    private ValidatedSignalReport Request =>
-        _request ?? throw new InvalidOperationException("Initialize report criteria first.");
 }

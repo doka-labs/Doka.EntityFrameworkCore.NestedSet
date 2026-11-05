@@ -4,7 +4,9 @@ public sealed partial class CoordinatedGroupIterationTests
 {
     /// <summary>Creates two independent owner mappings that share one physical SQLite transaction boundary.</summary>
     /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
-    private static async Task<GroupContext> CreateContextAsync(CancellationToken cancellationToken)
+    private static async Task<GroupContext> CreateContextAsync(
+        CancellationToken cancellationToken
+    )
     {
         var context = new GroupContext();
 
@@ -47,6 +49,7 @@ public sealed partial class CoordinatedGroupIterationTests
             },
             Guid.NewGuid(),
             cancellationToken);
+
         await hierarchy.InsertChildAsync(
             new GroupNode<TOwner>
             {
@@ -56,6 +59,7 @@ public sealed partial class CoordinatedGroupIterationTests
             },
             1,
             cancellationToken);
+
         await hierarchy.InsertChildAsync(
             new GroupNode<TOwner>
             {
@@ -71,9 +75,10 @@ public sealed partial class CoordinatedGroupIterationTests
     private sealed class GroupContext : DbContext
     {
         /// <summary>Creates an isolated connection whose lifetime matches this one test context.</summary>
-        internal GroupContext() : base(new DbContextOptionsBuilder<GroupContext>()
-            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
-            .Options) { }
+        internal GroupContext() : base(
+            new DbContextOptionsBuilder<GroupContext>()
+                .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
+                .Options) { }
 
         /// <summary>Gets or sets whether the underlying payload save fails after writing both owner rows.</summary>
         internal bool FailAfterPayload { get; set; }
@@ -124,6 +129,7 @@ public sealed partial class CoordinatedGroupIterationTests
             entity
                 .Property(node => node.Id)
                 .ValueGeneratedNever();
+
             entity.HasNestedSet(builder => builder
                 .HasScope(node => node.Scope)
                 .HasTreeId(node => node.TreeId)
@@ -144,6 +150,12 @@ public sealed partial class CoordinatedGroupIterationTests
     /// <summary>Provides the same scalar shape as two unrelated hierarchy entity types.</summary>
     private sealed class GroupNode<TOwner> : IScopedNestedSetNode<int, Guid, int>
     {
+        /// <summary>Gets or sets this owner's optional direct parent key.</summary>
+        public int? ParentId { get; set; }
+
+        /// <summary>Gets or sets the payload value that also determines sibling order.</summary>
+        public string Name { get; set; } = string.Empty;
+
         /// <inheritdoc />
         public int Id { get; set; }
 
@@ -152,12 +164,6 @@ public sealed partial class CoordinatedGroupIterationTests
 
         /// <inheritdoc />
         public int Scope { get; set; }
-
-        /// <summary>Gets or sets this owner's optional direct parent key.</summary>
-        public int? ParentId { get; set; }
-
-        /// <summary>Gets or sets the payload value that also determines sibling order.</summary>
-        public string Name { get; set; } = string.Empty;
 
         /// <inheritdoc />
         public long Left { get; set; }

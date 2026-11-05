@@ -69,7 +69,11 @@ public abstract partial class OrderingKeyTests
 
         // Assert
         Assert.Equal(1, saved);
-        Assert.Equal(EntityState.Unchanged, scenario.Context.Entry(renamed).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            scenario.Context.Entry(renamed)
+                .State);
+
         await AssertChildrenAsync(scenario, 1, [2, 3, 4], cancellationToken: TestContext.Current.CancellationToken);
         await AssertFilteredTreeAsync(scenario, 1, "Same", cancellationToken: TestContext.Current.CancellationToken);
         await AssertIntegrityAsync(scenario, cancellationToken: TestContext.Current.CancellationToken);

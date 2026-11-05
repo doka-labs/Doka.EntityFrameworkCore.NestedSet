@@ -7,31 +7,43 @@ public abstract partial class AncestorIndexQueryTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task IndexedForestKeepsConvertedTreeAliasesDatabaseDistinct(bool includeSelf)
+    public async Task IndexedForestKeepsConvertedTreeAliasesDatabaseDistinct(
+        bool includeSelf
+    )
     {
         // Arrange
         var first = Interlocked.Add(ref s_mappingIdentity, 10);
-        var token = Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
+        var token = Guid
+            .NewGuid()
+            .ToString("N", CultureInfo.InvariantCulture);
+
         var tree = new BroadTreeId(token + "a");
         var otherTree = new BroadTreeId(token + "A");
         var probe = new CompositionCommandProbe();
-        await using var context = await _fixture.CreateContextAsync<AncestorIndexMappedContext>(Engine,
+        await using var context = await _fixture.CreateContextAsync<AncestorIndexMappedContext>(
+            Engine,
             static options => new AncestorIndexMappedContext(options),
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         foreach (var (identity, offset) in new[] { (tree, 0), (otherTree, 3) })
         {
-            await context.AddRangeAsync(Enumerable.Range(0, 3).Select(depth => new BroadTreeIdNode
-            {
-                Id = first + offset + depth,
-                ParentId = depth == 0 ? null : first + offset + depth - 1,
-                TreeId = identity,
-                Left = depth + 1,
-                Right = 6 - depth,
-                Depth = depth,
-                Name = $"Node {depth}",
-            }), CancellationToken.None);
+            await context.AddRangeAsync(
+                Enumerable
+                    .Range(0, 3)
+                    .Select(depth => new BroadTreeIdNode
+                    {
+                        Id = first + offset + depth,
+                        ParentId = depth == 0
+                            ? null
+                            : first + offset + depth - 1,
+                        TreeId = identity,
+                        Left = depth + 1,
+                        Right = 6 - depth,
+                        Depth = depth,
+                        Name = $"Node {depth}",
+                    }),
+                CancellationToken.None);
         }
 
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
@@ -42,11 +54,16 @@ public abstract partial class AncestorIndexQueryTests
             ? hierarchy.SelectAncestorsOrSelf(node => node.Id == selected, (source, owner, distance) => owner.Id)
             : hierarchy.SelectAncestors(node => node.Id == selected, (source, owner, distance) => owner.Id);
 
-        int[] expected = includeSelf ? [first, first + 1, first + 2] : [first, first + 1];
+        int[] expected = includeSelf
+            ? [first, first + 1, first + 2]
+            : [first, first + 1];
+
         probe.Reset();
 
         // Act
-        var actual = await query.OrderBy(key => key).ToArrayAsync(CancellationToken.None);
+        var actual = await query
+            .OrderBy(key => key)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         AssertOptionalSourceStrategy(context, query, includeSelf);

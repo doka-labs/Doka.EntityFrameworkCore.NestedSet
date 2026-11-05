@@ -101,11 +101,15 @@ public abstract class TreeRegistryTableTests : ProviderTest
             active,
             CancellationToken.None);
 
-        var beforePurge = await ReadLifecyclesAsync(context, mapping.Registry.Name,
+        var beforePurge = await ReadLifecyclesAsync(
+            context,
+            mapping.Registry.Name,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await hierarchy.PurgeTreeIdAsync(retired, CancellationToken.None);
-        var afterPurge = await ReadLifecyclesAsync(context, mapping.Registry.Name,
+        var afterPurge = await ReadLifecyclesAsync(
+            context,
+            mapping.Registry.Name,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -113,8 +117,14 @@ public abstract class TreeRegistryTableTests : ProviderTest
         Assert.Equal(NestedSetTreeRegistryMetadata.Tombstoned, beforePurge[retired]);
         Assert.Equal(NestedSetTreeRegistryMetadata.Active, beforePurge[active]);
         Assert.Equal([active], afterPurge.Keys);
-        Assert.Equal(1, await CountRowsAsync(context, NamedTable, mapping.Registry.GetSchema(),
-            cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            1,
+            await CountRowsAsync(
+                context,
+                NamedTable,
+                mapping.Registry.GetSchema(),
+                cancellationToken: TestContext.Current.CancellationToken));
+
         var nodes = await hierarchy
             .InTree(active)
             .Nodes
@@ -171,8 +181,12 @@ public abstract class TreeRegistryTableTests : ProviderTest
             CancellationToken.None);
 
         await hierarchy.DeleteTreeAsync(retired, CancellationToken.None);
-        var registry = NestedSetTreeRegistryMapping.For(before.Model.FindEntityType(typeof(ReportingNode))!).Registry;
-        var rowsBefore = await ReadRowsAsync(before, registry.Name,
+        var registry = NestedSetTreeRegistryMapping.For(before.Model.FindEntityType(typeof(ReportingNode))!)
+            .Registry;
+
+        var rowsBefore = await ReadRowsAsync(
+            before,
+            registry.Name,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var differ = before.GetService<IMigrationsModelDiffer>();
@@ -192,9 +206,13 @@ public abstract class TreeRegistryTableTests : ProviderTest
         await ExecuteAsync(
             before,
             forward,
-            after.GetService<IDesignTimeModel>().Model, cancellationToken: TestContext.Current.CancellationToken);
+            after.GetService<IDesignTimeModel>()
+                .Model,
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        var rowsAfter = await ReadRowsAsync(after, registry.Name,
+        var rowsAfter = await ReadRowsAsync(
+            after,
+            registry.Name,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var reuse = await Record.ExceptionAsync(() => after
@@ -219,15 +237,21 @@ public abstract class TreeRegistryTableTests : ProviderTest
                 1L,
                 CancellationToken.None);
 
-        var rowsBeforeDown = await ReadRowsAsync(after, registry.Name,
+        var rowsBeforeDown = await ReadRowsAsync(
+            after,
+            registry.Name,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await ExecuteAsync(
             after,
             backward,
-            before.GetService<IDesignTimeModel>().Model, cancellationToken: TestContext.Current.CancellationToken);
+            before.GetService<IDesignTimeModel>()
+                .Model,
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        var rowsAfterDown = await ReadRowsAsync(before, registry.Name,
+        var rowsAfterDown = await ReadRowsAsync(
+            before,
+            registry.Name,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var reuseAfterDown = await Record.ExceptionAsync(() => hierarchy.InsertRootAsync(
@@ -247,7 +271,6 @@ public abstract class TreeRegistryTableTests : ProviderTest
             },
             1L,
             CancellationToken.None);
-
 
         var nodes = await hierarchy
             .InTree(active)
@@ -295,7 +318,9 @@ public abstract class TreeRegistryTableTests : ProviderTest
         DbContext context,
         string registry,
         CancellationToken cancellationToken
-    ) => (await ReadRowsAsync(context, registry,
+    ) => (await ReadRowsAsync(
+        context,
+        registry,
         cancellationToken: cancellationToken)).ToDictionary(row => row.TreeId, row => row.Lifecycle);
 
     /// <summary>Reads each complete registry row in a stable order.</summary>

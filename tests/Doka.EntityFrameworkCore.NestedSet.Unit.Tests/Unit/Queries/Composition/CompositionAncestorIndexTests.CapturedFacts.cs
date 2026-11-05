@@ -37,7 +37,8 @@ public sealed partial class CompositionAncestorIndexTests
         var io = new CompositionIoBoundary();
         var capture = new DeferredCompilationProbe();
         var options = new DbContextOptionsBuilder<IndexCompositionContext>(
-                ModelCompatibilityDatabase.Options<IndexCompositionContext>(engine,
+                ModelCompatibilityDatabase.Options<IndexCompositionContext>(
+                    engine,
                     "Server=127.0.0.1;Database=captured_facts;User ID=unused;Pooling=false"))
             .AddInterceptors(io, io.Commands)
             .Options;
@@ -56,13 +57,15 @@ public sealed partial class CompositionAncestorIndexTests
         var selected = CapturedSelection(context, shape);
         var enabled = HasIndexedFactCapabilities(context, includeSelf);
         var query = includeSelf
-            ? hierarchy.SelectAncestorsOrSelf(selected,
+            ? hierarchy.SelectAncestorsOrSelf(
+                selected,
                 (node, owner, distance) => new
                 {
                     node.Id,
                     Distance = distance,
                 })
-            : hierarchy.SelectAncestors(selected,
+            : hierarchy.SelectAncestors(
+                selected,
                 (node, owner, distance) => new
                 {
                     node.Id,
@@ -98,7 +101,8 @@ public sealed partial class CompositionAncestorIndexTests
     )
     {
         // Arrange
-        var options = ModelCompatibilityDatabase.Options<IndexCompositionContext>("MySql",
+        var options = ModelCompatibilityDatabase.Options<IndexCompositionContext>(
+            "MySql",
             "Server=127.0.0.1;Database=rebound_facts;User ID=unused;Pooling=false");
 
         await using var provider = SelectionServices(options);
@@ -117,9 +121,11 @@ public sealed partial class CompositionAncestorIndexTests
             .Where(fact => fact.Id == 111);
 
         var query = includeSelf
-            ? hierarchy.SelectAncestorsOrSelf(node => facts.Any(fact => fact.NodeId == node.Id),
+            ? hierarchy.SelectAncestorsOrSelf(
+                node => facts.Any(fact => fact.NodeId == node.Id),
                 (node, owner, distance) => owner.Id)
-            : hierarchy.SelectAncestors(node => facts.Any(fact => fact.NodeId == node.Id),
+            : hierarchy.SelectAncestors(
+                node => facts.Any(fact => fact.NodeId == node.Id),
                 (node, owner, distance) => owner.Id);
 
         var enabled = HasIndexedFactCapabilities(context, includeSelf);
@@ -128,10 +134,12 @@ public sealed partial class CompositionAncestorIndexTests
         facts = context
             .Set<SelectionFact>()
             .Where(fact => fact.Id == 222);
+
         var first = query.ToQueryString();
         facts = context
             .Set<SelectionFact>()
             .Where(fact => fact.Id == 333);
+
         var second = query.ToQueryString();
         facts = context
             .Set<SelectionFact>()
@@ -170,7 +178,8 @@ public sealed partial class CompositionAncestorIndexTests
     )
     {
         // Arrange
-        var options = ModelCompatibilityDatabase.Options<IndexCompositionContext>("MariaDb",
+        var options = ModelCompatibilityDatabase.Options<IndexCompositionContext>(
+            "MariaDb",
             "Server=127.0.0.1;Database=composed_facts;User ID=unused;Pooling=false");
 
         await using var provider = SelectionServices(options);
@@ -186,14 +195,16 @@ public sealed partial class CompositionAncestorIndexTests
 
         var facts = context.Set<SelectionFact>();
         var pairs = includeSelf
-            ? hierarchy.SelectAncestorsOrSelf(node => facts.Any(fact => fact.NodeId == node.Id),
+            ? hierarchy.SelectAncestorsOrSelf(
+                node => facts.Any(fact => fact.NodeId == node.Id),
                 (node, owner, distance) => new
                 {
                     Node = node,
                     Owner = owner,
                     Distance = distance,
                 })
-            : hierarchy.SelectAncestors(node => facts.Any(fact => fact.NodeId == node.Id),
+            : hierarchy.SelectAncestors(
+                node => facts.Any(fact => fact.NodeId == node.Id),
                 (node, owner, distance) => new
                 {
                     Node = node,
@@ -203,14 +214,17 @@ public sealed partial class CompositionAncestorIndexTests
 
         var filtered = filter switch
         {
-            "path" => hierarchy.WherePathEdges(pairs,
+            "path" => hierarchy.WherePathEdges(
+                pairs,
                 row => row.Owner,
                 row => row.Node,
                 (row, parent, child) => child.Id > 0),
-            "any" => hierarchy.WhereAnyAncestorOrSelf(pairs,
+            "any" => hierarchy.WhereAnyAncestorOrSelf(
+                pairs,
                 row => row.Node,
                 (row, owner) => owner.Id > 0),
-            "nearest" => hierarchy.WhereNearestAncestorOrSelf(pairs,
+            "nearest" => hierarchy.WhereNearestAncestorOrSelf(
+                pairs,
                 row => row.Node,
                 (row, owner) => owner.Id > 0,
                 (row, owner) => owner.Visible),
@@ -223,8 +237,10 @@ public sealed partial class CompositionAncestorIndexTests
         // Assert
         Assert.NotEmpty(sql);
         Assert.Contains("EXISTS", sql, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(HasIndexedFactCapabilities(context, includeSelf),
+        Assert.Equal(
+            HasIndexedFactCapabilities(context, includeSelf),
             sql.Contains("WITH RECURSIVE", StringComparison.OrdinalIgnoreCase));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -233,7 +249,8 @@ public sealed partial class CompositionAncestorIndexTests
     public async Task CapturedFactGetterRemainsUnevaluatedUntilTerminalTranslation()
     {
         // Arrange
-        var options = ModelCompatibilityDatabase.Options<IndexCompositionContext>("MySql",
+        var options = ModelCompatibilityDatabase.Options<IndexCompositionContext>(
+            "MySql",
             "Server=127.0.0.1;Database=throwing_facts;User ID=unused;Pooling=false");
 
         await using var provider = SelectionServices(options);
@@ -248,7 +265,8 @@ public sealed partial class CompositionAncestorIndexTests
             .ForScope(Guid.Empty)
             .InTree(Guid.Empty);
 
-        var query = hierarchy.SelectAncestorsOrSelf(node => context.Facts.Any(fact => fact.NodeId == node.Id),
+        var query = hierarchy.SelectAncestorsOrSelf(
+            node => context.Facts.Any(fact => fact.NodeId == node.Id),
             (node, owner, distance) => owner.Id);
 
         var callsAfterConstruction = context.FactGetterCalls;
@@ -268,7 +286,8 @@ public sealed partial class CompositionAncestorIndexTests
     public async Task CapturedForeignContextFactsRemainRejectedAtTerminalTranslation()
     {
         // Arrange
-        var options = ModelCompatibilityDatabase.Options<IndexCompositionContext>("MySql",
+        var options = ModelCompatibilityDatabase.Options<IndexCompositionContext>(
+            "MySql",
             "Server=127.0.0.1;Database=foreign_facts;User ID=unused;Pooling=false");
 
         await using var provider = SelectionServices(options);
@@ -283,7 +302,8 @@ public sealed partial class CompositionAncestorIndexTests
             .NestedSet<CompositionNode>()
             .ForScope(Guid.Empty)
             .InTree(Guid.Empty)
-            .SelectAncestorsOrSelf(node => facts.Any(fact => fact.NodeId == node.Id),
+            .SelectAncestorsOrSelf(
+                node => facts.Any(fact => fact.NodeId == node.Id),
                 (node, owner, distance) => owner.Id);
 
         // Act
@@ -308,7 +328,8 @@ public sealed partial class CompositionAncestorIndexTests
 
         // WHY: Deliberately retain model-only mapping; adding an adapter would hide the invalid runtime configuration.
         var options = new DbContextOptionsBuilder<CompositionGuardContext>()
-            .UseMySql("Server=127.0.0.1;Database=model_only_facts;User ID=unused;Pooling=false",
+            .UseMySql(
+                "Server=127.0.0.1;Database=model_only_facts;User ID=unused;Pooling=false",
                 DatabaseTestTargets.MySql)
             .AddInterceptors(boundary, boundary.Commands)
             .Options;
@@ -325,7 +346,8 @@ public sealed partial class CompositionAncestorIndexTests
         var failure = Record.Exception(() => context
             .NestedSet<CompositionGuardNode>(CompositionGuardContext.FirstMapping)
             .InTree(Guid.Empty)
-            .SelectAncestorsOrSelf(node => facts.Any(fact => fact.Id == node.Id),
+            .SelectAncestorsOrSelf(
+                node => facts.Any(fact => fact.Id == node.Id),
                 (node, owner, distance) => owner.Id));
 
         // Assert
@@ -353,7 +375,8 @@ public sealed partial class CompositionAncestorIndexTests
     )
     {
         // Arrange
-        var options = ModelCompatibilityDatabase.Options<IndexCompositionContext>("MySql",
+        var options = ModelCompatibilityDatabase.Options<IndexCompositionContext>(
+            "MySql",
             "Server=127.0.0.1;Database=dependent_facts;User ID=unused;Pooling=false");
 
         await using var provider = SelectionServices(options);
@@ -389,7 +412,8 @@ public sealed partial class CompositionAncestorIndexTests
             .NestedSet<CompositionNode>()
             .ForScope(Guid.Empty)
             .InTree(Guid.Empty)
-            .SelectAncestorsOrSelf(selected,
+            .SelectAncestorsOrSelf(
+                selected,
                 (node, owner, distance) => owner.Id);
 
         // Act
@@ -414,7 +438,8 @@ public sealed partial class CompositionAncestorIndexTests
     {
         // Arrange
         var probe = new DeferredCompilationProbe();
-        var options = ModelCompatibilityDatabase.Options<IndexCompositionContext>("MariaDb",
+        var options = ModelCompatibilityDatabase.Options<IndexCompositionContext>(
+            "MariaDb",
             "Server=127.0.0.1;Database=cached_facts;User ID=unused;Pooling=false");
 
         await using var provider = SelectionServices(options, probe);
@@ -431,7 +456,8 @@ public sealed partial class CompositionAncestorIndexTests
             .InTree(Guid.Empty);
 
         var pairs = hierarchy
-            .SelectAncestorsOrSelf(node => facts.Any(fact => fact.NodeId == node.Id && fact.Id > minimum),
+            .SelectAncestorsOrSelf(
+                node => facts.Any(fact => fact.NodeId == node.Id && fact.Id > minimum),
                 (node, owner, distance) => new
                 {
                     Node = node,
@@ -442,14 +468,17 @@ public sealed partial class CompositionAncestorIndexTests
         var filtered = operation switch
         {
             "ancestors" => pairs,
-            "path" => hierarchy.WherePathEdges(pairs,
+            "path" => hierarchy.WherePathEdges(
+                pairs,
                 row => row.Owner,
                 row => row.Node,
                 (row, parent, child) => child.Id < minimum),
-            "any" => hierarchy.WhereAnyAncestorOrSelf(pairs,
+            "any" => hierarchy.WhereAnyAncestorOrSelf(
+                pairs,
                 row => row.Node,
                 (row, owner) => owner.Id < minimum),
-            "nearest" => hierarchy.WhereNearestAncestorOrSelf(pairs,
+            "nearest" => hierarchy.WhereNearestAncestorOrSelf(
+                pairs,
                 row => row.Node,
                 (row, owner) => owner.Id > 0,
                 (row, owner) => owner.Id < minimum),
@@ -499,9 +528,11 @@ public sealed partial class CompositionAncestorIndexTests
         DbContext context,
         bool includeSelf
     )
-        => NestedSetProviderCapabilities.Resolve(context).CompletedSourceMethod is not null
+        => NestedSetProviderCapabilities.Resolve(context)
+                .CompletedSourceMethod is not null
             && (!includeSelf
-                || NestedSetProviderCapabilities.Resolve(context).OrderedJoinMethod is not null);
+                || NestedSetProviderCapabilities.Resolve(context)
+                    .OrderedJoinMethod is not null);
 
     /// <summary>Checks the completed compile expression without retaining that expression or its context.</summary>
     private sealed class DeferredCompilationProbe : IQueryExpressionInterceptor

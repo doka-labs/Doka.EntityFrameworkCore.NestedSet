@@ -24,10 +24,13 @@ public abstract class OrderingNotificationTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.PrepareAsync(Engine, SeedAsync,
+        var database = await _fixture.PrepareAsync(
+            Engine,
+            SeedAsync,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        await using var context = await CreateContextAsync(database,
+        await using var context = await CreateContextAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await LoadAndRenameAsync(context, cancellationToken: TestContext.Current.CancellationToken);
@@ -37,7 +40,10 @@ public abstract class OrderingNotificationTests : ProviderTest
 
         // Assert
         Assert.Equal(2, saved);
-        await AssertSuccessfulSaveAsync(database, context, acceptAllChangesOnSuccess,
+        await AssertSuccessfulSaveAsync(
+            database,
+            context,
+            acceptAllChangesOnSuccess,
             cancellationToken: TestContext.Current.CancellationToken);
     }
 
@@ -51,11 +57,14 @@ public abstract class OrderingNotificationTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.PrepareAsync(Engine, SeedAsync,
+        var database = await _fixture.PrepareAsync(
+            Engine,
+            SeedAsync,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var failure = new CommitFailureProbe();
-        await using var context = await CreateContextAsync(database,
+        await using var context = await CreateContextAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken,
             failure);
 
@@ -79,22 +88,39 @@ public abstract class OrderingNotificationTests : ProviderTest
         Assert.Equal(before, Coordinates(nodes));
         Assert.Equal("Zulu", renamed.Name);
         Assert.Equal("pending application change", payload.Value);
-        Assert.Equal(EntityState.Modified, context.Entry(renamed).State);
+        Assert.Equal(
+            EntityState.Modified,
+            context.Entry(renamed)
+                .State);
+
         Assert.True(
             context
                 .Entry(renamed)
                 .Property(node => node.Name)
                 .IsModified);
-        Assert.Equal(EntityState.Modified, context.Entry(payload).State);
+
+        Assert.Equal(
+            EntityState.Modified,
+            context.Entry(payload)
+                .State);
+
         Assert.True(
             context
                 .Entry(payload)
                 .Property(row => row.Value)
                 .IsModified);
-        Assert.Equal(5, context.ChangeTracker.Entries().Count());
+
+        Assert.Equal(
+            5,
+            context
+                .ChangeTracker
+                .Entries()
+                .Count());
+
         Assert.Null(context.Database.CurrentTransaction);
         AssertUnavailableOriginals(context, nodes, payload);
-        await using var verification = await CreateContextAsync(database,
+        await using var verification = await CreateContextAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var persisted = await verification
@@ -106,7 +132,9 @@ public abstract class OrderingNotificationTests : ProviderTest
         Assert.Equal(before, Coordinates(persisted));
         Assert.Equal(
             "Alpha",
-            persisted.Single(node => node.Id == 2).Name);
+            persisted.Single(node => node.Id == 2)
+                .Name);
+
         Assert.Equal(
             "original application value",
             await verification
@@ -125,11 +153,14 @@ public abstract class OrderingNotificationTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.PrepareAsync(Engine, SeedAsync,
+        var database = await _fixture.PrepareAsync(
+            Engine,
+            SeedAsync,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var failure = new CommitFailureProbe();
-        await using var context = await CreateContextAsync(database,
+        await using var context = await CreateContextAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken,
             failure);
 
@@ -145,7 +176,10 @@ public abstract class OrderingNotificationTests : ProviderTest
         Assert.Equal(2, failure.CommitAttempts);
         Assert.Equal(4, failure.RenamedLeftAtCommit);
         Assert.Equal(2, saved);
-        await AssertSuccessfulSaveAsync(database, context, acceptAllChangesOnSuccess,
+        await AssertSuccessfulSaveAsync(
+            database,
+            context,
+            acceptAllChangesOnSuccess,
             cancellationToken: TestContext.Current.CancellationToken);
     }
 
@@ -240,7 +274,7 @@ public abstract class OrderingNotificationTests : ProviderTest
             new OrderingNotificationPayload
             {
                 Id = 1,
-                Value = "original application value"
+                Value = "original application value",
             },
             cancellationToken);
 
@@ -265,7 +299,9 @@ public abstract class OrderingNotificationTests : ProviderTest
             .Set<OrderingNotificationPayload>()
             .SingleAsync(cancellationToken);
 
-        nodes.Single(node => node.Id == 2).Name = "Zulu";
+        nodes.Single(node => node.Id == 2)
+            .Name = "Zulu";
+
         payload.Value = "pending application change";
 
         return nodes;
@@ -306,37 +342,51 @@ public abstract class OrderingNotificationTests : ProviderTest
         Assert.Equal(
             new[]
             {
-                (1, 1L, 8L, 0, 0L),
-                (2, 4L, 7L, 1, 1L),
-                (3, 2L, 3L, 1, 0L),
-                (4, 5L, 6L, 2, 0L),
+                (1, 1L, 8L, 0, 0L), (2, 4L, 7L, 1, 1L), (3, 2L, 3L, 1, 0L), (4, 5L, 6L, 2, 0L),
             },
             Coordinates(persisted));
+
         Assert.Equal(Coordinates(persisted), Coordinates(nodes));
-        Assert.Equal("Zulu", persisted.Single(node => node.Id == 2).Name);
         Assert.Equal(
-            accepted ? EntityState.Unchanged : EntityState.Modified,
-            context.Entry(renamed).State);
+            "Zulu",
+            persisted.Single(node => node.Id == 2)
+                .Name);
+
+        Assert.Equal(
+            accepted
+                ? EntityState.Unchanged
+                : EntityState.Modified,
+            context.Entry(renamed)
+                .State);
+
         Assert.Equal(
             !accepted,
             context
                 .Entry(renamed)
                 .Property(node => node.Name)
                 .IsModified);
+
         Assert.Equal(
-            accepted ? EntityState.Unchanged : EntityState.Modified,
-            context.Entry(payload).State);
+            accepted
+                ? EntityState.Unchanged
+                : EntityState.Modified,
+            context.Entry(payload)
+                .State);
+
         Assert.Equal(
             !accepted,
             context
                 .Entry(payload)
                 .Property(row => row.Value)
                 .IsModified);
+
         Assert.All(
             nodes.Where(node => node.Id != 2),
             node => Assert.Equal(
                 EntityState.Unchanged,
-                context.Entry(node).State));
+                context.Entry(node)
+                    .State));
+
         Assert.Equal("pending application change", payload.Value);
         Assert.Equal(
             "pending application change",
@@ -344,6 +394,7 @@ public abstract class OrderingNotificationTests : ProviderTest
                 .Set<OrderingNotificationPayload>()
                 .Select(row => row.Value)
                 .SingleAsync(cancellationToken));
+
         AssertUnavailableOriginals(context, nodes, payload);
         var tree = verification
             .NestedSet<OrderingNotificationNode>()
@@ -372,11 +423,16 @@ public abstract class OrderingNotificationTests : ProviderTest
             foreach (var name in new[] { "Left", "Right", "Depth", "Position" })
             {
                 // WHY: This negative control fails if the model accidentally falls back to snapshot tracking.
-                Assert.Throws<InvalidOperationException>(() => entry.Property(name).OriginalValue);
-                Assert.False(entry.Property(name).IsModified);
+                Assert.Throws<InvalidOperationException>(() => entry.Property(name)
+                    .OriginalValue);
+
+                Assert.False(
+                    entry.Property(name)
+                        .IsModified);
             }
 
-            Assert.Throws<InvalidOperationException>(() => entry.Property(value => value.Name).OriginalValue);
+            Assert.Throws<InvalidOperationException>(() => entry.Property(value => value.Name)
+                .OriginalValue);
         }
 
         Assert.Throws<InvalidOperationException>(() => context

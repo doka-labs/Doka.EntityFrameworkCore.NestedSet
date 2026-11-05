@@ -80,7 +80,9 @@ internal sealed class SignalMaterializationRows<T>(
 
         /// <summary>Creates the comparison's deliberate one-off asynchronous boundary for each reader.</summary>
         /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
-        private async ValueTask<bool> FirstAsync(CancellationToken cancellationToken)
+        private async ValueTask<bool> FirstAsync(
+            CancellationToken cancellationToken
+        )
         {
             owner.Suspensions++;
             await Task.Yield();

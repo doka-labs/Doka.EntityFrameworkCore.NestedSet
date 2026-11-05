@@ -12,6 +12,29 @@ public sealed partial class SqlServerCompositionStrategyTests
 
     private const string Hint = "OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 1)";
 
+    /// <summary>Supplies each execution kind with tagged, terminated, repeated and untagged commands.</summary>
+    public static TheoryData<string, string, string> PlanHintCases
+    {
+        get
+        {
+            var cases = new TheoryData<string, string, string>();
+            var tagged = Tag + "\n\nSELECT 1";
+            var hinted = tagged + Environment.NewLine + Hint;
+
+            string[] kinds = ["Reader", "ReaderAsync", "Scalar", "ScalarAsync", "NonQuery", "NonQueryAsync"];
+
+            foreach (var kind in kinds)
+            {
+                cases.Add(kind, tagged, hinted);
+                cases.Add(kind, tagged + " ;\n", hinted + ";");
+                cases.Add(kind, hinted, hinted);
+                cases.Add(kind, "SELECT 1", "SELECT 1");
+            }
+
+            return cases;
+        }
+    }
+
     /// <summary>Only EF's leading tag comment block identifies a composition command.</summary>
     /// <param name="commandText">The generated or adversarial command text.</param>
     /// <param name="expected">Whether the command carries the library tag.</param>
@@ -82,29 +105,6 @@ public sealed partial class SqlServerCompositionStrategyTests
         Assert.Equal(expected, command.CommandText);
     }
 
-    /// <summary>Supplies each execution kind with tagged, terminated, repeated and untagged commands.</summary>
-    public static TheoryData<string, string, string> PlanHintCases
-    {
-        get
-        {
-            var cases = new TheoryData<string, string, string>();
-            var tagged = Tag + "\n\nSELECT 1";
-            var hinted = tagged + Environment.NewLine + Hint;
-
-            string[] kinds = ["Reader", "ReaderAsync", "Scalar", "ScalarAsync", "NonQuery", "NonQueryAsync"];
-
-            foreach (var kind in kinds)
-            {
-                cases.Add(kind, tagged, hinted);
-                cases.Add(kind, tagged + " ;\n", hinted + ";");
-                cases.Add(kind, hinted, hinted);
-                cases.Add(kind, "SELECT 1", "SELECT 1");
-            }
-
-            return cases;
-        }
-    }
-
     /// <summary>The SQL Server adapter registers its policy and tags composition, never ordinary reads.</summary>
     [Fact]
     public async Task SqlServerTagsCompositionAndRegistersItsPlanPolicy()
@@ -116,9 +116,10 @@ public sealed partial class SqlServerCompositionStrategyTests
             .AddInterceptors(boundary);
 
         await using var services = NestedSetTestAdapters.BuildServices(options.Options);
-        await using var context = new CompositionContext(options
-            .UseInternalServiceProvider(services)
-            .Options);
+        await using var context = new CompositionContext(
+            options
+                .UseInternalServiceProvider(services)
+                .Options);
 
         var tree = context
             .NestedSet<CompositionNode>()
@@ -127,7 +128,8 @@ public sealed partial class SqlServerCompositionStrategyTests
 
         // Act
         var composition = tree
-            .SelectSubtrees(node => node.Id == 1,
+            .SelectSubtrees(
+                node => node.Id == 1,
                 (anchor, node, distance) => node.Id)
             .ToQueryString();
 
@@ -175,7 +177,8 @@ public sealed partial class SqlServerCompositionStrategyTests
             .NestedSet<CompositionNode>()
             .ForScope(Guid.Empty)
             .InTree(Guid.Empty)
-            .SelectSubtrees(node => node.Id == 1,
+            .SelectSubtrees(
+                node => node.Id == 1,
                 (anchor, node, distance) => node.Id)
             .ToQueryString();
 

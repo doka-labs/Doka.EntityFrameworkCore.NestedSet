@@ -10,24 +10,32 @@ public abstract partial class OrderingTests
     public async Task SortedSaveRejectsNodeMovedToUnlockedTree()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchy = setup.NestedSet<OrderingNode>().ForScope(1);
+        var hierarchy = setup
+            .NestedSet<OrderingNode>()
+            .ForScope(1);
+
         var firstTree = Guid.NewGuid();
         var secondTree = Guid.NewGuid();
         await hierarchy.InsertRootAsync(Node(1, "Root"), firstTree, CancellationToken.None);
         await hierarchy.InsertChildAsync(Node(2, "Alpha"), 1, CancellationToken.None);
         await hierarchy.InsertRootAsync(Node(10, "Destination"), secondTree, CancellationToken.None);
         await using var barrier = new SaveRegistryLockBarrier();
-        await using var first = await _fixture.CreateContextAsync(Engine,
+        await using var first = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict", barrier);
+            "Strict",
+            barrier);
 
-        await using var second = await _fixture.CreateContextAsync(Engine,
+        await using var second = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var renamed = await first.Set<OrderingNode>()
+        var renamed = await first
+            .Set<OrderingNode>()
             .SingleAsync(node => node.Id == 2, CancellationToken.None);
 
         renamed.Name = "Zulu";
@@ -39,7 +47,9 @@ public abstract partial class OrderingTests
 
         try
         {
-            await second.NestedSet<OrderingNode>().ForScope(1)
+            await second
+                .NestedSet<OrderingNode>()
+                .ForScope(1)
                 .MoveToAsync(2, 10, timeout.Token);
         }
         finally
@@ -52,20 +62,27 @@ public abstract partial class OrderingTests
         // Assert
         var conflict = Assert.IsType<DbUpdateConcurrencyException>(failure);
         Assert.Contains("changed trees before locking", conflict.Message, StringComparison.Ordinal);
-        await using var verification = await _fixture.CreateContextAsync(Engine,
+        await using var verification = await _fixture.CreateContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var node = await verification.Set<OrderingNode>()
+        var node = await verification
+            .Set<OrderingNode>()
             .AsNoTracking()
             .SingleAsync(value => value.Id == 2, CancellationToken.None);
 
         Assert.Equal(secondTree, node.TreeId);
         Assert.Equal("Alpha", node.Name);
-        var scope = verification.NestedSet<OrderingNode>().ForScope(1);
-        var firstReport = await scope.InTree(firstTree)
+        var scope = verification
+            .NestedSet<OrderingNode>()
+            .ForScope(1);
+
+        var firstReport = await scope
+            .InTree(firstTree)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
 
-        var secondReport = await scope.InTree(secondTree)
+        var secondReport = await scope
+            .InTree(secondTree)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
 
         Assert.True(firstReport.IsValid);
@@ -84,11 +101,20 @@ public abstract partial class OrderingTests
         internal TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         /// <inheritdoc />
+        public ValueTask DisposeAsync()
+        {
+            Release.TrySetResult();
+
+            return ValueTask.CompletedTask;
+        }
+
+        /// <inheritdoc />
         public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
             DbCommand command,
             CommandEventData eventData,
             InterceptionResult<DbDataReader> result,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default
+        )
         {
             if (command.CommandText.Contains("DokaNestedSetTrees_", StringComparison.Ordinal)
                 && (command.CommandText.Contains("UPDLOCK", StringComparison.Ordinal)
@@ -101,14 +127,6 @@ public abstract partial class OrderingTests
             }
 
             return result;
-        }
-
-        /// <inheritdoc />
-        public ValueTask DisposeAsync()
-        {
-            Release.TrySetResult();
-
-            return ValueTask.CompletedTask;
         }
     }
 }

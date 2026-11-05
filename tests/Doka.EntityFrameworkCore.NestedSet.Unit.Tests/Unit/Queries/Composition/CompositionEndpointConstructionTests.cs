@@ -35,7 +35,8 @@ public sealed class CompositionEndpointConstructionTests
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < operations; index++)
         {
-            query = tree.WherePathEdges(source,
+            query = tree.WherePathEdges(
+                source,
                 value => value,
                 value => value,
                 (_, parent, child) => true);
@@ -65,12 +66,14 @@ public sealed class CompositionEndpointConstructionTests
         var payloads = context.Set<CompositionGuardNode>(CompositionGuardContext.SecondMapping);
         var trap = new QueryExpressionTrap(nodes);
         IQueryable<CompositionGuardNode> captured = trap;
-        var unselected = payloads.SelectMany(payload => captured,
+        var unselected = payloads.SelectMany(
+            payload => captured,
             (payload, ignored) => payload);
 
         var source = shape switch
         {
-            "join" => unselected.Join(nodes,
+            "join" => unselected.Join(
+                nodes,
                 payload => payload.Id,
                 node => node.Id,
                 (payload, node) => new CompositionGuardRow
@@ -79,7 +82,8 @@ public sealed class CompositionEndpointConstructionTests
                     Lower = node,
                     Payload = payload,
                 }),
-            "select-many" => unselected.SelectMany(payload => nodes,
+            "select-many" => unselected.SelectMany(
+                payload => nodes,
                 (payload, node) => new CompositionGuardRow
                 {
                     Upper = node,
@@ -90,7 +94,8 @@ public sealed class CompositionEndpointConstructionTests
         };
 
         // Act
-        var query = hierarchy.WhereAnyAncestorOrSelf(source,
+        var query = hierarchy.WhereAnyAncestorOrSelf(
+            source,
             row => row.Lower,
             (_, owner) => true);
 
@@ -127,7 +132,8 @@ public sealed class CompositionEndpointConstructionTests
             payloads = payloads.IgnoreQueryFilters();
         }
 
-        var source = payloads.Join(nodes,
+        var source = payloads.Join(
+            nodes,
             payload => payload.Id,
             node => node.Id,
             (payload, node) => new CompositionGuardRow
@@ -163,7 +169,8 @@ public sealed class CompositionEndpointConstructionTests
 
         var nodes = tree.Nodes;
         var raw = context.Set<CompositionGuardNode>(CompositionGuardContext.ScopedMapping);
-        var source = nodes.Join(raw,
+        var source = nodes.Join(
+            raw,
             upper => upper.Id,
             lower => lower.Id,
             (upper, lower) => new CompositionGuardRow
@@ -177,14 +184,16 @@ public sealed class CompositionEndpointConstructionTests
         bool? sourceAllowsVisibility = null;
 
         // Act
-        var upper = NestedSetQueryEndpoint.Require(source,
+        var upper = NestedSetQueryEndpoint.Require(
+            source,
             row => row.Upper,
             entityType,
             bound,
             "anchor",
             ref sourceAllowsVisibility);
 
-        var lower = NestedSetQueryEndpoint.Require(source,
+        var lower = NestedSetQueryEndpoint.Require(
+            source,
             row => row.Lower,
             entityType,
             bound,
@@ -209,7 +218,8 @@ public sealed class CompositionEndpointConstructionTests
         var hierarchy = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
         var nodes = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
         var payloads = context.Set<CompositionGuardNode>(CompositionGuardContext.SecondMapping);
-        var source = payloads.Join(nodes,
+        var source = payloads.Join(
+            nodes,
             payload => payload.Id,
             node => node.Id,
             (payload, node) => new CompositionGuardRow

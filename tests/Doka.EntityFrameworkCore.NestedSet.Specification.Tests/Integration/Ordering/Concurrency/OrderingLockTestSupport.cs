@@ -37,6 +37,8 @@ internal static class OrderingLockTestSupport
         OrderingLockContext context,
         CancellationToken cancellationToken
     ) => context.Database.BeginTransactionAsync(
-        context.Database.IsSqlite() ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+        context.Database.IsSqlite()
+            ? IsolationLevel.Serializable
+            : IsolationLevel.ReadCommitted,
         cancellationToken);
 }

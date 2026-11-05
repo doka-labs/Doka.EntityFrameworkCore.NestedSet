@@ -18,32 +18,56 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe,
+        await using var context = await CreateContextAsync(
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
-        var input = data.Request(nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any);
-        await AddUnrequestedCatalogAsync(context, input, cancellationToken: TestContext.Current.CancellationToken);
-        var request = SignalReportValidation.Snapshot(withoutCriteria ? input with { Criteria = [] } : input);
-        var fields = request.Groups.SelectMany(group => group.Criteria)
-            .Select(criterion => (criterion.TypeId, criterion.FieldCode)).ToHashSet();
+        var input = data.Request(
+            nearest
+                ? TagOwnerMode.Nearest
+                : TagOwnerMode.Any);
 
-        var choices = request.Groups.SelectMany(group => group.Criteria)
-            .Select(criterion => (criterion.TypeId, criterion.FieldCode, criterion.Value)).ToHashSet();
+        await AddUnrequestedCatalogAsync(context, input, cancellationToken: TestContext.Current.CancellationToken);
+        var request = SignalReportValidation.Snapshot(
+            withoutCriteria
+                ? input with { Criteria = [] }
+                : input);
+
+        var fields = request
+            .Groups
+            .SelectMany(group => group.Criteria)
+            .Select(criterion => (criterion.TypeId, criterion.FieldCode))
+            .ToHashSet();
+
+        var choices = request
+            .Groups
+            .SelectMany(group => group.Criteria)
+            .Select(criterion => (criterion.TypeId, criterion.FieldCode, criterion.Value))
+            .ToHashSet();
 
         probe.Reset();
 
         // Act
-        var catalog = await SignalReportBuilder.Catalog(context, request).ToArrayAsync(CancellationToken.None);
+        var catalog = await SignalReportBuilder
+            .Catalog(context, request)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(request.AnchorIds.Length + request.ChannelIds.Length + fields.Count + choices.Count, catalog.Length);
+        Assert.Equal(
+            request.AnchorIds.Length + request.ChannelIds.Length + fields.Count + choices.Count,
+            catalog.Length);
+
         Assert.Equal(fields.Count, catalog.Count(row => row.Kind == 2));
         Assert.Equal(choices.Count, catalog.Count(row => row.Kind == 3));
-        Assert.All(catalog.Where(row => row.Kind == 2),
+        Assert.All(
+            catalog.Where(row => row.Kind == 2),
             row => Assert.Contains((row.TypeId, row.FieldCode), fields));
-        Assert.All(catalog.Where(row => row.Kind == 3),
+
+        Assert.All(
+            catalog.Where(row => row.Kind == 3),
             row => Assert.Contains((row.TypeId, row.FieldCode, row.Value), choices));
+
         Assert.Single(probe.Readers);
         Assert.Equal(0, probe.Entities);
         Assert.Empty(context.ChangeTracker.Entries());
@@ -54,17 +78,27 @@ public abstract partial class SignalReportTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task UnusedCatalogPopulationDoesNotChangeReport(bool nearest)
+    public async Task UnusedCatalogPopulationDoesNotChangeReport(
+        bool nearest
+    )
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe,
+        await using var context = await CreateContextAsync(
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
-        var request = data.Request(nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any);
+        var request = data.Request(
+            nearest
+                ? TagOwnerMode.Nearest
+                : TagOwnerMode.Any);
+
         await AddUnrequestedCatalogAsync(context, request, cancellationToken: TestContext.Current.CancellationToken);
-        var expected = SignalReportOracle.Calculate(request).ToDictionary(cell => (cell.AnchorId, cell.ChannelId, cell.Source));
+        var expected = SignalReportOracle
+            .Calculate(request)
+            .ToDictionary(cell => (cell.AnchorId, cell.ChannelId, cell.Source));
+
         probe.Reset();
 
         // Act
@@ -82,7 +116,8 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe,
+        await using var context = await CreateContextAsync(
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
@@ -98,8 +133,10 @@ public abstract partial class SignalReportTests
         probe.Reset();
 
         // Act
-        var error = await Record.ExceptionAsync(
-            () => SignalReportBuilder.ReadAsync(context, request, CancellationToken.None));
+        var error = await Record.ExceptionAsync(() => SignalReportBuilder.ReadAsync(
+            context,
+            request,
+            CancellationToken.None));
 
         // Assert
         Assert.IsType<ArgumentException>(error);
@@ -127,29 +164,40 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe,
+        await using var context = await CreateContextAsync(
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
-        var criterion = new TagCriterion(SignalReportDataset.ModuleKind, "ModuleClass", "Receiver",
-            nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any);
+        var criterion = new TagCriterion(
+            SignalReportDataset.ModuleKind,
+            "ModuleClass",
+            "Receiver",
+            nearest
+                ? TagOwnerMode.Nearest
+                : TagOwnerMode.Any);
 
         var request = data.Request() with
         {
-            Criteria = [shape switch
-            {
-                "field-case" => criterion with { FieldCode = "moduleClasskind" },
-                "field-padding" => criterion with { FieldCode = "ModuleClass " },
-                "value-case" => criterion with { Value = "receiver" },
-                _ => criterion with { Value = "Receiver " },
-            }],
+            Criteria =
+            [
+                shape switch
+                {
+                    "field-case" => criterion with { FieldCode = "moduleClasskind" },
+                    "field-padding" => criterion with { FieldCode = "ModuleClass " },
+                    "value-case" => criterion with { Value = "receiver" },
+                    _ => criterion with { Value = "Receiver " },
+                },
+            ],
         };
 
         probe.Reset();
 
         // Act
-        var error = await Record.ExceptionAsync(
-            () => SignalReportBuilder.ReadAsync(context, request, CancellationToken.None));
+        var error = await Record.ExceptionAsync(() => SignalReportBuilder.ReadAsync(
+            context,
+            request,
+            CancellationToken.None));
 
         // Assert
         Assert.IsType<ArgumentException>(error);
@@ -166,25 +214,33 @@ public abstract partial class SignalReportTests
         // Arrange
         var probe = new SignalReportProbe();
         var secondProbe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe,
+        await using var context = await CreateContextAsync(
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        await using var secondContext = await CreateContextAsync(secondProbe,
+        await using var secondContext = await CreateContextAsync(
+            secondProbe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var first = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
-        var second = await SignalReportDataset.CreateAsync(secondContext, 5, false,
-            CancellationToken.None, Guid.NewGuid());
+        var second = await SignalReportDataset.CreateAsync(
+            secondContext,
+            5,
+            false,
+            CancellationToken.None,
+            Guid.NewGuid());
 
-        var firstRequest = SignalReportValidation.Snapshot(first.Request() with
-        {
-            Criteria = [new TagCriterion(SignalReportDataset.ArrayKind, "Band", "Narrow")],
-        });
+        var firstRequest = SignalReportValidation.Snapshot(
+            first.Request() with
+            {
+                Criteria = [new TagCriterion(SignalReportDataset.ArrayKind, "Band", "Narrow")],
+            });
 
-        var secondRequest = SignalReportValidation.Snapshot(second.Request() with
-        {
-            Criteria = [new TagCriterion(SignalReportDataset.SensorKind, "RackCode", "R7")],
-        });
+        var secondRequest = SignalReportValidation.Snapshot(
+            second.Request() with
+            {
+                Criteria = [new TagCriterion(SignalReportDataset.SensorKind, "RackCode", "R7")],
+            });
 
         probe.Reset();
         secondProbe.Reset();
@@ -198,10 +254,26 @@ public abstract partial class SignalReportTests
         // Assert
         SignalReportValidation.RequireCatalog(firstRequest, firstRows);
         SignalReportValidation.RequireCatalog(secondRequest, secondRows);
-        Assert.Equal("Band", Assert.Single(firstRows.Where(row => row.Kind == 2)).FieldCode);
-        Assert.Equal("Narrow", Assert.Single(firstRows.Where(row => row.Kind == 3)).Value);
-        Assert.Equal("RackCode", Assert.Single(secondRows.Where(row => row.Kind == 2)).FieldCode);
-        Assert.Equal("R7", Assert.Single(secondRows.Where(row => row.Kind == 3)).Value);
+        Assert.Equal(
+            "Band",
+            Assert.Single(firstRows.Where(row => row.Kind == 2))
+                .FieldCode);
+
+        Assert.Equal(
+            "Narrow",
+            Assert.Single(firstRows.Where(row => row.Kind == 3))
+                .Value);
+
+        Assert.Equal(
+            "RackCode",
+            Assert.Single(secondRows.Where(row => row.Kind == 2))
+                .FieldCode);
+
+        Assert.Equal(
+            "R7",
+            Assert.Single(secondRows.Where(row => row.Kind == 3))
+                .Value);
+
         Assert.Single(probe.Readers);
         Assert.Single(secondProbe.Readers);
         Assert.Equal(0, probe.Entities);
@@ -220,28 +292,32 @@ public abstract partial class SignalReportTests
         var criterion = request.Criteria[0];
         for (var index = 0; index < 1000; index++)
         {
-            context.TagChoices.Add(new TagChoice
+            context.TagChoices.Add(
+                new TagChoice
+                {
+                    TenantId = request.TenantId,
+                    TypeId = criterion.TypeId,
+                    FieldCode = criterion.FieldCode,
+                    Value = FormattableString.Invariant($"Unused-{index:D4}"),
+                });
+        }
+
+        context.TagDefinitions.Add(
+            new TagDefinition
             {
                 TenantId = request.TenantId,
                 TypeId = criterion.TypeId,
-                FieldCode = criterion.FieldCode,
-                Value = FormattableString.Invariant($"Unused-{index:D4}"),
+                FieldCode = "UnrequestedField",
             });
-        }
 
-        context.TagDefinitions.Add(new TagDefinition
-        {
-            TenantId = request.TenantId,
-            TypeId = criterion.TypeId,
-            FieldCode = "UnrequestedField",
-        });
-        context.TagChoices.Add(new TagChoice
-        {
-            TenantId = request.TenantId,
-            TypeId = criterion.TypeId,
-            FieldCode = "UnrequestedField",
-            Value = criterion.Value,
-        });
+        context.TagChoices.Add(
+            new TagChoice
+            {
+                TenantId = request.TenantId,
+                TypeId = criterion.TypeId,
+                FieldCode = "UnrequestedField",
+                Value = criterion.Value,
+            });
 
         // WHY: Both values occur in the same requested classification. Separate field/value IN filters
         // would overfetch these crossed pairs even though exact post-read validation still rejects them.
@@ -260,6 +336,7 @@ public abstract partial class SignalReportTests
                 FieldCode = "RackCode",
                 Value = "Liquid",
             });
+
         await context.SaveChangesAsync(cancellationToken);
         context.ChangeTracker.Clear();
     }

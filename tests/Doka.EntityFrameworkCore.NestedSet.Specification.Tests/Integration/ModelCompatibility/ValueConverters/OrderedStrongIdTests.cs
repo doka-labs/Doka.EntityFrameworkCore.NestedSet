@@ -26,7 +26,11 @@ public abstract class OrderedStrongIdTests : ProviderTest
             cancellationToken: TestContext.Current.CancellationToken);
 
         var treeId = await SeedAsync(context, 1, children, cancellationToken: TestContext.Current.CancellationToken);
-        var tracked = await RenameReversedAsync(context, treeId, 1, children,
+        var tracked = await RenameReversedAsync(
+            context,
+            treeId,
+            1,
+            children,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
@@ -36,7 +40,12 @@ public abstract class OrderedStrongIdTests : ProviderTest
             CancellationToken.None);
 
         // Assert
-        await AssertReversedAsync(context, treeId, tracked, 1, children,
+        await AssertReversedAsync(
+            context,
+            treeId,
+            tracked,
+            1,
+            children,
             cancellationToken: TestContext.Current.CancellationToken);
     }
 
@@ -54,10 +63,18 @@ public abstract class OrderedStrongIdTests : ProviderTest
         // predecessor, so a wrong order across batches leaves a node after the wrong sibling.
         var small = await SeedAsync(context, 1, 40, cancellationToken: TestContext.Current.CancellationToken);
         var large = await SeedAsync(context, 1000, 150, cancellationToken: TestContext.Current.CancellationToken);
-        var smallNodes = await RenameReversedAsync(context, small, 1, 40,
+        var smallNodes = await RenameReversedAsync(
+            context,
+            small,
+            1,
+            40,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var largeNodes = await RenameReversedAsync(context, large, 1000, 150,
+        var largeNodes = await RenameReversedAsync(
+            context,
+            large,
+            1000,
+            150,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
@@ -67,9 +84,20 @@ public abstract class OrderedStrongIdTests : ProviderTest
             CancellationToken.None);
 
         // Assert
-        await AssertReversedAsync(context, small, smallNodes, 1, 40,
+        await AssertReversedAsync(
+            context,
+            small,
+            smallNodes,
+            1,
+            40,
             cancellationToken: TestContext.Current.CancellationToken);
-        await AssertReversedAsync(context, large, largeNodes, 1000, 150,
+
+        await AssertReversedAsync(
+            context,
+            large,
+            largeNodes,
+            1000,
+            150,
             cancellationToken: TestContext.Current.CancellationToken);
     }
 
@@ -90,7 +118,7 @@ public abstract class OrderedStrongIdTests : ProviderTest
                 TreeId = treeId,
                 Name = "root",
                 Left = 1,
-                Right = (2L * children) + 2,
+                Right = 2L * children + 2,
             });
 
         for (var index = 0; index < children; index++)
@@ -102,8 +130,8 @@ public abstract class OrderedStrongIdTests : ProviderTest
                     TreeId = treeId,
                     ParentId = new StrongNodeId(root),
                     Name = $"n{index:D4}",
-                    Left = (2L * index) + 2,
-                    Right = (2L * index) + 3,
+                    Left = 2L * index + 2,
+                    Right = 2L * index + 3,
                     Depth = 1,
                     Position = index,
                 });
@@ -169,7 +197,9 @@ public abstract class OrderedStrongIdTests : ProviderTest
             node =>
             {
                 var position = (long)children + root - node.Id.Value;
-                Assert.Equal(((2 * position) + 2, (2 * position) + 3, position), (node.Left, node.Right, node.Position));
+                Assert.Equal(
+                    (2 * position + 2, 2 * position + 3, position),
+                    (node.Left, node.Right, node.Position));
             });
 
         var report = await context

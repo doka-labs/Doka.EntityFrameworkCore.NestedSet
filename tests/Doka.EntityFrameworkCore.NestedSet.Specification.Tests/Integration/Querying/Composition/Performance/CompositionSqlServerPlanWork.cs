@@ -17,13 +17,18 @@ internal readonly record struct CompositionSqlServerPlanWork(
     /// <param name="plan">The actual native XML plan of the measured statement.</param>
     /// <param name="budget">The unchanged cardinality-derived allowance for one population pass and path evidence.</param>
     /// <param name="profile">The synthetic profile retained with its native plan.</param>
-    internal static void AssertWithinBudget(string plan, CompositionPlanWorkBudget budget, string profile)
+    internal static void AssertWithinBudget(
+        string plan,
+        CompositionPlanWorkBudget budget,
+        string profile
+    )
     {
         var work = ReadXml(plan);
 
         // WHY: Correct final rows do not expose discarded index entries. Guard both iterator output
         // and pre-filter reads so the previously observed repeated PK scans cannot silently recur.
-        Assert.True(work.MaximumOperatorTuples <= budget.OperatorTuples
+        Assert.True(
+            work.MaximumOperatorTuples <= budget.OperatorTuples
             && work.MaximumOperatorRowsRead <= budget.OperatorTuples,
             FormattableString.Invariant(
                 $"{profile}: output={work.MaximumOperatorTuples}; reads={work.MaximumOperatorRowsRead}; maximum={budget.OperatorTuples}."));
@@ -37,16 +42,20 @@ internal readonly record struct CompositionSqlServerPlanWork(
     /// by ActualExecutions would count the same work again. ActualRowsRead exposes work hidden by residual
     /// predicates; a zero-output seek may omit it, so only reported pre-filter counters contribute.
     /// </remarks>
-    internal static CompositionSqlServerPlanWork ReadXml(string plan)
+    internal static CompositionSqlServerPlanWork ReadXml(
+        string plan
+    )
     {
         try
         {
             using var input = new StringReader(plan);
-            using var reader = XmlReader.Create(input, new XmlReaderSettings
-            {
-                DtdProcessing = DtdProcessing.Prohibit,
-                XmlResolver = null,
-            });
+            using var reader = XmlReader.Create(
+                input,
+                new XmlReaderSettings
+                {
+                    DtdProcessing = DtdProcessing.Prohibit,
+                    XmlResolver = null,
+                });
 
             var document = XDocument.Load(reader);
             XNamespace showplan = "http://schemas.microsoft.com/sqlserver/2004/07/showplan";
@@ -65,11 +74,13 @@ internal readonly record struct CompositionSqlServerPlanWork(
                 var output = 0D;
                 var read = 0D;
                 var ran = false;
-                var readsStorage = operation.Attribute("PhysicalOp")?.Value is
+                var readsStorage = operation.Attribute("PhysicalOp")
+                        ?.Value is
                     "Index Scan" or "Index Seek" or "Clustered Index Scan" or "Clustered Index Seek" or "Table Scan";
 
-                foreach (var counter in operation.Elements(showplan + "RunTimeInformation")
-                             .Elements(showplan + "RunTimeCountersPerThread"))
+                foreach (var counter in operation
+                    .Elements(showplan + "RunTimeInformation")
+                    .Elements(showplan + "RunTimeCountersPerThread"))
                 {
                     var executions = Number(counter, "ActualExecutions", required: true);
                     var rows = Number(counter, "ActualRows", required: true);
@@ -79,14 +90,17 @@ internal readonly record struct CompositionSqlServerPlanWork(
                     ran |= executions > 0;
                 }
 
-                if (!double.IsFinite(output) || !double.IsFinite(read))
+                if (!double.IsFinite(output)
+                    || !double.IsFinite(read))
                 {
                     throw new FormatException("The SQL Server operator's cumulative work is not finite.");
                 }
 
                 maximumOutput = Math.Max(maximumOutput, output);
                 maximumRead = Math.Max(maximumRead, read);
-                executed += ran ? 1 : 0;
+                executed += ran
+                    ? 1
+                    : 0;
             }
 
             if (executed == 0)
@@ -103,17 +117,24 @@ internal readonly record struct CompositionSqlServerPlanWork(
     }
 
     /// <summary>Rejects absent required, negative, nonnumeric and nonfinite native counters.</summary>
-    private static double Number(XElement counter, string field, bool required)
+    private static double Number(
+        XElement counter,
+        string field,
+        bool required
+    )
     {
         var value = counter.Attribute(field);
 
         if (value is null)
         {
-            return required ? throw new FormatException("The SQL Server operator is missing " + field + ".") : 0D;
+            return required
+                ? throw new FormatException("The SQL Server operator is missing " + field + ".")
+                : 0D;
         }
 
         if (!double.TryParse(value.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)
-            || !double.IsFinite(number) || number < 0)
+            || !double.IsFinite(number)
+            || number < 0)
         {
             throw new FormatException("The SQL Server operator has an invalid " + field + ".");
         }

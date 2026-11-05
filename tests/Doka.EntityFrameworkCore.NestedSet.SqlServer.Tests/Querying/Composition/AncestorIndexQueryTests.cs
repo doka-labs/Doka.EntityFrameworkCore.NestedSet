@@ -5,5 +5,7 @@ public sealed class AncestorIndexQueryTests : Specifications.AncestorIndexQueryT
 {
     /// <summary>Uses the collection-owned SQL Server model database.</summary>
     /// <param name="fixture">The exact SQL Server provider fixture.</param>
-    public AncestorIndexQueryTests(ProviderFixture<ModelCompatibilityDatabase, SqlServerEngine> fixture) : base(fixture) { }
+    public AncestorIndexQueryTests(
+        ProviderFixture<ModelCompatibilityDatabase, SqlServerEngine> fixture
+    ) : base(fixture) { }
 }

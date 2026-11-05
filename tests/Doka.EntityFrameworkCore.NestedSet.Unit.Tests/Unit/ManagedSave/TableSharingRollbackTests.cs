@@ -23,7 +23,10 @@ public sealed partial class TableSharingRollbackTests
     )
     {
         // Arrange
-        await using var context = owned ? new SharingContext() : new SplitSharingContext();
+        await using var context = owned
+            ? new SharingContext()
+            : new SplitSharingContext();
+
         var detail = new SharingDetail { Id = 7 };
         var root = new SharingRoot
         {
@@ -38,13 +41,16 @@ public sealed partial class TableSharingRollbackTests
         SeedVersion(rootEntry);
         SeedVersion(detailEntry);
         root.Name = "Pending root";
-        rootEntry.Property(value => value.Name).IsModified = true;
+        rootEntry.Property(value => value.Name)
+            .IsModified = true;
+
         detail.Label = "Pending label";
         detail.Count = 8;
 
         if (modifiedLabel)
         {
-            detailEntry.Property(value => value.Label).IsModified = true;
+            detailEntry.Property(value => value.Label)
+                .IsModified = true;
         }
 
         var update = Update(context, detail);
@@ -70,17 +76,22 @@ public sealed partial class TableSharingRollbackTests
 
         var beforeState = update.EntityState;
         var beforeFlags = ModifiedProperties(update);
-        var labelOriginal = detailEntry.Property(value => value.Label).OriginalValue;
+        var labelOriginal = detailEntry.Property(value => value.Label)
+            .OriginalValue;
 
-        var countOriginal = detailEntry.Property(value => value.Count).OriginalValue;
+        var countOriginal = detailEntry.Property(value => value.Count)
+            .OriginalValue;
 
         var snapshot = NestedSetTrackerSnapshot.Capture(context);
+
         // WHY: This exact public provider setter uses modifyProperties:false, as EF's command preparer does.
         // Scalar edits or readback here would clear flags during rollback and could hide the flagless-state bug.
         update.EntityState = EntityState.Modified;
         var promotedState = update.EntityState;
         var promotedFlags = ModifiedProperties(update);
-        string[] expectedFlags = modifiedLabel ? [nameof(SharingDetail.Label)] : [];
+        string[] expectedFlags = modifiedLabel
+            ? [nameof(SharingDetail.Label)]
+            : [];
 
         // Act
         snapshot.Restore();
@@ -97,26 +108,43 @@ public sealed partial class TableSharingRollbackTests
         Assert.Equal(beforeFlags, ModifiedProperties(update));
         Assert.Equal(expectedFlags, beforeFlags);
         Assert.Equal("Pending label", detail.Label);
-        Assert.Equal(labelOriginal,
-            detailEntry.Property(value => value.Label).OriginalValue);
+        Assert.Equal(
+            labelOriginal,
+            detailEntry.Property(value => value.Label)
+                .OriginalValue);
+
         Assert.Equal("Stored label", labelOriginal);
         Assert.Equal(8, detail.Count);
-        Assert.Equal(countOriginal,
-            detailEntry.Property(value => value.Count).OriginalValue);
+        Assert.Equal(
+            countOriginal,
+            detailEntry.Property(value => value.Count)
+                .OriginalValue);
+
         Assert.Equal(1, countOriginal);
-        Assert.False(detailEntry.Property(value => value.Count).IsModified);
+        Assert.False(
+            detailEntry.Property(value => value.Count)
+                .IsModified);
+
         Assert.Equal("Pending root", root.Name);
-        Assert.Equal("Stored root",
-            rootEntry.Property(value => value.Name).OriginalValue);
+        Assert.Equal(
+            "Stored root",
+            rootEntry.Property(value => value.Name)
+                .OriginalValue);
+
         Assert.Equal(EntityState.Modified, rootEntry.State);
-        Assert.True(rootEntry.Property(value => value.Name).IsModified);
+        Assert.True(
+            rootEntry.Property(value => value.Name)
+                .IsModified);
+
         Assert.Same(detail, root.Detail);
         Assert.Same(root, detail.Root);
         AssertVersion(rootEntry);
         AssertVersion(detailEntry);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Generated shadow values on both aliases restore alongside the unchanged sharing-peer state.</summary>
@@ -129,7 +157,10 @@ public sealed partial class TableSharingRollbackTests
     )
     {
         // Arrange
-        await using var context = owned ? new SharingContext() : new SplitSharingContext();
+        await using var context = owned
+            ? new SharingContext()
+            : new SplitSharingContext();
+
         var detail = new SharingDetail { Id = 7 };
         var root = new SharingRoot
         {
@@ -144,7 +175,9 @@ public sealed partial class TableSharingRollbackTests
         SeedVersion(rootEntry);
         SeedVersion(detailEntry);
         root.Name = "Pending root";
-        rootEntry.Property(value => value.Name).IsModified = true;
+        rootEntry.Property(value => value.Name)
+            .IsModified = true;
+
         detail.Label = "Pending label";
         detail.Count = 8;
         var rootUpdate = Update(context, root);
@@ -160,6 +193,7 @@ public sealed partial class TableSharingRollbackTests
         var beforeState = detailUpdate.EntityState;
         var snapshot = NestedSetTrackerSnapshot.Capture(context);
         detailUpdate.EntityState = EntityState.Modified;
+
         // WHY: Shared-column readback reaches every mapped alias through the public provider interface.
         // This is generated shadow-state evidence only; no native SQL Server rowversion execution is claimed.
         rootUpdate.SetStoreGeneratedValue(rootVersion, new byte[] { 9 }, setModified: false);
@@ -174,7 +208,8 @@ public sealed partial class TableSharingRollbackTests
         Assert.Equal(EntityState.Unchanged, beforeState);
         Assert.True(rootVersion.IsShadowProperty());
         Assert.True(detailVersion.IsShadowProperty());
-        Assert.Same(rootVersion
+        Assert.Same(
+            rootVersion
                 .GetTableColumnMappings()
                 .Single()
                 .Column,
@@ -182,6 +217,7 @@ public sealed partial class TableSharingRollbackTests
                 .GetTableColumnMappings()
                 .Single()
                 .Column);
+
         Assert.True(rootReturned);
         Assert.True(detailReturned);
         Assert.Equal(EntityState.Unchanged, detailUpdate.EntityState);
@@ -191,16 +227,27 @@ public sealed partial class TableSharingRollbackTests
         Assert.False(rootUpdate.HasStoreGeneratedValue(rootVersion));
         Assert.False(detailUpdate.HasStoreGeneratedValue(detailVersion));
         Assert.Equal("Pending label", detail.Label);
-        Assert.Equal("Stored label",
-            detailEntry.Property(value => value.Label).OriginalValue);
+        Assert.Equal(
+            "Stored label",
+            detailEntry.Property(value => value.Label)
+                .OriginalValue);
+
         Assert.Equal(8, detail.Count);
-        Assert.Equal(1,
-            detailEntry.Property(value => value.Count).OriginalValue);
+        Assert.Equal(
+            1,
+            detailEntry.Property(value => value.Count)
+                .OriginalValue);
+
         Assert.Equal(EntityState.Modified, rootEntry.State);
-        Assert.True(rootEntry.Property(value => value.Name).IsModified);
+        Assert.True(
+            rootEntry.Property(value => value.Name)
+                .IsModified);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Accepted additions return sharing aliases to their temporary identities and CLR sentinels.</summary>
@@ -213,7 +260,10 @@ public sealed partial class TableSharingRollbackTests
     )
     {
         // Arrange
-        await using var context = owned ? new SharingContext() : new SplitSharingContext();
+        await using var context = owned
+            ? new SharingContext()
+            : new SplitSharingContext();
+
         var detail = new SharingDetail
         {
             Label = "Pending label",
@@ -246,16 +296,20 @@ public sealed partial class TableSharingRollbackTests
         var snapshot = NestedSetTrackerSnapshot.Capture(context);
         rootUpdate.SetStoreGeneratedValue(rootKey.Metadata, 42, setModified: false);
         var propagated = detailUpdate.HasStoreGeneratedValue(detailKey.Metadata);
-        rootUpdate.SetStoreGeneratedValue(rootEntry
+        rootUpdate.SetStoreGeneratedValue(
+            rootEntry
                 .Property(VersionProperty)
                 .Metadata,
             new byte[] { 9 },
             setModified: false);
-        detailUpdate.SetStoreGeneratedValue(detailEntry
+
+        detailUpdate.SetStoreGeneratedValue(
+            detailEntry
                 .Property(VersionProperty)
                 .Metadata,
             new byte[] { 9 },
             setModified: false);
+
         // WHY: Acceptance is a real public EF lifecycle transition. Rollback must reinstate Added before
         // replaying temporary identities; normalizing this aggregate to Unchanged would reject valid state.
         context.ChangeTracker.AcceptAllChanges();
@@ -286,8 +340,10 @@ public sealed partial class TableSharingRollbackTests
         AssertVersion(rootEntry);
         AssertVersion(detailEntry);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Accepted deletion of the complete sharing row restores both originally Deleted entries.</summary>
@@ -300,7 +356,10 @@ public sealed partial class TableSharingRollbackTests
     )
     {
         // Arrange
-        await using var context = owned ? new SharingContext() : new SplitSharingContext();
+        await using var context = owned
+            ? new SharingContext()
+            : new SplitSharingContext();
+
         var detail = new SharingDetail { Id = 7 };
         var root = new SharingRoot
         {
@@ -339,16 +398,24 @@ public sealed partial class TableSharingRollbackTests
         Assert.Same(detail, root.Detail);
         Assert.Same(root, detail.Root);
         Assert.Equal("Pending label", detail.Label);
-        Assert.Equal("Stored label",
-            detailEntry.Property(value => value.Label).OriginalValue);
+        Assert.Equal(
+            "Stored label",
+            detailEntry.Property(value => value.Label)
+                .OriginalValue);
+
         Assert.Equal(8, detail.Count);
-        Assert.Equal(1,
-            detailEntry.Property(value => value.Count).OriginalValue);
+        Assert.Equal(
+            1,
+            detailEntry.Property(value => value.Count)
+                .OriginalValue);
+
         AssertVersion(rootEntry);
         AssertVersion(detailEntry);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Obtains actual provider state without change detection or a standalone tracker.</summary>
@@ -360,7 +427,9 @@ public sealed partial class TableSharingRollbackTests
             .GetService<IUpdateAdapterFactory>()
             .Create()
             .Entries
-            .Single(entry => ReferenceEquals(entry.ToEntityEntry().Entity,
+            .Single(entry => ReferenceEquals(
+                entry.ToEntityEntry()
+                    .Entity,
                 entity));
 
     /// <summary>Seeds the shared shadow token through public current/original APIs without a pending flag.</summary>

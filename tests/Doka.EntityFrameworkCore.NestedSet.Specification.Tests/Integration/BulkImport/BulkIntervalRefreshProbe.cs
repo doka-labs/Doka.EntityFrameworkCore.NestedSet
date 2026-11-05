@@ -3,8 +3,8 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Measures final scalar reads after imports detach, excluding ordering and placement queries.</summary>
 public sealed class BulkIntervalRefreshProbe : DbCommandInterceptor
 {
-    private readonly string _table;
     private readonly HashSet<Guid> _readers = [];
+    private readonly string _table;
 
     /// <summary>Selects the mapped table whose final import refresh is observed.</summary>
     public BulkIntervalRefreshProbe(

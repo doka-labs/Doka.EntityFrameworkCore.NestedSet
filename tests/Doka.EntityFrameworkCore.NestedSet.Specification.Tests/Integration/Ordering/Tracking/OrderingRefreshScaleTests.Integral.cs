@@ -30,15 +30,19 @@ public abstract partial class OrderingRefreshScaleTests
     )
     {
         // Arrange
-        var database = await _relationalFixture.ResetAsync(Engine,
+        var database = await _relationalFixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var source = database.CreateContext();
-        var extensions = source.GetService<IDbContextOptions>().Extensions
+        var extensions = source
+            .GetService<IDbContextOptions>()
+            .Extensions
             .ToDictionary(extension => extension.GetType());
 
         var options = new DbContextOptions<DbContext>(extensions);
-        var method = typeof(OrderingRefreshScaleTests).GetMethod(nameof(ProbeIntegralAsync),
+        var method = typeof(OrderingRefreshScaleTests).GetMethod(
+            nameof(ProbeIntegralAsync),
             BindingFlags.NonPublic | BindingFlags.Static)!;
 
         // Act
@@ -47,9 +51,11 @@ public abstract partial class OrderingRefreshScaleTests
             .Invoke(null, [options, TestContext.Current.CancellationToken])!;
 
         // Assert
-        _output.WriteLine($"Engine={Engine}; key={keyType.Name}; converter={result.Converter ?? "none"}; "
+        _output.WriteLine(
+            $"Engine={Engine}; key={keyType.Name}; converter={result.Converter ?? "none"}; "
             + $"input={result.Expected}; returned={result.Actual}; parameters={result.Parameters}; "
             + $"mapping failure={result.Failure?.Message ?? "none"}");
+
         _output.WriteLine(result.Sql);
 
         if (result.Converter is not null)
@@ -63,8 +69,11 @@ public abstract partial class OrderingRefreshScaleTests
 
         if (result.Rejection is not null)
         {
-            Assert.Contains(result.Rejection,
-                Assert.IsType<InvalidOperationException>(result.Failure).Message, StringComparison.Ordinal);
+            Assert.Contains(
+                result.Rejection,
+                Assert.IsType<InvalidOperationException>(result.Failure)
+                    .Message,
+                StringComparison.Ordinal);
 
             return;
         }
@@ -90,12 +99,17 @@ public abstract partial class OrderingRefreshScaleTests
     {
         using var probe = new ScaleProbe();
         await using var context = new IntegralContext<TKey>(
-            new DbContextOptionsBuilder(options).ConfigureTestWarnings().AddInterceptors(probe).Options);
+            new DbContextOptionsBuilder(options)
+                .ConfigureTestWarnings()
+                .AddInterceptors(probe)
+                .Options);
 
         var entityType = context.Model.FindEntityType(typeof(OrderingKeyNode<TKey, TKey?>))!;
         var key = entityType.FindProperty(nameof(OrderingKeyNode<TKey, TKey?>.Id))!;
 
-        var converter = key.GetTypeMapping().Converter;
+        var converter = key.GetTypeMapping()
+            .Converter;
+
         if (converter is not null)
         {
             var convertedMap = NestedSetMapping<OrderingKeyNode<TKey, TKey?>, TKey, int>
@@ -108,49 +122,96 @@ public abstract partial class OrderingRefreshScaleTests
             Assert.False(convertedMap.HasNativeKeyEquality);
             Assert.False(convertedCapabilities.SupportsTrackedKeyCollection(key));
 
-            return new IntegralResult(0, 0, 0, false, converter.GetType().Name,
-                null, null, "");
+            return new IntegralResult(
+                0,
+                0,
+                0,
+                false,
+                converter.GetType()
+                    .Name,
+                null,
+                null,
+                "");
         }
 
-        if (context.Database.IsSqlite() && typeof(TKey) == typeof(ulong))
+        if (context.Database.IsSqlite()
+            && typeof(TKey) == typeof(ulong))
         {
             // WHY: The existing SQLite ordering contract rejects UInt64 tiebreakers before any transport query.
-            var failure = Record.Exception(
-                () => NestedSetMapping<OrderingKeyNode<TKey, TKey?>, TKey, int>.For(context, entityType));
+            var failure = Record.Exception(() =>
+                NestedSetMapping<OrderingKeyNode<TKey, TKey?>, TKey, int>.For(context, entityType));
 
-            return new IntegralResult(0, 0, 0, false, null, "provider type 'UInt64'", failure, "");
+            return new IntegralResult(
+                0,
+                0,
+                0,
+                false,
+                null,
+                "provider type 'UInt64'",
+                failure,
+                "");
         }
 
         var map = NestedSetMapping<OrderingKeyNode<TKey, TKey?>, TKey, int>.For(context, entityType);
         var capabilities = NestedSetProviderCapabilities.Resolve(context);
         Assert.True(map.HasNativeKeyEquality);
         Assert.True(capabilities.SupportsTrackedKeyCollection(key));
-        await context.GetService<IRelationalDatabaseCreator>()
+        await context
+            .GetService<IRelationalDatabaseCreator>()
             .CreateTablesAsync(cancellationToken);
+
         var keys = IntegralKeys<TKey>();
         var treeId = Guid.NewGuid();
-        await context.AddRangeAsync(keys.Select((keyValue, index) =>
-            new OrderingKeyNode<TKey, TKey?>(keyValue, $"node-{index:D8}")
-            {
-                Scope = 1,
-                TreeId = treeId,
-                ParentId = index == 0 ? null : keys[0],
-                Left = index == 0 ? 1 : index * 2,
-                Right = index == 0 ? keys.Length * 2 : index * 2 + 1,
-                Depth = index == 0 ? 0 : 1,
-                Position = index == 0 ? 0 : index - 1,
-            }), cancellationToken);
+        await context.AddRangeAsync(
+            keys.Select((keyValue, index) =>
+                new OrderingKeyNode<TKey, TKey?>(keyValue, $"node-{index:D8}")
+                {
+                    Scope = 1,
+                    TreeId = treeId,
+                    ParentId = index == 0
+                        ? null
+                        : keys[0],
+                    Left = index == 0
+                        ? 1
+                        : index * 2,
+                    Right = index == 0
+                        ? keys.Length * 2
+                        : index * 2 + 1,
+                    Depth = index == 0
+                        ? 0
+                        : 1,
+                    Position = index == 0
+                        ? 0
+                        : index - 1,
+                }),
+            cancellationToken);
+
         await context.SavePrecomputedHierarchyAsync(cancellationToken);
         context.ChangeTracker.Clear();
         probe.Reset();
-        var actual = await capabilities.MatchTrackedKeyCollection(
-                context.Set<OrderingKeyNode<TKey, TKey?>>().AsNoTracking(), key, keys)
-            .Select(node => node.Id).ToArrayAsync(cancellationToken);
+        var actual = await capabilities
+            .MatchTrackedKeyCollection(
+                context
+                    .Set<OrderingKeyNode<TKey, TKey?>>()
+                    .AsNoTracking(),
+                key,
+                keys)
+            .Select(node => node.Id)
+            .ToArrayAsync(cancellationToken);
 
         var command = probe.Commands.Single();
 
-        return new IntegralResult(keys.Length, actual.Length, command.Parameters,
-            keys.ToHashSet().SetEquals(actual), null, null, null, command.Sql);
+        return new IntegralResult(
+            keys.Length,
+            actual.Length,
+            command.Parameters,
+            keys
+                .ToHashSet()
+                .SetEquals(actual),
+            null,
+            null,
+            null,
+            command.Sql);
     }
 
     /// <summary>Includes native minimum and maximum identities without decimal or floating point rounding.</summary>
@@ -159,13 +220,13 @@ public abstract partial class OrderingRefreshScaleTests
     {
         var bounds = Type.GetTypeCode(typeof(TKey)) switch
         {
-            TypeCode.Byte => ((decimal)byte.MinValue, (decimal)byte.MaxValue),
-            TypeCode.SByte => ((decimal)sbyte.MinValue, (decimal)sbyte.MaxValue),
-            TypeCode.Int16 => ((decimal)short.MinValue, (decimal)short.MaxValue),
-            TypeCode.UInt16 => ((decimal)ushort.MinValue, (decimal)ushort.MaxValue),
-            TypeCode.Int32 => ((decimal)int.MinValue, (decimal)int.MaxValue),
-            TypeCode.UInt32 => ((decimal)uint.MinValue, (decimal)uint.MaxValue),
-            TypeCode.Int64 => ((decimal)long.MinValue, (decimal)long.MaxValue),
+            TypeCode.Byte => (byte.MinValue, byte.MaxValue),
+            TypeCode.SByte => (sbyte.MinValue, sbyte.MaxValue),
+            TypeCode.Int16 => (short.MinValue, short.MaxValue),
+            TypeCode.UInt16 => (ushort.MinValue, ushort.MaxValue),
+            TypeCode.Int32 => (int.MinValue, int.MaxValue),
+            TypeCode.UInt32 => (uint.MinValue, uint.MaxValue),
+            TypeCode.Int64 => (long.MinValue, long.MaxValue),
             TypeCode.UInt64 => ((decimal)ulong.MinValue, (decimal)ulong.MaxValue),
             _ => throw new InvalidOperationException("The test case must use a primitive integral key."),
         };
@@ -173,10 +234,17 @@ public abstract partial class OrderingRefreshScaleTests
         var (minimum, maximum) = bounds;
         decimal[] edges = [minimum, minimum + 1, maximum - 1, maximum];
 
-        return Enumerable.Range(0, 2200).Select(value => (decimal)value)
-            .Where(value => value <= maximum).Concat(edges).Distinct()
-            .Select(value => (TKey)Convert.ChangeType(value, typeof(TKey),
-                CultureInfo.InvariantCulture)).ToArray();
+        return Enumerable
+            .Range(0, 2200)
+            .Select(value => (decimal)value)
+            .Where(value => value <= maximum)
+            .Concat(edges)
+            .Distinct()
+            .Select(value => (TKey)Convert.ChangeType(
+                value,
+                typeof(TKey),
+                CultureInfo.InvariantCulture))
+            .ToArray();
     }
 
     /// <summary>Uses the existing typed ordering entity with one independent native-key test table.</summary>
@@ -184,15 +252,25 @@ public abstract partial class OrderingRefreshScaleTests
         where TKey : struct, IConvertible
     {
         /// <summary>Reuses the existing fixture provider options without registering a new singleton service.</summary>
-        internal IntegralContext(DbContextOptions options) : base(options) { }
+        internal IntegralContext(
+            DbContextOptions options
+        ) : base(options) { }
 
         /// <inheritdoc />
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        protected override void OnModelCreating(
+            ModelBuilder modelBuilder
+        )
         {
             var node = modelBuilder.Entity<OrderingKeyNode<TKey, TKey?>>();
             node.ToTable("Integral" + typeof(TKey).Name + "Nodes");
-            node.Property(value => value.Id).ValueGeneratedNever();
-            node.Property(value => value.Name).HasMaxLength(128);
+            node
+                .Property(value => value.Id)
+                .ValueGeneratedNever();
+
+            node
+                .Property(value => value.Name)
+                .HasMaxLength(128);
+
             node.HasNestedSet(builder => builder
                 .HasTreeId(value => value.TreeId)
                 .HasScope(value => value.Scope)

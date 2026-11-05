@@ -22,7 +22,8 @@ public sealed partial class EngineTestDiscoveryTests
     )
     {
         // Arrange
-        var method = CreateTestMethod(engine,
+        var method = CreateTestMethod(
+            engine,
             nameof(DiscoveryProbe.Ordinary),
             databaseIndependent: databaseIndependent);
 
@@ -30,7 +31,11 @@ public sealed partial class EngineTestDiscoveryTests
         var resolved = ProviderDatabasePlatformAttribute.ResolveDatabaseEngine(method.TestClass.Class, method.Method);
 
         // Assert
-        Assert.Equal(databaseIndependent ? null : engine, resolved);
+        Assert.Equal(
+            databaseIndependent
+                ? null
+                : engine,
+            resolved);
     }
 
     /// <summary>An identity-only fixture is not evidence that a test body avoids the database.</summary>
@@ -38,7 +43,8 @@ public sealed partial class EngineTestDiscoveryTests
     public void ProviderResourcesDoesNotBypassSqlServerPlatformCheck()
     {
         // Arrange
-        var method = CreateTestMethod("SqlServer",
+        var method = CreateTestMethod(
+            "SqlServer",
             nameof(DiscoveryProbe.Ordinary),
             [typeof(ProviderFixture<ProviderResources, SqlServerEngine>)]);
 
@@ -82,9 +88,11 @@ public sealed partial class EngineTestDiscoveryTests
     )
     {
         // Arrange
-        var suite = CreateTestMethod("SqlServer",
+        var suite = CreateTestMethod(
+                "SqlServer",
                 nameof(DiscoveryProbe.Ordinary),
-                [typeof(ProviderFixture<ProviderResources, SqlServerEngine>)]).TestClass.Class;
+                [typeof(ProviderFixture<ProviderResources, SqlServerEngine>)])
+            .TestClass.Class;
 
         var method = typeof(DatabaseLifecycleTests).GetMethod(methodName)!;
 
@@ -92,7 +100,11 @@ public sealed partial class EngineTestDiscoveryTests
         var resolved = ProviderDatabasePlatformAttribute.ResolveDatabaseEngine(suite, method);
 
         // Assert
-        Assert.Equal(databaseIndependent ? null : "SqlServer", resolved);
+        Assert.Equal(
+            databaseIndependent
+                ? null
+                : "SqlServer",
+            resolved);
     }
 
     /// <summary>SQL Server compiled-model metadata remains available without starting a server.</summary>
@@ -105,7 +117,8 @@ public sealed partial class EngineTestDiscoveryTests
     )
     {
         // Arrange
-        var suite = CreateTestMethod("SqlServer", nameof(DiscoveryProbe.Ordinary)).TestClass.Class;
+        var suite = CreateTestMethod("SqlServer", nameof(DiscoveryProbe.Ordinary))
+            .TestClass.Class;
 
         var method = typeof(CompiledModelTests).GetMethod(methodName)!;
 
@@ -129,14 +142,16 @@ public sealed partial class EngineTestDiscoveryTests
     [InlineData(typeof(NestedSetFacadeTests), nameof(NestedSetFacadeTests.MutationNodeKeyTypeMustMatchFinalizedModel))]
     [InlineData(typeof(BulkInputTests), nameof(BulkInputTests.BranchCopiesItsChildCollection))]
     [InlineData(typeof(TableMappingTests), nameof(TableMappingTests.EntitySplittingPlacesIndexesOnStructureFragment))]
-    [InlineData(typeof(TpcSharedCollationTests),
+    [InlineData(
+        typeof(TpcSharedCollationTests),
         nameof(TpcSharedCollationTests.ScopedConcreteParentKeyBelongsToInheritanceRoot))]
     [InlineData(typeof(TpcTests), nameof(TpcTests.PolymorphicTpcHierarchyIsRejected))]
     [InlineData(typeof(SharedTypeTests), nameof(SharedTypeTests.SharedTypeWithoutEntityNameIsRejected))]
     [InlineData(typeof(BroadScopeTests), nameof(BroadScopeTests.ProviderComparerSeparatesReferenceAliases))]
     [InlineData(typeof(BroadNodeKeyTests), nameof(BroadNodeKeyTests.ProviderComparerSeparatesKeyAliases))]
     [InlineData(typeof(BroadTreeIdTests), nameof(BroadTreeIdTests.ProviderComparerSeparatesTreeAliases))]
-    [InlineData(typeof(ConvertedTextCollationTests),
+    [InlineData(
+        typeof(ConvertedTextCollationTests),
         nameof(ConvertedTextCollationTests.ImplicitIdentityCaptureMatchesRegistryAndSuppliedModel))]
     public void ConnectionFreeMethodsBypassOnlyTheDatabaseHostCheck(
         Type declaringSuite,
@@ -144,7 +159,8 @@ public sealed partial class EngineTestDiscoveryTests
     )
     {
         // Arrange
-        var suite = CreateTestMethod("SqlServer", nameof(DiscoveryProbe.Ordinary)).TestClass.Class;
+        var suite = CreateTestMethod("SqlServer", nameof(DiscoveryProbe.Ordinary))
+            .TestClass.Class;
 
         var method = declaringSuite.GetMethod(methodName)!;
 

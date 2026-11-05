@@ -6,6 +6,17 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     where TTreeId : notnull
     where TScope : notnull
 {
+    /// <summary>Gets every root and owned payload entry permitted through the current guarded insertion save.</summary>
+    internal IEnumerable<object> ManagedEntities =>
+        (_activeEntries ?? throw new InvalidOperationException("No bulk insertion batch is active.")).Select(entry =>
+            entry.Entity);
+
+    /// <summary>Gets only the current bounded wave's native lifecycle handles, or none after detachment.</summary>
+    internal IEnumerable<NestedSetInsertionTracking.Identity> ActiveIdentities
+        => _activeIdentities is null
+            ? []
+            : _activeIdentities.Values;
+
     /// <summary>Stages one bounded insertion batch without retaining EF entries for the complete import.</summary>
     /// <param name="destination">The locked destination before the gap is opened.</param>
     /// <param name="offset">The first preorder node included in this batch.</param>
@@ -134,7 +145,7 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
 
         var parentProperty = _store.Map.ParentProperty;
 
-        if (parentProperty.IsShadowProperty() == (shadowEntry is not null))
+        if (parentProperty.IsShadowProperty() == shadowEntry is not null)
         {
             var parent = node.StagedParent.Snapshot(parentProperty)
                 .BoxedValue;
@@ -171,12 +182,14 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     )
         where TValue : notnull
     {
-        if (property.IsShadowProperty() != (shadowEntry is not null))
+        if (property.IsShadowProperty() != shadowEntry is not null)
         {
             return;
         }
 
-        var assigned = snapshot ? NestedSetTypedValue<TValue>.Snapshot(property, value) : value;
+        var assigned = snapshot
+            ? NestedSetTypedValue<TValue>.Snapshot(property, value)
+            : value;
 
         if (shadowEntry is null)
         {
@@ -296,20 +309,11 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     internal void RefreshInsertionIdentities()
     {
         foreach (var identity in (_activeIdentities
-                     ?? throw new InvalidOperationException("No bulk insertion batch is active.")).Values)
+            ?? throw new InvalidOperationException("No bulk insertion batch is active.")).Values)
         {
             identity.Refresh();
         }
     }
-
-    /// <summary>Gets every root and owned payload entry permitted through the current guarded insertion save.</summary>
-    internal IEnumerable<object> ManagedEntities =>
-        (_activeEntries ?? throw new InvalidOperationException("No bulk insertion batch is active.")).Select(entry =>
-            entry.Entity);
-
-    /// <summary>Gets only the current bounded wave's native lifecycle handles, or none after detachment.</summary>
-    internal IEnumerable<NestedSetInsertionTracking.Identity> ActiveIdentities
-        => _activeIdentities is null ? [] : _activeIdentities.Values;
 
     /// <summary>Returns a parent that is safe to persist without unresolved identities or navigation fixup.</summary>
     private NestedSetParent<TKey> InitialParent(

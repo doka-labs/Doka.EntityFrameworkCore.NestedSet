@@ -8,7 +8,7 @@ public sealed partial class QueryPlanReplayTests
     /// <summary>Returns framework-owned tabular results without a second fake reader implementation.</summary>
     private static DataTableReader Results(
         params DataTable[] tables
-    ) => new DataTableReader(tables);
+    ) => new(tables);
 
     /// <summary>Creates the one-column shape returned for JSON, TREE, and XML plans.</summary>
     private static DataTable Plan(
@@ -131,7 +131,10 @@ public sealed partial class QueryPlanReplayTests
                 .Select(parameter => parameter.Value)
                 .ToArray();
 
-            return Task.FromResult(nonQuery is null ? throw new NotSupportedException() : nonQuery());
+            return Task.FromResult(
+                nonQuery is null
+                    ? throw new NotSupportedException()
+                    : nonQuery());
         }
 
         /// <inheritdoc />

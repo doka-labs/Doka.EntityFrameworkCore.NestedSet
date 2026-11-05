@@ -25,26 +25,34 @@ public abstract partial class SaveChangesTests
         var callback = new SaveBoundaryCallback();
         Action? mutateOnCompletion = null;
         var failure = new ComplexCallbackCompletionFailure(() => mutateOnCompletion?.Invoke());
-        await using var context = await CreateComplexCallbackContextAsync(database,
+        await using var context = await CreateComplexCallbackContextAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken,
-            callback, failure);
+            callback,
+            failure);
 
-        var graph = await LoadComplexCallbackGraphAsync(context,
+        var graph = await LoadComplexCallbackGraphAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var inputs = CreateComplexCompositionInputs(shape);
-        await PrepareComplexCompositionOperationAsync(context, shape,
+        await PrepareComplexCompositionOperationAsync(
+            context,
+            shape,
             cancellationToken: TestContext.Current.CancellationToken);
+
         context.ChangeTracker.AutoDetectChangesEnabled = automaticDetection;
         PlannedEntryState[]? before = null;
         ComplexCallbackClrState? clrBefore = null;
         ComplexCompositionNativeState? nativeBefore = null;
         ComplexCallbackStoredRow? expectedAfterRetry = null;
         var inputBefore = CapturePreparedOwnerInputs(inputs);
-        var storedBefore = await ReadComplexCallbackRowAsync(database,
+        var storedBefore = await ReadComplexCallbackRowAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchyBefore = await ReadPreparedOwnerStoreAsync(database,
+        var hierarchyBefore = await ReadPreparedOwnerStoreAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
         if (shape == "coordinated")
@@ -61,9 +69,12 @@ public abstract partial class SaveChangesTests
             callback.OnSaving = _ =>
             {
                 callback.OnSaving = null;
+
                 // WHY: Facades require a clean tracker at entry. Ordinary writes introduced by SavingChanges
                 // belong to their managed baseline, unlike unrelated writes pending before facade preflight.
-                graph.Row.Property(value => value.Label).CurrentValue = "explicit composed payload";
+                graph.Row.Property(value => value.Label)
+                    .CurrentValue = "explicit composed payload";
+
                 CaptureBaseline();
             };
 
@@ -82,16 +93,21 @@ public abstract partial class SaveChangesTests
         }
 
         var firstError = await Record.ExceptionAsync(() =>
-            RunComplexCompositionOperationAsync(context, shape, inputs,
+            RunComplexCompositionOperationAsync(
+                context,
+                shape,
+                inputs,
                 cancellationToken: TestContext.Current.CancellationToken));
 
         var afterFailure = CaptureComplexCompositionEntries(context, graph);
         var clrAfterFailure = CaptureComplexCallbackClr(graph.Row.Entity);
         var nativeAfterFailure = CaptureComplexCompositionNative(graph);
-        var storedAfterFailure = await ReadComplexCallbackRowAsync(database,
+        var storedAfterFailure = await ReadComplexCallbackRowAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchyAfterFailure = await ReadPreparedOwnerStoreAsync(database,
+        var hierarchyAfterFailure = await ReadPreparedOwnerStoreAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
@@ -101,10 +117,12 @@ public abstract partial class SaveChangesTests
             await context.SaveChangesAsync(CancellationToken.None);
         });
 
-        var storedAfterRetry = await ReadComplexCallbackRowAsync(database,
+        var storedAfterRetry = await ReadComplexCallbackRowAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchyAfterRetry = await ReadPreparedOwnerStoreAsync(database,
+        var hierarchyAfterRetry = await ReadPreparedOwnerStoreAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
@@ -125,7 +143,13 @@ public abstract partial class SaveChangesTests
         AssertComplexCallbackClr(clrBefore, CaptureComplexCallbackClr(graph.Row.Entity));
         AssertComplexCompositionHierarchyAfterRetry(shape, hierarchyBefore, hierarchyAfterRetry);
         Assert.Equal(inputBefore, CapturePreparedOwnerInputs(inputs));
-        Assert.All(inputs, input => Assert.Equal(EntityState.Detached, context.Entry(input).State));
+        Assert.All(
+            inputs,
+            input => Assert.Equal(
+                EntityState.Detached,
+                context.Entry(input)
+                    .State));
+
         Assert.Equal("sentinel", graph.Sentinel.Entity.Value);
         Assert.Equal(EntityState.Unchanged, graph.Sentinel.State);
         Assert.Equal(automaticDetection, context.ChangeTracker.AutoDetectChangesEnabled);
@@ -137,24 +161,33 @@ public abstract partial class SaveChangesTests
     [InlineData("single", "nested-add-reverse")]
     [InlineData("subtree", "remove-two")]
     [InlineData("forest", "nested-add-reverse")]
-    public async Task ComplexCompositionSuccessPersistsConsumerTopology(string shape, string mutation)
+    public async Task ComplexCompositionSuccessPersistsConsumerTopology(
+        string shape,
+        string mutation
+    )
     {
         // Arrange
         await using var database = await CreateComplexCompositionDatabaseAsync(
             cancellationToken: TestContext.Current.CancellationToken);
 
         var callback = new SaveBoundaryCallback();
-        await using var context = await CreateComplexCallbackContextAsync(database,
+        await using var context = await CreateComplexCallbackContextAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken,
             callback);
 
-        var graph = await LoadComplexCallbackGraphAsync(context,
+        var graph = await LoadComplexCallbackGraphAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var inputs = CreateComplexCompositionInputs(shape);
-        await PrepareComplexCompositionOperationAsync(context, shape,
+        await PrepareComplexCompositionOperationAsync(
+            context,
+            shape,
             cancellationToken: TestContext.Current.CancellationToken);
-        var hierarchyBefore = await ReadPreparedOwnerStoreAsync(database,
+
+        var hierarchyBefore = await ReadPreparedOwnerStoreAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
         ComplexCallbackClrState? intended = null;
@@ -165,10 +198,12 @@ public abstract partial class SaveChangesTests
             if (shape != "coordinated")
             {
                 // WHY: Ordinary callback writes are allowed after a facade's clean-tracker preflight.
-                graph.Row.Property(value => value.Label).CurrentValue = "explicit composed payload";
+                graph.Row.Property(value => value.Label)
+                    .CurrentValue = "explicit composed payload";
             }
 
             ChangeComplexComposition(graph.Row.Entity, mutation);
+
             // WHY: The consumer explicitly opts these ordinary JSON changes into this save with detection off.
             current.ChangeTracker.DetectChanges();
             intended = CaptureComplexCallbackClr(graph.Row.Entity);
@@ -177,13 +212,18 @@ public abstract partial class SaveChangesTests
 
         // Act
         var error = await Record.ExceptionAsync(() =>
-            RunComplexCompositionOperationAsync(context, shape, inputs,
+            RunComplexCompositionOperationAsync(
+                context,
+                shape,
+                inputs,
                 cancellationToken: TestContext.Current.CancellationToken));
 
-        var storedAfter = await ReadComplexCallbackRowAsync(database,
+        var storedAfter = await ReadComplexCallbackRowAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchyAfter = await ReadPreparedOwnerStoreAsync(database,
+        var hierarchyAfter = await ReadPreparedOwnerStoreAsync(
+            database,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert

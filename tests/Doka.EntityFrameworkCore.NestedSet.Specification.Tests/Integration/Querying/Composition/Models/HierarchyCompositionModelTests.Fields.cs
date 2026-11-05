@@ -31,21 +31,30 @@ public abstract partial class HierarchyCompositionModelTests
             TestMaterializationObserver.Instance);
 
         TestMaterializationObserver.Instance.Register(context, _ => materialized++);
-        await context.AddRangeAsync(Enumerable.Range(0, 3).Select(depth => new FieldNode
-        {
-            Id = scope + depth,
-            Tree = scope,
-            TreeId = treeId,
-            ParentId = depth == 0 ? null : scope + depth - 1,
-            Left = depth + 1,
-            Right = 6 - depth,
-            Depth = depth,
-        }), CancellationToken.None);
+        await context.AddRangeAsync(
+            Enumerable
+                .Range(0, 3)
+                .Select(depth => new FieldNode
+                {
+                    Id = scope + depth,
+                    Tree = scope,
+                    TreeId = treeId,
+                    ParentId = depth == 0
+                        ? null
+                        : scope + depth - 1,
+                    Left = depth + 1,
+                    Right = 6 - depth,
+                    Depth = depth,
+                }),
+            CancellationToken.None);
 
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         probe.Reset();
-        var hierarchy = context.NestedSet<FieldNode>().ForScope(scope).InTree(treeId);
+        var hierarchy = context
+            .NestedSet<FieldNode>()
+            .ForScope(scope)
+            .InTree(treeId);
 
         // Act
         var actual = await QueryDepths(hierarchy, operation)

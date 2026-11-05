@@ -61,7 +61,8 @@ public sealed partial class SignalReportValidationTests
 
         // Act
         var synchronous = SignalReportValidation.CreateGrid(snapshot, totals);
-        var asynchronous = await SignalReportValidation.CreateGridAsync(snapshot,
+        var asynchronous = await SignalReportValidation.CreateGridAsync(
+            snapshot,
             ReadRows(totals, probe, CancellationToken.None),
             CancellationToken.None);
 
@@ -103,29 +104,38 @@ public sealed partial class SignalReportValidationTests
                     snapshot
                         .Sources
                         .Distinct()
-                        .Select(source => Total(anchor,
+                        .Select(source => Total(
+                            anchor,
                             signal,
                             source,
-                            (anchor == snapshot.AnchorIds[0] ? 0 : 13) + (source == CapturePort.Pulse ? 7 : 0)))))
+                            (anchor == snapshot.AnchorIds[0]
+                                ? 0
+                                : 13)
+                            + (source == CapturePort.Pulse
+                                ? 7
+                                : 0)))))
             .Reverse()
             .ToArray();
 
         var expected = snapshot
             .AnchorIds
             .SelectMany(anchor => snapshot.ChannelIds.SelectMany(signal =>
-                snapshot.Sources.Select(source => new SignalReportCell(anchor,
+                snapshot.Sources.Select(source => new SignalReportCell(
+                    anchor,
                     signal,
                     source,
                     true,
                     totals.Single(total =>
-                            total.AnchorId == anchor && total.ChannelId == signal && total.Source == source).Value))))
+                            total.AnchorId == anchor && total.ChannelId == signal && total.Source == source)
+                        .Value))))
             .ToArray();
 
         var probe = new ReaderProbe();
 
         // Act
         var synchronous = SignalReportValidation.CreateGrid(snapshot, totals);
-        var asynchronous = await SignalReportValidation.CreateGridAsync(snapshot,
+        var asynchronous = await SignalReportValidation.CreateGridAsync(
+            snapshot,
             ReadRows(totals, probe, CancellationToken.None),
             CancellationToken.None);
 
@@ -192,19 +202,22 @@ public sealed partial class SignalReportValidationTests
         var expected = snapshot
             .AnchorIds
             .SelectMany(anchor => snapshot.ChannelIds.SelectMany(signal =>
-                snapshot.Sources.Select(source => new SignalReportCell(anchor,
+                snapshot.Sources.Select(source => new SignalReportCell(
+                    anchor,
                     signal,
                     source,
                     true,
                     totals.Single(total =>
-                            total.AnchorId == anchor && total.ChannelId == signal && total.Source == source).Value))))
+                            total.AnchorId == anchor && total.ChannelId == signal && total.Source == source)
+                        .Value))))
             .ToArray();
 
         var probe = new ReaderProbe();
 
         // Act
         var synchronous = SignalReportValidation.CreateGrid(snapshot, totals);
-        var asynchronous = await SignalReportValidation.CreateGridAsync(snapshot,
+        var asynchronous = await SignalReportValidation.CreateGridAsync(
+            snapshot,
             ReadRows(totals, probe, CancellationToken.None),
             CancellationToken.None);
 
@@ -249,17 +262,21 @@ public sealed partial class SignalReportValidationTests
 
         var expected = snapshot
             .AnchorIds
-            .Select((anchor, index) => new SignalReportCell(anchor,
+            .Select((anchor, index) => new SignalReportCell(
+                anchor,
                 snapshot.ChannelIds[0],
                 CapturePort.Pulse,
                 index < measured,
-                index < measured ? index : 0))
+                index < measured
+                    ? index
+                    : 0))
             .ToArray();
 
         var probe = new ReaderProbe();
 
         // Act
-        var actual = await SignalReportValidation.CreateGridAsync(snapshot,
+        var actual = await SignalReportValidation.CreateGridAsync(
+            snapshot,
             ReadRows(totals, probe, CancellationToken.None),
             CancellationToken.None);
 
@@ -299,15 +316,20 @@ public sealed partial class SignalReportValidationTests
         var probe = new ReaderProbe();
 
         // Act
-        var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(snapshot,
+        var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(
+            snapshot,
             ReadRows(rows, probe, CancellationToken.None),
             CancellationToken.None));
 
         // Assert
         var argument = Assert.IsType<ArgumentException>(error);
-        Assert.Contains(selected[0].AnchorId.ToString(),
+        Assert.Contains(
+            selected[0]
+                .AnchorId
+                .ToString(),
             argument.Message,
             StringComparison.Ordinal);
+
         Assert.True(probe.EndReached);
         Assert.True(probe.Disposed);
         Assert.Equal(rows.Length, probe.ReadCount);

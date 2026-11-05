@@ -12,6 +12,16 @@ public sealed class RelationalFixture : IAsyncLifetime
     /// <returns>An already completed task.</returns>
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
+    /// <summary>Disposes the isolated databases and SQLite files created by this fixture.</summary>
+    /// <returns>A task that completes after all fixture-owned resources have been disposed.</returns>
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var database in _databases.Values)
+        {
+            await database.DisposeAsync();
+        }
+    }
+
     /// <summary>Returns an engine with empty entity tables and no nested-set lock rows.</summary>
     /// <param name="engine">The supported engine name.</param>
     /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
@@ -31,15 +41,5 @@ public sealed class RelationalFixture : IAsyncLifetime
         await database.ResetAsync(cancellationToken: cancellationToken);
 
         return database;
-    }
-
-    /// <summary>Disposes the isolated databases and SQLite files created by this fixture.</summary>
-    /// <returns>A task that completes after all fixture-owned resources have been disposed.</returns>
-    public async ValueTask DisposeAsync()
-    {
-        foreach (var database in _databases.Values)
-        {
-            await database.DisposeAsync();
-        }
     }
 }

@@ -8,6 +8,15 @@ public sealed class ContractFixture : IAsyncLifetime
     /// <inheritdoc />
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var database in _databases.Values)
+        {
+            await database.DisposeAsync();
+        }
+    }
+
     /// <summary>Returns an initialized database with all contract rows removed.</summary>
     /// <param name="engine">The selected relational engine.</param>
     /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
@@ -92,15 +101,6 @@ public sealed class ContractFixture : IAsyncLifetime
         var database = await ResetAsync(engine, cancellationToken: cancellationToken);
 
         return CreateGeneratedContext(engine, database);
-    }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        foreach (var database in _databases.Values)
-        {
-            await database.DisposeAsync();
-        }
     }
 
     /// <summary>Creates options against an existing fixture without owning its connection.</summary>

@@ -8,6 +8,15 @@ public sealed class OrderingFixture : IAsyncLifetime
     /// <inheritdoc />
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var database in _databases.Values)
+        {
+            await database.DisposeAsync();
+        }
+    }
+
     /// <summary>Returns an empty strict or flexible model without modifying another test fixture.</summary>
     /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="engine">The real relational engine.</param>
@@ -28,7 +37,8 @@ public sealed class OrderingFixture : IAsyncLifetime
             {
                 foreach (var model in new[] { "Strict", "Flexible", "Converted" })
                 {
-                    await using var setup = await CreateContextAsync(engine,
+                    await using var setup = await CreateContextAsync(
+                        engine,
                         cancellationToken: cancellationToken,
                         model);
 
@@ -170,15 +180,6 @@ public sealed class OrderingFixture : IAsyncLifetime
 
         return context;
     }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        foreach (var database in _databases.Values)
-        {
-            await database.DisposeAsync();
-        }
-    }
 }
 
 /// <summary>Maps ordering-specific domain data through the ordinary asynchronous save integration.</summary>
@@ -208,16 +209,20 @@ public abstract class OrderingContext : NestedSetDbContext
         node
             .Property(value => value.Id)
             .ValueGeneratedNever();
+
         node
             .Property(value => value.Name)
             .HasMaxLength(128);
+
         node
             .Property(value => value.Payload)
             .HasMaxLength(256);
+
         node
             .Property(value => value.Category)
             .HasConversion<string>()
             .HasMaxLength(32);
+
         node.HasNestedSet(builder =>
         {
             builder
@@ -250,6 +255,7 @@ public abstract class OrderingContext : NestedSetDbContext
         marker
             .Property(value => value.Id)
             .ValueGeneratedNever();
+
         marker
             .Property(value => value.Value)
             .HasMaxLength(128);
@@ -322,15 +328,6 @@ public enum OrderingCategory
 /// <summary>Stores sorted domain values separately from maintained hierarchy coordinates.</summary>
 public sealed class OrderingNode : IScopedNestedSetNode<int, Guid, int>
 {
-    /// <summary>Gets or sets the stable tree identity.</summary>
-    public Guid TreeId { get; set; }
-
-    /// <inheritdoc />
-    public int Id { get; set; }
-
-    /// <summary>Gets or sets the independent forest.</summary>
-    public int Scope { get; set; }
-
     /// <summary>Gets or sets the optional direct parent.</summary>
     public int? ParentId { get; set; }
 
@@ -345,6 +342,15 @@ public sealed class OrderingNode : IScopedNestedSetNode<int, Guid, int>
 
     /// <summary>Gets or sets the converted domain order used by the converted model.</summary>
     public OrderingCategory Category { get; set; }
+
+    /// <summary>Gets or sets the stable tree identity.</summary>
+    public Guid TreeId { get; set; }
+
+    /// <inheritdoc />
+    public int Id { get; set; }
+
+    /// <summary>Gets or sets the independent forest.</summary>
+    public int Scope { get; set; }
 
     /// <inheritdoc />
     public long Left { get; set; }

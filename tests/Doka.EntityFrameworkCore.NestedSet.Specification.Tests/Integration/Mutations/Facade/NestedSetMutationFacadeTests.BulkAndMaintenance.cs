@@ -17,21 +17,21 @@ public abstract partial class NestedSetMutationFacadeTests
         {
             NodeId = 1,
             Tree = 99,
-            TreeId = Guid.Empty
+            TreeId = Guid.Empty,
         };
 
         var firstChild = new TreeNode
         {
             NodeId = 2,
             Tree = 99,
-            TreeId = Guid.Empty
+            TreeId = Guid.Empty,
         };
 
         var secondRoot = new TreeNode
         {
             NodeId = 10,
             Tree = 99,
-            TreeId = Guid.Empty
+            TreeId = Guid.Empty,
         };
 
         var trees = new[]
@@ -58,7 +58,7 @@ public abstract partial class NestedSetMutationFacadeTests
                         {
                             NodeId = 4,
                             Tree = 99,
-                            TreeId = Guid.Empty
+                            TreeId = Guid.Empty,
                         }),
                 ]),
             firstRoot.NodeId,
@@ -126,6 +126,7 @@ public abstract partial class NestedSetMutationFacadeTests
                 .Set<TreeNode>()
                 .AsNoTracking()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal((91, 11L, 12L), (first.Tree, first.Start, first.End));
         Assert.Equal((92, 21L, 22L), (second.Tree, second.Start, second.End));
         Assert.Empty(context.ChangeTracker.Entries());

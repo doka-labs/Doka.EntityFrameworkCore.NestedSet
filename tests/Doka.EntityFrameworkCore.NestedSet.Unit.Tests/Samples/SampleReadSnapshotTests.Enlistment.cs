@@ -39,9 +39,10 @@ public sealed partial class SampleReadSnapshotTests
         // WHY: Own this deliberate service replacement instead of adding its graph to EF's global cache.
         services.AddScoped<IRelationalConnection, SnapshotEnlistmentRelationalConnection>();
         await using var provider = services.BuildServiceProvider();
-        await using var context = new SampleLifecycleContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new SampleLifecycleContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         if (alreadyOpen)
         {
@@ -55,11 +56,13 @@ public sealed partial class SampleReadSnapshotTests
         // Act
         var error = await Record.ExceptionAsync(async () =>
         {
-            result = await SampleReadSnapshot.RunAsync(context,
+            result = await SampleReadSnapshot.RunAsync(
+                context,
                 _ =>
                 {
                     reads++;
-                    isolation = context.Database.CurrentTransaction?.GetDbTransaction().IsolationLevel;
+                    isolation = context.Database.CurrentTransaction?.GetDbTransaction()
+                        .IsolationLevel;
 
                     return Task.FromResult(42);
                 },
@@ -84,8 +87,10 @@ public sealed partial class SampleReadSnapshotTests
         }
         else
         {
-            Assert.Equal("The SQLite read snapshot cannot attach inside an ambient or enlisted transaction.",
-                Assert.IsType<InvalidOperationException>(error).Message);
+            Assert.Equal(
+                "The SQLite read snapshot cannot attach inside an ambient or enlisted transaction.",
+                Assert.IsType<InvalidOperationException>(error)
+                    .Message);
 
             Assert.Equal(0, reads);
             Assert.Null(isolation);
@@ -95,7 +100,12 @@ public sealed partial class SampleReadSnapshotTests
         Assert.NotNull(connection.Begun);
         Assert.Null(nativeConnection);
         Assert.Null(context.Database.CurrentTransaction);
-        Assert.Equal(alreadyOpen ? ConnectionState.Open : ConnectionState.Closed, state);
+        Assert.Equal(
+            alreadyOpen
+                ? ConnectionState.Open
+                : ConnectionState.Closed,
+            state);
+
         Assert.Equal(ConnectionState.Closed, connection.State);
     }
 
@@ -110,10 +120,14 @@ public sealed partial class SampleReadSnapshotTests
         internal SqliteTransaction? Begun { get; private set; }
 
         /// <summary>Gets the customized ambient precondition after the native transaction has begun.</summary>
-        internal AmbientTransaction? Ambient => Begun is not null && boundary == "ambient" ? enlistment : null;
+        internal AmbientTransaction? Ambient => Begun is not null && boundary == "ambient"
+            ? enlistment
+            : null;
 
         /// <summary>Gets the customized enlisted precondition after the native transaction has begun.</summary>
-        internal AmbientTransaction? Enlisted => Begun is not null && boundary == "enlisted" ? enlistment : null;
+        internal AmbientTransaction? Enlisted => Begun is not null && boundary == "enlisted"
+            ? enlistment
+            : null;
 
         /// <inheritdoc />
         public override SqliteTransaction BeginTransaction(

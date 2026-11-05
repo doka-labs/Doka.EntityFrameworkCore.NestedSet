@@ -11,15 +11,21 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe,
+        await using var context = await CreateContextAsync(
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
         probe.Reset();
 
         // Act
-        var node = await context.Nodes.AsNoTracking().SingleAsync(value => value.TenantId == data.TenantId
-            && value.Id == SignalReportDataset.Id(4), CancellationToken.None);
+        var node = await context
+            .Nodes
+            .AsNoTracking()
+            .SingleAsync(
+                value => value.TenantId == data.TenantId
+                    && value.Id == SignalReportDataset.Id(4),
+                CancellationToken.None);
 
         // Assert
         Assert.Equal("Sensor A", node.Name);
@@ -34,18 +40,22 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe,
+        await using var context = await CreateContextAsync(
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
         var request = SingleAnchor(data) with { Criteria = [] };
-        var rootBounds = await context.Nodes.Where(node => node.TenantId == data.TenantId
+        var rootBounds = await context
+            .Nodes
+            .Where(node => node.TenantId == data.TenantId
                 && (node.Id == SignalReportDataset.Id(1) || node.Id == SignalReportDataset.Id(10)))
             .Select(node => new
             {
                 Left = EF.Property<long>(node, SignalStorage.Left),
                 Right = EF.Property<long>(node, SignalStorage.Right),
-            }).ToArrayAsync(CancellationToken.None);
+            })
+            .ToArrayAsync(CancellationToken.None);
 
         probe.Reset();
 
@@ -54,13 +64,19 @@ public abstract partial class SignalReportTests
 
         // Assert
         Assert.Equal(2, rootBounds.Length);
-        Assert.All(rootBounds, bounds =>
-        {
-            Assert.Equal(1, bounds.Left);
-            Assert.Equal(10, bounds.Right);
-        });
+        Assert.All(
+            rootBounds,
+            bounds =>
+            {
+                Assert.Equal(1, bounds.Left);
+                Assert.Equal(10, bounds.Right);
+            });
 
-        Assert.Equal(70, Assert.Single(cells).Value);
+        Assert.Equal(
+            70,
+            Assert.Single(cells)
+                .Value);
+
         AssertReportBoundary(context, probe);
     }
 
@@ -70,12 +86,14 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe,
+        await using var context = await CreateContextAsync(
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
         var request = SingleAnchor(data);
-        await using var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.Serializable,
+        await using var transaction = await context.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
             CancellationToken.None);
 
         probe.Reset();
@@ -84,7 +102,11 @@ public abstract partial class SignalReportTests
         var cells = await SignalReportBuilder.ReadAsync(context, request, CancellationToken.None);
 
         // Assert
-        Assert.Equal(70, Assert.Single(cells).Value);
+        Assert.Equal(
+            70,
+            Assert.Single(cells)
+                .Value);
+
         Assert.Same(transaction, context.Database.CurrentTransaction);
         AssertReportBoundary(context, probe);
     }
@@ -92,24 +114,28 @@ public abstract partial class SignalReportTests
     /// <summary>
     /// Weak caller isolation is rejected before catalog or aggregate I/O rather than weakening the promised view.
     /// </summary>
-    [EngineFact(ExcludedEngines = ["Sqlite"],
+    [EngineFact(
+        ExcludedEngines = ["Sqlite"],
         Reason = "SQLite exposes Serializable or ReadUncommitted rather than a ReadCommitted transaction.")]
     public async Task ReportRejectsAReadCommittedCallerBeforeReading()
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe,
+        await using var context = await CreateContextAsync(
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
         var request = SingleAnchor(data);
-        await using var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted,
+        await using var transaction = await context.Database.BeginTransactionAsync(
+            IsolationLevel.ReadCommitted,
             CancellationToken.None);
 
         probe.Reset();
 
         // Act
-        var error = await Record.ExceptionAsync(() => SignalReportBuilder.ReadAsync(context,
+        var error = await Record.ExceptionAsync(() => SignalReportBuilder.ReadAsync(
+            context,
             request,
             CancellationToken.None));
 
@@ -127,12 +153,15 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe,
+        await using var context = await CreateContextAsync(
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
-        await using var writer = await _fixture.CreateContextAsync<SignalLabContext>(Engine,
-            static options => new SignalLabContext(options), cancellationToken: TestContext.Current.CancellationToken);
+        await using var writer = await _fixture.CreateContextAsync<SignalLabContext>(
+            Engine,
+            static options => new SignalLabContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var request = SingleAnchor(data);
         var committed = false;
@@ -143,6 +172,7 @@ public abstract partial class SignalReportTests
             await context.Database.OpenConnectionAsync(CancellationToken.None);
             await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL", CancellationToken.None);
             var connection = (SqliteConnection)context.Database.GetDbConnection();
+
             // ReSharper disable once MethodHasAsyncOverload
             // WHY: Microsoft.Data.Sqlite exposes deferred transaction selection only on this synchronous overload.
             // The caller-owned WAL read view lets the staged writer commit without requesting a write lock here.
@@ -159,26 +189,45 @@ public abstract partial class SignalReportTests
         {
             // WHY: Registry-coordinated server writes require ReadCommitted; SQLite uses its Serializable write
             // boundary.
-            var writeIsolation = Engine == "Sqlite" ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted;
+            var writeIsolation = Engine == "Sqlite"
+                ? IsolationLevel.Serializable
+                : IsolationLevel.ReadCommitted;
+
             await using var transaction = await writer.Database.BeginTransactionAsync(writeIsolation, token);
-            await writer.NestedSet<SignalNode>().ForScope(data.TenantId)
+            await writer
+                .NestedSet<SignalNode>()
+                .ForScope(data.TenantId)
                 .MoveToAsync(SignalReportDataset.Id(4), SignalReportDataset.Id(10), token);
-            await writer.LinkAvailability.Where(period => period.TenantId == data.TenantId
-                && period.ParentId == SignalReportDataset.Id(3) && period.ChildId == SignalReportDataset.Id(4))
+
+            await writer
+                .LinkAvailability
+                .Where(period => period.TenantId == data.TenantId
+                    && period.ParentId == SignalReportDataset.Id(3)
+                    && period.ChildId == SignalReportDataset.Id(4))
                 .ExecuteDeleteAsync(token);
-            writer.LinkAvailability.Add(new LinkWindow
-            {
-                TenantId = data.TenantId,
-                ParentId = SignalReportDataset.Id(10),
-                ChildId = SignalReportDataset.Id(4),
-                FromDate = SignalReportDataset.FirstDay,
-            });
-            await writer.TagValues.Where(value => value.TenantId == data.TenantId
-                && value.NodeId == SignalReportDataset.Id(4) && value.FieldCode == "RackCode")
+
+            writer.LinkAvailability.Add(
+                new LinkWindow
+                {
+                    TenantId = data.TenantId,
+                    ParentId = SignalReportDataset.Id(10),
+                    ChildId = SignalReportDataset.Id(4),
+                    FromDate = SignalReportDataset.FirstDay,
+                });
+
+            await writer
+                .TagValues
+                .Where(value => value.TenantId == data.TenantId
+                    && value.NodeId == SignalReportDataset.Id(4)
+                    && value.FieldCode == "RackCode")
                 .ExecuteUpdateAsync(setters => setters.SetProperty(value => value.Value, "R9"), token);
-            await writer.PulseRecords.Where(value => value.TenantId == data.TenantId
-                && value.NodeId == SignalReportDataset.Id(4))
+
+            await writer
+                .PulseRecords
+                .Where(value => value.TenantId == data.TenantId
+                    && value.NodeId == SignalReportDataset.Id(4))
                 .ExecuteUpdateAsync(setters => setters.SetProperty(value => value.PulseCount, 100), token);
+
             await writer.SaveChangesAsync(token);
             await transaction.CommitAsync(token);
             committed = true;
@@ -189,7 +238,11 @@ public abstract partial class SignalReportTests
 
         // Assert
         Assert.True(committed);
-        Assert.Equal(70, Assert.Single(cells).Value);
+        Assert.Equal(
+            70,
+            Assert.Single(cells)
+                .Value);
+
         AssertReportBoundary(context, probe);
     }
 
@@ -201,7 +254,8 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe,
+        await using var context = await CreateContextAsync(
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());

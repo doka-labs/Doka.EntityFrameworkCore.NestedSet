@@ -18,31 +18,81 @@ public abstract class BulkOrderingTests : ProviderTest
     public async Task StrictForestMergesSubtreesInConfiguredOrder()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var tree = context.NestedSet<OrderingNode>().ForScope(1);
-        await tree.InsertRootAsync(new OrderingNode { Id = 100, Name = "Root" }, Guid.Empty, CancellationToken.None);
-        await tree.InsertChildAsync(new OrderingNode { Id = 10, Name = "Middle" }, 100, CancellationToken.None);
-        var root = new OrderingNode { Id = 1, Name = "Alpha" };
-        var zulu = new OrderingNode { Id = 2, Name = "Zulu" };
-        var alpha = new OrderingNode { Id = 3, Name = "Alpha" };
-        var leaf = new OrderingNode { Id = 4, Name = "Deep" };
-        var branch = new NestedSetBranch<OrderingNode>(root,
-        [
-            new NestedSetBranch<OrderingNode>(zulu, [new NestedSetBranch<OrderingNode>(leaf)]),
-            new NestedSetBranch<OrderingNode>(alpha),
-        ]);
+        var tree = context
+            .NestedSet<OrderingNode>()
+            .ForScope(1);
 
-        var sibling = new NestedSetBranch<OrderingNode>(new OrderingNode { Id = 5, Name = "Zulu" });
+        await tree.InsertRootAsync(
+            new OrderingNode
+            {
+                Id = 100,
+                Name = "Root",
+            },
+            Guid.Empty,
+            CancellationToken.None);
+
+        await tree.InsertChildAsync(
+            new OrderingNode
+            {
+                Id = 10,
+                Name = "Middle",
+            },
+            100,
+            CancellationToken.None);
+
+        var root = new OrderingNode
+        {
+            Id = 1,
+            Name = "Alpha",
+        };
+
+        var zulu = new OrderingNode
+        {
+            Id = 2,
+            Name = "Zulu",
+        };
+
+        var alpha = new OrderingNode
+        {
+            Id = 3,
+            Name = "Alpha",
+        };
+
+        var leaf = new OrderingNode
+        {
+            Id = 4,
+            Name = "Deep",
+        };
+
+        var branch = new NestedSetBranch<OrderingNode>(
+            root,
+            [
+                new NestedSetBranch<OrderingNode>(zulu, [new NestedSetBranch<OrderingNode>(leaf)]),
+                new NestedSetBranch<OrderingNode>(alpha),
+            ]);
+
+        var sibling = new NestedSetBranch<OrderingNode>(
+            new OrderingNode
+            {
+                Id = 5,
+                Name = "Zulu",
+            });
 
         // Act
         await tree.InsertSubtreeAsync(branch, 100, CancellationToken.None);
         await tree.InsertSubtreeAsync(sibling, 100, CancellationToken.None);
-        var actual = await tree.InTree(Guid.Empty).Nodes
-            .Select(node => node.Id).ToArrayAsync(CancellationToken.None);
+        var actual = await tree
+            .InTree(Guid.Empty)
+            .Nodes
+            .Select(node => node.Id)
+            .ToArrayAsync(CancellationToken.None);
 
-        var validation = await tree.InTree(Guid.Empty)
+        var validation = await tree
+            .InTree(Guid.Empty)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
 
         // Assert
@@ -58,22 +108,66 @@ public abstract class BulkOrderingTests : ProviderTest
     public async Task FlexibleForestPreservesExistingManualRelativeOrder()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             "Flexible");
 
-        var tree = context.NestedSet<OrderingNode>().ForScope(1);
-        await tree.InsertRootAsync(new OrderingNode { Id = 100, Name = "Root" }, Guid.Empty, CancellationToken.None);
-        await tree.InsertChildAsync(new OrderingNode { Id = 1, Name = "Alpha" }, 100, CancellationToken.None);
-        await tree.InsertBeforeAsync(new OrderingNode { Id = 2, Name = "Zulu" }, 1, CancellationToken.None);
-        var middle = new NestedSetBranch<OrderingNode>(new OrderingNode { Id = 3, Name = "Middle" });
-        var bravo = new NestedSetBranch<OrderingNode>(new OrderingNode { Id = 4, Name = "Bravo" });
+        var tree = context
+            .NestedSet<OrderingNode>()
+            .ForScope(1);
+
+        await tree.InsertRootAsync(
+            new OrderingNode
+            {
+                Id = 100,
+                Name = "Root",
+            },
+            Guid.Empty,
+            CancellationToken.None);
+
+        await tree.InsertChildAsync(
+            new OrderingNode
+            {
+                Id = 1,
+                Name = "Alpha",
+            },
+            100,
+            CancellationToken.None);
+
+        await tree.InsertBeforeAsync(
+            new OrderingNode
+            {
+                Id = 2,
+                Name = "Zulu",
+            },
+            1,
+            CancellationToken.None);
+
+        var middle = new NestedSetBranch<OrderingNode>(
+            new OrderingNode
+            {
+                Id = 3,
+                Name = "Middle",
+            });
+
+        var bravo = new NestedSetBranch<OrderingNode>(
+            new OrderingNode
+            {
+                Id = 4,
+                Name = "Bravo",
+            });
 
         // Act
         await tree.InsertSubtreeAsync(middle, 100, CancellationToken.None);
         await tree.InsertSubtreeAsync(bravo, 100, CancellationToken.None);
-        var actual = await tree.ChildrenOf(100).Select(node => node.Id).ToArrayAsync(CancellationToken.None);
-        var validation = await tree.InTree(Guid.Empty)
+        var actual = await tree
+            .ChildrenOf(100)
+            .Select(node => node.Id)
+            .ToArrayAsync(CancellationToken.None);
+
+        var validation = await tree
+            .InTree(Guid.Empty)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
 
         // Assert
@@ -86,23 +180,50 @@ public abstract class BulkOrderingTests : ProviderTest
     public async Task ConvertedDomainRuleUsesDatabaseRepresentation()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(Engine,
+        await using var context = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             "Converted");
 
-        var tree = context.NestedSet<OrderingNode>().ForScope(1);
-        var branch = new NestedSetBranch<OrderingNode>(new OrderingNode { Id = 100 },
-        [
-            new NestedSetBranch<OrderingNode>(new OrderingNode { Id = 1, Category = OrderingCategory.Zeta }),
-            new NestedSetBranch<OrderingNode>(new OrderingNode { Id = 2, Category = OrderingCategory.Alpha }),
-            new NestedSetBranch<OrderingNode>(new OrderingNode { Id = 3, Category = OrderingCategory.Beta }),
-        ]);
+        var tree = context
+            .NestedSet<OrderingNode>()
+            .ForScope(1);
+
+        var branch = new NestedSetBranch<OrderingNode>(
+            new OrderingNode { Id = 100 },
+            [
+                new NestedSetBranch<OrderingNode>(
+                    new OrderingNode
+                    {
+                        Id = 1,
+                        Category = OrderingCategory.Zeta,
+                    }),
+                new NestedSetBranch<OrderingNode>(
+                    new OrderingNode
+                    {
+                        Id = 2,
+                        Category = OrderingCategory.Alpha,
+                    }),
+                new NestedSetBranch<OrderingNode>(
+                    new OrderingNode
+                    {
+                        Id = 3,
+                        Category = OrderingCategory.Beta,
+                    }),
+            ]);
 
         // Act
         await tree.InsertForestAsync(
-            [new NestedSetTreeImport<OrderingNode, Guid>(Guid.Empty, branch)], CancellationToken.None);
-        var actual = await tree.ChildrenOf(100).Select(node => node.Id).ToArrayAsync(CancellationToken.None);
-        var validation = await tree.InTree(Guid.Empty)
+            [new NestedSetTreeImport<OrderingNode, Guid>(Guid.Empty, branch)],
+            CancellationToken.None);
+
+        var actual = await tree
+            .ChildrenOf(100)
+            .Select(node => node.Id)
+            .ToArrayAsync(CancellationToken.None);
+
+        var validation = await tree
+            .InTree(Guid.Empty)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
 
         // Assert

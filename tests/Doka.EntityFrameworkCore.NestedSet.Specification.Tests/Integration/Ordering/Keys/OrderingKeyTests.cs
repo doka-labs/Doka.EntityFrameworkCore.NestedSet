@@ -160,14 +160,22 @@ public abstract partial class OrderingKeyTests : ProviderTest
                     .Where(parent => parent.Left < node.Left && parent.Right > node.Right)
                     .ToArray();
 
-                var expectedParent = ancestors.Length == 0 ? null : Identity(ancestors[^1].Id);
-                var parent = node.ParentId is { } value ? Identity(value) : null;
+                var expectedParent = ancestors.Length == 0
+                    ? null
+                    : Identity(ancestors[^1].Id);
+
+                var parent = node.ParentId is { } value
+                    ? Identity(value)
+                    : null;
+
                 Assert.Equal(expectedParent, parent);
                 Assert.Equal(ancestors.Length, node.Depth);
                 Assert.Equal(0, (node.Right - node.Left + 1) % 2);
             }
 
-            foreach (var siblings in nodes.GroupBy(node => node.ParentId is { } parent ? Identity(parent) : null))
+            foreach (var siblings in nodes.GroupBy(node => node.ParentId is { } parent
+                ? Identity(parent)
+                : null))
             {
                 Assert.Equal(
                     Enumerable
@@ -196,8 +204,11 @@ public abstract partial class OrderingKeyTests : ProviderTest
             .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken);
 
         Assert.True(otherReport.IsValid);
-        Assert.Equal(scenario.OtherBefore, await SnapshotAsync(scenario.OtherNodes,
-            cancellationToken: cancellationToken));
+        Assert.Equal(
+            scenario.OtherBefore,
+            await SnapshotAsync(
+                scenario.OtherNodes,
+                cancellationToken: cancellationToken));
     }
 
     /// <summary>Captures every persisted value with content-based keys for an unchanged-scope comparison.</summary>
@@ -216,7 +227,9 @@ public abstract partial class OrderingKeyTests : ProviderTest
                 Identity(node.Id),
                 node.Scope,
                 node.TreeId,
-                node.ParentId is { } parent ? Identity(parent) : null,
+                node.ParentId is { } parent
+                    ? Identity(parent)
+                    : null,
                 node.Name,
                 node.Left,
                 node.Right,
@@ -285,6 +298,7 @@ public abstract partial class OrderingKeyTests : ProviderTest
             Tree = context
                 .NestedSet<OrderingKeyNode<TKey, TParent>>()
                 .ForScope(1);
+
             Other = context
                 .NestedSet<OrderingKeyNode<TKey, TParent>>()
                 .ForScope(2);
@@ -319,6 +333,9 @@ public abstract partial class OrderingKeyTests : ProviderTest
         /// <summary>Gets or sets the complete independent-scope state captured during arrangement.</summary>
         internal KeySnapshot[] OtherBefore { get; set; } = [];
 
+        /// <inheritdoc />
+        public ValueTask DisposeAsync() => Context.DisposeAsync();
+
         /// <summary>Creates an uninitialized node with the selected native identity and domain value.</summary>
         internal OrderingKeyNode<TKey, TParent> Node(
             int value,
@@ -332,11 +349,10 @@ public abstract partial class OrderingKeyTests : ProviderTest
         {
             var key = Key(value);
 
-            return _alias is null ? key : _alias(key);
+            return _alias is null
+                ? key
+                : _alias(key);
         }
-
-        /// <inheritdoc />
-        public ValueTask DisposeAsync() => Context.DisposeAsync();
     }
 
     /// <summary>Captures payload and structure without relying on array-reference equality.</summary>

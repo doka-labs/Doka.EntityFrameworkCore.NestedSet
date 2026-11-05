@@ -111,9 +111,12 @@ internal static class QueryPlanTestSupport
     {
         // WHY: One all-statistics FULLSCAN accumulated every index/column scan under one command watchdog.
         // Enumerating the same objects preserves exact distributions while bounding each independent refresh.
-        var statistics = await context.Database.SqlQueryRaw<string>(
+        var statistics = await context
+            .Database
+            .SqlQueryRaw<string>(
                 "SELECT [name] AS [Value] FROM [sys].[stats] "
-                + "WHERE [object_id] = OBJECT_ID({0}) ORDER BY [stats_id]", table)
+                + "WHERE [object_id] = OBJECT_ID({0}) ORDER BY [stats_id]",
+                table)
             .ToArrayAsync(cancellationToken);
 
         if (statistics.Length == 0)
@@ -156,6 +159,7 @@ internal static class QueryPlanTestSupport
         command.CommandText = engine switch
         {
             "PostgreSql" => "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) " + sql,
+
             // WHY: Const lookups disappear from MySQL's runtime TREE once fetched during optimization.
             // Retain JSON access-path metadata alongside the actual runtime plan to verify those primary-key reads.
             "MySql" => "EXPLAIN FORMAT=JSON " + sql + "; EXPLAIN ANALYZE FORMAT=TREE " + sql + "; SHOW WARNINGS",
@@ -176,9 +180,15 @@ internal static class QueryPlanTestSupport
         {
             var mySqlWarnings = engine == "MySql"
                 && reader.FieldCount == 3
-                && reader.GetName(0).Equals("Level", StringComparison.OrdinalIgnoreCase)
-                && reader.GetName(1).Equals("Code", StringComparison.OrdinalIgnoreCase)
-                && reader.GetName(2).Equals("Message", StringComparison.OrdinalIgnoreCase);
+                && reader
+                    .GetName(0)
+                    .Equals("Level", StringComparison.OrdinalIgnoreCase)
+                && reader
+                    .GetName(1)
+                    .Equals("Code", StringComparison.OrdinalIgnoreCase)
+                && reader
+                    .GetName(2)
+                    .Equals("Message", StringComparison.OrdinalIgnoreCase);
 
             while (await reader.ReadAsync(cancellationToken))
             {
@@ -204,7 +214,11 @@ internal static class QueryPlanTestSupport
                     continue;
                 }
 
-                plan.AppendLine(reader.GetString(engine == "Sqlite" ? 3 : 0));
+                plan.AppendLine(
+                    reader.GetString(
+                        engine == "Sqlite"
+                            ? 3
+                            : 0));
             }
         } while (await reader.NextResultAsync(cancellationToken));
 

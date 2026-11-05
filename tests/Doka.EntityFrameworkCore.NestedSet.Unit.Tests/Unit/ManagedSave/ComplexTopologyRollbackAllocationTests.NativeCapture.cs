@@ -37,9 +37,10 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
         // Assert
         // WHY: Isolating journal construction catches a reintroduced per-collection identity map without
         // tightening the existing complete scalar-capture or recovery budgets against unrelated EF costs.
-        var maximum = 262_144L + (rows * 800L);
+        var maximum = 262_144L + rows * 800L;
         var elapsed = Stopwatch.GetElapsedTime(started, completed);
-        _output.WriteLine($"Aligned native capture: rows={rows}; allocated={allocated} B; maximum={maximum} B; "
+        _output.WriteLine(
+            $"Aligned native capture: rows={rows}; allocated={allocated} B; maximum={maximum} B; "
             + $"elapsed={elapsed.TotalMilliseconds.ToString("F3", CultureInfo.InvariantCulture)} ms.");
 
         snapshot.Verify();
@@ -47,8 +48,11 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
         Assert.Equal(expectedStates, ObserveStates(entry));
         Assert.Same(owner, NestedSetInsertionContract.Instance.Entry(entry));
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
+
         Assert.InRange(allocated, 0, maximum);
     }
 }

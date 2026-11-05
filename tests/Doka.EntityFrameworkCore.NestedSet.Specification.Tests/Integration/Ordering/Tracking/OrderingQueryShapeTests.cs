@@ -51,7 +51,8 @@ public abstract partial class OrderingQueryShapeTests : ProviderTest
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
@@ -61,7 +62,11 @@ public abstract partial class OrderingQueryShapeTests : ProviderTest
         await using var warm = CreateContext(setup, warmProbe, warmOrdinals, services);
         var warmTracked = AttachScenario(warm, 1, intervals, tail);
         warmProbe.Observe(warm);
-        var tag = "Production shape observer control " + Guid.NewGuid().ToString("N");
+        var tag = "Production shape observer control "
+            + Guid
+                .NewGuid()
+                .ToString("N");
+
         await warm
             .Set<OrderingKeyNode<string, string?>>()
             .AsNoTracking()
@@ -101,7 +106,9 @@ public abstract partial class OrderingQueryShapeTests : ProviderTest
                     + command.Sql)
                 .ToArray();
 
-            await QueryPlanTestSupport.WriteEvidenceAsync($"production-refresh-{Engine}-R64-K64", sqlEvidence,
+            await QueryPlanTestSupport.WriteEvidenceAsync(
+                $"production-refresh-{Engine}-R64-K64",
+                sqlEvidence,
                 cancellationToken: TestContext.Current.CancellationToken);
         }
 
@@ -127,8 +134,13 @@ public abstract partial class OrderingQueryShapeTests : ProviderTest
         await AssertRootAsync(setup, 1, cancellationToken: TestContext.Current.CancellationToken);
         await AssertRootAsync(setup, 2, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(intervals, CountChangedIntervals(persisted));
-        Assert.Equal(unchangedScope.Select(Coordinates), (await ReadScopeAsync(setup, 1,
-            cancellationToken: TestContext.Current.CancellationToken)).Select(Coordinates));
+        Assert.Equal(
+            unchangedScope.Select(Coordinates),
+            (await ReadScopeAsync(
+                setup,
+                1,
+                cancellationToken: TestContext.Current.CancellationToken)).Select(Coordinates));
+
         Assert.All(
             observation.Commands,
             command =>

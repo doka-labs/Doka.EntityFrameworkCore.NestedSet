@@ -24,40 +24,46 @@ public abstract partial class HierarchyCompositionTests
         TestMaterializationObserver.Instance.Register(context, probe.RecordMaterialization);
         var treeId = Guid.NewGuid();
         await context.AddRangeAsync(
-        [
-            new CompositionNode
-            {
-                Scope = scope,
-                TreeId = treeId,
-                Id = 0,
-                Left = 1,
-                Right = 4,
-                Candidate = rootEligible,
-                Matches = true,
-            },
-            new CompositionNode
-            {
-                Scope = scope,
-                TreeId = treeId,
-                Id = 7,
-                ParentId = 0,
-                Left = 2,
-                Right = 3,
-                Depth = 1,
-                Matches = true,
-            },
-        ], CancellationToken.None);
+            [
+                new CompositionNode
+                {
+                    Scope = scope,
+                    TreeId = treeId,
+                    Id = 0,
+                    Left = 1,
+                    Right = 4,
+                    Candidate = rootEligible,
+                    Matches = true,
+                },
+                new CompositionNode
+                {
+                    Scope = scope,
+                    TreeId = treeId,
+                    Id = 7,
+                    ParentId = 0,
+                    Left = 2,
+                    Right = 3,
+                    Depth = 1,
+                    Matches = true,
+                },
+            ],
+            CancellationToken.None);
 
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         probe.Reset();
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
-        var source = context.Set<CompositionNode>()
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
+        var source = context
+            .Set<CompositionNode>()
             .Where(node => node.Scope == scope && node.Id == 7)
             .Select(node => new { Node = node });
 
         // Act
-        var actual = await hierarchy.WhereNearestAncestorOrSelf(
+        var actual = await hierarchy
+            .WhereNearestAncestorOrSelf(
                 source,
                 row => row.Node,
                 (row, owner) => owner.Candidate,
@@ -66,7 +72,9 @@ public abstract partial class HierarchyCompositionTests
             .ToArrayAsync(CancellationToken.None);
 
         // Assert
-        int[] expected = rootEligible ? [7] : [];
+        int[] expected = rootEligible
+            ? [7]
+            : [];
 
         Assert.Equal(expected, actual);
         Assert.Equal(1, probe.CommandCount);
@@ -79,17 +87,28 @@ public abstract partial class HierarchyCompositionTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe, closed: 2,
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            closed: 2,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
 
         // Act
         var pairs = hierarchy.SelectSubtrees(
             anchor => anchor.Id == 1,
-            (anchor, node, distance) => new { Anchor = anchor, Node = node, Distance = distance });
+            (anchor, node, distance) => new
+            {
+                Anchor = anchor,
+                Node = node,
+                Distance = distance,
+            });
 
-        var actual = await hierarchy.WherePathEdges(
+        var actual = await hierarchy
+            .WherePathEdges(
                 pairs,
                 row => row.Anchor,
                 row => row.Node,
@@ -115,25 +134,40 @@ public abstract partial class HierarchyCompositionTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe, hidden: 2,
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            hidden: 2,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
 
         // Act
-        var pairs = hierarchy.SelectSubtrees(
+        var pairs = hierarchy
+            .SelectSubtrees(
                 anchor => anchor.Id == 1,
-                (anchor, node, distance) => new { Anchor = anchor, Node = node, Distance = distance })
+                (anchor, node, distance) => new
+                {
+                    Anchor = anchor,
+                    Node = node,
+                    Distance = distance,
+                })
             .Where(row => row.Node.Id == 3);
 
         var query = requirePath
             ? hierarchy.WherePathEdges(pairs, row => row.Anchor, row => row.Node, (row, parent, child) => true)
             : pairs;
 
-        var actual = await query.Select(row => row.Distance).ToArrayAsync(CancellationToken.None);
+        var actual = await query
+            .Select(row => row.Distance)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
-        int[] expected = requirePath ? [] : [2];
+        int[] expected = requirePath
+            ? []
+            : [2];
 
         Assert.Equal(expected, actual);
         Assert.Equal(1, probe.CommandCount);
@@ -151,11 +185,17 @@ public abstract partial class HierarchyCompositionTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe,
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
-        var source = context.Set<CompositionNode>()
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
+        var source = context
+            .Set<CompositionNode>()
             .Where(node => node.Scope == scope && node.Id == 3)
             .Select(node => new { Node = node });
 
@@ -172,11 +212,15 @@ public abstract partial class HierarchyCompositionTests
                 (row, owner) => owner.Candidate && owner.Matches);
 
         var commandsBeforeExecution = probe.CommandCount;
-        var actual = await query.Select(row => row.Node.Id).ToArrayAsync(CancellationToken.None);
+        var actual = await query
+            .Select(row => row.Node.Id)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(0, commandsBeforeExecution);
-        int[] expected = nearest ? [] : [3];
+        int[] expected = nearest
+            ? []
+            : [3];
 
         Assert.Equal(expected, actual);
         Assert.Equal(1, probe.CommandCount);
@@ -194,11 +238,18 @@ public abstract partial class HierarchyCompositionTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe, hidden: 2,
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            hidden: 2,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
-        var source = context.Set<CompositionNode>()
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
+        var source = context
+            .Set<CompositionNode>()
             .Where(node => node.Scope == scope && node.Id == 3)
             .Select(node => new { Node = node });
 
@@ -211,10 +262,14 @@ public abstract partial class HierarchyCompositionTests
                 (row, owner) => owner.Matches)
             : hierarchy.WhereAnyAncestorOrSelf(source, row => row.Node, (row, owner) => owner.Id == 1 && owner.Matches);
 
-        var actual = await query.Select(row => row.Node.Id).ToArrayAsync(CancellationToken.None);
+        var actual = await query
+            .Select(row => row.Node.Id)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
-        int[] expected = nearest ? [] : [3];
+        int[] expected = nearest
+            ? []
+            : [3];
 
         Assert.Equal(expected, actual);
         Assert.Equal(1, probe.CommandCount);
@@ -227,16 +282,24 @@ public abstract partial class HierarchyCompositionTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe, hidden: 1,
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            hidden: 1,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
-        var source = context.Set<CompositionNode>()
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
+        var source = context
+            .Set<CompositionNode>()
             .Where(node => node.Scope == scope && node.Id == 3)
             .Select(node => new { Node = node });
 
         // Act
-        var actual = await hierarchy.WhereNearestAncestorOrSelf(
+        var actual = await hierarchy
+            .WhereNearestAncestorOrSelf(
                 source,
                 row => row.Node,
                 (row, owner) => owner.Candidate,

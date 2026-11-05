@@ -10,6 +10,7 @@ public sealed class TestDatabaseServers : IAsyncDisposable
 {
     private readonly ConcurrentDictionary<string, Startup> _servers = new(
         StringComparer.Ordinal);
+
     private readonly Func<string, CancellationToken, Task<Server>> _start;
 
     /// <summary>Uses native containers for the executing assembly's shared server lifetime.</summary>
@@ -24,11 +25,31 @@ public sealed class TestDatabaseServers : IAsyncDisposable
         _start = start;
     }
 
+    /// <summary>Stops every server started by this assembly after all its test collections finish.</summary>
+    /// <returns>A task that completes after container cleanup.</returns>
+    public async ValueTask DisposeAsync()
+    {
+        var cleanup = new List<Task>();
+
+        foreach (var startup in _servers.Values)
+        {
+            if (startup.Task.IsValueCreated)
+            {
+                cleanup.Add(DisposeServerAsync(startup.Task.Value));
+            }
+        }
+
+        // WHY: One failed cleanup must not prevent the other assembly-owned servers from being disposed.
+        await Task.WhenAll(cleanup);
+    }
+
     /// <summary>Resolves the server owner of the currently executing provider test assembly.</summary>
     /// <param name="cancellationToken">The caller's token checked before framework fixture lookup.</param>
     /// <returns>The fixture registered by that executable assembly.</returns>
     /// <remarks>Call from a class fixture or test, where xUnit exposes fixture mappings.</remarks>
-    internal static async ValueTask<TestDatabaseServers> GetCurrentAsync(CancellationToken cancellationToken)
+    internal static async ValueTask<TestDatabaseServers> GetCurrentAsync(
+        CancellationToken cancellationToken
+    )
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -119,24 +140,6 @@ public sealed class TestDatabaseServers : IAsyncDisposable
             }.ConnectionString,
             _ => throw new ArgumentOutOfRangeException(nameof(engine)),
         };
-    }
-
-    /// <summary>Stops every server started by this assembly after all its test collections finish.</summary>
-    /// <returns>A task that completes after container cleanup.</returns>
-    public async ValueTask DisposeAsync()
-    {
-        var cleanup = new List<Task>();
-
-        foreach (var startup in _servers.Values)
-        {
-            if (startup.Task.IsValueCreated)
-            {
-                cleanup.Add(DisposeServerAsync(startup.Task.Value));
-            }
-        }
-
-        // WHY: One failed cleanup must not prevent the other assembly-owned servers from being disposed.
-        await Task.WhenAll(cleanup);
     }
 
     /// <summary>Observes startup to completion before releasing its server without caller cancellation.</summary>

@@ -43,7 +43,7 @@ internal static class MoveScenario
                 "Projects",
                 "NestedSet",
                 "Notes",
-                "Public"
+                "Public",
             ],
             "The same-tree move did not move the complete Projects subtree.",
             cancellationToken);

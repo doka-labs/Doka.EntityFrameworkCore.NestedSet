@@ -5,8 +5,8 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Verifies machine-readable error distinctions against persisted hierarchy operations.</summary>
 public abstract class ErrorContractTests : ProviderTest
 {
-    private readonly RelationalFixture _relational;
     private readonly OrderingFixture _ordering;
+    private readonly RelationalFixture _relational;
 
     /// <summary>Creates cases using independently reset databases owned by the reusable fixtures.</summary>
     /// <param name="relational">The reusable unordered hierarchy databases.</param>
@@ -44,6 +44,7 @@ public abstract class ErrorContractTests : ProviderTest
                 .InTree(Guid.Empty)
                 .Nodes
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Null(context.Database.CurrentTransaction);
     }
 
@@ -72,6 +73,7 @@ public abstract class ErrorContractTests : ProviderTest
                 .InTree(Guid.Empty)
                 .Nodes
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Null(context.Database.CurrentTransaction);
     }
 
@@ -258,7 +260,8 @@ public abstract class ErrorContractTests : ProviderTest
     public async Task StrictPlacementReportsManualPlacementNotAllowed()
     {
         // Arrange
-        await using var context = await _ordering.ResetAsync(Engine,
+        await using var context = await _ordering.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var service = context

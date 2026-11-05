@@ -12,7 +12,7 @@ public sealed partial class HierarchyChangeDetectionTests
         await using var context = new NotificationContext();
         context.ChangeTracker.CascadeDeleteTiming = CascadeTiming.OnSaveChanges;
         context.ChangeTracker.DeleteOrphansTiming = CascadeTiming.Never;
-        var root = CreateNode(1);
+        var root = CreateNode();
         root.Name = "Root";
         root.Right = 12;
         var expected = CreateNode(2);
@@ -59,6 +59,7 @@ public sealed partial class HierarchyChangeDetectionTests
         unexpected.Children!.Add(first);
         unexpected.Children.Add(second);
         context.Attach(root);
+
         // WHY: Real notification fixup installs the authorized target before capture. The wrong target is
         // already Modified for ordinary payload, so rollback cannot assume all unexpected owners are Unchanged.
         moving.Parent = expected;
@@ -110,7 +111,7 @@ public sealed partial class HierarchyChangeDetectionTests
         Assert.Equal(expected.Id, authorizedInstalledParent);
         Assert.Same(unexpected, callbackParent);
         Assert.Equal(unexpected.Id, callbackParentId);
-        Assert.Equal<int>([moving.Id, first.Id, second.Id], callbackBucket);
+        Assert.Equal([moving.Id, first.Id, second.Id], callbackBucket);
         Assert.Same(expected, moving.Parent);
         Assert.Equal(expected.Id, moving.ParentId);
         Assert.Same(rootCollection, root.Children);
@@ -124,37 +125,70 @@ public sealed partial class HierarchyChangeDetectionTests
         Assert.Equal(expected.Id, movingUpdate.GetRelationshipSnapshotValue(parentProperty));
         Assert.Equal(moving.Scope, movingUpdate.GetRelationshipSnapshotValue(scopeProperty));
         Assert.Same(movingUpdate, Assert.Single(updates.GetDependents(expectedUpdate, parentKey)));
-        Assert.Equal<int>([expected.Id, unexpected.Id],
+        Assert.Equal(
+            [expected.Id, unexpected.Id],
             updates
                 .GetDependents(rootUpdate, parentKey)
                 .Select(entry => entry.GetCurrentValue<int>(idProperty))
                 .OrderBy(id => id));
-        Assert.Equal<int>([first.Id, second.Id],
+
+        Assert.Equal(
+            [first.Id, second.Id],
             updates
                 .GetDependents(unexpectedUpdate, parentKey)
                 .Select(entry => entry.GetCurrentValue<int>(idProperty))
                 .OrderBy(id => id));
+
         Assert.Equal(EntityState.Modified, movingEntry.State);
-        Assert.True(movingEntry.Property(value => value.ParentId).IsModified);
-        Assert.Equal(root.Id,
-            movingEntry.Property(value => value.ParentId).OriginalValue);
-        Assert.False(movingEntry.Property(value => value.Name).IsModified);
+        Assert.True(
+            movingEntry.Property(value => value.ParentId)
+                .IsModified);
+
+        Assert.Equal(
+            root.Id,
+            movingEntry.Property(value => value.ParentId)
+                .OriginalValue);
+
+        Assert.False(
+            movingEntry.Property(value => value.Name)
+                .IsModified);
+
         Assert.Equal(EntityState.Modified, unexpectedEntry.State);
-        Assert.True(unexpectedEntry.Property(value => value.Payload).IsModified);
+        Assert.True(
+            unexpectedEntry.Property(value => value.Payload)
+                .IsModified);
+
         Assert.Equal("Pending application payload", unexpected.Payload);
-        Assert.False(unexpectedEntry.Property(value => value.ParentId).IsModified);
-        Assert.Equal(EntityState.Unchanged,
-            context.Entry(root).State);
-        Assert.Equal(EntityState.Unchanged,
-            context.Entry(expected).State);
-        Assert.Equal(EntityState.Unchanged,
-            context.Entry(first).State);
-        Assert.Equal(EntityState.Unchanged,
-            context.Entry(second).State);
+        Assert.False(
+            unexpectedEntry.Property(value => value.ParentId)
+                .IsModified);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(root)
+                .State);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(expected)
+                .State);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(first)
+                .State);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(second)
+                .State);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
         Assert.Equal(CascadeTiming.OnSaveChanges, context.ChangeTracker.CascadeDeleteTiming);
         Assert.Equal(CascadeTiming.Never, context.ChangeTracker.DeleteOrphansTiming);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 }

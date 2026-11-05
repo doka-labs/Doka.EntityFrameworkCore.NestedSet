@@ -26,7 +26,9 @@ public sealed partial class ComplexTopologyRollbackTests
         document.Children![0].Text = "Pending document child";
         var before = ObserveDocument(entry, originalCount: 2);
         var snapshot = NestedSetTrackerSnapshot.Capture(context);
-        payload.Document = replace ? CreateCallbackDocument() : null;
+        payload.Document = replace
+            ? CreateCallbackDocument()
+            : null;
 
         if (detectCallback)
         {
@@ -52,8 +54,10 @@ public sealed partial class ComplexTopologyRollbackTests
         AssertDocument(entry, before);
         Assert.All(introduced, element => Assert.Equal(EntityState.Detached, element.State));
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Introduced nested entries are retired when the captured optional document returns to null.</summary>
@@ -77,7 +81,12 @@ public sealed partial class ComplexTopologyRollbackTests
         var entry = context.Attach(payload);
         _ = context.Model.GetRelationalModel();
         payload.Document = null;
-        var before = ObserveDocument(entry, originalCount: literalNull ? 0 : 2);
+        var before = ObserveDocument(
+            entry,
+            originalCount: literalNull
+                ? 0
+                : 2);
+
         var snapshot = NestedSetTrackerSnapshot.Capture(context);
         payload.Document = CreateCallbackDocument();
         context.ChangeTracker.DetectChanges();
@@ -97,7 +106,11 @@ public sealed partial class ComplexTopologyRollbackTests
         // Assert
         Assert.Null(before.Instance);
         Assert.Null(before.Children);
-        Assert.Equal(literalNull ? null : "Stored document", before.Title.Original);
+        Assert.Equal(
+            literalNull
+                ? null
+                : "Stored document",
+            before.Title.Original);
 
         if (literalNull)
         {
@@ -110,8 +123,10 @@ public sealed partial class ComplexTopologyRollbackTests
         AssertDocument(entry, before);
         Assert.All(introduced, element => Assert.Equal(EntityState.Detached, element.State));
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>A hidden modified child retains its original buffer, flag and raw CLR value after rollback.</summary>
@@ -171,8 +186,10 @@ public sealed partial class ComplexTopologyRollbackTests
         Assert.Same(originalChild, originalDocument.Children![0]);
         Assert.Equal("Pending hidden child", originalChild.Text);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>A captured raw removal retains its native tail through callback acceptance.</summary>
@@ -239,9 +256,12 @@ public sealed partial class ComplexTopologyRollbackTests
         var current = children is null
             ? []
             : children
-                .Select((child, index) => new DocumentChildObservation(child,
+                .Select((child, index) => new DocumentChildObservation(
+                    child,
                     collection[index].State,
-                    ObserveScalar(collection[index].Property(nameof(OptionalChild.Text)))))
+                    ObserveScalar(
+                        collection[index]
+                            .Property(nameof(OptionalChild.Text)))))
                 .ToArray();
 
         // WHY: Cached native entries may remain installed when a raw-null optional container hides their CLR path.
@@ -256,7 +276,8 @@ public sealed partial class ComplexTopologyRollbackTests
             .Select(index => ObserveOriginal(collection.GetOriginalEntry(index)))
             .ToArray();
 
-        return new DocumentObservation(entry.State,
+        return new DocumentObservation(
+            entry.State,
             ObserveScalar(entry.Property(value => value.Marker)),
             instance,
             ObserveScalar(reference.Property(nameof(OptionalDocument.Title))),
@@ -310,7 +331,9 @@ public sealed partial class ComplexTopologyRollbackTests
             AssertOriginal(collection.GetOriginalEntry(index), before.Originals[index]);
         }
 
-        Assert.False(entry.Property(value => value.Id).IsModified);
+        Assert.False(
+            entry.Property(value => value.Id)
+                .IsModified);
     }
 
     /// <summary>Reads an existing original buffer and flag without requiring a current CLR path.</summary>
@@ -384,7 +407,10 @@ public sealed partial class ComplexTopologyRollbackTests
     private sealed class OptionalCollectionContext : DbContext
     {
         /// <summary>Retains the distinction between raw CLR state and explicitly detected state.</summary>
-        internal OptionalCollectionContext() => ChangeTracker.AutoDetectChangesEnabled = false;
+        internal OptionalCollectionContext()
+        {
+            ChangeTracker.AutoDetectChangesEnabled = false;
+        }
 
         /// <inheritdoc />
         protected override void OnConfiguring(
@@ -401,7 +427,9 @@ public sealed partial class ComplexTopologyRollbackTests
             payload
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
-            payload.ComplexProperty(value => value.Document,
+
+            payload.ComplexProperty(
+                value => value.Document,
                 document =>
                 {
                     document.IsRequired(false);

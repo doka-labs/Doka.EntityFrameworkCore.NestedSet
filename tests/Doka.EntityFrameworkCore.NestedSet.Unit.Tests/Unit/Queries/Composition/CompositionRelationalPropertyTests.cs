@@ -40,24 +40,28 @@ public sealed class CompositionRelationalPropertyTests
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         var hierarchy = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
+
         // WHY: Keep set-operation inputs as scalar projections; construct assertion records only after Concat.
         var pairs = upward
             ? includeSelf
-                ? hierarchy.SelectAncestorsOrSelf(node => node.Id % 2 == parity,
+                ? hierarchy.SelectAncestorsOrSelf(
+                    node => node.Id % 2 == parity,
                     (origin, ancestor, distance) => new
                     {
                         Origin = origin.Id,
                         Related = ancestor.Id,
                         Distance = distance,
                     })
-                : hierarchy.SelectAncestors(node => node.Id % 2 == parity,
+                : hierarchy.SelectAncestors(
+                    node => node.Id % 2 == parity,
                     (origin, ancestor, distance) => new
                     {
                         Origin = origin.Id,
                         Related = ancestor.Id,
                         Distance = distance,
                     })
-            : hierarchy.SelectSubtrees(node => node.Id % 2 == parity,
+            : hierarchy.SelectSubtrees(
+                node => node.Id % 2 == parity,
                 (origin, descendant, distance) => new
                 {
                     Origin = origin.Id,
@@ -131,7 +135,9 @@ public sealed class CompositionRelationalPropertyTests
             nodes[index] = new CompositionGuardNode
             {
                 Id = index + 1,
-                ParentId = parents[index] < 0 ? null : parents[index] + 1,
+                ParentId = parents[index] < 0
+                    ? null
+                    : parents[index] + 1,
             };
         }
 
@@ -145,7 +151,8 @@ public sealed class CompositionRelationalPropertyTests
                 continue;
             }
 
-            var treeId = new Guid(root + 1,
+            var treeId = new Guid(
+                root + 1,
                 0,
                 0,
                 0,
@@ -219,12 +226,18 @@ public sealed class CompositionRelationalPropertyTests
             // ReSharper disable once LoopCanBeConvertedToQuery
             for (var related = 0; related < parents.Length; related++)
             {
-                var upper = upward ? related : origin;
-                var current = upward ? origin : related;
+                var upper = upward
+                    ? related
+                    : origin;
+
+                var current = upward
+                    ? origin
+                    : related;
+
                 var distance = 0;
 
                 while (current >= 0
-                       && current != upper)
+                    && current != upper)
                 {
                     current = parents[current];
                     distance++;

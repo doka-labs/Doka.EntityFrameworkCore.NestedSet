@@ -7,7 +7,8 @@ public abstract partial class OrderingRefreshTests
     public async Task OneRenameAmongFiveThousandStringKeysRefreshesOnlyItsScope()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var extensions = setup
@@ -64,17 +65,20 @@ public abstract partial class OrderingRefreshTests
         Assert.Equal(
             (alias.Left, alias.Right, alias.Position),
             (tracked[50].Left, tracked[50].Right, tracked[50].Position));
+
         Assert.Equal(original, (unrelated.Left, unrelated.Right, unrelated.Position));
         Assert.True(
             context
                 .Entry(unrelated)
                 .Property(node => node.Payload)
                 .IsModified);
+
         Assert.True(
             context
                 .Entry(renamed)
                 .Property(node => node.Name)
                 .IsModified);
+
         var lastWrite = probe.Commands.FindLastIndex(command => command
             .TrimStart()
             .StartsWith("UPDATE", StringComparison.OrdinalIgnoreCase));
@@ -93,12 +97,14 @@ public abstract partial class OrderingRefreshTests
                 Assert.DoesNotContain("Payload", sql, StringComparison.Ordinal);
                 Assert.DoesNotContain("Name", sql, StringComparison.Ordinal);
             });
+
         Assert.Equal(
             5001,
             context
                 .ChangeTracker
                 .Entries<RefreshScopeNode>()
                 .Count());
+
         await using var verification = new RefreshScopeSeedContext(options);
         Assert.Equal(
             "pending foreign payload",
@@ -114,7 +120,8 @@ public abstract partial class OrderingRefreshTests
     public async Task BroaderScopeComparerDoesNotOmitASeparateDatabaseScope()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine,
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var extensions = setup
@@ -213,8 +220,11 @@ public abstract partial class OrderingRefreshTests
             .Set<RefreshScopeNode>()
             .ToArrayAsync(CancellationToken.None);
 
-        rows.Single(node => node.Id == "one").Name = "Zulu";
-        rows.Single(node => node.Id == "three").Name = "Zulu";
+        rows.Single(node => node.Id == "one")
+            .Name = "Zulu";
+
+        rows.Single(node => node.Id == "three")
+            .Name = "Zulu";
 
         // Act
         var saved = await context.SaveChangesAsync(CancellationToken.None);
@@ -231,6 +241,7 @@ public abstract partial class OrderingRefreshTests
                 .OrderBy(node => node.Left)
                 .Select(node => node.Id)
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal<string>(
             ["four", "three"],
             await seed
@@ -240,8 +251,16 @@ public abstract partial class OrderingRefreshTests
                 .OrderBy(node => node.Left)
                 .Select(node => node.Id)
                 .ToArrayAsync(CancellationToken.None));
-        Assert.Equal(4, rows.Single(node => node.Id == "one").Left);
-        Assert.Equal(4, rows.Single(node => node.Id == "three").Left);
+
+        Assert.Equal(
+            4,
+            rows.Single(node => node.Id == "one")
+                .Left);
+
+        Assert.Equal(
+            4,
+            rows.Single(node => node.Id == "three")
+                .Left);
     }
 
     /// <summary>
@@ -275,8 +294,8 @@ public abstract partial class OrderingRefreshTests
                 TreeId = treeId,
                 ParentId = rootId,
                 Name = $"node-{position:D3}",
-                Left = (position * 2) + 2,
-                Right = (position * 2) + 3,
+                Left = position * 2 + 2,
+                Right = position * 2 + 3,
                 Depth = 1,
                 Position = position,
             };

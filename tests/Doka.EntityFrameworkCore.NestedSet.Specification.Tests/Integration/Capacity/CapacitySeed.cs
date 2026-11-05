@@ -19,6 +19,7 @@ internal static class CapacitySeed
             .NestedSet<TreeNode>()
             .ForScope(1)
             .InsertRootAsync(new TreeNode { NodeId = 1 }, Guid.Empty, cancellationToken);
+
         context.ChangeTracker.Clear();
 
         await context
@@ -27,8 +28,16 @@ internal static class CapacitySeed
             .ExecuteUpdateAsync(
                 setters => setters
                     .SetProperty(node => node.Start, 1L)
-                    .SetProperty(node => node.End, corrupt ? 2L : (long)count * 2)
-                    .SetProperty(node => node.Depth, corrupt ? 9 : 0),
+                    .SetProperty(
+                        node => node.End,
+                        corrupt
+                            ? 2L
+                            : (long)count * 2)
+                    .SetProperty(
+                        node => node.Depth,
+                        corrupt
+                            ? 9
+                            : 0),
                 cancellationToken);
 
         var entity = context.Model.FindEntityType(typeof(TreeNode))!;
@@ -37,23 +46,52 @@ internal static class CapacitySeed
         var table = helper.DelimitIdentifier(store.Name, store.Schema);
         var names = new[]
         {
-            nameof(TreeNode.NodeId), nameof(TreeNode.TreeId), nameof(TreeNode.Tree), nameof(TreeNode.Parent),
-            nameof(TreeNode.Start), nameof(TreeNode.End), nameof(TreeNode.Depth), nameof(TreeNode.Position),
+            nameof(TreeNode.NodeId),
+            nameof(TreeNode.TreeId),
+            nameof(TreeNode.Tree),
+            nameof(TreeNode.Parent),
+            nameof(TreeNode.Start),
+            nameof(TreeNode.End),
+            nameof(TreeNode.Depth),
+            nameof(TreeNode.Position),
         };
 
-        var columns = string.Join(", ", names.Select(name =>
-            helper.DelimitIdentifier(entity.FindProperty(name)!.GetColumnName(store)!)));
+        var columns = string.Join(
+            ", ",
+            names.Select(name =>
+                helper.DelimitIdentifier(entity.FindProperty(name)!.GetColumnName(store)!)));
 
         var offset = helper.GenerateParameterName("offset");
         var limit = helper.GenerateParameterName("limit");
         var total = helper.GenerateParameterName("total");
         var tree = helper.GenerateParameterName("tree");
         var scope = helper.GenerateParameterName("scope");
-        var parent = deep ? "(numbers.id - 1)" : "1";
-        var left = corrupt ? "1" : deep ? "numbers.id" : "((2 * numbers.id) - 2)";
-        var right = corrupt ? "2" : deep ? $"((2 * {total}) - numbers.id + 1)" : "((2 * numbers.id) - 1)";
-        var depth = corrupt ? "9" : deep ? "(numbers.id - 1)" : "1";
-        var position = deep ? "0" : "(numbers.id - 2)";
+        var parent = deep
+            ? "(numbers.id - 1)"
+            : "1";
+
+        var left = corrupt
+            ? "1"
+            : deep
+                ? "numbers.id"
+                : "((2 * numbers.id) - 2)";
+
+        var right = corrupt
+            ? "2"
+            : deep
+                ? $"((2 * {total}) - numbers.id + 1)"
+                : "((2 * numbers.id) - 1)";
+
+        var depth = corrupt
+            ? "9"
+            : deep
+                ? "(numbers.id - 1)"
+                : "1";
+
+        var position = deep
+            ? "0"
+            : "(numbers.id - 2)";
+
         var sql = $"INSERT INTO {table} ({columns}) "
             + $"SELECT numbers.id, {tree}, {scope}, {parent}, {left}, {right}, {depth}, {position} "
             + $"FROM ({FixtureRowNumbers.SelectSql(offset)}) numbers "
@@ -67,7 +105,11 @@ internal static class CapacitySeed
 
         for (var first = 2; first <= count; first += NativeBatchSize)
         {
-            await using var command = context.Database.GetDbConnection().CreateCommand();
+            await using var command = context
+                .Database
+                .GetDbConnection()
+                .CreateCommand();
+
             var parameters = new object[]
             {
                 Parameter(nameof(TreeNode.NodeId), "offset", first),
@@ -105,7 +147,8 @@ internal static class CapacitySeed
             .AsNoTracking();
 
         var mismatches = await nodes.LongCountAsync(
-            node => node.NodeId < 1 || node.NodeId > count, cancellationToken);
+            node => node.NodeId < 1 || node.NodeId > count,
+            cancellationToken);
 
         // WHY: One coordinate aggregate over ten million rows can exceed the ordinary command timeout before
         // returning any result. Primary-key ranges bound that wait without retaining entities or raising timeouts.
@@ -123,13 +166,40 @@ internal static class CapacitySeed
                 node => node.Tree != 1
                     || node.TreeId != Guid.Empty
                     || (node.NodeId == 1 && node.Parent != null)
-                    || (node.NodeId != 1 && (node.Parent == null || node.Parent != (deep ? node.NodeId - 1 : 1)))
-                    || node.Start != (corrupt ? 1L : deep ? node.NodeId
-                        : node.NodeId == 1 ? 1L : (2L * node.NodeId) - 2)
-                    || node.End != (corrupt ? 2L : deep ? (2L * count) - node.NodeId + 1
-                        : node.NodeId == 1 ? 2L * count : (2L * node.NodeId) - 1)
-                    || node.Depth != (corrupt ? 9 : deep ? node.NodeId - 1 : node.NodeId == 1 ? 0 : 1)
-                    || node.Position != (deep || node.NodeId == 1 ? 0L : node.NodeId - 2L),
+                    || (node.NodeId != 1
+                        && (node.Parent == null
+                            || node.Parent
+                            != (deep
+                                ? node.NodeId - 1
+                                : 1)))
+                    || node.Start
+                    != (corrupt
+                        ? 1L
+                        : deep
+                            ? node.NodeId
+                            : node.NodeId == 1
+                                ? 1L
+                                : 2L * node.NodeId - 2)
+                    || node.End
+                    != (corrupt
+                        ? 2L
+                        : deep
+                            ? 2L * count - node.NodeId + 1
+                            : node.NodeId == 1
+                                ? 2L * count
+                                : 2L * node.NodeId - 1)
+                    || node.Depth
+                    != (corrupt
+                        ? 9
+                        : deep
+                            ? node.NodeId - 1
+                            : node.NodeId == 1
+                                ? 0
+                                : 1)
+                    || node.Position
+                    != (deep || node.NodeId == 1
+                        ? 0L
+                        : node.NodeId - 2L),
                 cancellationToken);
         }
 
@@ -144,7 +214,8 @@ internal static class CapacitySeed
     )
     {
         var hierarchy = context.Model.FindEntityType(typeof(TreeNode))!;
-        var registry = NestedSetTreeRegistryMapping.For(hierarchy).Registry;
+        var registry = NestedSetTreeRegistryMapping.For(hierarchy)
+            .Registry;
 
         return context
             .Set<NestedSetTreeRegistry>(registry.Name)
@@ -164,9 +235,12 @@ internal static class CapacitySeed
     )
     {
         var hierarchy = context.Model.FindEntityType(typeof(TreeNode))!;
-        var registry = NestedSetTreeRegistryMapping.For(hierarchy).Registry;
+        var registry = NestedSetTreeRegistryMapping.For(hierarchy)
+            .Registry;
 
-        return context.Set<NestedSetTreeRegistry>(registry.Name).CountAsync(cancellationToken);
+        return context
+            .Set<NestedSetTreeRegistry>(registry.Name)
+            .CountAsync(cancellationToken);
     }
 }
 

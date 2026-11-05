@@ -14,7 +14,7 @@ public sealed class CompositionExpressionTests(
     public void SingleReplacementReducesAnonymousProjectionMembers()
     {
         // Arrange
-        var (projection, selector) = Projectors((int value) => new { Value = value }, row => row.Value);
+        var (projection, selector) = Projectors(value => new { Value = value }, row => row.Value);
 
         // Act
         var actual = NestedSetQueryExpressions.Replace(selector.Body, selector.Parameters[0], projection.Body);
@@ -52,7 +52,8 @@ public sealed class CompositionExpressionTests(
         // Arrange
         var outer = Expression.Parameter(typeof(int), "value");
         var inner = Expression.Parameter(typeof(int), "value");
-        var original = Any(2,
+        var original = Any(
+            2,
             inner,
             Expression.Equal(Expression.Add(outer, inner), Expression.Constant(3)));
 
@@ -96,7 +97,8 @@ public sealed class CompositionExpressionTests(
         var allocated = QueryConstructionAllocation.MeasurePaired(legacy, replacement);
 
         // Assert
-        output.WriteLine($"Single replacement: legacy={allocated.Baseline} B/op; "
+        output.WriteLine(
+            $"Single replacement: legacy={allocated.Baseline} B/op; "
             + $"replacement={allocated.Expanded} B/op.");
 
         Assert.InRange(allocated.Expanded, 0, allocated.Baseline - 1);
@@ -121,7 +123,9 @@ public sealed class CompositionExpressionTests(
         var nestedParent = Expression.Parameter(typeof(int), "parent");
         var nestedNode = Expression.Parameter(typeof(int), "node");
         var external = Expression.Parameter(typeof(int), "row");
-        var outerSum = Expression.Add(Expression.Add(Expression.Multiply(row, Expression.Constant(100)),
+        var outerSum = Expression.Add(
+            Expression.Add(
+                Expression.Multiply(row, Expression.Constant(100)),
                 Expression.Multiply(parent, Expression.Constant(10))),
             node);
 
@@ -154,7 +158,8 @@ public sealed class CompositionExpressionTests(
         int value,
         ParameterExpression parameter,
         Expression predicate
-    ) => Expression.Call(typeof(Enumerable),
+    ) => Expression.Call(
+        typeof(Enumerable),
         nameof(Enumerable.Any),
         [typeof(int)],
         Expression.Constant(new[] { value }),

@@ -108,7 +108,9 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
                 if (NestedSetInsertionValues.Capture(
                         candidate.Entry.Metadata,
                         candidate.Entry.Entity,
-                        ReferenceEquals(candidate.Entry.Entity, entity) ? structuralProperties : null) is { } snapshot)
+                        ReferenceEquals(candidate.Entry.Entity, entity)
+                            ? structuralProperties
+                            : null) is { } snapshot)
                 {
                     insertionValues.Add(snapshot);
                 }

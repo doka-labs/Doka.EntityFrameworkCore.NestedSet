@@ -9,6 +9,9 @@ internal sealed partial class MySqlNestedSetProvider
     internal override bool SupportsStatementAtomicSelfReferentialDelete => false;
 
     /// <inheritdoc />
+    internal override IsolationLevel ReadSnapshotIsolation => IsolationLevel.RepeatableRead;
+
+    /// <inheritdoc />
     internal override bool IsSafeReadSnapshot(
         IsolationLevel? isolation
     ) => isolation is IsolationLevel.Serializable or IsolationLevel.Snapshot or IsolationLevel.RepeatableRead;
@@ -17,9 +20,6 @@ internal sealed partial class MySqlNestedSetProvider
     internal override bool HasStatementReadSnapshot(
         IsolationLevel? isolation
     ) => isolation is null or IsolationLevel.ReadCommitted;
-
-    /// <inheritdoc />
-    internal override IsolationLevel ReadSnapshotIsolation => IsolationLevel.RepeatableRead;
 
     /// <inheritdoc />
     internal override async Task<bool> ReserveTreeAsync(

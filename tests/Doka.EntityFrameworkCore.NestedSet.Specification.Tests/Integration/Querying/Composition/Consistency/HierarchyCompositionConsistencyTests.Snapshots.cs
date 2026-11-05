@@ -16,7 +16,9 @@ public abstract partial class HierarchyCompositionConsistencyTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var setup = await CreateContextAsync(scope, probe,
+        await using var setup = await CreateContextAsync(
+            scope,
+            probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var writer = await _fixture.CreateContextAsync<CompositionContext>(
@@ -40,10 +42,15 @@ public abstract partial class HierarchyCompositionConsistencyTests
 
         await ConfigureSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         await context.Database.OpenConnectionAsync(CancellationToken.None);
-        await using var native = Engine == "Sqlite" ? BeginDeferredSqliteTransaction(context) : null;
+        await using var native = Engine == "Sqlite"
+            ? BeginDeferredSqliteTransaction(context)
+            : null;
+
         await using var transaction = native is null
             ? await context.Database.BeginTransactionAsync(
-                Engine == "SqlServer" ? IsolationLevel.Snapshot : IsolationLevel.RepeatableRead,
+                Engine == "SqlServer"
+                    ? IsolationLevel.Snapshot
+                    : IsolationLevel.RepeatableRead,
                 CancellationToken.None)
             : await context.Database.UseTransactionAsync(native, CancellationToken.None)
             ?? throw new InvalidOperationException("The SQLite snapshot transaction must be enlisted in EF.");
@@ -57,6 +64,7 @@ public abstract partial class HierarchyCompositionConsistencyTests
         var preservedTransaction = ReferenceEquals(transaction, context.Database.CurrentTransaction);
         var actualIsolation = transaction.GetDbTransaction()
             .IsolationLevel;
+
         boundary.Armed = false;
         await transaction.RollbackAsync(CancellationToken.None);
         await using var verification = await _fixture.CreateContextAsync<CompositionContext>(
@@ -136,7 +144,9 @@ public abstract partial class HierarchyCompositionConsistencyTests
         // WHY: Structural writers require READ COMMITTED on server engines independently of the reader's
         // stable snapshot. InnoDB's connection default is REPEATABLE READ; SQLite uses its serializable writer.
         await using var transaction = await writer.Database.BeginTransactionAsync(
-            writer.Database.IsSqlite() ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+            writer.Database.IsSqlite()
+                ? IsolationLevel.Serializable
+                : IsolationLevel.ReadCommitted,
             cancellationToken);
 
         var hierarchy = writer
@@ -192,19 +202,32 @@ public abstract partial class HierarchyCompositionConsistencyTests
         bool afterChange
     )
     {
-        (int Upper, int Distance)[] ancestors = afterChange ? [(1, 2), (3, 0), (5, 1)] : [(1, 2), (2, 1), (3, 0)];
+        (int Upper, int Distance)[] ancestors = afterChange
+            ? [(1, 2), (3, 0), (5, 1)]
+            : [(1, 2), (2, 1), (3, 0)];
 
         return ancestors
             .Select(ancestor => new CompositionSnapshotRow
             {
                 Upper = ancestor.Upper,
-                Parent = afterChange ? 5 : 2,
+                Parent = afterChange
+                    ? 5
+                    : 2,
                 DownDistance = 2,
                 UpDistance = ancestor.Distance,
                 Matches = afterChange,
-                FromDate = new DateOnly(2044, afterChange ? 9 : 10, 1),
-                ToDate = afterChange ? new DateOnly(2044, 10, 31) : null,
-                Amount = afterChange ? 20 : 10,
+                FromDate = new DateOnly(
+                    2044,
+                    afterChange
+                        ? 9
+                        : 10,
+                    1),
+                ToDate = afterChange
+                    ? new DateOnly(2044, 10, 31)
+                    : null,
+                Amount = afterChange
+                    ? 20
+                    : 10,
             })
             .ToArray();
     }

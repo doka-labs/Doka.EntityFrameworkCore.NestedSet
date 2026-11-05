@@ -72,8 +72,16 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
         var failure = await Record.ExceptionAsync(() => hierarchy.DeleteTreeAsync(treeId, CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
-        Assert.Equal(EntityState.Unchanged, context.Entry(alias).State);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(alias)
+                .State);
+
         Assert.Equal(before, (alias.TreeId, alias.Left, alias.Right, alias.Depth, alias.Position, alias.ParentId));
         Assert.Equal(
             2,
@@ -88,7 +96,8 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
     public async Task NativeTreeAliasCannotLeaveAffectedTrackedStructureStale()
     {
         // Arrange
-        await using var context = await CreateAliasContextAsync(Engine,
+        await using var context = await CreateAliasContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
@@ -105,8 +114,16 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
             .DeleteTreeAsync(new BroadTreeId(treeId), CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
-        Assert.Equal(EntityState.Unchanged, context.Entry(alias).State);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(alias)
+                .State);
+
         Assert.Equal(before, (alias.Left, alias.Right, alias.Depth, alias.Position, alias.ParentId));
         Assert.Equal(
             2,
@@ -142,7 +159,11 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
 
         // Assert
         Assert.Null(failure);
-        Assert.Equal(EntityState.Unchanged, context.Entry(tracked).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(tracked)
+                .State);
+
         Assert.Equal(before, (tracked.TreeId.Value, tracked.Left, tracked.Right, tracked.Depth, tracked.Position));
         Assert.Equal(
             0,
@@ -150,6 +171,7 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
                 .Set<BroadTreeIdNode>()
                 .AsNoTracking()
                 .CountAsync(node => node.Id >= root && node.Id <= root + 1, CancellationToken.None));
+
         Assert.Equal(
             2,
             await context
@@ -164,7 +186,8 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
     {
         // Arrange
         var probe = new NativeGuardProbe();
-        await using var context = await CreateAliasContextAsync(Engine,
+        await using var context = await CreateAliasContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -181,9 +204,16 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
             .DeleteTreeAsync(new BroadTreeId(treeId), CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Equal(0, probe.Commands);
-        Assert.Equal(EntityState.Unchanged, context.Entry(tracked).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(tracked)
+                .State);
     }
 
     /// <summary>Transports an unaffected native tracked set beyond the former 64-key boundary in one probe.</summary>
@@ -192,7 +222,8 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
     {
         // Arrange
         var probe = new NativeGuardProbe();
-        await using var context = await CreateAliasContextAsync(Engine,
+        await using var context = await CreateAliasContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -200,8 +231,13 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
         var affectedTree = $"guard-affected-{root}";
         var otherTree = $"guard-other-{root}";
         await SeedTreeAsync(context, affectedTree, root, 1, cancellationToken: TestContext.Current.CancellationToken);
-        await SeedTreeAsync(context, otherTree, root + 100, 64,
+        await SeedTreeAsync(
+            context,
+            otherTree,
+            root + 100,
+            64,
             cancellationToken: TestContext.Current.CancellationToken);
+
         var tracked = await context
             .Set<BroadTreeIdNode>()
             .Where(node => node.Id >= root + 100 && node.Id <= root + 164)
@@ -222,7 +258,10 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
         Assert.InRange(probe.MaximumNativeParameters, 1, 2);
         Assert.All(
             tracked,
-            node => Assert.Equal(EntityState.Unchanged, context.Entry(node).State));
+            node => Assert.Equal(
+                EntityState.Unchanged,
+                context.Entry(node)
+                    .State));
     }
 
     /// <summary>Rechecks changes or new tracked aliases introduced while a native guard read is awaiting.</summary>
@@ -235,7 +274,8 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
     {
         // Arrange
         var probe = new NativeGuardProbe();
-        await using var context = await CreateAliasContextAsync(Engine,
+        await using var context = await CreateAliasContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -268,7 +308,11 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
             .DeleteTreeAsync(new BroadTreeId(affectedTree), CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Equal(1, probe.NativeReads);
         Assert.Equal(
             2,
@@ -276,9 +320,20 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
                 .Set<BroadTreeIdNode>()
                 .AsNoTracking()
                 .CountAsync(node => node.Id >= root && node.Id <= root + 1, CancellationToken.None));
-        Assert.Equal("Child-000", (await ReadNodeAsync(context, root + 11,
-            cancellationToken: TestContext.Current.CancellationToken)).Name);
-        Assert.Equal(attachAffectedAlias ? EntityState.Unchanged : EntityState.Modified, context.Entry(other).State);
+
+        Assert.Equal(
+            "Child-000",
+            (await ReadNodeAsync(
+                context,
+                root + 11,
+                cancellationToken: TestContext.Current.CancellationToken)).Name);
+
+        Assert.Equal(
+            attachAffectedAlias
+                ? EntityState.Unchanged
+                : EntityState.Modified,
+            context.Entry(other)
+                .State);
     }
 
     /// <summary>Rejects hierarchy attachments during registry locking when no hierarchy entries were tracked.</summary>
@@ -287,7 +342,8 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
     {
         // Arrange
         var probe = new NativeGuardProbe();
-        await using var context = await CreateAliasContextAsync(Engine,
+        await using var context = await CreateAliasContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -295,7 +351,9 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
         var treeId = $"guard-lock-{root}";
         await SeedTreeAsync(context, treeId, root, 1, cancellationToken: TestContext.Current.CancellationToken);
         var alias = await ReadNodeAsync(context, root + 1, cancellationToken: TestContext.Current.CancellationToken);
-        probe.RegistryTable = NestedSetTreeRegistryMapping.For(context.Model.FindEntityType(typeof(BroadTreeIdNode))!).Store.Name;
+        probe.RegistryTable = NestedSetTreeRegistryMapping.For(context.Model.FindEntityType(typeof(BroadTreeIdNode))!)
+            .Store.Name;
+
         probe.AfterRegistryRead = () => context.Attach(alias);
         probe.Armed = true;
 
@@ -305,10 +363,18 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
             .DeleteTreeAsync(new BroadTreeId(treeId), CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Equal(1, probe.RegistryCallbacks);
         Assert.Equal(0, probe.NativeReads);
-        Assert.Equal(EntityState.Unchanged, context.Entry(alias).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(alias)
+                .State);
+
         Assert.Equal(
             2,
             await context
@@ -323,7 +389,8 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
     public async Task PersistedMembershipRejectsAnExternallyMovedTrackedNode()
     {
         // Arrange
-        await using var context = await CreateAliasContextAsync(Engine,
+        await using var context = await CreateAliasContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
@@ -334,7 +401,8 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
         var stale = await ReadNodeAsync(context, root + 1, cancellationToken: TestContext.Current.CancellationToken);
         context.Attach(stale);
         var before = (stale.TreeId.Value, stale.ParentId, stale.Left, stale.Right, stale.Depth, stale.Position);
-        await using var writer = await CreateAliasContextAsync(Engine,
+        await using var writer = await CreateAliasContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await writer
@@ -347,13 +415,27 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
             .DeleteTreeAsync(new BroadTreeId(target), CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
-        Assert.Equal(EntityState.Unchanged, context.Entry(stale).State);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(stale)
+                .State);
+
         Assert.Equal(
             before,
             (stale.TreeId.Value, stale.ParentId, stale.Left, stale.Right, stale.Depth, stale.Position));
-        Assert.Equal(target, (await ReadNodeAsync(context, root + 1,
-            cancellationToken: TestContext.Current.CancellationToken)).TreeId.Value);
+
+        Assert.Equal(
+            target,
+            (await ReadNodeAsync(
+                context,
+                root + 1,
+                cancellationToken: TestContext.Current.CancellationToken)).TreeId.Value);
+
         Assert.Equal(
             2,
             await context
@@ -374,7 +456,8 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
     {
         // Arrange
         var probe = new NativeGuardProbe();
-        await using var context = await CreateAliasContextAsync(Engine,
+        await using var context = await CreateAliasContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -390,6 +473,7 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
                     _ = new NestedSetMutationExecutor<BroadTreeIdNode, long, BroadTreeId, NestedSetNoScope>(
                         context,
                         entityType);
+
                     break;
                 case "scope":
                     _ = new NestedSetMutationExecutor<BroadTreeIdNode, int, BroadTreeId, string>(context, entityType);
@@ -398,6 +482,7 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
                     _ = new NestedSetMutationExecutor<BroadTreeIdNode, int, string, NestedSetNoScope>(
                         context,
                         entityType);
+
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(role));
@@ -420,7 +505,8 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
     {
         // Arrange
         var probe = new NativeGuardProbe();
-        await using var context = await CreateAliasContextAsync(Engine,
+        await using var context = await CreateAliasContextAsync(
+            Engine,
             cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
@@ -450,7 +536,11 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
             : executor.ExecuteAsync(_ => Task.CompletedTask, requests, CancellationToken.None));
 
         // Assert
-        Assert.Equal("requests", Assert.IsType<ArgumentException>(failure).ParamName);
+        Assert.Equal(
+            "requests",
+            Assert.IsType<ArgumentException>(failure)
+                .ParamName);
+
         Assert.Equal(0, probe.Commands);
         Assert.Null(context.Database.CurrentTransaction);
     }
@@ -566,13 +656,16 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
                 GetType()
                     .Name
                 + "Nodes");
+
             node.HasKey(value => value.Id);
             node
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             node
                 .Property(value => value.Name)
                 .HasMaxLength(100);
+
             var tree = node
                 .Property(value => value.TreeId)
                 .HasConversion(value => value.Value, value => new BroadTreeId(value))
@@ -588,17 +681,13 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
             tree.Metadata.SetValueComparer(
                 BroadComparer
                     ? new ValueComparer<BroadTreeId>(
-                        (
-                            first,
-                            second
-                        ) => StringComparer.OrdinalIgnoreCase.Equals(first!.Value, second!.Value),
+                        (first,
+                            second) => StringComparer.OrdinalIgnoreCase.Equals(first!.Value, second!.Value),
                         value => StringComparer.OrdinalIgnoreCase.GetHashCode(value.Value),
                         value => new BroadTreeId(value.Value))
                     : new ValueComparer<BroadTreeId>(
-                        (
-                            first,
-                            second
-                        ) => StringComparer.Ordinal.Equals(first!.Value, second!.Value),
+                        (first,
+                            second) => StringComparer.Ordinal.Equals(first!.Value, second!.Value),
                         value => StringComparer.Ordinal.GetHashCode(value.Value),
                         value => new BroadTreeId(value.Value)));
 
@@ -607,6 +696,7 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
                 .WithMany()
                 .HasForeignKey(value => value.ParentId)
                 .OnDelete(DeleteBehavior.Restrict);
+
             node.HasNestedSet(nestedSet => nestedSet
                 .HasNodeKey(value => value.Id)
                 .HasTreeId(value => value.TreeId)

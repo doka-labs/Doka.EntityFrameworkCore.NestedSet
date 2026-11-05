@@ -181,12 +181,14 @@ internal static partial class SignalReportValidation
         // WHY: Explicit lists preserve first-selection order independently of dictionary enumeration order.
         // Scalar equality and a common mode make one entry per exact field sufficient for deduplication.
         var groups = new TagGroup[orderedGroups.Count];
+
         // WHY: Fill the final group array in first-selection order without an intermediate projection.
         // ReSharper disable once ForCanBeConvertedToForeach
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < orderedGroups.Count; index++)
         {
-            groups[index] = orderedGroups[index].Build();
+            groups[index] = orderedGroups[index]
+                .Build();
         }
 
         return groups;
@@ -198,8 +200,8 @@ internal static partial class SignalReportValidation
         TagOwnerMode mode
     )
     {
-        private readonly Dictionary<string, string> _values = new(StringComparer.Ordinal);
         private readonly List<TagCriterion> _criteria = [];
+        private readonly Dictionary<string, string> _values = new(StringComparer.Ordinal);
 
         /// <summary>Rejects inconsistent modes and scalar contradictions while dropping identical criteria.</summary>
         /// <param name="criterion">The scalar field selected by the original request.</param>

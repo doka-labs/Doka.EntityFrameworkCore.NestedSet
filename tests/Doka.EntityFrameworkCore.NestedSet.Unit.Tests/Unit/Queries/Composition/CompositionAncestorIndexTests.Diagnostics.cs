@@ -103,10 +103,12 @@ public sealed partial class CompositionAncestorIndexTests
         List<EventData> events,
         CompositionIoBoundary boundary
     ) => new DbContextOptionsBuilder<IndexCompositionContext>(
-            ModelCompatibilityDatabase.Options<IndexCompositionContext>("MariaDb",
+            ModelCompatibilityDatabase.Options<IndexCompositionContext>(
+                "MariaDb",
                 "Server=127.0.0.1;Database=diagnostic_cache;User ID=unused;Pooling=false"))
         .AddInterceptors(boundary, boundary.Commands)
-        .LogTo((eventId, _) => eventId.Id is >= 70_001 and <= 70_004,
+        .LogTo(
+            (eventId, _) => eventId.Id is >= 70_001 and <= 70_004,
             events.Add)
         .Options;
 
@@ -128,9 +130,11 @@ public sealed partial class CompositionAncestorIndexTests
             .InTree(Guid.Empty);
 
         return includeSelf
-            ? hierarchy.SelectAncestorsOrSelf(node => facts.Any(fact => fact.NodeId == node.Id),
+            ? hierarchy.SelectAncestorsOrSelf(
+                node => facts.Any(fact => fact.NodeId == node.Id),
                 (node, owner, distance) => owner.Id)
-            : hierarchy.SelectAncestors(node => facts.Any(fact => fact.NodeId == node.Id),
+            : hierarchy.SelectAncestors(
+                node => facts.Any(fact => fact.NodeId == node.Id),
                 (node, owner, distance) => owner.Id);
     }
 }

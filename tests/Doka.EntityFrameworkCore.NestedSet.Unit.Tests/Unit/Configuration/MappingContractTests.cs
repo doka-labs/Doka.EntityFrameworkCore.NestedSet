@@ -36,6 +36,7 @@ public sealed class MappingContractTests
                 .GetAnnotations()
                 .Select(x => (x.Name, x.Value))
                 .ToArray());
+
         Assert.Empty(entity.Metadata.GetIndexes());
     }
 
@@ -65,6 +66,7 @@ public sealed class MappingContractTests
                 .GetAnnotations()
                 .Select(x => (x.Name, x.Value))
                 .ToArray());
+
         Assert.Empty(entity.Metadata.GetIndexes());
     }
 

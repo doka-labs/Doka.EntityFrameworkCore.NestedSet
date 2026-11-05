@@ -52,7 +52,7 @@ public sealed class BulkPlanWidthTests
             (plan.Nodes[0].Geometry.Left, plan.Nodes[0].Geometry.Right, plan.Nodes[0].Geometry.Position));
 
         Assert.Equal(
-            (ChildCount * 2L, (ChildCount * 2L) + 1, ChildCount - 1L),
+            (ChildCount * 2L, ChildCount * 2L + 1, ChildCount - 1L),
             (last.Geometry.Left, last.Geometry.Right, last.Geometry.Position));
     }
 }

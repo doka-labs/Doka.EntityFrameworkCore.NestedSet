@@ -16,20 +16,41 @@ public abstract partial class GroupSupervisorTests
     [InlineData(1, false)]
     [InlineData(16, false)]
     [InlineData(1, true)]
-    public async Task MatchingRoutingRequestsReuseTheScopedCompiledQuery(int fields, bool varyCardinality)
+    public async Task MatchingRoutingRequestsReuseTheScopedCompiledQuery(
+        int fields,
+        bool varyCardinality
+    )
     {
         // Arrange
         var commands = new SupervisorCommandProbe();
-        await using var seeded = await CreateAsync(new SupervisorCommandProbe(),
+        await using var seeded = await CreateAsync(
+            new SupervisorCommandProbe(),
             cancellationToken: TestContext.Current.CancellationToken);
 
         var first = await App.SupervisorScenarioData.CreateAsync(seeded, Guid.NewGuid(), CancellationToken.None);
-        await SeedOriginProfileAsync(seeded, first, 1, varyCardinality ? 16 : fields,
+        await SeedOriginProfileAsync(
+            seeded,
+            first,
+            1,
+            varyCardinality
+                ? 16
+                : fields,
             cancellationToken: TestContext.Current.CancellationToken);
+
         var second = await App.SupervisorScenarioData.CreateAsync(seeded, Guid.NewGuid(), CancellationToken.None);
-        await SeedOriginProfileAsync(seeded, second, 1, varyCardinality ? 16 : fields,
+        await SeedOriginProfileAsync(
+            seeded,
+            second,
+            1,
+            varyCardinality
+                ? 16
+                : fields,
             cancellationToken: TestContext.Current.CancellationToken);
-        var firstFields = s_profileFields.Take(fields).ToArray();
+
+        var firstFields = s_profileFields
+            .Take(fields)
+            .ToArray();
+
         var secondFields = firstFields.ToArray();
         if (varyCardinality)
         {
@@ -49,22 +70,33 @@ public abstract partial class GroupSupervisorTests
         var firstRequest = first.Request(App.SearchStart.IncludeSelf) with
         {
             Groups = new App.NthTypeGroupThenValidate(4, 1),
-            Matches = firstFields.Select(field => new App.MetadataMatch(
-                App.MetadataOwner.SourceUser, field, App.MetadataOwner.CandidateMembership, field)).ToArray(),
+            Matches = firstFields
+                .Select(field => new App.MetadataMatch(
+                    App.MetadataOwner.SourceUser,
+                    field,
+                    App.MetadataOwner.CandidateMembership,
+                    field))
+                .ToArray(),
         };
 
         var secondRequest = second.Request(App.SearchStart.IncludeSelf) with
         {
             Groups = firstRequest.Groups,
             OnDay = new DateOnly(2026, 10, 17),
-            Matches = secondFields.Select(field => new App.MetadataMatch(
-                App.MetadataOwner.SourceUser, field, App.MetadataOwner.CandidateMembership, field)).ToArray(),
+            Matches = secondFields
+                .Select(field => new App.MetadataMatch(
+                    App.MetadataOwner.SourceUser,
+                    field,
+                    App.MetadataOwner.CandidateMembership,
+                    field))
+                .ToArray(),
         };
 
         var compilation = new SupervisorCompilationProbe();
         var options = new DbContextOptionsBuilder<App.UserGroupContext>(
             ModelCompatibilityDatabase.Options<App.UserGroupContext>(
-                Engine, seeded.Database.GetConnectionString()!));
+                Engine,
+                seeded.Database.GetConnectionString()!));
 
         // WHY: An owned service graph isolates this cache observation from parallel suites and their query shapes.
         // A real asynchronous execution warms the same cache used below; ToQueryString would warm another path.
@@ -77,20 +109,35 @@ public abstract partial class GroupSupervisorTests
         services.AddScoped<IInterceptor>(_ => commands);
         services.AddScoped<IInterceptor>(_ => compilation);
         await using var provider = services.BuildServiceProvider();
-        await using var context = new App.UserGroupContext(options.UseInternalServiceProvider(provider).Options);
+        await using var context = new App.UserGroupContext(
+            options.UseInternalServiceProvider(provider)
+                .Options);
+
         commands.Enabled = true;
         var beforeWarmup = compilation.Count;
-        var warmup = await App.SupervisorQueries.ResolveAsync(context, first.TenantId, firstRequest,
-            App.SupervisorSelection.RequireUnique, CancellationToken.None);
+        var warmup = await App.SupervisorQueries.ResolveAsync(
+            context,
+            first.TenantId,
+            firstRequest,
+            App.SupervisorSelection.RequireUnique,
+            CancellationToken.None);
 
         var afterWarmup = compilation.Count;
 
         // Act
-        var changed = await App.SupervisorQueries.ResolveAsync(context, second.TenantId, secondRequest,
-            App.SupervisorSelection.RequireUnique, CancellationToken.None);
+        var changed = await App.SupervisorQueries.ResolveAsync(
+            context,
+            second.TenantId,
+            secondRequest,
+            App.SupervisorSelection.RequireUnique,
+            CancellationToken.None);
 
-        var repeated = await App.SupervisorQueries.ResolveAsync(context, first.TenantId, firstRequest,
-            App.SupervisorSelection.RequireUnique, CancellationToken.None);
+        var repeated = await App.SupervisorQueries.ResolveAsync(
+            context,
+            first.TenantId,
+            firstRequest,
+            App.SupervisorSelection.RequireUnique,
+            CancellationToken.None);
 
         // Assert
         Assert.Equal(beforeWarmup + 1, afterWarmup);
@@ -102,7 +149,11 @@ public abstract partial class GroupSupervisorTests
             // WHY: A provider may specialize a singleton collection after the compilation cache.
             // Explicit catalog-array transport must still prevent criterion-sized binding expansion.
             Assert.Equal(commands.Commands[0], commands.Commands[2]);
-            var commandBytes = commands.Commands.Select(Encoding.UTF8.GetByteCount).ToArray();
+            var commandBytes = commands
+                .Commands
+                .Select(Encoding.UTF8.GetByteCount)
+                .ToArray();
+
             Assert.InRange(commandBytes.Max() - commandBytes.Min(), 0, 4_096);
             Assert.Single(commands.ParameterCounts.Distinct());
         }
@@ -112,18 +163,35 @@ public abstract partial class GroupSupervisorTests
             Assert.Single(commands.ParameterCounts.Distinct());
         }
 
-        Assert.Equal(first.Users[1], Assert.Single(Assert.Single(warmup.Origins).Evidence).CandidateUserId);
-        Assert.Equal(first.Users[1], Assert.Single(Assert.Single(repeated.Origins).Evidence).CandidateUserId);
+        Assert.Equal(
+            first.Users[1],
+            Assert.Single(
+                    Assert.Single(warmup.Origins)
+                        .Evidence)
+                .CandidateUserId);
+
+        Assert.Equal(
+            first.Users[1],
+            Assert.Single(
+                    Assert.Single(repeated.Origins)
+                        .Evidence)
+                .CandidateUserId);
+
         var changedOrigin = Assert.Single(changed.Origins);
-        Assert.Equal(fields == 1 && !varyCardinality
-                ? App.SupervisorResolutionStatus.NotFound : App.SupervisorResolutionStatus.Found,
+        Assert.Equal(
+            fields == 1 && !varyCardinality
+                ? App.SupervisorResolutionStatus.NotFound
+                : App.SupervisorResolutionStatus.Found,
             changedOrigin.Status);
-        Assert.All(changedOrigin.Evidence, evidence =>
-        {
-            Assert.Equal(second.TenantId, evidence.TenantId);
-            Assert.Equal(second.Users[0], evidence.SourceUserId);
-            Assert.Equal(second.Users[1], evidence.CandidateUserId);
-        });
+
+        Assert.All(
+            changedOrigin.Evidence,
+            evidence =>
+            {
+                Assert.Equal(second.TenantId, evidence.TenantId);
+                Assert.Equal(second.Users[0], evidence.SourceUserId);
+                Assert.Equal(second.Users[1], evidence.CandidateUserId);
+            });
 
         Assert.Contains(first.Users[0], commands.ParameterValues);
         Assert.Contains(second.Users[0], commands.ParameterValues);
@@ -154,7 +222,10 @@ public abstract partial class GroupSupervisorTests
         internal int UnexpandedTextCalls { get; private set; }
 
         /// <inheritdoc />
-        public Expression QueryCompilationStarting(Expression queryExpression, QueryExpressionEventData eventData)
+        public Expression QueryCompilationStarting(
+            Expression queryExpression,
+            QueryExpressionEventData eventData
+        )
         {
             Count++;
             Visit(queryExpression);
@@ -163,7 +234,9 @@ public abstract partial class GroupSupervisorTests
         }
 
         /// <inheritdoc />
-        protected override Expression VisitMethodCall(MethodCallExpression node)
+        protected override Expression VisitMethodCall(
+            MethodCallExpression node
+        )
         {
             if (node.Method.DeclaringType == typeof(App.SupervisorExactText))
             {

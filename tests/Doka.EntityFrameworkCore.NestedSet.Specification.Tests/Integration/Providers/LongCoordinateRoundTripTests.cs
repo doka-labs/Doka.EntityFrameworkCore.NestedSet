@@ -22,7 +22,9 @@ public abstract class LongCoordinateRoundTripTests : ProviderTest
     public async Task CoordinatesAboveInt32RoundTripThroughA64BitStoreType()
     {
         // Arrange
-        var expectedStoreType = Engine == "Sqlite" ? "INTEGER" : "bigint";
+        var expectedStoreType = Engine == "Sqlite"
+            ? "INTEGER"
+            : "bigint";
 
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
@@ -50,7 +52,8 @@ public abstract class LongCoordinateRoundTripTests : ProviderTest
             .AsNoTracking()
             .SingleAsync(candidate => candidate.NodeId == node.NodeId, CancellationToken.None);
 
-        var storeTypes = await ReadCoordinateStoreTypesAsync(context,
+        var storeTypes = await ReadCoordinateStoreTypesAsync(
+            context,
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert

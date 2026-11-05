@@ -22,7 +22,7 @@ internal static class MappingDeleteTestSupport
         var hierarchy = context.NestedSet<TNode>();
         var targetTree = Guid.NewGuid();
         var otherTree = Guid.NewGuid();
-        var seed = 100_000 + (NextSequence() * 10);
+        var seed = 100_000 + NextSequence() * 10;
         await hierarchy.InsertRootAsync(create(seed, "Root"), targetTree, cancellationToken);
         await hierarchy.InsertChildAsync(create(seed + 1, "Branch"), seed, cancellationToken);
         await hierarchy.InsertChildAsync(create(seed + 2, "Leaf"), seed + 1, cancellationToken);

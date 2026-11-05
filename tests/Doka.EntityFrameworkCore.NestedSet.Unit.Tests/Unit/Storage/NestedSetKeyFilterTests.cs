@@ -30,7 +30,10 @@ public sealed class NestedSetKeyFilterTests
         var predicate = NestedSetKeyFilter<KeyFilterNode>.Matches(property, keys);
 
         // Assert
-        Assert.Null(property.GetTypeMapping().Converter);
+        Assert.Null(
+            property.GetTypeMapping()
+                .Converter);
+
         Assert.Equal(expected, predicate.Body.NodeType);
     }
 
@@ -52,7 +55,10 @@ public sealed class NestedSetKeyFilterTests
             .ToQueryString();
 
         // Assert
-        Assert.NotNull(property.GetTypeMapping().Converter);
+        Assert.NotNull(
+            property.GetTypeMapping()
+                .Converter);
+
         Assert.False(NestedSetKeyFilter<KeyFilterNode>.SupportsCollection<int>(property));
         Assert.Equal(ExpressionType.OrElse, predicate.Body.NodeType);
         Assert.Contains(" OR ", sql, StringComparison.Ordinal);
@@ -77,7 +83,10 @@ public sealed class NestedSetKeyFilterTests
             .ToQueryString();
 
         // Assert
-        Assert.NotNull(property.GetTypeMapping().Converter);
+        Assert.NotNull(
+            property.GetTypeMapping()
+                .Converter);
+
         Assert.False(NestedSetKeyFilter<KeyFilterNode>.SupportsCollection<string>(property));
         Assert.Equal(ExpressionType.OrElse, predicate.Body.NodeType);
         Assert.Contains(" OR ", sql, StringComparison.Ordinal);
@@ -98,7 +107,10 @@ public sealed class NestedSetKeyFilterTests
         var predicate = NestedSetKeyFilter<KeyFilterNode>.Matches(property, keys);
 
         // Assert
-        Assert.Null(property.GetTypeMapping().Converter);
+        Assert.Null(
+            property.GetTypeMapping()
+                .Converter);
+
         Assert.False(NestedSetKeyFilter<KeyFilterNode>.SupportsCollection<int[]>(property));
         Assert.Equal(ExpressionType.OrElse, predicate.Body.NodeType);
     }
@@ -215,7 +227,10 @@ public sealed class NestedSetKeyFilterTests
             .ToQueryString();
 
         // Assert
-        Assert.NotNull(property.GetTypeMapping().Converter);
+        Assert.NotNull(
+            property.GetTypeMapping()
+                .Converter);
+
         Assert.Contains("WHERE", sql, StringComparison.Ordinal);
         Assert.Contains("\"OperatorFree\"", sql, StringComparison.Ordinal);
         Assert.DoesNotContain(" IN (", sql, StringComparison.Ordinal);
@@ -284,9 +299,11 @@ public sealed class NestedSetKeyFilterTests
             node
                 .Property(value => value.Converted)
                 .HasConversion<string>();
+
             node
                 .Property(value => value.ConvertedText)
                 .HasConversion(value => value.ToUpperInvariant(), value => value);
+
             node
                 .Property(value => value.OperatorFree)
                 .HasConversion(value => value.Value, value => new OperatorFreeKey(value));

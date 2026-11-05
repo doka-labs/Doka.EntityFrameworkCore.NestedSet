@@ -41,10 +41,12 @@ public sealed partial class SignalReportValidationTests
         var probe = new ReaderProbe();
         using var cancellation = new CancellationTokenSource();
         Func<Task> read = aggregate
-            ? () => SignalReportValidation.CreateGridAsync(snapshot,
+            ? () => SignalReportValidation.CreateGridAsync(
+                snapshot,
                 ReadRows(Array.Empty<SignalReportTotal>(), probe, CancellationToken.None),
                 cancellation.Token)
-            : () => SignalReportValidation.RequireCatalogAsync(snapshot,
+            : () => SignalReportValidation.RequireCatalogAsync(
+                snapshot,
                 ReadRows(Catalog(snapshot), probe, CancellationToken.None),
                 cancellation.Token);
 
@@ -80,7 +82,8 @@ public sealed partial class SignalReportValidationTests
             // Act
             var expected = Record.Exception(() => reference.Add(key, 0));
             var synchronous = Record.Exception(() => SignalReportValidation.CreateGrid(snapshot, rows));
-            var asynchronous = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(snapshot,
+            var asynchronous = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(
+                snapshot,
                 ReadRows(rows, probe, CancellationToken.None),
                 CancellationToken.None));
 
