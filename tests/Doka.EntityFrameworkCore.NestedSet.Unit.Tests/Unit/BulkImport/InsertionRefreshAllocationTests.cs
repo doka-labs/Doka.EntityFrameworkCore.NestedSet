@@ -67,6 +67,30 @@ public sealed partial class InsertionRefreshAllocationTests
         GC.KeepAlive(identity);
     }
 
+    /// <summary>A changed field-backed key must not match the identity captured before the CLR write.</summary>
+    [Fact]
+    public void ChangedFieldIdentityDoesNotMatchCapturedSnapshot()
+    {
+        // Arrange
+        using var context = new AllocationContext();
+        var node = new FieldNode(1);
+        var entry = context.Add(node);
+        var property = entry.Metadata.FindProperty(nameof(FieldNode.Id))!;
+        var identity = NestedSetInsertionTracking.Capture(entry);
+        var setter = NestedSetDetachedValueSetter.Get(property)!;
+
+        // Act
+        setter.SetClrValueUsingContainingEntity(node, 2);
+        var matches = identity.Matches(property);
+
+        // Assert
+        Assert.Equal("_id", property.FieldInfo?.Name);
+        Assert.Equal(PropertyAccessMode.Field, property.GetPropertyAccessMode());
+        Assert.Null(property.PropertyInfo!.SetMethod);
+        Assert.Equal(2, node.Id);
+        Assert.False(matches);
+    }
+
     /// <summary>Required FK severance remains conceptual null rather than comparing its CLR value as a link.</summary>
     [Fact]
     public void RequiredForeignKeyConceptualNullDoesNotBecomeItsClrValue()
@@ -389,8 +413,12 @@ public sealed partial class InsertionRefreshAllocationTests
         int id
     )
     {
+        private readonly int _id = id;
+
         /// <summary>Gets the identity read through its configured backing field.</summary>
-        public int Id { get; } = id;
+        // WHY: EF explicitly binds _id; an auto-property would invalidate the field-access fixture.
+        // ReSharper disable once ConvertToAutoProperty
+        public int Id => _id;
     }
 
     private sealed class ForeignNode

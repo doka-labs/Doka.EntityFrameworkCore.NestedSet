@@ -78,11 +78,15 @@ public sealed partial class InputNavigationRollbackTests
 
     /// <summary>Only fully validated owned graphs may have their initially empty ordinary links reset.</summary>
     /// <param name="populatedForeignReference">Whether the owned payload starts with an invalid foreign link.</param>
+    /// <param name="changePayload">Whether the caller changes mapped application data before rollback.</param>
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
     public async Task OwnedGraphRollbackRespectsValidationBoundary(
-        bool populatedForeignReference
+        bool populatedForeignReference,
+        bool changePayload
     )
     {
         // Arrange
@@ -107,6 +111,9 @@ public sealed partial class InputNavigationRollbackTests
 
         payload.Root = input;
         var originalOwnerId = payload.OwnerId;
+        var payloadProperty = context.Model.FindEntityType(typeof(RollbackPayload))!
+            .FindProperty(nameof(RollbackPayload.Value));
+
         var store = new NestedSetStore<RollbackNode, int, Guid, NestedSetNoScope>(
             context,
             context.Model.FindEntityType(typeof(RollbackNode))!,
@@ -128,6 +135,13 @@ public sealed partial class InputNavigationRollbackTests
         // Act
         var error = Record.Exception(() => plan.StageBatch(destination, 0, 1, writes, CancellationToken.None));
         var ownerAfterStage = payload.Owner;
+
+        if (changePayload)
+        {
+            // WHY: Ordinary application edits remain caller-owned even if graph validation rejected staging.
+            payload.Value = "Application edit";
+        }
+
         plan.Restore();
         writes.Restore();
 
@@ -151,7 +165,10 @@ public sealed partial class InputNavigationRollbackTests
         Assert.Same(input, payload.Root);
         Assert.Same(originalForeignOwner, payload.Owner);
         Assert.Equal(originalOwnerId, payload.OwnerId);
-        Assert.Equal("Caller payload", payload.Value);
+        Assert.NotNull(payloadProperty);
+        Assert.False(payloadProperty.IsShadowProperty());
+        Assert.NotNull(payloadProperty.PropertyInfo!.SetMethod);
+        Assert.Equal(changePayload ? "Application edit" : "Caller payload", payload.Value);
         Assert.Equal(
             EntityState.Detached,
             context.Entry(input)

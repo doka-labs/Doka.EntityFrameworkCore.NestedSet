@@ -106,7 +106,7 @@ public sealed partial class InputNavigationRollbackTests
         public RollbackOwner? Owner { get; set; }
 
         /// <summary>Gets or sets ordinary application payload preserved by both cleanup paths.</summary>
-        public string Value { get; } = "Caller payload";
+        public string Value { get; set; } = "Caller payload";
     }
 
     /// <summary>Provides an unrelated tracked principal for native owned-payload FK fixup.</summary>

@@ -39,6 +39,9 @@ public sealed class DetachedRefreshValueTests
         setter.SetClrValueUsingContainingEntity(node, 29);
 
         // Assert
+        Assert.Equal("_fieldRevision", property.FieldInfo?.Name);
+        Assert.Equal(PropertyAccessMode.Field, property.GetPropertyAccessMode());
+        Assert.Null(property.PropertyInfo!.SetMethod);
         Assert.Equal(29, node.FieldRevision);
         Assert.Empty(context.ChangeTracker.Entries());
     }
@@ -241,13 +244,16 @@ public sealed class DetachedRefreshValueTests
     /// <summary>Provides scalar, field and complex storage without any state-manager requirements.</summary>
     private sealed class RefreshNode
     {
+        private int _fieldRevision = -1;
         private int _rejected;
 
         /// <summary>Gets or sets the model identity.</summary>
         public int Id { get; set; }
 
         /// <summary>Gets the configured field-backed generated value.</summary>
-        public int FieldRevision { get; } = -1;
+        // WHY: EF explicitly binds _fieldRevision; compiler-generated storage cannot replace that field.
+        // ReSharper disable once ConvertToAutoProperty
+        public int FieldRevision => _fieldRevision;
 
         /// <summary>Gets or sets the binary representation tested with an intentionally broad comparer.</summary>
         public byte[] Token { get; set; } = [];
