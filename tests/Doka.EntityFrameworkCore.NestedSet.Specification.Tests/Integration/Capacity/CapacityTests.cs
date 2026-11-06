@@ -545,30 +545,20 @@ public abstract partial class CapacityTests : ProviderTest
             + $"completed repair batches before last failure={probe.CompletedRepairs}; rows and revision restored");
     }
 
-    /// <summary>Creates a capacity context without imposing a SQL Server undo-latency target.</summary>
+    /// <summary>Creates a capacity context without imposing a native transaction undo-latency target.</summary>
     /// <param name="database">The case-owned database.</param>
     /// <param name="probe">The optional command observer for this context.</param>
-    /// <returns>An unopened context preserving the ordinary command timeout.</returns>
+    /// <returns>An unopened context without SQL or native undo latency gates.</returns>
     private static TreeContext CreateCapacityContext(
         TestDatabase database,
-        CapacityProbe? probe = null
+        DbCommandInterceptor? probe = null
     )
     {
         var context = probe is null
             ? database.CreateContext()
             : database.CreateContext(probe);
 
-        if (context.Database.GetDbConnection() is SqlConnection connection)
-        {
-            // WHY: Native rollback inherits SqlClient's connection timeout; capacity has no CPU or undo latency target.
-            // The test runner owns end-to-end stopping.
-            var options = new SqlConnectionStringBuilder(connection.ConnectionString)
-            {
-                ConnectTimeout = 0,
-            };
-
-            connection.ConnectionString = options.ConnectionString;
-        }
+        CapacityContextTimeouts.Configure(context);
 
         return context;
     }
@@ -734,11 +724,17 @@ public abstract partial class CapacityTests : ProviderTest
     }
 
     /// <summary>Checks the exact injected failure class independently of the rollback assertions.</summary>
-    private static void AssertFailure(
+    private void AssertFailure(
         Exception? error,
         bool cancel
     )
     {
+        if (error is AggregateException)
+        {
+            // WHY: The exact-type assertion otherwise hides the operation and cleanup errors needed to diagnose failure.
+            _output.WriteLine(error.ToString());
+        }
+
         if (cancel)
         {
             Assert.IsAssignableFrom<OperationCanceledException>(error);

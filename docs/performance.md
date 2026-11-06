@@ -744,7 +744,7 @@ planning, tracking, EF fixup, database commands and full rollback snapshots.
 Streaming owner checks avoid rebuilding a full reference set per wave; saved
 member searches are grouped by owner/navigation. Immutable getter metadata can
 be cached, but live FK values and configured comparers are evaluated again.
-Arbitrary mutable callbacks can still require O(N * W) live inspection for N
+Arbitrary mutable callbacks can still require O (N * W) live inspection for N
 members and W waves. Bounded tracking alone does not establish linear total
 import time or a 100,000-node extrapolation.
 
@@ -1081,20 +1081,35 @@ Use the PostgreSql, SqlServer, and MySql projects for their owning engines.
 The MySql project has separate `.MySql.CapacityTests.` and
 `.MariaDb.CapacityTests.` filters. Execute full-size provider qualifications
 serially on a shared local Docker host; each fixture releases its own database.
-When selecting all capacity cases in Rider on that host, temporarily set
-**Maximum number of test runners to run in parallel** to `1` for this deliberate
+When selecting all capacity cases in Rider on that host, temporarily set **Maximum number of test runners to run in
+parallel** to `1` for this deliberate
 qualification, then restore your ordinary regression setting. The allocation
 collection serializes cases within an assembly; it does not serialize separate
 provider processes or reserve Docker memory for their servers.
 
-SQL Server capacity contexts remove the connection timeout for this functional
-suite only. SqlClient 6.1.6 reuses that timeout for native transaction rollback,
-so its default 15-second wait would also impose an implicit undo-speed gate.
-The local million-row rollback diagnosis observed continuing server undo for
-about 33 seconds after the deliberately injected failure. Ordinary command
-timeouts, dataset sizes, memory limits, and exact rollback assertions remain
-unchanged. The test runner owns end-to-end termination; this fixture setting
-is not a production configuration recommendation. SQL Server under x64
+The persisted-capacity suite (`CapacityTests`, including its Oracle tests)
+imposes no per-command SQL or native undo latency
+target. Their contexts set EF command timeout to zero and remove the applicable
+native command/transaction limits. MySQL/MariaDB use zero connection command
+timeout, PostgreSQL zero command timeout, SQLite zero default timeout, and
+SQL Server zero connection timeout for its native transaction waits. This
+keeps machine speed and transient load out of the correctness assertions.
+
+Caller cancellation and deliberately injected failure boundaries remain active;
+the outer test runner owns end-to-end stopping of a hung run. Dataset sizes,
+resource budgets and exact exception, data and registry-revision assertions are
+unchanged. Ordinary contexts retain their configured limits. These settings
+are specific to the functional capacity suite and are not a production
+configuration recommendation. Unexpected aggregate errors retain their inner
+exceptions in test output.
+
+MySqlConnector creates native transaction commands outside EF's command-timeout
+setting; SqlClient uses its connection timeout for native rollback. The earlier
+SQL Server diagnosis observed server undo continuing for about 33 seconds after
+the injected failure. See the [MySQL transaction source](https://github.com/mysql-net/MySqlConnector/blob/2.6.1/src/MySqlConnector/MySqlTransaction.cs),
+[Npgsql command timeout](https://www.npgsql.org/doc/connection-string-parameters.html#timeouts-and-keepalive),
+and [SQLite defaults](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/connection-strings#default-timeout).
+SQL Server under x64
 translation on the local Arm host remains outside Microsoft's supported-host
 release qualification. See [provider recovery timeouts](transactions-and-locking.md#savepoints-and-failure-handling)
 and [supported-host requirements](support-and-qualification.md#provider-and-engine-matrix).
