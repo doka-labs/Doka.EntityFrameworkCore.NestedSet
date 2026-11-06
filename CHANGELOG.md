@@ -21,6 +21,9 @@ selected adapters and the common EF package together.
 
 ### Fixed
 
+- Remove implicit SQL and native undo latency gates from functional capacity
+  tests while preserving exact correctness, rollback and resource assertions.
+  Report unexpected aggregate errors with their inner failures.
 - Retry temporarily unavailable dispatched maintenance-run metadata on
   authenticated HTTP 404 within five minutes and the original execution deadline.
   Preserve exact child identity and successful producer verification.
