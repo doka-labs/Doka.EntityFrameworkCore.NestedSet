@@ -1,8 +1,9 @@
 # API reference
 
-This reference describes the public stable `10.2.0` API, including optional
-registry table naming. The earlier `10.1.0` provider-package/registration break
-from `10.0.0` remains documented. The application keeps its normal
+This reference describes the public stable `10.3.0` API, including required
+cancellation arguments and optional registry table naming. The earlier `10.1.0`
+provider-package/registration break from `10.0.0` remains documented. The
+application keeps its normal
 `DbSet<TEntity>` and obtains hierarchy behavior from the caller-owned context.
 
 The current stable contract is recorded in the shipped baselines for
@@ -13,7 +14,11 @@ Each provider adapter records its native callback in its own shipped baseline:
 [Postgres](../src/Doka.EntityFrameworkCore.NestedSet.Postgres/PublicAPI.Shipped.txt),
 [Sqlite](../src/Doka.EntityFrameworkCore.NestedSet.Sqlite/PublicAPI.Shipped.txt), and
 [SqlServer](../src/Doka.EntityFrameworkCore.NestedSet.SqlServer/PublicAPI.Shipped.txt).
-Unshipped files are reserved for changes after `10.2.0`.
+Unshipped files are reserved for changes after `10.3.0`. The 36 required-token
+declarations now belong to the common EF shipped baseline. The historical
+optional signatures remain in the [10.2.0 EF baseline](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/blob/v10.2.0/src/Doka.EntityFrameworkCore.NestedSet/PublicAPI.Shipped.txt).
+See the [upgrade guide](upgrading-provider-packages.md#upgrade-from-1020-to-1030)
+for migration instructions.
 
 The historical `10.0.0` declarations remain available in that release's
 [Core baseline](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/blob/v10.0.0/src/Doka.NestedSet/PublicAPI.Shipped.txt) and
@@ -151,9 +156,7 @@ TreeId. Child, sibling, and anchor-based operations resolve the complete tree
 identity in the database. Every owned async operation requires an explicit
 `CancellationToken`; forward the caller's token or deliberately pass
 `CancellationToken.None`. Actual EF/.NET overrides and interface implementations
-retain their upstream optional signatures. Removing the default is source-breaking:
-older binaries keep the same method signatures, but recompiled callers must now
-supply the argument.
+retain their upstream optional signatures.
 
 `NestedSetBranch<TEntity>` is an immutable adjacency input for one detached
 branch. `NestedSetTreeImport<TEntity, TTreeId>` pairs one root branch with its

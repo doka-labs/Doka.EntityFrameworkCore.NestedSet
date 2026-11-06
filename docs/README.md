@@ -5,16 +5,17 @@ guide by the task you need to complete. Feature guides define supported
 behavior, architecture records explain why material decisions exist, and
 runbooks own operational procedures.
 
-These guides describe the stable `10.2.0` contract, including optional registry
-naming, manual detection and save recovery. The historical `10.1.0` provider
-package/registration transition still applies when upgrading from `10.0.0`.
+These guides describe the stable `10.3.0` source contract, including explicit
+cancellation arguments, optional registry naming, manual detection and save
+recovery. The historical `10.1.0` provider-package/registration transition still
+applies when upgrading from `10.0.0`.
 See the [upgrade guide](upgrading-provider-packages.md) and
 [changelog](../CHANGELOG.md) for changes, and the
 [support matrix](support-and-qualification.md) for qualified versions.
 
 ## Use NestedSet
 
-- [Package Upgrade](upgrading-provider-packages.md) covers the compatible 10.2.0 update and the earlier breaking adapter/native-callback transition.
+- [Package Upgrade](upgrading-provider-packages.md) covers the source-breaking 10.3.0 cancellation update, the compatible 10.2.0 update and the earlier adapter/native-callback transition.
 - [Getting Started](getting-started.md) builds a complete Doka MySQL/MariaDB
   application and its first hierarchy.
 - [Hierarchy Model](hierarchy-model.md) defines scopes, forests, roots, parent

@@ -3,7 +3,7 @@
 NestedSet uses one release contract for independently maintained framework
 lines. [D-021](../decisions/D-021-release-lines-and-monotonic-publication.md)
 records the decision. This capability keeps the actual source on .NET/EF Core
-10 and package version `10.2.0`; it does not activate a branch or adopt .NET 11.
+10 and package version `10.3.0`; it does not activate a branch or adopt .NET 11.
 
 ## Current configuration
 

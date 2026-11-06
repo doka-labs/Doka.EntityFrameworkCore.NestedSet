@@ -1,11 +1,13 @@
 # Upgrade NestedSet packages
 
-## Upcoming change: explicit cancellation tokens
+## Upgrade from 10.2.0 to 10.3.0
 
-Owned asynchronous operations require an explicit `CancellationToken` in the
-upcoming API contract. Source calls that previously omitted the argument must
-pass the operation's token. For entry points with no cancellation source, use
-`CancellationToken.None` deliberately:
+`10.3.0` keeps .NET 10 and EF Core 10. Update all selected NestedSet adapters
+and the common EF package together; each adapter requires kernel `[10.3.0]`.
+Owned asynchronous operations require an explicit `CancellationToken`. Source
+calls that previously omitted the argument must pass the operation's token.
+For entry points with no cancellation source, use `CancellationToken.None`
+deliberately:
 
 ```csharp
 await hierarchy.InsertRootAsync(root, treeId, cancellationToken);
@@ -15,9 +17,15 @@ await hierarchy.InTree(treeId).PlanRebuildAsync(CancellationToken.None);
 The parameter still accepts None; the change requires an explicit choice rather
 than a cancelable token. Tokens keep their identity through execution, and
 pre-cancellation, rollback and retry guarantees are unchanged. The binary method
-signatures remain compatible with already compiled callers. The published
-`10.2.0` API baseline retains its historical optional parameters; the required
-signatures are recorded separately as unshipped changes.
+signatures remain compatible with already compiled callers. Required-token
+signatures are recorded in the `10.3.0` shipped baseline; the historical optional
+parameters remain in the [10.2.0 baseline](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/blob/v10.2.0/src/Doka.EntityFrameworkCore.NestedSet/PublicAPI.Shipped.txt).
+
+The source-breaking change uses the
+[documented version exception](release-governance.md#version-policy).
+Provider registration, mappings and schema are unchanged; no database migration
+is required. Mandatory rollback, disposal and terminal command finalization
+stay uninterruptible.
 
 Actual EF/.NET overrides and interface implementations preserve the upstream
 optional parameter contract. Calls made through those base types and interfaces
@@ -71,11 +79,11 @@ preserve the removed registration API.
 Install the adapter matching each context's database. It brings the common EF
 kernel, `Doka.NestedSet`, and the matching EF database provider transitively.
 Use one qualified NestedSet version for all NestedSet packages in an application.
-The commands below install the current stable `10.2.0` contract. Applications
+The commands below install the stable `10.3.0` source contract. Applications
 coming from `10.0.0` must also apply the registration transition described here.
 
 Each adapter depends on exactly that release of the common EF kernel:
-`[10.2.0]` for this release. The adapter implements assembly-internal kernel
+`[10.3.0]` for this release. The adapter implements assembly-internal kernel
 contracts, so a different kernel patch is not an advertised compatible
 combination. Update all selected adapters together, including applications
 using different providers in separate contexts. The public-only dependency
@@ -97,7 +105,7 @@ not an unconditional runtime barrier.
 For example:
 
 ```sh
-dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.2.0
+dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.3.0
 ```
 
 A provider already referenced directly by the application must satisfy the

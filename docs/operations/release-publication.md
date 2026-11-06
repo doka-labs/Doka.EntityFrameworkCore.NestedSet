@@ -18,12 +18,12 @@ preview/11.x are registered inactive. This procedure activates none of them.
 
 ## Release identity
 
-The source uses `VersionPrefix=10.2.0` without a prerelease suffix and the
-`## 10.2.0 (2026-11-03)` changelog entry. The reviewed stable APIs are recorded
-in all six shipped baselines. The common EF unshipped file now records the
-upcoming required-cancellation signatures; these are source-breaking changes
-from the published `10.2.0` contract. Complete version review and promote the
-accepted declarations during the next stable preparation before qualification.
+The source uses `VersionPrefix=10.3.0` without a prerelease suffix and the
+`## 10.3.0 (2026-11-06)` changelog entry. The stable APIs are recorded in all six
+shipped baselines, including the 36 required-cancellation declarations in the
+common EF package. Every unshipped file is reserved for subsequent changes.
+Review the [upgrade guide](../upgrading-provider-packages.md#upgrade-from-1020-to-1030)
+and [version policy](../release-governance.md#version-policy) with this release.
 SDK package validation still compares the two original packages with `10.0.0`
 and retains only the approved options-registration removal exception. The
 historical `10.1.0` registration transition is documented in the
@@ -35,7 +35,7 @@ Use the reviewed PR and publication sequence below for each release.
 
 Before starting the candidate:
 
-1. Confirm the reviewed `## 10.2.0 (2026-11-03)` entry in `CHANGELOG.md` and
+1. Confirm the reviewed `## 10.3.0 (2026-11-06)` entry in `CHANGELOG.md` and
    retain that exact version/date heading for qualification. If the publication
    date changes before qualification, update the changelog and this release
    identity together. Do not change the qualified source afterward.
@@ -165,11 +165,11 @@ In GitHub Actions, start **Release candidate**. Select the same authorized
 branch as `release_branch` and enter:
 
 ```text
-version: 10.2.0
+version: 10.3.0
 qualification-only: false
 ```
 
-Use `10.2.0` for this stable release. Other release versions use
+Use `10.3.0` for this stable release. Other release versions use
 `X.Y.Z-rc.N` or `X.Y.Z`, without a leading `v`. Wait for:
 
 1. `Verify source and unused version`;

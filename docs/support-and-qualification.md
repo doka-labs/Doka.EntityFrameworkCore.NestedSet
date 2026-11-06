@@ -8,7 +8,7 @@ defines what this repository has exercised.
 
 | Component | Repository baseline |
 | --- | --- |
-| Stable package source contract | `10.2.0` across all six packages |
+| Stable package source contract | `10.3.0` across all six packages |
 | Target framework | .NET 10 |
 | SDK | `10.0.403`, pinned by `global.json`; includes runtime `10.0.14` |
 | Common EF Core declared range | `10.0.12` through, but excluding, `11.0.0`; adapter dependencies may narrow it |
@@ -68,19 +68,19 @@ recorded by a narrowly scoped compatibility suppression. This deliberately
 retains the original two-package baseline scope; the adapters introduced in
 `10.1.0` retain their own shipped API records and package/consumer qualification.
 
-Stable `10.2.0` adds optional registry naming and corrects manual detection and
-recovery, preserving the selected provider and framework ranges. See the
-[compatible upgrade](upgrading-provider-packages.md#upgrade-from-1010-to-1020).
+Stable `10.3.0` requires explicit cancellation arguments on owned asynchronous
+APIs. See the [cancellation upgrade](upgrading-provider-packages.md#upgrade-from-1020-to-1030).
+Earlier `10.2.0` added optional registry naming and detection/recovery fixes;
+its [compatible upgrade](upgrading-provider-packages.md#upgrade-from-1010-to-1020)
+remains documented.
 
 Version `10.0.0` is the initial stable contract. Stable `10.1.0` includes
 generic query composition and the explicitly breaking provider-package/callback
 registration transition described in the [upgrade guide](upgrading-provider-packages.md).
-The owner explicitly kept `10.1.0` for this narrow SemVer exception; package
-majors follow the .NET family and `11.x` is reserved for .NET 11. Other breaking
-minor changes are not authorized by that decision. Qualification
-always identifies its exact source and artifacts. The dated local results
-below describe their own runs; hosted release evidence belongs to the matching
-release and is not inferred from a successful local execution.
+Version exceptions follow the [version policy](release-governance.md#version-policy).
+Qualification always identifies its exact source and artifacts. The dated local
+results below describe their own runs; hosted release evidence belongs to the
+matching release and is not inferred from a successful local execution.
 
 `Doka.EntityFrameworkCore.NestedSet` 10.x does not support `PublishTrimmed` or
 `PublishAot`. Runtime model-based generic construction and dynamically
@@ -97,7 +97,7 @@ This statement does not assert the same limitation for the separate
 ## Framework release lines
 
 The current source and qualified graph remain .NET/EF Core 10 at package version
-`10.2.0`. [Release lines](operations/release-lines.md) defines future independent
+`10.3.0`. [Release lines](operations/release-lines.md) defines future independent
 framework servicing: main/10 starts active; maintenance/10.x and optional
 preview/11.x are registered inactive. The capability does not qualify .NET 11,
 create a branch or enable publication. Each later activated line needs its own

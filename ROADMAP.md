@@ -11,7 +11,7 @@ It is not a delivery-date promise. Released packages, release notes, and the
 - Preserve the published `10.0.0-rc.1` and its immutable release evidence.
   Stable `10.0.0` incorporates the subsequent correctness,
   memory-ownership, index, and capacity regressions.
-- Keep the stable six-package `10.2.0` API in the shipped baselines and review
+- Keep the stable six-package `10.3.0` API in the shipped baselines and review
   every subsequent public API change for compatibility. Retain the historical
   `10.0.0` contract in its release tag and SDK compatibility baseline. Each
   release retains

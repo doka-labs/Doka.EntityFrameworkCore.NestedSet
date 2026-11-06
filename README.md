@@ -47,18 +47,17 @@ source remains .NET/EF Core 10; additional release lines are registered inactive
 
 ## Install
 
-Version `10.2.0` is the stable six-package contract. It adds optional registry
-table naming and corrects manual change detection and save recovery. The
-provider-callback registration introduced in `10.1.0` remains unchanged; upgrading
-from `10.0.0` still requires the documented installation/registration transition. See the
+Version `10.3.0` is the stable six-package source contract. Owned asynchronous
+operations require an explicit `CancellationToken`; use the caller's token or
+choose `CancellationToken.None` deliberately. For migration instructions, see the
 [upgrade guide](docs/upgrading-provider-packages.md) and [changelog](CHANGELOG.md).
 For Doka MySQL/MariaDB, install the selected adapter:
 
 ```bash
-dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.2.0
+dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.3.0
 ```
 
-Keep all selected NestedSet adapters and the common EF package at `10.2.0`.
+Keep all selected NestedSet adapters and the common EF package at `10.3.0`.
 Each adapter requires its exact matching common EF kernel version.
 
 The provider qualification matrix is:

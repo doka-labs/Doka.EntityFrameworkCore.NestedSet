@@ -3,7 +3,7 @@
 
   <PropertyGroup Label="Package metadata and release baseline">
     <!-- WHY: Local builds use the reviewed stable version; qualified candidates must retain this exact identity. -->
-    <VersionPrefix>10.2.0</VersionPrefix>
+    <VersionPrefix>10.3.0</VersionPrefix>
     <Authors>Dominic Kalkbrenner</Authors>
     <Company>Doka Labs</Company>
     <Copyright>Copyright (c) 2026 Dominic Kalkbrenner</Copyright>
