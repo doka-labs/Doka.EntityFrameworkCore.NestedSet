@@ -43,7 +43,7 @@ public sealed class MigrationContext : NestedSetDbContext
     public string? Schema { get; }
 
     /// <summary>Gets the stable entity-type name used to align historical and current migration metadata.</summary>
-    public static string EntityTypeName => EntityTypeName;
+    public static string EntityTypeName => s_entityTypeName;
 
     /// <inheritdoc />
     protected override void OnModelCreating(
