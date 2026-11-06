@@ -10,7 +10,7 @@ import threading
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from eng.release import maintenance
 from eng.release.common import REPOSITORY, ReleaseError
@@ -382,7 +382,7 @@ class MaintenanceTests(unittest.TestCase):
         # Arrange
         run = self.fixture.dispatch(self.commands, f"actions/workflows/{maintenance.WORKFLOW}/dispatches", "POST",
                                     {"ref": "main", "inputs": {"schedule-correlation": CORRELATION}})["workflow_run_id"]
-        times = iter((0, 2))
+        times = iter((0, 0, 2))
 
         with patch.object(maintenance, "verify_jobs") as verify:
             # Act
@@ -451,6 +451,372 @@ class MaintenanceTests(unittest.TestCase):
 
         # Assert
         self.assertEqual(["maintenance-jobs"] * len(variants), failures)
+
+
+class ChildAvailabilityTests(unittest.TestCase):
+    """Replay HTTP observations through the actual CLI/parser boundary, without dispatching hosted work."""
+
+    def setUp(self):
+        """Reuse the existing child/producer fixture and replace only subprocess responses and time."""
+        self.fixture = NativeDispatchFixture()
+        dispatched = self.fixture.dispatch(None, f"actions/workflows/{maintenance.WORKFLOW}/dispatches", "POST",
+                                            {"ref": "main", "inputs": {"schedule-correlation": CORRELATION}})
+
+        self.run_id = dispatched["workflow_run_id"]
+        self.child = self.fixture.runs[self.run_id]
+        self.missing = SimpleNamespace(returncode=1, stderr=b"gh: Not Found (HTTP 404)",
+                                       stdout=b'HTTP/2.0 404\r\n\r\n{"message":"Not Found"}')
+        self.completed = SimpleNamespace(returncode=0, stderr=b"",
+                                         stdout=b"HTTP/2.0 200\r\n\r\n" + json.dumps(self.child).encode("ascii"))
+        jobs = self.fixture.request(None, f"actions/runs/{self.run_id}/attempts/1/jobs?per_page=100&page=1")
+        self.producers = SimpleNamespace(returncode=0, stderr=b"", stdout=json.dumps(jobs).encode("ascii"))
+        self.commands = maintenance.publication.Commands()
+        self.expected = ["schedule-identity", "dependency-vulnerability-audit"]
+
+    def test_not_found_reads_recover_before_five_minute_deadline(self):
+        """Recovery after the former one-minute cutoff still requires exact identity and successful jobs."""
+        # Arrange
+        elapsed, observations = [0], []
+        sleep = Mock(side_effect=lambda seconds: elapsed.__setitem__(0, elapsed[0] + seconds))
+        responses = [self.missing] * 19 + [self.completed, self.producers]
+
+        with patch.object(maintenance.publication.subprocess, "run", side_effect=responses) as request:
+            # Act
+            result = maintenance.wait_for_child(self.commands, self.run_id, maintenance.WORKFLOW, "refs/heads/main",
+                                                COMMIT, CORRELATION, self.expected, timeout=600,
+                                                clock=lambda: elapsed[0], sleep=sleep, record=observations.append)
+
+        # Assert
+        self.assertEqual("success", result["verificationStatus"])
+        self.assertEqual(self.run_id, result["runId"])
+        self.assertEqual(285, elapsed[0])
+        self.assertEqual([((15,), {})] * 19, sleep.call_args_list)
+        self.assertEqual([{"status": None, "conclusion": None}] * 19
+                         + [{"status": "completed", "conclusion": "success"}], observations)
+        self.assertEqual(21, request.call_count)
+        for call in request.call_args_list[:20]:
+            self.assertEqual(f"repos/{REPOSITORY}/actions/runs/{self.run_id}", call.args[0][-1])
+            self.assertIn("--include", call.args[0])
+            self.assertEqual("GET", call.args[0][call.args[0].index("--method") + 1])
+
+        self.assertIn(f"/runs/{self.run_id}/attempts/1/jobs?", request.call_args.args[0][-1])
+        self.assertEqual(1, len(self.fixture.dispatches))
+
+    def test_persistent_not_found_exhausts_five_minutes_before_full_execution_budget(self):
+        """A missing child fails at 300 seconds instead of polling throughout the four-hour execution budget."""
+        # Arrange
+        elapsed = [0]
+        sleep = Mock(side_effect=lambda seconds: elapsed.__setitem__(0, elapsed[0] + seconds))
+
+        with patch.object(maintenance.publication.subprocess, "run", return_value=self.missing) as request:
+            # Act
+            with self.assertRaises(ReleaseError) as caught:
+                maintenance.wait_for_child(self.commands, self.run_id, maintenance.WORKFLOW, "refs/heads/main",
+                                           COMMIT, CORRELATION, self.expected, clock=lambda: elapsed[0], sleep=sleep)
+
+        # Assert
+        self.assertEqual("maintenance-child-missing", caught.exception.code)
+        self.assertEqual(300, elapsed[0])
+        self.assertEqual(20, request.call_count)
+        self.assertEqual([((15,), {})] * 20, sleep.call_args_list)
+
+    def test_visible_progress_does_not_reset_not_found_retry_budget(self):
+        """Intermittent visibility cannot grant another five-minute recovery window."""
+        # Arrange
+        queued = copy.copy(self.completed)
+        queued.stdout = b"HTTP/2.0 200\r\n\r\n" + json.dumps(
+            {**self.child, "status": "queued", "conclusion": None}).encode("ascii")
+
+        responses = [self.missing, queued] + [self.missing] * 19
+        elapsed = [0]
+        sleep = Mock(side_effect=lambda seconds: elapsed.__setitem__(0, elapsed[0] + seconds))
+
+        with patch.object(maintenance.publication.subprocess, "run", side_effect=responses) as request:
+            # Act
+            with self.assertRaises(ReleaseError) as caught:
+                maintenance.wait_for_child(self.commands, self.run_id, maintenance.WORKFLOW, "refs/heads/main",
+                                           COMMIT, CORRELATION, self.expected, clock=lambda: elapsed[0], sleep=sleep)
+
+        # Assert
+        self.assertEqual("maintenance-child-missing", caught.exception.code)
+        self.assertEqual(300, elapsed[0])
+        self.assertEqual(20, request.call_count)
+        self.assertEqual(20, sleep.call_count)
+
+    def test_recovery_at_or_after_five_minutes_is_rejected(self):
+        """Request latency counts toward the recovery window even when the response finally succeeds."""
+        for completed_at in (300, 301):
+            with self.subTest(completed_at=completed_at):
+                # Arrange
+                times = iter((0, 0, 0, 0, 15, completed_at))
+                sleep = Mock()
+
+                with patch.object(maintenance.publication.subprocess, "run",
+                                  side_effect=[self.missing, self.completed]) as request:
+                    # Act
+                    with self.assertRaises(ReleaseError) as caught:
+                        maintenance.wait_for_child(self.commands, self.run_id, maintenance.WORKFLOW,
+                                                   "refs/heads/main", COMMIT, CORRELATION, self.expected,
+                                                   timeout=600, clock=lambda: next(times), sleep=sleep)
+
+                # Assert
+                self.assertEqual("maintenance-child-missing", caught.exception.code)
+                self.assertEqual(2, request.call_count)
+                sleep.assert_called_once_with(15)
+
+    def test_final_pause_is_capped_by_remaining_recovery_time(self):
+        """Slow metadata requests consume the recovery window rather than granting 20 full pauses."""
+        # Arrange
+        times = iter((0, 0, 0, 0, 15, 299, 299, 300))
+        sleep = Mock()
+
+        with patch.object(maintenance.publication.subprocess, "run", return_value=self.missing) as request:
+            # Act
+            with self.assertRaises(ReleaseError) as caught:
+                maintenance.wait_for_child(self.commands, self.run_id, maintenance.WORKFLOW, "refs/heads/main",
+                                           COMMIT, CORRELATION, self.expected, timeout=600,
+                                           clock=lambda: next(times), sleep=sleep)
+
+        # Assert
+        self.assertEqual("maintenance-child-missing", caught.exception.code)
+        self.assertEqual([((15,), {}), ((1,), {})], sleep.call_args_list)
+        self.assertEqual(2, request.call_count)
+
+    def test_visible_child_execution_can_continue_beyond_recovery_window(self):
+        """The five-minute window limits missing metadata, not the runtime of a recovered child."""
+        # Arrange
+        queued = copy.copy(self.completed)
+        queued.stdout = b"HTTP/2.0 200\r\n\r\n" + json.dumps(
+            {**self.child, "status": "queued", "conclusion": None}).encode("ascii")
+
+        times = iter((0, 0, 0, 0, 15, 15, 15, 30, 600))
+        sleep = Mock()
+
+        with patch.object(maintenance.publication.subprocess, "run",
+                          side_effect=[self.missing, queued, self.completed, self.producers]) as request:
+            # Act
+            result = maintenance.wait_for_child(self.commands, self.run_id, maintenance.WORKFLOW, "refs/heads/main",
+                                                COMMIT, CORRELATION, self.expected, timeout=1000,
+                                                clock=lambda: next(times), sleep=sleep)
+
+        # Assert
+        self.assertEqual("success", result["verificationStatus"])
+        self.assertEqual(4, request.call_count)
+        self.assertEqual([((15,), {})] * 2, sleep.call_args_list)
+
+    def test_later_not_found_cannot_reopen_expired_recovery_window(self):
+        """A new missing read during long visible execution cannot obtain a fresh five-minute budget."""
+        # Arrange
+        queued = copy.copy(self.completed)
+        queued.stdout = b"HTTP/2.0 200\r\n\r\n" + json.dumps(
+            {**self.child, "status": "queued", "conclusion": None}).encode("ascii")
+
+        times = iter((0, 0, 0, 0, 15, 15, 15, 600, 600))
+        sleep = Mock()
+
+        with patch.object(maintenance.publication.subprocess, "run",
+                          side_effect=[self.missing, queued, self.missing]) as request:
+            # Act
+            with self.assertRaises(ReleaseError) as caught:
+                maintenance.wait_for_child(self.commands, self.run_id, maintenance.WORKFLOW, "refs/heads/main",
+                                           COMMIT, CORRELATION, self.expected, timeout=1000,
+                                           clock=lambda: next(times), sleep=sleep)
+
+        # Assert
+        self.assertEqual("maintenance-child-missing", caught.exception.code)
+        self.assertEqual(3, request.call_count)
+        self.assertEqual([((15,), {})] * 2, sleep.call_args_list)
+
+    def test_original_deadline_stops_retry_before_next_request(self):
+        """The missing-read pause is capped by the original budget, without a request at its expired boundary."""
+        # Arrange
+        times = iter((0, 0, 0, 0, 1))
+        sleep = Mock()
+
+        with patch.object(maintenance.publication.subprocess, "run",
+                          side_effect=[self.missing, self.completed]) as request:
+            # Act
+            with self.assertRaises(ReleaseError) as caught:
+                maintenance.wait_for_child(self.commands, self.run_id, maintenance.WORKFLOW, "refs/heads/main",
+                                           COMMIT, CORRELATION, self.expected, timeout=1,
+                                           clock=lambda: next(times), sleep=sleep)
+
+        # Assert
+        self.assertEqual("maintenance-timeout", caught.exception.code)
+        sleep.assert_called_once_with(1)
+        self.assertEqual(1, request.call_count)
+
+    def test_retry_response_at_original_deadline_is_rejected(self):
+        """A request begun inside both budgets cannot return successful recovery at the execution deadline."""
+        # Arrange
+        times = iter((0, 0, 0, 0, 15, 20))
+        sleep = Mock()
+
+        with patch.object(maintenance.publication.subprocess, "run",
+                          side_effect=[self.missing, self.completed]) as request:
+            # Act
+            with self.assertRaises(ReleaseError) as caught:
+                maintenance.wait_for_child(self.commands, self.run_id, maintenance.WORKFLOW, "refs/heads/main",
+                                           COMMIT, CORRELATION, self.expected, timeout=20,
+                                           clock=lambda: next(times), sleep=sleep)
+
+        # Assert
+        self.assertEqual("maintenance-timeout", caught.exception.code)
+        sleep.assert_called_once_with(15)
+        self.assertEqual(2, request.call_count)
+
+    def test_slow_not_found_response_past_deadline_is_not_retried(self):
+        """A slow HTTP 404 consumes the same queue/execution budget as a successful metadata response."""
+        # Arrange
+        times = iter((0, 0, 2))
+        sleep = Mock()
+
+        with patch.object(maintenance.publication.subprocess, "run", return_value=self.missing) as request:
+            # Act
+            with self.assertRaises(ReleaseError) as caught:
+                maintenance.wait_for_child(self.commands, self.run_id, maintenance.WORKFLOW, "refs/heads/main",
+                                           COMMIT, CORRELATION, self.expected, timeout=1,
+                                           clock=lambda: next(times), sleep=sleep)
+
+        # Assert
+        self.assertEqual("maintenance-timeout", caught.exception.code)
+        request.assert_called_once()
+        sleep.assert_not_called()
+
+    def test_other_http_errors_are_not_retried(self):
+        """Authorization, rate-limit and server failures remain immediate failures even if their text says 404."""
+        for status in (401, 403, 429, 500, 503):
+            with self.subTest(status=status):
+                # Arrange
+                response = copy.copy(self.missing)
+                response.stdout = f'HTTP/2.0 {status}\r\n\r\n{{"message":"Not Found"}}'.encode("ascii")
+                sleep = Mock()
+
+                with patch.object(maintenance.publication.subprocess, "run", return_value=response) as request:
+                    # Act
+                    with self.assertRaises(ReleaseError) as caught:
+                        maintenance.wait_for_child(self.commands, self.run_id, maintenance.WORKFLOW,
+                                                   "refs/heads/main", COMMIT, CORRELATION, self.expected, sleep=sleep)
+
+                # Assert
+                self.assertEqual("api-status", caught.exception.code)
+                request.assert_called_once()
+                sleep.assert_not_called()
+
+    def test_unproven_not_found_responses_are_not_retried(self):
+        """Missing headers, invalid JSON or a different 404 body cannot authorize the recovery path."""
+        cases = ((b'{"message":"Not Found"}', "api-status"),
+                 (b'HTTP/2.0 404\r\n\r\n{"message":"Forbidden"}', "api-status"),
+                 (b'HTTP/2.0 404\r\n\r\n{"message":', "json-invalid"))
+        for body, code in cases:
+            with self.subTest(body=body):
+                # Arrange
+                response = copy.copy(self.missing)
+                response.stdout = body
+                sleep = Mock()
+
+                with patch.object(maintenance.publication.subprocess, "run", return_value=response) as request:
+                    # Act
+                    with self.assertRaises(ReleaseError) as caught:
+                        maintenance.wait_for_child(self.commands, self.run_id, maintenance.WORKFLOW,
+                                                   "refs/heads/main", COMMIT, CORRELATION, self.expected, sleep=sleep)
+
+                # Assert
+                self.assertEqual(code, caught.exception.code)
+                request.assert_called_once()
+                sleep.assert_not_called()
+
+    def test_transport_failure_is_not_retried_even_with_not_found_text(self):
+        """A failed CLI invocation cannot be inferred as an authenticated 404 from its error text."""
+        # Arrange
+        response = copy.copy(self.missing)
+        response.returncode = 2
+        sleep = Mock()
+
+        with patch.object(maintenance.publication.subprocess, "run", return_value=response) as request:
+            # Act
+            with self.assertRaises(ReleaseError) as caught:
+                maintenance.wait_for_child(self.commands, self.run_id, maintenance.WORKFLOW, "refs/heads/main",
+                                           COMMIT, CORRELATION, self.expected, sleep=sleep)
+
+        # Assert
+        self.assertEqual("command-failed", caught.exception.code)
+        request.assert_called_once()
+        sleep.assert_not_called()
+
+    def test_recovered_child_still_requires_exact_identity(self):
+        """Transient absence does not authorize a completed run from a different source."""
+        # Arrange
+        wrong = copy.copy(self.completed)
+        wrong.stdout = b"HTTP/2.0 200\r\n\r\n" + json.dumps({**self.child, "head_sha": "b" * 40}).encode("ascii")
+        sleep = Mock()
+
+        with patch.object(maintenance.publication.subprocess, "run", side_effect=[self.missing, wrong]) as request:
+            # Act
+            with self.assertRaises(ReleaseError) as caught:
+                maintenance.wait_for_child(self.commands, self.run_id, maintenance.WORKFLOW, "refs/heads/main",
+                                           COMMIT, CORRELATION, self.expected, sleep=sleep)
+
+        # Assert
+        self.assertEqual("maintenance-child", caught.exception.code)
+        self.assertEqual(2, request.call_count)
+        sleep.assert_called_once_with(15)
+
+    def test_recovered_child_still_requires_success(self):
+        """Visibility recovery cannot turn an unsuccessful child into a successful audit."""
+        # Arrange
+        failed = copy.copy(self.completed)
+        failed.stdout = b"HTTP/2.0 200\r\n\r\n" + json.dumps({**self.child, "conclusion": "failure"}).encode("ascii")
+        sleep = Mock()
+
+        with patch.object(maintenance.publication.subprocess, "run", side_effect=[self.missing, failed]) as request:
+            # Act
+            with self.assertRaises(ReleaseError) as caught:
+                maintenance.wait_for_child(self.commands, self.run_id, maintenance.WORKFLOW, "refs/heads/main",
+                                           COMMIT, CORRELATION, self.expected, sleep=sleep)
+
+        # Assert
+        self.assertEqual("maintenance-child", caught.exception.code)
+        self.assertEqual(2, request.call_count)
+        sleep.assert_called_once_with(15)
+
+    def test_recovered_child_still_requires_successful_producers(self):
+        """A successful wrapper still rejects a skipped concrete audit producer after visibility recovery."""
+        # Arrange
+        jobs = json.loads(self.producers.stdout)
+        jobs["jobs"][-1]["conclusion"] = "skipped"
+        producers = copy.copy(self.producers)
+        producers.stdout = json.dumps(jobs).encode("ascii")
+        sleep = Mock()
+
+        with patch.object(maintenance.publication.subprocess, "run",
+                          side_effect=[self.missing, self.completed, producers]) as request:
+            # Act
+            with self.assertRaises(ReleaseError) as caught:
+                maintenance.wait_for_child(self.commands, self.run_id, maintenance.WORKFLOW, "refs/heads/main",
+                                           COMMIT, CORRELATION, self.expected, sleep=sleep)
+
+        # Assert
+        self.assertEqual("maintenance-producer", caught.exception.code)
+        self.assertEqual(3, request.call_count)
+        sleep.assert_called_once_with(15)
+
+    def test_producer_not_found_is_not_retried_as_child_absence(self):
+        """The narrow recovery applies to the dispatched run endpoint, never arbitrary missing evidence."""
+        # Arrange
+        sleep = Mock()
+
+        with patch.object(maintenance.publication.subprocess, "run",
+                          side_effect=[self.missing, self.completed, self.missing]) as request:
+            # Act
+            with self.assertRaises(ReleaseError) as caught:
+                maintenance.wait_for_child(self.commands, self.run_id, maintenance.WORKFLOW, "refs/heads/main",
+                                           COMMIT, CORRELATION, self.expected, sleep=sleep)
+
+        # Assert
+        self.assertEqual("command-failed", caught.exception.code)
+        self.assertEqual(3, request.call_count)
+        sleep.assert_called_once_with(15)
 
 
 class AuditTests(unittest.TestCase):

@@ -244,12 +244,32 @@ def wait_for_child(commands, run_id, workflow, ref, commit, correlation, expecte
                    timeout=14400, sleep=time.sleep, clock=time.monotonic, record=lambda update: None):
     """Keep queue and execution bounded, then validate the completed child and its actual producers."""
     deadline = clock() + timeout
+    missing_deadline = None
+    poll_deadline = deadline
     while True:
-        run = publication.api(commands, f"actions/runs/{run_id}")
-        record({"status": run.get("status"), "conclusion": run.get("conclusion")})
+        # WHY: A pause can consume the remaining budget; do not start another request after either deadline.
+        requested_at = clock()
+        require(requested_at < deadline, "maintenance-timeout", "Scheduled child exceeded its queue/execution budget.")
+        require(requested_at < poll_deadline, "maintenance-child-missing",
+                "Dispatched child metadata exceeded its five-minute HTTP 404 recovery window.")
+        run = publication.api(commands, f"actions/runs/{run_id}", allow_missing=True)
+        record({"status": run.get("status") if run is not None else None,
+                "conclusion": run.get("conclusion") if run is not None else None})
         # WHY: A slow API response or delayed wakeup must not accept completion after the original deadline.
-        require(clock() < deadline, "maintenance-timeout", "Scheduled child exceeded its queue/execution budget.")
-        if run.get("status") == "completed":
+        observed_at = clock()
+        require(observed_at < deadline, "maintenance-timeout", "Scheduled child exceeded its queue/execution budget.")
+        if run is None:
+            # WHY: A dispatched run can briefly return authenticated HTTP 404 before its metadata is visible.
+            # Keep the first recovery deadline even when successful reads occur between missing observations.
+            if missing_deadline is None:
+                missing_deadline = min(deadline, observed_at + 300)
+
+            poll_deadline = missing_deadline
+
+        # WHY: Check the pending retry's deadline before accepting its response, including API request latency.
+        require(observed_at < poll_deadline, "maintenance-child-missing",
+                "Dispatched child metadata exceeded its five-minute HTTP 404 recovery window.")
+        if run is not None and run.get("status") == "completed":
             # WHY: The dispatch response names this exact run, but a read right after dispatch can
             # return metadata that differs from the settled run. Only a completed run proves identity.
             require(run.get("id") == run_id and run.get("event") == "workflow_dispatch"
@@ -264,9 +284,14 @@ def wait_for_child(commands, run_id, workflow, ref, commit, correlation, expecte
             return {"sourceRef": ref, "sourceCommit": commit, "runId": run_id,
                     "workflow": workflow, "verificationStatus": "success"}
 
-        require(run.get("status") in (None, "queued", "in_progress", "waiting", "pending", "requested"),
-                "maintenance-child", "Unrecognized child execution state.")
-        sleep(min(15, max(0, deadline - clock())))
+        elif run is not None:
+            require(run.get("status") in (None, "queued", "in_progress", "waiting", "pending", "requested"),
+                    "maintenance-child", "Unrecognized child execution state.")
+
+            # WHY: Visible child execution keeps its full budget; only a missing-read retry uses the shorter window.
+            poll_deadline = deadline
+
+        sleep(min(15, max(0, poll_deadline - clock())))
 
 
 def dispatch_line(commands, workflow, ref, correlation, *, record=lambda update: None):

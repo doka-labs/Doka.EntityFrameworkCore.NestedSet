@@ -21,6 +21,9 @@ selected adapters and the common EF package together.
 
 ### Fixed
 
+- Retry temporarily unavailable dispatched maintenance-run metadata on
+  authenticated HTTP 404 within five minutes and the original execution deadline.
+  Preserve exact child identity and successful producer verification.
 - Restore the explicit backing fields and writable owned payload needed by EF
   regression fixtures after cleanup. Check exact field bindings, changed field
   identities and application payload across valid and rejected rollback paths.
